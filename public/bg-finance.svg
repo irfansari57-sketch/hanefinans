@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Derin lacivert dikey gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#020617"/>
+      <stop offset="40%" stop-color="#0a1428"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+
+    <!-- Atmospheric blur (gökyüzü için) -->
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <filter id="softblur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+
+    <!-- Neon glow -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="strongglow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <linearGradient id="gridFade" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="lineGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#22d3ee" stop-opacity="0"/>
+      <stop offset="50%"  stop-color="#22d3ee" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="lineWhite" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%"  stop-color="#ffffff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Arka plan -->
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+
+  <!-- Uzak şehir silueti (çok bulanık) -->
+  <g filter="url(#blur)" opacity="0.55">
+    <rect x="0"    y="450" width="120"  height="320" fill="#0e2748"/>
+    <rect x="120"  y="380" width="80"   height="390" fill="#102d52"/>
+    <rect x="210"  y="430" width="100"  height="340" fill="#0c2545"/>
+    <rect x="320"  y="320" width="60"   height="450" fill="#143661"/>
+    <rect x="395"  y="400" width="120"  height="370" fill="#0f2a4f"/>
+    <rect x="520"  y="350" width="80"   height="420" fill="#143862"/>
+    <rect x="610"  y="290" width="50"   height="480" fill="#173f6e"/>
+    <rect x="680"  y="380" width="100"  height="390" fill="#0e2a4d"/>
+    <rect x="790"  y="340" width="70"   height="430" fill="#143862"/>
+    <rect x="870"  y="420" width="90"   height="350" fill="#0d2747"/>
+    <rect x="970"  y="360" width="70"   height="410" fill="#15396a"/>
+    <rect x="1050" y="300" width="60"   height="470" fill="#19457a"/>
+    <rect x="1120" y="390" width="100"  height="380" fill="#0f2c52"/>
+    <rect x="1230" y="350" width="80"   height="420" fill="#143862"/>
+    <rect x="1320" y="420" width="70"   height="350" fill="#0c2545"/>
+    <rect x="1400" y="370" width="90"   height="400" fill="#143862"/>
+    <rect x="1500" y="320" width="60"   height="450" fill="#15396a"/>
+    <rect x="1570" y="400" width="110"  height="370" fill="#102d52"/>
+    <rect x="1690" y="350" width="80"   height="420" fill="#143862"/>
+    <rect x="1780" y="380" width="140"  height="400" fill="#0e2a4d"/>
+  </g>
+
+  <!-- Bokeh ışık partikülleri -->
+  <g filter="url(#blur)" opacity="0.45">
+    <circle cx="220"  cy="280" r="55" fill="#22d3ee"/>
+    <circle cx="380"  cy="180" r="35" fill="#3b82f6"/>
+    <circle cx="520"  cy="240" r="45" fill="#22d3ee"/>
+    <circle cx="900"  cy="200" r="60" fill="#22d3ee"/>
+    <circle cx="1100" cy="160" r="40" fill="#6366f1"/>
+    <circle cx="1280" cy="260" r="50" fill="#22d3ee"/>
+    <circle cx="1500" cy="180" r="35" fill="#3b82f6"/>
+    <circle cx="1700" cy="280" r="55" fill="#22d3ee"/>
+    <circle cx="100"  cy="450" r="38" fill="#22c55e" opacity="0.55"/>
+    <circle cx="1820" cy="500" r="42" fill="#22c55e" opacity="0.55"/>
+  </g>
+
+  <!-- Daha küçük net ışık noktaları (yıldız efekti) -->
+  <g filter="url(#softblur)" opacity="0.75">
+    <circle cx="155"  cy="320" r="3" fill="#ffffff"/>
+    <circle cx="340"  cy="290" r="2" fill="#ffffff"/>
+    <circle cx="490"  cy="240" r="3" fill="#22d3ee"/>
+    <circle cx="640"  cy="320" r="2" fill="#ffffff"/>
+    <circle cx="820"  cy="280" r="3" fill="#ffffff"/>
+    <circle cx="980"  cy="260" r="2" fill="#22d3ee"/>
+    <circle cx="1180" cy="320" r="3" fill="#ffffff"/>
+    <circle cx="1340" cy="290" r="2" fill="#ffffff"/>
+    <circle cx="1500" cy="320" r="3" fill="#22d3ee"/>
+    <circle cx="1680" cy="250" r="2" fill="#ffffff"/>
+    <circle cx="1830" cy="310" r="3" fill="#ffffff"/>
+  </g>
+
+  <!-- Perspektif grid zemin -->
+  <g stroke="#22d3ee" stroke-width="1" opacity="0.18">
+    <!-- yatay çizgiler (horizon'a yaklaşan) -->
+    <line x1="-200"  y1="770" x2="2120" y2="770"/>
+    <line x1="-150"  y1="830" x2="2070" y2="830"/>
+    <line x1="-100"  y1="900" x2="2020" y2="900"/>
+    <line x1="-50"   y1="975" x2="1970" y2="975"/>
+    <line x1="0"     y1="1055" x2="1920" y2="1055"/>
+    <!-- perspektif uçuş çizgileri -->
+    <line x1="-300"  y1="1080" x2="800"  y2="700"/>
+    <line x1="100"   y1="1080" x2="870"  y2="700"/>
+    <line x1="450"   y1="1080" x2="920"  y2="700"/>
+    <line x1="800"   y1="1080" x2="950"  y2="700"/>
+    <line x1="1120"  y1="1080" x2="970"  y2="700"/>
+    <line x1="1470"  y1="1080" x2="1000" y2="700"/>
+    <line x1="1820"  y1="1080" x2="1050" y2="700"/>
+    <line x1="2200"  y1="1080" x2="1120" y2="700"/>
+  </g>
+
+  <!-- 3D küpler (zemin üzerinde) -->
+  <g opacity="0.55">
+    <!-- küp 1 -->
+    <g transform="translate(220, 760)">
+      <polygon points="0,40 40,20 80,40 40,60" fill="#1e3a5f" opacity="0.9"/>
+      <polygon points="0,40 0,90 40,110 40,60" fill="#162a45" opacity="0.95"/>
+      <polygon points="80,40 80,90 40,110 40,60" fill="#244a78" opacity="0.95"/>
+    </g>
+    <!-- küp 2 -->
+    <g transform="translate(440, 800)">
+      <polygon points="0,40 60,15 120,40 60,65" fill="#1e3a5f" opacity="0.85"/>
+      <polygon points="0,40 0,100 60,125 60,65" fill="#162a45" opacity="0.95"/>
+      <polygon points="120,40 120,100 60,125 60,65" fill="#244a78" opacity="0.95"/>
+    </g>
+    <!-- küp 3 (uzak) -->
+    <g transform="translate(1480, 770)">
+      <polygon points="0,30 35,15 70,30 35,45" fill="#1e3a5f" opacity="0.7"/>
+      <polygon points="0,30 0,75 35,90 35,45" fill="#162a45" opacity="0.8"/>
+      <polygon points="70,30 70,75 35,90 35,45" fill="#244a78" opacity="0.8"/>
+    </g>
+  </g>
+
+  <!-- Glow line chart — ana parlayan çizgi (cyan) -->
+  <path
+    d="M -50 620 Q 180 540 360 590 T 720 480 T 1080 520 T 1440 410 T 1980 460"
+    fill="none"
+    stroke="#22d3ee"
+    stroke-width="3.5"
+    filter="url(#strongglow)"
+    opacity="0.95"
+  />
+
+  <!-- Daha ince beyaz hareket çizgisi -->
+  <path
+    d="M -50 660 Q 250 640 460 650 T 880 600 T 1300 620 T 1720 580 T 2000 600"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="2"
+    filter="url(#glow)"
+    opacity="0.65"
+  />
+
+  <!-- Çubuk grafik benzeri parlayan ışınlar -->
+  <g opacity="0.5" filter="url(#glow)">
+    <rect x="190"  y="640" width="6" height="60" fill="#22d3ee" rx="2"/>
+    <rect x="290"  y="620" width="6" height="80" fill="#22d3ee" rx="2"/>
+    <rect x="390"  y="660" width="6" height="40" fill="#22d3ee" rx="2"/>
+    <rect x="900"  y="600" width="6" height="100" fill="#22c55e" rx="2"/>
+    <rect x="1000" y="630" width="6" height="70" fill="#22c55e" rx="2"/>
+    <rect x="1600" y="610" width="6" height="90" fill="#22d3ee" rx="2"/>
+    <rect x="1700" y="640" width="6" height="60" fill="#22d3ee" rx="2"/>
+  </g>
+
+  <!-- Atmosferik vinyet (köşeleri karart) -->
+  <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+    <stop offset="60%" stop-color="#000000" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+  </radialGradient>
+  <rect width="1920" height="1080" fill="url(#vignette)"/>
+</svg>

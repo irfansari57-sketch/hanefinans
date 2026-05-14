@@ -1,0 +1,17 @@
+# Hane Finans — Supabase project config
+# CLI: `supabase init` çıktısı + manual ayarlar
+# Bu dosyayı düzenledikten sonra: `supabase functions deploy <name>`
+
+project_id = "hane-finans"
+
+[functions.tcmb-evds]
+verify_jwt = true
+
+[functions.reddit-mentions]
+verify_jwt = true
+
+[functions.voyage-embed]
+verify_jwt = true
+
+[functions.telegram-send]
+verify_jwt = true

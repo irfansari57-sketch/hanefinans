@@ -1,0 +1,10 @@
+name = "hane-finans-tefas"
+main = "src/worker.js"
+compatibility_date = "2026-05-01"
+
+# Browser Rendering binding — OPSİYONEL.
+# Önce basit fetch dene; çalışmazsa aşağıdaki satırı uncomment edip yeniden deploy et:
+# browser = { binding = "BROWSER" }
+
+[observability]
+enabled = true

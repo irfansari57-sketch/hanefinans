@@ -3,25 +3,24 @@ import { cn } from '@/lib/utils';
 interface LogoProps {
   size?: number;
   className?: string;
-  /** İçindeki hex grid + glow ışıması */
+  /** icon: sadece bar grafiği; full: bar + alttaki marka yazısı */
   variant?: 'icon' | 'full';
 }
 
 /**
- * Hane Finans — 3D Metal Forge logo.
- * Çoklu gradyan + iç gölge + dış parıltı, kabartmalı "H" harfi, neon trend.
+ * Hane Finans — Cyan Skyline logo.
+ * 5 dikey bar (şehir/veri silueti) + pixel pattern + altta dalga.
  */
 export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
   if (variant === 'full') {
     return (
-      <div className={cn('inline-flex items-center gap-3', className)}>
+      <div className={cn('inline-flex flex-col items-center gap-1', className)}>
         <LogoIcon size={size} />
-        <div className="flex flex-col leading-tight">
-          <span className="logo-text-3d text-xl font-extrabold tracking-tight">
+        <div className="flex flex-col items-center leading-tight">
+          <span className="logo-text-3d text-base font-extrabold tracking-tight">
             HANE FINANS
           </span>
-          {/* lang="en" — Türkçe locale'da "I" → "İ" dönüşmesini engeller */}
-          <span lang="en" className="mt-0.5 text-[11px] tracking-[0.18em] text-accent/85 font-semibold">
+          <span lang="en" className="mt-0.5 text-[10px] tracking-[0.18em] text-accent/85 font-semibold">
             FINANCIAL INTELLIGENCE
           </span>
         </div>
@@ -35,167 +34,100 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
   return (
     <svg
       width={size}
-      height={size}
-      viewBox="0 0 80 80"
-      className={cn('drop-shadow-[0_3px_8px_rgba(0,0,0,0.5)]', className)}
+      height={size * 0.7}
+      viewBox="0 0 80 56"
+      className={cn('drop-shadow-[0_2px_6px_rgba(34,211,238,0.25)]', className)}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        {/* Chrome gradient — üstten alta metal */}
-        <linearGradient id="hf3d-chrome" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#f1f5f9" />
-          <stop offset="22%" stopColor="#cbd5e1" />
-          <stop offset="50%" stopColor="#64748b" />
-          <stop offset="78%" stopColor="#334155" />
-          <stop offset="100%" stopColor="#0f172a" />
+        {/* Dikey cyan gradient — bar ana rengi */}
+        <linearGradient id="hf-bar-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#67e8f9" stopOpacity="1" />
+          <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#0891b2" stopOpacity="0.85" />
         </linearGradient>
 
-        {/* İç oyuk derinliği */}
-        <radialGradient id="hf3d-depth" cx="50%" cy="40%" r="65%">
-          <stop offset="0%" stopColor="#0f172a" />
-          <stop offset="70%" stopColor="#020617" />
-          <stop offset="100%" stopColor="#000000" />
-        </radialGradient>
+        {/* Pixel pattern — barların içindeki dijital doku */}
+        <pattern id="hf-pixels" patternUnits="userSpaceOnUse" width="2" height="2.5">
+          <rect width="2" height="2.5" fill="url(#hf-bar-grad)" />
+          <rect x="0" y="0.8" width="2" height="0.5" fill="#0e7490" opacity="0.35" />
+        </pattern>
 
-        {/* Cyan iç ışıma */}
-        <radialGradient id="hf3d-cyan" cx="50%" cy="55%" r="55%">
-          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.7" />
-          <stop offset="50%" stopColor="#0891b2" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#0e7490" stopOpacity="0" />
-        </radialGradient>
-
-        {/* H harfi metali (sol-üst ışık kaynağı) */}
-        <linearGradient id="hf3d-h" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#f8fafc" />
-          <stop offset="35%" stopColor="#cbd5e1" />
-          <stop offset="70%" stopColor="#64748b" />
-          <stop offset="100%" stopColor="#1e293b" />
+        {/* Üst highlight — barların tepe ışığı */}
+        <linearGradient id="hf-top-light" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#a5f3fc" />
+          <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
         </linearGradient>
 
-        {/* H alt gölge (3D kabartma için) */}
-        <linearGradient id="hf3d-h-shadow" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1e293b" />
-          <stop offset="100%" stopColor="#020617" />
-        </linearGradient>
-
-        {/* Üst cam parlaklık */}
-        <linearGradient id="hf3d-glass" x1="50%" y1="0%" x2="50%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
-          <stop offset="60%" stopColor="#ffffff" stopOpacity="0.05" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-
-        {/* Neon glow filtresi */}
-        <filter id="hf3d-neon" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="1.8" result="b" />
+        {/* Glow */}
+        <filter id="hf-skyline-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="0.8" result="b" />
           <feMerge>
             <feMergeNode in="b" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
 
-        {/* İç gölge filtresi — hex çerçeveye derinlik */}
-        <filter id="hf3d-inset" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="b" />
-          <feOffset dx="0" dy="1.5" result="o" />
-          <feComposite in="o" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="i" />
-          <feFlood floodColor="#000" floodOpacity="0.7" />
-          <feComposite in2="i" operator="in" />
-          <feComposite in2="SourceGraphic" operator="over" />
+        <filter id="hf-soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.6" />
         </filter>
       </defs>
 
-      {/* 1. Dış kalkan — metalik chrome hexagon */}
-      <polygon
-        points="40,3 71,21 71,59 40,77 9,59 9,21"
-        fill="url(#hf3d-chrome)"
-        stroke="#0f172a"
-        strokeWidth="0.6"
-        strokeLinejoin="round"
-      />
-
-      {/* 2. Üst yarı parlaklık (3D bombesi) */}
-      <polygon
-        points="40,3 71,21 71,40 9,40 9,21"
-        fill="url(#hf3d-glass)"
-        opacity="0.5"
-      />
-
-      {/* 3. İç oyuk (gömme) */}
-      <polygon
-        points="40,12 63,26 63,54 40,68 17,54 17,26"
-        fill="url(#hf3d-depth)"
-        filter="url(#hf3d-inset)"
-      />
-
-      {/* 4. Cyan iç ışıma */}
-      <polygon
-        points="40,12 63,26 63,54 40,68 17,54 17,26"
-        fill="url(#hf3d-cyan)"
-      />
-
-      {/* 5. Bevel ring — iç çerçeve parlaklığı */}
-      <polygon
-        points="40,12 63,26 63,54 40,68 17,54 17,26"
-        fill="none"
-        stroke="#475569"
-        strokeWidth="0.7"
-        opacity="0.85"
-      />
-      <polygon
-        points="40,13.5 61.5,27 61.5,53 40,66.5 18.5,53 18.5,27"
-        fill="none"
-        stroke="#0f172a"
-        strokeWidth="0.5"
-        opacity="0.9"
-      />
-
-      {/* 6. Neon trend grafik çizgisi — dipte akıyor */}
-      <polyline
-        points="20,55 28,50 35,52 42,42 49,44 56,34 62,36"
-        fill="none"
-        stroke="#22d3ee"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter="url(#hf3d-neon)"
-        opacity="0.95"
-      />
-
-      {/* 7. H harfi — 3D kabartma — alt gölge katmanı */}
-      <g transform="translate(1.2,1.2)" opacity="0.85">
-        <rect x="25.5" y="22" width="6.5" height="34" rx="1.2" fill="url(#hf3d-h-shadow)" />
-        <rect x="48" y="22" width="6.5" height="34" rx="1.2" fill="url(#hf3d-h-shadow)" />
-        <rect x="31.5" y="36" width="17" height="8" rx="1.2" fill="url(#hf3d-h-shadow)" />
+      {/* 5 dikey bar — şehir silueti / data bars */}
+      <g filter="url(#hf-skyline-glow)">
+        {/* Bar 1 — kısa, sol */}
+        <rect x="13" y="30" width="8" height="18" rx="0.5" fill="url(#hf-pixels)" />
+        {/* Bar 2 — orta */}
+        <rect x="24" y="20" width="8" height="28" rx="0.5" fill="url(#hf-pixels)" />
+        {/* Bar 3 — en uzun (orta-sol) */}
+        <rect x="35" y="6"  width="8" height="42" rx="0.5" fill="url(#hf-pixels)" />
+        {/* Bar 4 — uzun (orta-sağ) */}
+        <rect x="46" y="14" width="8" height="34" rx="0.5" fill="url(#hf-pixels)" />
+        {/* Bar 5 — kısa, sağ */}
+        <rect x="57" y="26" width="8" height="22" rx="0.5" fill="url(#hf-pixels)" />
       </g>
 
-      {/* 8. H harfi — üst metal katmanı */}
-      <g>
-        <rect x="25.5" y="22" width="6.5" height="34" rx="1.2" fill="url(#hf3d-h)" stroke="#0f172a" strokeWidth="0.4" />
-        <rect x="48" y="22" width="6.5" height="34" rx="1.2" fill="url(#hf3d-h)" stroke="#0f172a" strokeWidth="0.4" />
-        <rect x="31.5" y="36" width="17" height="8" rx="1.2" fill="url(#hf3d-h)" stroke="#0f172a" strokeWidth="0.4" />
+      {/* Bar üst highlight'ları — beyaz tepe ışığı */}
+      <g opacity="0.85">
+        <rect x="13" y="30" width="8" height="1.2" rx="0.5" fill="url(#hf-top-light)" />
+        <rect x="24" y="20" width="8" height="1.2" rx="0.5" fill="url(#hf-top-light)" />
+        <rect x="35" y="6"  width="8" height="1.2" rx="0.5" fill="url(#hf-top-light)" />
+        <rect x="46" y="14" width="8" height="1.2" rx="0.5" fill="url(#hf-top-light)" />
+        <rect x="57" y="26" width="8" height="1.2" rx="0.5" fill="url(#hf-top-light)" />
       </g>
 
-      {/* 9. H üst kenar highlight — beyaz tepe ışığı */}
-      <g opacity="0.55">
-        <rect x="26" y="22.3" width="5.5" height="0.9" rx="0.4" fill="#ffffff" />
-        <rect x="48.5" y="22.3" width="5.5" height="0.9" rx="0.4" fill="#ffffff" />
-        <rect x="32" y="36.3" width="16" height="0.9" rx="0.4" fill="#ffffff" />
-      </g>
-
-      {/* 10. Üst arc reflection — cam yansıması */}
+      {/* Birinci dalga — noktalı, ana akış */}
       <path
-        d="M 17,24 Q 40,8 63,24"
+        d="M 0,50 C 14,44 28,54 40,50 S 66,42 80,48"
+        stroke="#22d3ee"
+        strokeWidth="0.8"
         fill="none"
-        stroke="#ffffff"
-        strokeWidth="1"
-        opacity="0.25"
+        strokeDasharray="1.2,1.6"
         strokeLinecap="round"
+        opacity="0.95"
+        filter="url(#hf-skyline-glow)"
       />
 
-      {/* 11. Tepe ışık noktası */}
-      <circle cx="40" cy="6" r="1.6" fill="#ffffff" opacity="0.95" />
-      <circle cx="40" cy="6" r="3" fill="#ffffff" opacity="0.3" filter="url(#hf3d-neon)" />
+      {/* İkinci dalga — daha alt, soluk */}
+      <path
+        d="M 0,53 C 18,48 32,56 42,53 S 68,46 80,52"
+        stroke="#22d3ee"
+        strokeWidth="0.6"
+        fill="none"
+        strokeDasharray="0.8,1.8"
+        opacity="0.55"
+      />
+
+      {/* Yumuşak cyan halo arka plan */}
+      <ellipse
+        cx="40"
+        cy="50"
+        rx="38"
+        ry="6"
+        fill="#22d3ee"
+        opacity="0.15"
+        filter="url(#hf-soft-glow)"
+      />
     </svg>
   );
 }

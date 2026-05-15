@@ -3,11 +3,9 @@ name: TEFAS Fund Fetch
 # Saatlik çalışır (TEFAS verisi gün sonu güncellenir ama biz güne yakın kalalım).
 
 on:
-  schedule:
-    # UTC 12:00 ve 15:00 → TR 15:00 ve 18:00 (TEFAS NAV'ları gün sonu yayınlanır)
-    - cron: '0 15 * * 1-5'   # Hafta içi 18:00 TR
-    - cron: '0 12 * * 1-5'   # Hafta içi 15:00 TR (ek)
-  workflow_dispatch:           # Manuel tetikleme
+  # Schedule şimdilik iptal — TEFAS API'si GitHub Actions IP'lerinde
+  # yavaş çalışıyor / rate-limit yiyor. Manuel tetikleme korundu.
+  workflow_dispatch:
 
 permissions:
   contents: write              # data/tefas.json commit için

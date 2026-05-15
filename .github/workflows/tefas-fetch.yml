@@ -27,9 +27,10 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r scripts/requirements.txt
+          pip list
 
       - name: Fetch TEFAS data
-        run: python scripts/tefas_fetch.py
+        run: python -u scripts/tefas_fetch.py
 
       - name: Commit if changed
         run: |

@@ -1,3 +1,3 @@
-tefas-crawler==0.3.7
+tefas-crawler
 pandas>=2.0.0
 requests>=2.31.0

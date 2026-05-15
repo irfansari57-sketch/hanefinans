@@ -23,17 +23,17 @@ const tefasUrl = (code: string) => `https://www.tefas.gov.tr/FonAnaliz.aspx?FonK
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear' | 'fiveYear'> | 'code';
 
-const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string }> = [
+const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string; hideOnMobile?: boolean }> = [
   { key: 'code',       label: 'Fon Kodu', short: '#' },
-  { key: 'day',        label: 'Gün',       short: 'Gün (%)' },
-  { key: 'week',       label: '1 Hafta',   short: '1H (%)' },
+  { key: 'day',        label: 'Gün',       short: 'Gün (%)', hideOnMobile: true },
+  { key: 'week',       label: '1 Hafta',   short: '1H (%)', hideOnMobile: true },
   { key: 'month',      label: '1 Ay',      short: '1A (%)' },
-  { key: 'threeMonth', label: '3 Ay',      short: '3A (%)' },
-  { key: 'sixMonth',   label: '6 Ay',      short: '6A (%)' },
-  { key: 'ytd',        label: 'Yılbaşı',   short: 'YTD (%)' },
+  { key: 'threeMonth', label: '3 Ay',      short: '3A (%)', hideOnMobile: true },
+  { key: 'sixMonth',   label: '6 Ay',      short: '6A (%)', hideOnMobile: true },
+  { key: 'ytd',        label: 'Yılbaşı',   short: 'YTD (%)', hideOnMobile: true },
   { key: 'year',       label: '1 Yıl',     short: '1Y (%)' },
-  { key: 'threeYear',  label: '3 Yıl',     short: '3Y (%)' },
-  { key: 'fiveYear',   label: '5 Yıl',     short: '5Y (%)' },
+  { key: 'threeYear',  label: '3 Yıl',     short: '3Y (%)', hideOnMobile: true },
+  { key: 'fiveYear',   label: '5 Yıl',     short: '5Y (%)', hideOnMobile: true },
 ];
 
 const ALL_CATEGORIES: FundCategory[] = [
@@ -232,7 +232,10 @@ export function FundsPage() {
                 {SORT_COLUMNS.map((c) => (
                   <th
                     key={c.key}
-                    className="px-3 py-2.5 text-right cursor-pointer hover:text-slate-100 whitespace-nowrap"
+                    className={cn(
+                      'px-3 py-2.5 text-right cursor-pointer hover:text-slate-100 whitespace-nowrap',
+                      c.hideOnMobile && 'hidden md:table-cell',
+                    )}
                     onClick={() => setSort(c.key)}
                   >
                     <span className="inline-flex items-center gap-1">
@@ -243,7 +246,7 @@ export function FundsPage() {
                     </span>
                   </th>
                 ))}
-                <th className="px-3 py-2.5 text-left w-32 whitespace-nowrap">Şemsiye</th>
+                <th className="hidden md:table-cell px-3 py-2.5 text-left w-32 whitespace-nowrap">Şemsiye</th>
                 <th className="px-3 py-2.5 text-center w-40 whitespace-nowrap">Canlı Veri</th>
               </tr>
             </thead>
@@ -275,16 +278,16 @@ export function FundsPage() {
                       </Link>
                       {f.name && <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[200px]">{f.name}</div>}
                     </td>
-                    <PerfCell value={f.day} />
-                    <PerfCell value={f.week} />
+                    <PerfCell value={f.day} hideOnMobile />
+                    <PerfCell value={f.week} hideOnMobile />
                     <PerfCell value={f.month} />
-                    <PerfCell value={f.threeMonth} />
-                    <PerfCell value={f.sixMonth} />
-                    <PerfCell value={f.ytd} />
+                    <PerfCell value={f.threeMonth} hideOnMobile />
+                    <PerfCell value={f.sixMonth} hideOnMobile />
+                    <PerfCell value={f.ytd} hideOnMobile />
                     <PerfCell value={f.year} />
-                    <PerfCell value={f.threeYear} />
-                    <PerfCell value={f.fiveYear} />
-                    <td className="px-3 py-2.5 text-left text-slate-400 whitespace-nowrap">{f.category}</td>
+                    <PerfCell value={f.threeYear} hideOnMobile />
+                    <PerfCell value={f.fiveYear} hideOnMobile />
+                    <td className="hidden md:table-cell px-3 py-2.5 text-left text-slate-400 whitespace-nowrap">{f.category}</td>
                     <td className="px-3 py-2.5 text-center">
                       <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <a
@@ -341,16 +344,15 @@ export function FundsPage() {
   );
 }
 
-function PerfCell({ value }: { value?: number }) {
+function PerfCell({ value, hideOnMobile }: { value?: number; hideOnMobile?: boolean }) {
+  const baseClass = cn('px-3 py-2.5 text-right tabular-nums whitespace-nowrap', hideOnMobile && 'hidden md:table-cell');
   if (value == null || !Number.isFinite(value)) {
-    return <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">N/A</td>;
+    return <td className={cn(baseClass, 'text-slate-600')}>N/A</td>;
   }
   const tone = value >= 0 ? 'text-success' : 'text-danger';
-  const sign = value >= 0 ? '%' : '%';
-  // Format mimicking the screenshot: % 0,30 with spaces
   return (
-    <td className={cn('px-3 py-2.5 text-right tabular-nums whitespace-nowrap', tone)}>
-      {sign} {value.toFixed(2).replace('.', ',')}
+    <td className={cn(baseClass, tone)}>
+      % {value.toFixed(2).replace('.', ',')}
     </td>
   );
 }

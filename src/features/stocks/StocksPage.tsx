@@ -20,16 +20,16 @@ type SortKey =
   | 'symbol' | 'price' | 'changePct'
   | 'r1g' | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'rytd' | 'r1y';
 
-const SORT_COLUMNS: Array<{ key: SortKey; label: string; period?: keyof PeriodReturns }> = [
+const SORT_COLUMNS: Array<{ key: SortKey; label: string; period?: keyof PeriodReturns; hideOnMobile?: boolean }> = [
   { key: 'symbol',    label: 'Sembol' },
   { key: 'price',     label: 'Fiyat' },
   { key: 'changePct', label: 'Gün %' },
-  { key: 'r1g',  label: '1 Gün',   period: '1g' },
-  { key: 'r1h',  label: '1 Hafta', period: '1h' },
-  { key: 'r1a',  label: '1 Ay',    period: '1a' },
-  { key: 'r3a',  label: '3 Ay',    period: '3a' },
-  { key: 'r6a',  label: '6 Ay',    period: '6a' },
-  { key: 'rytd', label: 'YTD',     period: '1y' }, // basit eşleme — gerçek YTD ayrı hesap ister
+  { key: 'r1g',  label: '1 Gün',   period: '1g', hideOnMobile: true },
+  { key: 'r1h',  label: '1 Hafta', period: '1h', hideOnMobile: true },
+  { key: 'r1a',  label: '1 Ay',    period: '1a', hideOnMobile: true },
+  { key: 'r3a',  label: '3 Ay',    period: '3a', hideOnMobile: true },
+  { key: 'r6a',  label: '6 Ay',    period: '6a', hideOnMobile: true },
+  { key: 'rytd', label: 'YTD',     period: '1y', hideOnMobile: true },
   { key: 'r1y',  label: '1 Yıl',   period: '1y' },
 ];
 
@@ -250,7 +250,10 @@ export function StocksPage() {
                 {SORT_COLUMNS.map((c) => (
                   <th
                     key={c.key}
-                    className="px-3 py-2.5 text-right cursor-pointer hover:text-slate-100 whitespace-nowrap"
+                    className={cn(
+                      'px-3 py-2.5 text-right cursor-pointer hover:text-slate-100 whitespace-nowrap',
+                      c.hideOnMobile && 'hidden md:table-cell',
+                    )}
                     onClick={() => setSort(c.key)}
                   >
                     <span className="inline-flex items-center gap-1">
@@ -261,7 +264,7 @@ export function StocksPage() {
                     </span>
                   </th>
                 ))}
-                <th className="px-3 py-2.5 text-left whitespace-nowrap">Sektör</th>
+                <th className="hidden md:table-cell px-3 py-2.5 text-left whitespace-nowrap">Sektör</th>
                 <th className="px-3 py-2.5 text-center w-28 whitespace-nowrap">Detay</th>
               </tr>
             </thead>
@@ -297,14 +300,14 @@ export function StocksPage() {
                       ₺{s.price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
                     </td>
                     <PerfCell value={s.changePct} />
-                    <PerfCell value={s.returns?.['1g']} />
-                    <PerfCell value={s.returns?.['1h']} />
-                    <PerfCell value={s.returns?.['1a']} />
-                    <PerfCell value={s.returns?.['3a']} />
-                    <PerfCell value={s.returns?.['6a']} />
+                    <PerfCell value={s.returns?.['1g']} hideOnMobile />
+                    <PerfCell value={s.returns?.['1h']} hideOnMobile />
+                    <PerfCell value={s.returns?.['1a']} hideOnMobile />
+                    <PerfCell value={s.returns?.['3a']} hideOnMobile />
+                    <PerfCell value={s.returns?.['6a']} hideOnMobile />
+                    <PerfCell value={s.returns?.['1y']} hideOnMobile />
                     <PerfCell value={s.returns?.['1y']} />
-                    <PerfCell value={s.returns?.['1y']} />
-                    <td className="px-3 py-2.5 text-left text-slate-400 whitespace-nowrap">{s.sector ?? '—'}</td>
+                    <td className="hidden md:table-cell px-3 py-2.5 text-left text-slate-400 whitespace-nowrap">{s.sector ?? '—'}</td>
                     <td className="px-3 py-2.5 text-center">
                       <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <Link
@@ -341,13 +344,14 @@ export function StocksPage() {
   );
 }
 
-function PerfCell({ value }: { value?: number }) {
+function PerfCell({ value, hideOnMobile }: { value?: number; hideOnMobile?: boolean }) {
+  const baseClass = cn('px-3 py-2.5 text-right tabular-nums whitespace-nowrap', hideOnMobile && 'hidden md:table-cell');
   if (value == null || !Number.isFinite(value)) {
-    return <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">—</td>;
+    return <td className={cn(baseClass, 'text-slate-600')}>—</td>;
   }
   const tone = value >= 0 ? 'text-success' : 'text-danger';
   return (
-    <td className={cn('px-3 py-2.5 text-right tabular-nums whitespace-nowrap', tone)}>
+    <td className={cn(baseClass, tone)}>
       {value >= 0 ? '+' : ''}{value.toFixed(2)}%
     </td>
   );

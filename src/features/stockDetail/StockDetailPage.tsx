@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { fetchHistoricalYahoo, computePeriodReturns, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
 import { loadStocks, loadNews } from '@/data/services';
+import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock, NewsItem } from '@/data/types';
@@ -87,6 +88,41 @@ export function StockDetailPage() {
   const sparklineData = historical ? historical.closes.slice(-30).map((c) => c.close) : [];
   const tone = stock.changePct >= 0 ? 'text-success' : 'text-danger';
   const sign = stock.changePct >= 0 ? '+' : '';
+
+  // Teknik analiz — historical varsa hesapla
+  const technicalAnalysis = useMemo(() => {
+    if (!historical || historical.bars.length < 25) return null;
+    const closes = historical.bars.map((b) => b.close);
+    const bars: OHLC[] = historical.bars.map((b) => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
+    const cur = closes[closes.length - 1];
+    const r = rsi(closes, 14).at(-1);
+    const macdR = macd(closes);
+    const boll = bollinger(closes);
+    const adxR = adx(bars);
+    const sr = supportResistance(bars, 60);
+    const emaPeriods = [5, 8, 13, 21, 55, 200];
+    const emas = emaPeriods
+      .map((p) => {
+        const v = ema(closes, p).at(-1);
+        if (!Number.isFinite(v)) return null;
+        return { period: p, value: v as number, abovePct: ((cur - (v as number)) / (v as number)) * 100 };
+      })
+      .filter((x): x is { period: number; value: number; abovePct: number } => x !== null);
+    const ma8Val = sma(closes, 8).at(-1);
+    return {
+      rsi: r,
+      rsiNote: r != null ? rsiSignal(r) : '',
+      macdBullish: macdR.recentBullishCross,
+      macdBearish: macdR.recentBearishCross,
+      bollingerLabel: bollingerLabel(boll.position),
+      adxLabel: adxLabel(adxR.lastTrendStrength),
+      support: sr.support,
+      resistance: sr.resistance,
+      emas,
+      ma8: Number.isFinite(ma8Val) ? (ma8Val as number) : undefined,
+      cur,
+    };
+  }, [historical]);
 
   return (
     <>
@@ -164,6 +200,96 @@ export function StockDetailPage() {
         </h2>
         <LiveChart symbol={sym} height={520} />
       </div>
+
+      {/* Teknik Analiz — Fintables tarzı */}
+      {technicalAnalysis && (
+        <div className="card mb-4 p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <Activity size={14} className="text-accent" /> Teknik Analiz
+            <span className="ml-auto text-[10px] text-slate-500">{historical?.bars.length} günlük veri</span>
+          </h2>
+
+          {/* RSI / MACD / Bollinger / ADX */}
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4 mb-4">
+            <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">RSI (14)</div>
+              <div className={cn(
+                'mt-1 text-lg font-bold tabular-nums',
+                (technicalAnalysis.rsi ?? 0) >= 70 ? 'text-warning' :
+                (technicalAnalysis.rsi ?? 0) <= 30 ? 'text-success' : 'text-slate-100',
+              )}>
+                {technicalAnalysis.rsi != null ? technicalAnalysis.rsi.toFixed(1) : '—'}
+              </div>
+              <div className="text-[10px] text-slate-400">{technicalAnalysis.rsiNote}</div>
+            </div>
+            <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">MACD</div>
+              <div className="mt-1 text-base font-bold">
+                {technicalAnalysis.macdBullish ? <span className="text-success">Bullish ✓</span>
+                  : technicalAnalysis.macdBearish ? <span className="text-danger">Bearish ✗</span>
+                  : <span className="text-slate-400">Nötr</span>}
+              </div>
+              <div className="text-[10px] text-slate-400">12-26-9 kesişim</div>
+            </div>
+            <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">Bollinger</div>
+              <div className="mt-1 text-xs font-semibold text-slate-100 leading-tight">
+                {technicalAnalysis.bollingerLabel}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">ADX (Trend)</div>
+              <div className="mt-1 text-sm font-bold text-slate-100">{technicalAnalysis.adxLabel}</div>
+            </div>
+          </div>
+
+          {/* Destek / Direnç */}
+          <div className="grid gap-2 grid-cols-2 mb-4">
+            <div className="rounded-lg border border-success/30 bg-success/5 p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-success">Destek</div>
+              <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
+                {technicalAnalysis.support.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺
+              </div>
+              <div className="text-[10px] text-slate-400">
+                %{(((technicalAnalysis.cur - technicalAnalysis.support) / technicalAnalysis.cur) * 100).toFixed(2)} uzakta
+              </div>
+            </div>
+            <div className="rounded-lg border border-danger/30 bg-danger/5 p-2.5">
+              <div className="text-[10px] uppercase tracking-wider text-danger">Direnç</div>
+              <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
+                {technicalAnalysis.resistance.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺
+              </div>
+              <div className="text-[10px] text-slate-400">
+                %{(((technicalAnalysis.resistance - technicalAnalysis.cur) / technicalAnalysis.cur) * 100).toFixed(2)} uzakta
+              </div>
+            </div>
+          </div>
+
+          {/* EMA Pozisyonları */}
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            EMA Pozisyonları {technicalAnalysis.ma8 != null && <span className="text-accent">• MA8: {technicalAnalysis.ma8.toFixed(2)}₺</span>}
+          </h3>
+          <div className="grid gap-2 grid-cols-3 lg:grid-cols-6">
+            {technicalAnalysis.emas.map((e) => {
+              const above = e.abovePct >= 0;
+              return (
+                <div key={e.period} className={cn(
+                  'rounded border p-1.5',
+                  above ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5',
+                )}>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-400">EMA {e.period}</div>
+                  <div className="text-xs font-bold tabular-nums text-slate-100">
+                    {e.value.toFixed(2)}
+                  </div>
+                  <div className={cn('text-[10px] tabular-nums font-semibold', above ? 'text-success' : 'text-danger')}>
+                    {above ? '↑ +' : '↓ '}{e.abovePct.toFixed(2)}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stats grid */}
       {historical && (
@@ -337,6 +463,24 @@ export function StockDetailPage() {
                 className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
               >
                 <span>Mynet Finans</span>
+                <ExternalLink size={11} />
+              </a>
+              <a
+                href={`https://fintables.com/sirketler/${sym}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+              >
+                <span>Fintables (Detay)</span>
+                <ExternalLink size={11} />
+              </a>
+              <a
+                href={`https://bigpara.hurriyet.com.tr/borsa/hisse-detayi/${sym}/`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+              >
+                <span>BigPara</span>
                 <ExternalLink size={11} />
               </a>
             </div>

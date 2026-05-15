@@ -1006,7 +1006,7 @@ function TradingDashboard({
       </p>
 
       {/* Üst özet — büyük göstergeler */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid gap-2 grid-cols-2 lg:grid-cols-4">
         <BigStat
           label="Risk Seviyesi"
           value={conditions.riskLevel.toUpperCase()}

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { LineChart } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
-import { LiveChart } from './LiveChart';
+import { Skeleton } from '@/components/ui/Skeleton';
+
+const LiveChart = lazy(() => import('./LiveChart').then((m) => ({ default: m.LiveChart })));
 
 interface ChartButtonProps {
   symbol: string;
@@ -23,7 +25,9 @@ export function ChartButton({ symbol, name, size = 13 }: ChartButtonProps) {
         <span className="hidden sm:inline">Grafik</span>
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title={`${symbol}${name ? ` — ${name}` : ''}`} size="lg">
-        <LiveChart symbol={symbol} height={460} />
+        <Suspense fallback={<Skeleton variant="rect" className="w-full" height={460} />}>
+          <LiveChart symbol={symbol} height={460} />
+        </Suspense>
         <p className="mt-2 text-[11px] text-slate-500">
           Yahoo Finance verisi + TradingView lightweight-charts. Zaman dilimi ve grafik tipini yukarıdan seç.
           Detaylı analiz için sağdaki "TradingView'de aç" linkini kullan.

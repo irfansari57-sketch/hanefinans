@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   ArrowLeft, Star, Bell, StickyNote, Newspaper, Activity, TrendingUp, TrendingDown,
   AlertCircle, ExternalLink, RefreshCw, Trash2, Calendar,
 } from 'lucide-react';
-import { LiveChart } from '@/components/domain/LiveChart';
+import { Skeleton } from '@/components/ui/Skeleton';
+
+// lightweight-charts heavy (~200KB) — lazy load
+const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
 import { PeriodReturns } from '@/components/domain/PeriodReturns';
 import { Sparkline } from '@/components/domain/Sparkline';
 import { NewsCard } from '@/components/domain/NewsCard';
@@ -198,7 +201,9 @@ export function StockDetailPage() {
         <h2 className="mb-3 text-sm font-semibold text-slate-300">
           Canlı Grafik <span className="text-slate-500">(Yahoo Finance + lightweight-charts)</span>
         </h2>
-        <LiveChart symbol={sym} height={520} />
+        <Suspense fallback={<Skeleton variant="rect" className="w-full" height={520} />}>
+          <LiveChart symbol={sym} height={520} />
+        </Suspense>
       </div>
 
       {/* Teknik Analiz — Fintables tarzı */}

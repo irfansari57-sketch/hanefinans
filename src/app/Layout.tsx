@@ -27,6 +27,7 @@ import { RightNewsTicker } from '@/components/domain/RightNewsTicker';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { YoutubeWidget } from '@/components/domain/YoutubeWidget';
 import { Logo } from '@/components/brand/Logo';
+import { ToastContainer } from '@/components/ui/Toast';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
@@ -302,6 +303,9 @@ export function Layout() {
 
       {/* Sol alt köşede YouTube eğitim oynatıcı */}
       <YoutubeWidget />
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 }

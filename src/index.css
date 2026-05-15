@@ -19,22 +19,22 @@
 
 @layer components {
   .card {
-    @apply rounded-xl border border-border bg-bg-card/90 shadow-md transition-colors;
+    @apply rounded-xl border border-border bg-bg-card/90 shadow-md transition-all duration-200;
     background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, rgba(255, 255, 255, 0) 100%);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
   }
   .card-hover {
-    @apply card hover:border-slate-500/40 hover:shadow-md;
+    @apply card hover:border-accent/30 hover:shadow-lg hover:shadow-accent/10 hover:-translate-y-0.5;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-accent text-accent-fg hover:brightness-110;
+    @apply btn bg-accent text-accent-fg hover:brightness-110 hover:shadow-md hover:shadow-accent/30 active:scale-[0.97];
   }
   .btn-secondary {
-    @apply btn bg-bg-soft text-slate-100 border border-border hover:bg-bg-card;
+    @apply btn bg-bg-soft text-slate-100 border border-border hover:bg-bg-card hover:border-accent/30 active:scale-[0.97];
   }
   .btn-ghost {
     @apply btn text-slate-300 hover:bg-bg-soft;
@@ -221,4 +221,117 @@
 /* Neon accent text glow */
 .neon-accent {
   text-shadow: 0 0 24px rgba(34, 211, 238, 0.5), 0 0 8px rgba(34, 211, 238, 0.3);
+}
+
+/* ========== Logo 3D metalik text ========== */
+.logo-text-3d {
+  background: linear-gradient(180deg, #f1f5f9 0%, #cbd5e1 35%, #64748b 70%, #334155 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08),
+    0 -1px 0 rgba(0, 0, 0, 0.5);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6));
+  letter-spacing: 0.04em;
+}
+
+/* ========== Custom scrollbar (Webkit) ========== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ========== Page route transition ========== */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+main {
+  animation: page-fade-in 280ms ease-out;
+}
+
+/* ========== Skeleton loader ========== */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(31, 42, 68, 0.5) 0%,
+    rgba(51, 65, 85, 0.6) 50%,
+    rgba(31, 42, 68, 0.5) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* ========== Toast notifications ========== */
+@keyframes toast-slide-in {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes toast-slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
+}
+.toast-enter { animation: toast-slide-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-exit  { animation: toast-slide-out 200ms ease-in forwards; }
+
+/* ========== Button glow on primary hover ========== */
+@keyframes btn-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+  50%      { box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15); }
+}
+
+/* ========== NavLink active glow ========== */
+.nav-active-glow {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25), 0 4px 12px -2px rgba(34, 211, 238, 0.2);
+}
+
+/* ========== Mobile drawer slide ========== */
+@keyframes drawer-slide-in {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.drawer-slide-in { animation: drawer-slide-in 240ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ========== Card lift hover (genel kartlar) ========== */
+.lift-on-hover {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.lift-on-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.4), 0 4px 8px -2px rgba(34, 211, 238, 0.08);
+}
+
+/* ========== Smooth scroll behavior ========== */
+html { scroll-behavior: smooth; }
+
+/* ========== Reduce motion için kullanıcıya saygı ========== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

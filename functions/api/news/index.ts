@@ -32,13 +32,21 @@ interface RssSource {
 
 const SOURCES: RssSource[] = [
   // Anadolu Ajansı — ekonomi
-  { name: 'AA Ekonomi',   url: 'https://www.aa.com.tr/tr/rss/default?cat=ekonomi' },
-  // BloombergHT — anasayfa (genelinde finans)
-  { name: 'BloombergHT',  url: 'https://www.bloomberght.com/rss' },
+  { name: 'AA Ekonomi',     url: 'https://www.aa.com.tr/tr/rss/default?cat=ekonomi' },
+  // BloombergHT — finans
+  { name: 'BloombergHT',    url: 'https://www.bloomberght.com/rss' },
   // Mynet Finans
-  { name: 'Mynet Finans', url: 'https://www.mynet.com/finans/rss/' },
-  // Yahoo Finance — küresel piyasa
-  { name: 'Yahoo Finance', url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EDJI,%5EIXIC,USDTRY=X&region=US&lang=en-US' },
+  { name: 'Mynet Finans',   url: 'https://www.mynet.com/finans/rss/' },
+  // Habertürk Ekonomi
+  { name: 'Habertürk',      url: 'https://www.haberturk.com/rss/kategori/ekonomi.xml' },
+  // CNN Türk Ekonomi
+  { name: 'CNN Türk',       url: 'https://www.cnnturk.com/feed/rss/ekonomi/news' },
+  // Hürriyet Ekonomi
+  { name: 'Hürriyet',       url: 'https://www.hurriyet.com.tr/rss/ekonomi' },
+  // Sabah Ekonomi
+  { name: 'Sabah',          url: 'https://www.sabah.com.tr/rss/ekonomi.xml' },
+  // Dünya Gazetesi (finansal)
+  { name: 'Dünya Gazetesi', url: 'https://www.dunya.com/rss?xml=ekonomi' },
 ];
 
 // Basit BIST sembol algılayıcı

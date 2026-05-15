@@ -12,6 +12,7 @@ import { loadStocks, loadMacroAll, clearServiceCaches, loadNews } from '@/data/s
 import { sendTelegramMessage, isTelegramConfigured } from '@/data/api/telegram';
 import { rankMomentum, assessTradingConditions } from '@/lib/momentum';
 import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
+import { useAuth, isAdmin } from '@/store/auth';
 import { generateMarkdownReport, downloadMarkdown } from '@/lib/reportGenerator';
 import { MOCK_STOCKS, MOCK_MACRO_FALLBACK } from '@/data/mock';
 import type { Stock, MacroIndicator, NewsItem } from '@/data/types';
@@ -83,6 +84,9 @@ export function MorningReportPage() {
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const user = useAuth((s) => s.user);
+  const admin = isAdmin(user);
 
   const allSymbols = useMemo(() => MOCK_STOCKS.map((s) => s.symbol), []);
 
@@ -347,16 +351,20 @@ export function MorningReportPage() {
             <button className="btn-secondary" onClick={() => refresh(true)} disabled={loading}>
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
             </button>
-            <button className="btn-secondary" onClick={onDownload}>
-              <Download size={14} /> .md İndir
-            </button>
-            <button
-              className={cn('btn-primary', alreadySentToday && 'opacity-80')}
-              onClick={onTelegramSend}
-              disabled={sending || !isTelegramConfigured()}
-            >
-              <Send size={14} /> {sending ? 'Gönderiliyor…' : alreadySentToday ? 'Bugün gönderildi' : 'Telegram\'a Yolla'}
-            </button>
+            {admin && (
+              <>
+                <button className="btn-secondary" onClick={onDownload}>
+                  <Download size={14} /> .md İndir
+                </button>
+                <button
+                  className={cn('btn-primary', alreadySentToday && 'opacity-80')}
+                  onClick={onTelegramSend}
+                  disabled={sending || !isTelegramConfigured()}
+                >
+                  <Send size={14} /> {sending ? 'Gönderiliyor…' : alreadySentToday ? 'Bugün gönderildi' : 'Telegram\'a Yolla'}
+                </button>
+              </>
+            )}
           </div>
         }
       />

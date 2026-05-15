@@ -121,8 +121,9 @@ export async function loadNews(opts: { query?: string; symbols?: string[]; max?:
       return result;
     }
   }
+  // Mock'a düşme — boş dön, UI "canlı veri alınamadı" göstersin
   useAgents.getState().setState('news', 'mock');
-  return { data: MOCK_NEWS, source: 'mock' };
+  return { data: [], source: 'mock' };
 }
 
 // ---------- Macro ----------

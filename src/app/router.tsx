@@ -4,6 +4,7 @@ import { PanelPage } from '@/features/panel/PanelPage';
 import { NewsPage } from '@/features/news/NewsPage';
 import { WatchlistPage } from '@/features/watchlist/WatchlistPage';
 import { FundsPage } from '@/features/funds/FundsPage';
+import { StocksPage } from '@/features/stocks/StocksPage';
 import { StockDetailPage } from '@/features/stockDetail/StockDetailPage';
 import { FundDetailPage } from '@/features/fundDetail/FundDetailPage';
 import { HistoryPage } from '@/features/history/HistoryPage';
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: 'macro', element: <Navigate to="/morning" replace /> },
       { path: 'watchlist', element: <WatchlistPage /> },
       { path: 'funds', element: <FundsPage /> },
+      { path: 'stocks', element: <StocksPage /> },
       { path: 'stock/:symbol', element: <StockDetailPage /> },
       { path: 'fund/:code', element: <FundDetailPage /> },
       { path: 'history', element: <HistoryPage /> },

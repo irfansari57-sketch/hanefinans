@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Newspaper, Radio, ExternalLink } from 'lucide-react';
 import { loadNews } from '@/data/services';
 import type { NewsItem } from '@/data/types';
-import { MOCK_NEWS } from '@/data/mock';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/date';
 
-const REFRESH_MS = 5 * 60_000;
+const REFRESH_MS = 90_000;
 const SCROLL_SPEED_SECONDS = 90; // tek tur süresi
 
 const sourceTone: Record<string, string> = {
@@ -18,14 +17,17 @@ const sourceTone: Record<string, string> = {
 };
 
 export function RightNewsTicker() {
-  const [news, setNews] = useState<NewsItem[]>(MOCK_NEWS);
-  const [source, setSource] = useState<'live' | 'mock'>('mock');
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchIt = () => {
       loadNews({ max: 20 }).then((r) => {
-        setNews(r.data.length > 0 ? r.data : MOCK_NEWS);
-        setSource(r.source);
+        // Sadece canlı haberi göster — mock'a düşme
+        if (r.source === 'live' && r.data.length > 0) {
+          setNews(r.data);
+        }
+        setLoading(false);
       });
     };
     fetchIt();
@@ -49,19 +51,18 @@ export function RightNewsTicker() {
             <div className="text-[10px] text-slate-500">aşağıdan yukarı akış</div>
           </div>
         </div>
-        <span
-          className={cn(
-            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-            source === 'live' ? 'bg-success/15 text-success' : 'bg-warning/10 text-warning',
-          )}
-        >
-          {source === 'live' && <Radio size={9} />}
-          {source === 'live' ? 'CANLI' : 'DEMO'}
+        <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-medium text-success">
+          <Radio size={9} /> CANLI
         </span>
       </div>
 
       {/* Akan içerik — overflow gizle, transform animasyon ile aşağıdan yukarı kaydır */}
       <div className="news-ticker-mask relative flex-1 overflow-hidden">
+        {news.length === 0 ? (
+          <div className="p-4 text-center text-[11px] text-slate-500">
+            {loading ? 'Haberler yükleniyor…' : 'Canlı haber alınamadı, sayfa yenilenince tekrar deneyecek.'}
+          </div>
+        ) : null}
         <div
           className="news-ticker-track flex flex-col gap-2 px-3 py-2"
           style={{ animationDuration: `${SCROLL_SPEED_SECONDS}s` }}

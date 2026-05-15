@@ -7,10 +7,12 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { NoteButton } from '@/components/domain/NoteButton';
 import { fundsRepo, notesRepo, activityRepo } from '@/data/repositories';
+import type { FundEntry } from '@/data/db';
 import { formatDateTR, formatRelative } from '@/lib/date';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { fetchTefasFund, isTefasWorkerConfigured, type TefasFundDetail } from '@/data/api/tefasWorker';
 import { fetchTefasFundByCode, isTefasGithubConfigured, type TefasFundData } from '@/data/api/tefasGithub';
+import { MOCK_FUNDS } from '@/data/mockFunds';
 import { cn } from '@/lib/utils';
 
 export function FundDetailPage() {
@@ -18,10 +20,25 @@ export function FundDetailPage() {
   const navigate = useNavigate();
   const fundCode = code.toUpperCase();
 
-  const fund = useLiveQuery(async () => {
+  const watchedFund = useLiveQuery(async () => {
     const list = await fundsRepo.list();
-    return list.find((f) => f.code === fundCode);
+    return list.find((f) => f.code === fundCode) ?? null;
   }, [fundCode]);
+
+  // Watchlist'te değilse mock listesinden sentetik bir entry üret —
+  // detay sayfası yine de açılsın (yükleniyor ekranında takılmasın)
+  const fund = useMemo<FundEntry | null | undefined>(() => {
+    if (watchedFund === undefined) return undefined; // hala yükleniyor
+    if (watchedFund) return watchedFund;
+    const m = MOCK_FUNDS.find((f) => f.code === fundCode);
+    if (!m) return null; // gerçekten yok
+    return {
+      code: m.code,
+      name: m.name,
+      category: m.category,
+      addedAt: Date.now(),
+    } as FundEntry;
+  }, [watchedFund, fundCode]);
 
   const notes = useLiveQuery(() => notesRepo.bySymbol(fundCode), [fundCode]) ?? [];
   const activity = useLiveQuery(() => activityRepo.list({ symbol: fundCode, limit: 20 }), [fundCode]) ?? [];

@@ -45,6 +45,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
       { to: '/watchlist', label: 'Takip Listem', icon: Star },
+      { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
     ],
   },

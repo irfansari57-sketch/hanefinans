@@ -111,6 +111,24 @@ export async function loadNews(opts: { query?: string; symbols?: string[]; max?:
   const cached = readCache<{ data: NewsItem[]; source: 'live' | 'mock' }>(cacheKey, NEWS_TTL_MS);
   if (cached) return cached;
 
+  // 1) Birincil: Pages Function `/api/news` — Mynet/AA/BloombergHT/Yahoo RSS aggregate
+  try {
+    const params = new URLSearchParams();
+    params.set('max', String(opts.max ?? 30));
+    if (opts.query) params.set('q', opts.query);
+    const r = await fetch(`/api/news?${params.toString()}`);
+    if (r.ok) {
+      const json = (await r.json()) as { ok: boolean; data: NewsItem[] };
+      if (json.ok && json.data.length > 0) {
+        useAgents.getState().setState('news', 'live');
+        const result = { data: json.data, source: 'live' as const };
+        writeCache(cacheKey, result);
+        return result;
+      }
+    }
+  } catch { /* devam, yedek kaynak dene */ }
+
+  // 2) Yedek: GNews
   if (API_KEYS.gnews) {
     const knownSymbols = opts.symbols ?? MOCK_STOCKS.map((s) => s.symbol);
     const live = await fetchNewsGNews({ query: opts.query, symbols: knownSymbols, max: opts.max });

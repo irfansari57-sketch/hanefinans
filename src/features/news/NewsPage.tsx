@@ -3,25 +3,29 @@ import { Search, Newspaper, RefreshCw, Radio } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { NewsCard } from '@/components/domain/NewsCard';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { MOCK_NEWS, MOCK_STOCKS } from '@/data/mock';
+import { MOCK_STOCKS } from '@/data/mock';
 import { loadNews } from '@/data/services';
-import type { NewsItem, NewsSource } from '@/data/types';
+import type { NewsItem } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 
-const SOURCES: ('all' | NewsSource)[] = ['all', 'KAP', 'Reuters', 'Bloomberg', 'Diğer'];
-
 export function NewsPage() {
   const watchlist = useWatchlist((s) => s.symbols);
-  const [items, setItems] = useState<NewsItem[]>(MOCK_NEWS);
+  const [items, setItems] = useState<NewsItem[]>([]);
   const [source, setSource] = useState<'live' | 'mock'>('mock');
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<'all' | NewsSource>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | string>('all');
   const [symbol, setSymbol] = useState<'all' | string>('all');
   const [minImportance, setMinImportance] = useState(0);
   const [onlyWatchlist, setOnlyWatchlist] = useState(false);
+
+  // Mevcut haber listesinden gelen unique kaynaklar
+  const dynamicSources = useMemo(() => {
+    const set = new Set(items.map((n) => n.source));
+    return ['all', ...Array.from(set).sort()];
+  }, [items]);
 
   useEffect(() => {
     let alive = true;
@@ -75,19 +79,19 @@ export function NewsPage() {
     <>
       <PageHeader
         title="Gelişmeler"
-        subtitle="KAP, Reuters ve Bloomberg kaynaklı tüm haber akışı."
+        subtitle="Mynet Finans, BloombergHT, AA Ekonomi ve Yahoo Finance kaynaklı canlı haber akışı."
         actions={
           <div className="flex items-center gap-2">
             <span
               className={cn(
                 'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs',
-                source === 'live'
+                source === 'live' && items.length > 0
                   ? 'bg-success/15 text-success'
                   : 'bg-warning/10 text-warning',
               )}
             >
-              {source === 'live' ? <Radio size={11} /> : null}
-              {source === 'live' ? 'Canlı' : 'Demo (mock)'}
+              <Radio size={11} />
+              {source === 'live' && items.length > 0 ? 'Canlı' : loading ? 'Yükleniyor…' : 'Veri yok'}
             </span>
             <button className="btn-secondary" onClick={refresh} disabled={loading}>
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
@@ -106,8 +110,8 @@ export function NewsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select className="input" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as typeof sourceFilter)}>
-          {SOURCES.map((s) => (
+        <select className="input" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
+          {dynamicSources.map((s) => (
             <option key={s} value={s}>
               {s === 'all' ? 'Tüm kaynaklar' : s}
             </option>
@@ -140,7 +144,11 @@ export function NewsPage() {
       </label>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={<Newspaper size={28} />} title="Filtreyle eşleşen gelişme yok" />
+        <EmptyState
+          icon={<Newspaper size={28} />}
+          title={loading ? 'Haberler çekiliyor…' : items.length === 0 ? 'Canlı haber alınamadı' : 'Filtreyle eşleşen gelişme yok'}
+          description={items.length === 0 && !loading ? 'Yenile butonuna basarak tekrar deneyebilirsin.' : undefined}
+        />
       ) : (
         <div className="grid gap-3">
           {filtered.map((n) => (

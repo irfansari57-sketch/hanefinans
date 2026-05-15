@@ -1,0 +1,31 @@
+name: Daily Telegram Report
+# Sabah 08:00 Türkiye saati (05:00 UTC), Pazartesi-Cuma
+# Cloudflare Pages Function /api/cron/daily-report endpoint'ini tetikler
+
+on:
+  schedule:
+    - cron: '0 5 * * 1-5'  # UTC bazında, Mon-Fri 05:00 → TR 08:00
+  workflow_dispatch:        # Manuel tetikleme (test için)
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call daily report endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET GitHub secret tanımlı değil. Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
+            -X POST "https://hanefinans.net/api/cron/daily-report" \
+            -H "X-Cron-Secret: $CRON_SECRET")
+          echo "HTTP: $response"
+          cat /tmp/body.json
+          echo
+          if [ "$response" != "200" ]; then
+            echo "::error::Cron çağrısı başarısız (HTTP $response)"
+            exit 1
+          fi

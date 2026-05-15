@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   BookOpen, TrendingUp, PiggyBank, Activity, ShieldAlert, Bitcoin, Calculator, GraduationCap,
   Search, ExternalLink, ChevronRight,
@@ -16,6 +16,8 @@ interface Topic {
   keyTerms: { term: string; def: string }[];
   bullets: string[];
   externalLinks?: { label: string; url: string }[];
+  /** Geniş kapsamlı yazılı anlatım — section başlıklarıyla */
+  sections?: { heading: string; body: string }[];
 }
 
 const TOPICS: Topic[] = [
@@ -44,6 +46,24 @@ const TOPICS: Topic[] = [
       { label: 'KAP — Kamuyu Aydınlatma', url: 'https://www.kap.org.tr' },
       { label: 'BIST Resmi Sayfa', url: 'https://www.borsaistanbul.com' },
     ],
+    sections: [
+      {
+        heading: 'Borsa nedir ve neden vardır?',
+        body: 'Borsa, şirketlerin halka açılarak finansman bulduğu ve yatırımcıların bu şirketlere küçük paylar (hisse) alarak ortak olduğu organize bir pazardır. Borsa İstanbul (BIST), Türkiye\'nin tek menkul kıymetler borsasıdır ve dünyanın 30+ ülkesindeki yabancı yatırımcılar da burada işlem yapar. Bir hisse aldığında, o şirketin küçük bir parçasının sahibi olursun: şirket kâr ederse temettü (kâr payı) alırsın, hisse değeri yükselirse aradaki farkı satarak kazanırsın. Şirket kötü giderse hissen değer kaybeder — yani borsa garantili değil, fırsat ve risk birlikte gelir.',
+      },
+      {
+        heading: 'BIST 100 ve BIST 30 endeksleri',
+        body: 'BIST 100 endeksi, Borsa İstanbul\'da işlem gören en yüksek piyasa değerine ve likiditeye sahip 100 hisse senedinin ağırlıklandırılmış ortalamasıdır. Bu endeks, "piyasa nasıl?" sorusunun cevabıdır — bir gün BIST 100 %2 yükseldi diyorsak, ortalama olarak en büyük 100 şirket o gün %2 değerlendi demektir. BIST 30 ise BIST 100\'ün içindeki en büyük 30 hisseyi içerir; bunlar genelde bankalar, holding\'ler, Tüpraş, THYAO, Aselsan, Sabancı/Koç Holding gibi devlerdir. VIOP30 (Vadeli İşlem Opsiyon Piyasası 30) sözleşmeleri, BIST 30 endeksini dayanak alarak gelecek tarihli kontrat olarak işlem görür — kısa pozisyon açma ve kaldıraçlı işlem için kullanılır.',
+      },
+      {
+        heading: 'İlk adım: Aracı kurum seçimi',
+        body: 'Borsada işlem yapabilmek için SPK (Sermaye Piyasası Kurulu) lisanslı bir aracı kuruma yatırım hesabı açman gerekir. Türkiye\'de popüler tercihler: **Midas** (sıfır komisyon, mobil odaklı, yeni başlayanlara çok uygun), **Garanti BBVA Yatırım** (banka entegrasyonu, çoğu kişide zaten var), **İş Yatırım** (kurumsal güven, geniş ürün yelpazesi), **Gedik Yatırım**, **Yapı Kredi Yatırım**. Hesap açarken kimlik, ikametgah ve banka bilgilerin yeterli — online açılır. Komisyon yapısını mutlaka karşılaştır: bazıları sıfır, bazıları %0.05-0.25 arası işlem başına keser. Yıllık üyelik veya saklama ücreti olabilir.',
+      },
+      {
+        heading: 'İşlem nasıl yapılır?',
+        body: 'BIST\'in açılış-kapanış saatleri: Hafta içi 10:00 - 18:00 (öğle arası yok, sürekli işlem). Açılış öncesi 09:40-10:00 "açılış seansı"nda emirler toplanır ve 10:00\'da tek fiyattan eşleşir. Bir hisse satın almak için aracı kurumun uygulamasına gir, sembolü ara (örn. THYAO), "Limit" veya "Piyasa" emir tipini seç (Limit\'te fiyat belirtirsin, sadece o fiyat ve altına alır; Piyasa\'da güncel fiyattan hemen işlem olur), lot adedini gir (1 lot = 1 hisse) ve onayla. Satarken aynı süreç — pozisyonu kapatırsın. Komisyon her iki tarafta da kesilir; vergisel olarak 2 yıldan az tutulan hisselerde kâr stopaja tabidir.',
+      },
+    ],
   },
   {
     slug: 'yatirim-fonlari',
@@ -70,6 +90,20 @@ const TOPICS: Topic[] = [
       { label: 'TEFAS Resmi', url: 'https://www.tefas.gov.tr' },
       { label: 'Fintables Fon Karşılaştırma', url: 'https://fintables.com/fonlar' },
     ],
+    sections: [
+      {
+        heading: 'Yatırım fonu nedir?',
+        body: 'Yatırım fonu, profesyonel bir portföy yöneticisinin senin paranı diğer yatırımcıların parasıyla birleştirip belirli bir stratejiye göre yatırım yaptığı havuzdur. Tek başına 100 farklı hisse alamazsın, ama bir hisse senedi fonu seninkilerden alarak bunu yapar. Bu sayede otomatik çeşitlendirme elde edersin ve uzman yönetimine erişirsin. Karşılığında yıllık yönetim ücreti ödersin (%0.5-3 arası). Fon büyüdükçe yönetim daha verimli olur; küçük yatırımcı için en kolay yatırım aracıdır.',
+      },
+      {
+        heading: 'TEFAS sistemi nasıl çalışır?',
+        body: 'TEFAS (Türkiye Elektronik Fon Alım Satım Platformu), Türkiye\'deki tüm yatırım fonlarına tek bir bankadan/aracı kurumdan ulaşmanı sağlar. Eskiden Garanti fonu için Garanti hesabı, İş Bankası fonu için İş Bankası hesabı gerekiyordu; artık herhangi birinden hepsine erişirsin. Fon alım emri verdiğinde işlem T+1 (bir iş günü sonrası) NAV fiyatından gerçekleşir — yani bugün verdiğin emrin fiyatı yarınki NAV\'da netleşir. Satışta T+2 yani 2 iş günü sonra paran hesabına geçer. Hisse senedi fonları ise T+1\'dir.',
+      },
+      {
+        heading: 'Hangi fon kategorisi sana uygun?',
+        body: 'Risk iştahına ve yatırım vadeye göre seçim yap: **Para Piyasası fonları** (kısa vadeli, çok düşük risk, %20-50 yıllık getiri — kasaya benzer); **Borçlanma Araçları fonları** (devlet/şirket tahvilleri, orta risk); **Hisse Senedi fonları** (BIST hisselerine yatırım, yüksek risk yüksek getiri potansiyeli); **Fon Sepeti fonları** (birden fazla fona dağıtım); **Kıymetli Madenler fonları** (altın/gümüş bazlı); **Değişken fonlar** (yöneticiye geniş yetki); **Katılım fonları** (faizsiz, İslami finans kurallarına uygun). 1-2 yıllık vadede emekli olacaksan para piyasası, 10+ yıl vadeli birikim için hisse fonu tercih et.',
+      },
+    ],
   },
   {
     slug: 'teknik-analiz',
@@ -93,6 +127,24 @@ const TOPICS: Topic[] = [
       { term: 'Ayı (Bear)', def: 'Düşüş eğilimi' },
       { term: 'Fibonacci', def: 'Doğal sayı dizisi tabanlı destek/direnç seviyeleri' },
     ],
+    sections: [
+      {
+        heading: 'Teknik analiz nedir, neden işe yarar?',
+        body: 'Teknik analiz, geçmiş fiyat ve hacim verilerinden geleceği tahmin etmeye çalışan disiplindir. Temel mantık şudur: piyasa katılımcılarının kolektif davranışı tekrarlayan örüntüler oluşturur. Bir hisse her seferinde belirli bir fiyat seviyesinde dirence çarpıyorsa, oradaki satıcılar olası önümüzdeki seferde de aktif olacaktır. Teknik analiz "ne kadar zaman tutmalıyım" sorusuna değil, "şu anda almak/satmak iyi mi" sorusuna cevap arar. Temel analiz (şirketin finansalları) ile birlikte kullanılınca güçlü olur — sadece grafik bakmak yeterli değildir.',
+      },
+      {
+        heading: 'RSI, MACD, Bollinger nasıl okunur?',
+        body: '**RSI (Relative Strength Index, 14 günlük):** 0-100 arası bir göstergedir. 70 üstü "aşırı alım" — fiyat hızla yükselmiş, geri çekilme bekleyebilirsin. 30 altı "aşırı satım" — düşüş bitmiş olabilir, toparlanma sinyali. RSI tek başına alış-satış emri vermez ama trend tersine dönmeden önce uyarır. **MACD (Moving Average Convergence Divergence):** İki üstel hareketli ortalamanın (12 ve 26 günlük) farkı + 9 günlük sinyal çizgisi. MACD çizgisi sinyali yukarı keserse "bullish cross" (alış sinyali), aşağı keserse "bearish cross" (satış sinyali). **Bollinger Bantları:** 20 günlük ortalama etrafında 2 standart sapma genişliğinde bir kanal. Fiyat üst bandı geçerse aşırı alım, alt bandın altına düşerse aşırı satım. Bantlar daralırsa volatilite düşük (sıkışma) — sonra büyük hareket gelir.',
+      },
+      {
+        heading: 'EMA pozisyonları ile trend okuma',
+        body: 'EMA (Exponential Moving Average), yeni fiyatlara daha fazla ağırlık veren hareketli ortalama türüdür. Hane Finans BIST analizinde EMA 5, 8, 13, 21, 55 ve 200 kullanılır. **EMA 5-13:** Çok kısa vadeli trend (scalping). **EMA 21-55:** Kısa-orta vadeli trend (1-3 hafta). **EMA 200:** Uzun vadeli trend (yıllık). Fiyat EMA 200\'ün üstündeyse hisse "uzun vadeli boğa modunda" — düşüşler alım fırsatı. Altındaysa "uzun vadeli ayı" — yükselişler satış fırsatı olabilir. EMA 5 ve EMA 13\'ün kesişimi (golden cross / death cross) kısa vadeli trend dönüşü sinyalidir. MA8 fiyatı ise günlük (1D) 8 periyodluk basit ortalamadır — kısa vadeli swing trade için referans seviye.',
+      },
+      {
+        heading: 'Destek-direnç ve hacim',
+        body: 'Destek, fiyatın takıldığı ve aşağı geçmediği seviyedir — alıcıların güçlü olduğu yer. Direnç, fiyatın geçmediği üst seviye — satıcıların aktif olduğu yer. Bir direnç kırılırsa eski direnç yeni destek olur. Hacim her zaman doğrulayıcıdır: yüksek hacimle gelen yükseliş güvenilir, düşük hacimde olan yükseliş "boş yükseliş" olabilir. Profesyoneller hacmi takip etmeden teknik analiz yapmaz. ADX (Average Directional Index) trend gücünü ölçer: 25 üstü güçlü trend, altı kararsız piyasa demektir.',
+      },
+    ],
   },
   {
     slug: 'risk-yonetimi',
@@ -114,6 +166,24 @@ const TOPICS: Topic[] = [
       { term: 'Take-Profit', def: 'Belirli kar seviyesinde otomatik satış' },
       { term: 'Drawdown', def: 'Portföyün en yüksek değerine göre en düşük noktası' },
       { term: 'Sharpe Oranı', def: 'Risk başına getiri ölçüsü' },
+    ],
+    sections: [
+      {
+        heading: 'Risk yönetimi: kazanmaktan önemli',
+        body: 'Borsada uzun vadeli başarının %80\'i risk yönetimine, %20\'si analize bağlıdır. Çünkü %50 düşüşten kurtulmak için %100 kazanman gerekir — yani büyük kayıpları engellemek küçük kazançlardan kıymetlidir. Profesyonel trader\'lar her zaman "kaybedersem ne olur?" diye sorarak işleme girer. Sermayenin tamamını tek hisseye yatırmak, kaldıraçlı işlem yapmak, stop-loss kullanmamak, duygusal karar vermek — bunların hepsi kısa zamanda hesabı sıfırlar. Profesyonel risk yönetimi 4 ayak üzerinde durur: pozisyon büyüklüğü, stop-loss, çeşitlendirme ve psikolojik disiplin.',
+      },
+      {
+        heading: 'Pozisyon büyüklüğü hesaplama',
+        body: '**1-2 kuralı:** Tek bir işlemde sermayenin en fazla %1-2\'sini riske at. Örnek: 100.000₺ portföyün varsa, bir işlemde 1.000-2.000₺\'den fazla kaybetme planı yapma. Hesaplama: Pozisyon büyüklüğü = (Riske atılan tutar) / (giriş fiyatı - stop fiyatı). Örnek: THYAO\'yu 320₺\'den alıyorsun, stop seviyesi 310₺ (10₺ risk per hisse). 1.000₺ kaybetmeye razıysan: 1.000 / 10 = 100 lot. Bu hesabı yapmadan "100 lot THYAO alayım" demek, ne kadar riske attığını bilmemek demektir. Risk-getiri oranı: hedef kâr en az risk\'in 2-3 katı olmalı (1:2 veya 1:3). 1.000₺ riske at, hedefin 2.000-3.000₺ kâr olsun.',
+      },
+      {
+        heading: 'Stop-Loss neden zorunlu?',
+        body: 'Stop-loss, fiyat belirli seviyeye düştüğünde otomatik satış emridir. Borsanın en güçlü kuralı: "Önce sermayeni koru, sonra büyüt." Stop-loss kullanmayanlar genelde şöyle hata yapar: hisse %5 düşer, "biraz daha bekleyim toparlanır" derler, %15 düşer, "şimdi satarsam zarar realize olur" derler, %30 düşer ve artık çıkamazlar. Bu psikolojik tuzağı kırmanın tek yolu işleme girmeden önce stop-loss seviyesini belirleyip sisteme tanıtmaktır. Teknik stop: önemli destek seviyesinin biraz altı. Yüzde bazlı stop: girdiğin fiyatın %5-8 altı (uzun vadeli yatırımda). Volatilite bazlı stop: ATR (Average True Range) kullanarak hesapla.',
+      },
+      {
+        heading: 'Çeşitlendirme ve sektör dağılımı',
+        body: 'Tüm yumurtaları aynı sepete koyma. Sermayenin %20\'sinden fazlasını tek hisseye, %40\'tan fazlasını tek sektöre yatırma. Bankacılık tek başına portföyün yarısıysa, bir CBRT faiz kararı seni mahvedebilir. Sağlıklı bir BIST portföyü: bankacılık (%15-20), holding (%10-15), savunma sanayii (%10), enerji (%10-15), perakende-tüketici (%10), demir-çelik (%5-10), gayrimenkul (%5), ulaşım/havayolu (%5-10), nakit/altın (%10-15). Korelasyon önemli: GARAN, AKBNK, ISCTR aynı yönde hareket eder; üçünü birden almak çeşitlendirme değildir.',
+      },
     ],
   },
   {
@@ -138,6 +208,24 @@ const TOPICS: Topic[] = [
       { term: 'Staking', def: 'Kriptonu kilitleyip getiri kazanma' },
       { term: 'Gas fee', def: 'Ethereum işlem ücreti' },
       { term: 'NFT', def: 'Non-Fungible Token — benzersiz dijital varlık' },
+    ],
+    sections: [
+      {
+        heading: 'Bitcoin ve blockchain temelleri',
+        body: 'Bitcoin (BTC), 2009\'da Satoshi Nakamoto takma adlı kişi/grup tarafından oluşturulmuş ilk merkeziyetsiz dijital paradır. Blockchain (zincir bloklar), her işlemin onaylanıp şifrelendiği ve binlerce bilgisayara dağıtıldığı bir kayıt defteridir — yani kimse bir kaydı silemez veya değiştiremez. Bitcoin\'in en kritik özelliği sınırlı arzıdır: toplam 21 milyon BTC üretilecek ve sonra hiç yenisi olmayacak. Şu an 19.7+ milyon dolaşımdadır. Bu kıtlık, Bitcoin\'i "dijital altın" yapan özelliktir. Madencilik (mining), bilgisayarların matematik problemleri çözerek yeni blok ekleme ve karşılığında yeni BTC kazanma sürecidir.',
+      },
+      {
+        heading: 'Ethereum ve akıllı sözleşmeler',
+        body: 'Ethereum (ETH), 2015\'te Vitalik Buterin tarafından kurulan, sadece para transferi değil "akıllı sözleşme" (smart contract) çalıştıran blockchain platformudur. Akıllı sözleşme, koşullar gerçekleştiğinde otomatik çalışan programdır — örnek: "Eğer X tarihinde Y olursa ödeme Z\'ye git". DeFi (decentralized finance) ekosisteminin temelidir: Uniswap (decentralized exchange), Aave (borç-mevduat), Compound, MakerDAO\'da sabitcoin DAI. Ethereum 2022\'de "Merge" güncellemesi ile Proof-of-Stake\'e geçti — artık madencilik değil staking ile blok onaylanıyor, %99 daha az enerji harcanıyor.',
+      },
+      {
+        heading: 'Türkiye\'de kripto: borsalar ve regülasyon',
+        body: 'Türkiye\'de kripto ticareti yasal ancak ödeme aracı olarak kullanmak yasaktır (2021 BDDK kararı). Yerli borsalar: **Paribu** (Türkiye\'nin en büyük kripto borsası, lira mevduat), **BTCTurk** (eski), **BiLira/BLP**. Yurtdışı: **Binance**, **Bybit**, **OKX** (TR çıkarımı zor, KYC sıkı). 2024-2026 arasında SPK kripto regülasyonu netleşmeye başladı, lisanslı borsalar listelendi. Vergi: 2026 itibariyle kripto kazançları beyana tabi tutulmaya başlandı, kazançlar gelir vergisinde olabilir — güncel mevzuatı GİB\'den takip et. Soğuk cüzdan (hardware wallet — Ledger, Trezor) büyük tutarlar için zorunlu güvenlik tedbiridir.',
+      },
+      {
+        heading: 'Kripto yatırımının riskleri',
+        body: 'Volatilite kripto dünyasının doğasıdır: bir günde %30-50 düşüş normaldir, bir ayda %80 düşüş yaşandı (örn. 2022 Luna çöküşü). Buna ek riskler: regülasyon belirsizliği (devletler yasak getirebilir), borsa iflası (FTX 2022\'de battı, kullanıcı paraları yandı), hack/scam (rugpull, fake projeler), private key kaybı (kaybedince paran sonsuza kadar gider). Tavsiye: Tüm net varlığının en fazla %5-10\'unu kriptoya ayır. Sadece BTC ve ETH ile başla (büyük çoğunluk altcoin\'lere yatırım sonunda kaybeder). Soğuk cüzdan kullan, borsada uzun süreli para tutma. "Kaybedebileceğin parayı" yatır kuralı kripto için iki kat geçerli.',
+      },
     ],
   },
   {
@@ -164,8 +252,42 @@ const TOPICS: Topic[] = [
     externalLinks: [
       { label: 'GİB — Gelir İdaresi', url: 'https://www.gib.gov.tr' },
     ],
+    sections: [
+      {
+        heading: 'Borsa kazançlarının vergilendirilmesi',
+        body: 'Türkiye\'de hisse senedi yatırım kazançlarının vergilendirilmesi tutuş süresine göre değişir. **2 yıldan kısa süre tutulan hisseler:** Satıştan elde edilen kazanç (sermaye kazancı) %15 oranında stopaj olarak banka tarafından otomatik kesilir. **2 yıldan uzun tutulan hisseler:** İstisna kapsamında, vergi yok — uzun vadeli yatırımı teşvik eden en önemli mevzuat. Bu süre hisseyi aldığın tarihten satış tarihine kadar sayılır; FIFO (ilk giren ilk çıkar) yöntemi uygulanır. Temettüler ayrı vergilendirilir: kurumlardan gelen kar paylarında %15-20 stopaj kesilir, yıllık beyan limitini aşıyorsan ek beyan zorunluluğu doğabilir.',
+      },
+      {
+        heading: 'Yatırım fonları vergisi',
+        body: '**Hisse senedi yoğun fonlar** (portföyünün en az %75\'i hisse): Stopaj **%0** — yani kesinti yok! Bu büyük avantaj, uzun vadeli BIST yatırımı için fon kullanımı çekici kılar. **Diğer fonlar** (para piyasası, borçlanma araçları, fon sepeti, değişken, kıymetli madenler): Kazanç üzerinden **%10 stopaj** kesilir. Stopaj otomatik banka tarafından yapılır, ek beyan gerekmez (basit yatırımcı için). 2 yıldan uzun tutulmuş hisse fonlarında bile %0 stopaj devam eder — yani fonlar bireysel hisseden vergisel olarak daha avantajlıdır kısa vadede.',
+      },
+      {
+        heading: 'Mevduat ve döviz vergisi',
+        body: 'TL vadeli mevduat: Stopaj %0-15 arası, vade ve banka türüne göre değişir (2026 itibariyle özel bankalarda kısa vadede %15, uzun vadede daha düşük). Döviz mevduatı: Yabancı para mevduatı (USD/EUR) üzerinden %20-25 stopaj uygulanır (daha yüksek çünkü TL\'ye geçişi caydırma politikası). Altın hesabı: Bankada tutulan kıymetli maden hesaplarında stopaj %0 — ancak bozdurma anında kur farkı oluşursa yıl sonu beyana girer. Kira gelirleri (GMSI): Yıllık 13.000₺ üstü beyana tabi (2026 limitleri).',
+      },
+      {
+        heading: 'Beyanname ne zaman gerekir?',
+        body: 'Çoğu küçük yatırımcı için yıllık beyanname zorunlu değildir, çünkü stopaj kesintisi vergi yükümlülüğünü kapatır. Ancak şu durumlarda beyan vermen gerekir: (1) Stopajsız gelirin var ise (örn. yurtdışı borsadan kazanç, kripto kazancı 2026 sonrası), (2) Yıllık menkul sermaye iradı 2026 için 600.000₺\'yi aşıyorsa, (3) Birden fazla işverenden ücret alıyorsan ve toplamı eşiği geçtiyse, (4) Ticari faaliyet niteliği taşıyan trading yapıyorsan (gün içi yoğun işlem — vergi dairesi "ticari" sayabilir). Beyanname GİB e-Beyanname sisteminden Mart ayında verilir. Şüphedeyken mali müşavire danış — vergi cezaları yüksek.',
+      },
+    ],
   },
 ];
+
+/** Basit **bold** markdown render — paragraf metinlerinde <strong> üretir. */
+function renderMarkdownBold(text: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  const re = /\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(<strong key={key++} className="text-slate-100">{m[1]}</strong>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
 
 const toneClasses: Record<Topic['tone'], string> = {
   accent: 'bg-accent/15 text-accent',
@@ -302,6 +424,25 @@ export function FinancialLiteracyPage() {
               ℹ️ Üçüncü taraf siteler YouTube'u embed etmeye izin vermediği için doğrudan YouTube'a yönlendiriyoruz — videolar orada sorunsuz oynar.
             </p>
           </section>
+
+          {/* Geniş kapsamlı anlatım */}
+          {current.sections && current.sections.length > 0 && (
+            <section className="glass-card p-5">
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-300">
+                <BookOpen size={14} /> Detaylı Anlatım
+              </h3>
+              <div className="space-y-5">
+                {current.sections.map((s, i) => (
+                  <div key={i} className="border-l-2 border-accent/40 pl-4">
+                    <h4 className="text-base font-semibold text-slate-100">{s.heading}</h4>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                      {renderMarkdownBold(s.body)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Anahtar noktalar */}
           <section className="glass-card p-5">

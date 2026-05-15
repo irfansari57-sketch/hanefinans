@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { AdBanner } from '@/components/domain/AdBanner';
 import { NewsCard } from '@/components/domain/NewsCard';
 import { MacroCard } from '@/components/domain/MacroCard';
 import { StockRow } from '@/components/domain/StockRow';
@@ -124,6 +125,9 @@ export function PanelPage() {
           </div>
         }
       />
+
+      {/* Reklam banner — sponsorlu içerik */}
+      <AdBanner className="mb-5" />
 
       {/* Status banner */}
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">

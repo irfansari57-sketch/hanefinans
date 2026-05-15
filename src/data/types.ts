@@ -9,7 +9,8 @@ export interface Stock {
   updatedAt: string; // ISO
 }
 
-export type NewsSource = 'KAP' | 'Reuters' | 'Bloomberg' | 'Diğer';
+/** Eski daraltılmış kaynak listesi (geriye uyum için). Yeni aggregate'de string. */
+export type NewsSource = string;
 
 export interface NewsItem {
   id: string;

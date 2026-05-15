@@ -13,6 +13,7 @@ import { sendTelegramMessage, isTelegramConfigured } from '@/data/api/telegram';
 import { rankMomentum, assessTradingConditions } from '@/lib/momentum';
 import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
 import { useAuth, isAdmin } from '@/store/auth';
+import { AdBanner } from '@/components/domain/AdBanner';
 import { generateMarkdownReport, downloadMarkdown } from '@/lib/reportGenerator';
 import { MOCK_STOCKS, MOCK_MACRO_FALLBACK } from '@/data/mock';
 import type { Stock, MacroIndicator, NewsItem } from '@/data/types';
@@ -377,6 +378,9 @@ export function MorningReportPage() {
           {sendResult.msg}
         </div>
       )}
+
+      {/* Reklam banner */}
+      <AdBanner className="mb-5" />
 
       {/* ============ TRADING ORTAMI — EN ÜSTTE ============ */}
       <TradingDashboard

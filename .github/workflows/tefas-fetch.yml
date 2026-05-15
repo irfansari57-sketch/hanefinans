@@ -1,0 +1,44 @@
+name: TEFAS Fund Fetch
+# TEFAS'tan tüm fonların güncel NAV ve dönemsel getirilerini çekip data/tefas.json'a yazar.
+# Saatlik çalışır (TEFAS verisi gün sonu güncellenir ama biz güne yakın kalalım).
+
+on:
+  schedule:
+    # UTC 12:00 ve 15:00 → TR 15:00 ve 18:00 (TEFAS NAV'ları gün sonu yayınlanır)
+    - cron: '0 15 * * 1-5'   # Hafta içi 18:00 TR
+    - cron: '0 12 * * 1-5'   # Hafta içi 15:00 TR (ek)
+  workflow_dispatch:           # Manuel tetikleme
+
+permissions:
+  contents: write              # data/tefas.json commit için
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Fetch TEFAS data
+        run: python scripts/tefas_fetch.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet data/tefas.json 2>/dev/null; then
+            echo "TEFAS verisinde değişiklik yok, commit atlanıyor"
+          else
+            git add data/tefas.json
+            git commit -m "chore: TEFAS verisi güncellendi $(date -u +%Y-%m-%d_%H:%M)"
+            git push
+          fi

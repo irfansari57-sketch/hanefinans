@@ -1,5 +1,6 @@
 import type { MacroIndicator } from './types';
 import { MOCK_MACRO_FALLBACK } from './mock';
+import { fetchIndexYahoo } from './api/yahoo';
 
 interface FrankfurterLatest {
   amount: number;
@@ -96,7 +97,13 @@ export async function loadMacro(): Promise<MacroIndicator[]> {
 
   const base: MacroIndicator[] = MOCK_MACRO_FALLBACK.map((m) => ({ ...m }));
 
-  const [usd, eur] = await Promise.all([fetchUsdTry(), fetchEurTry()]);
+  // Önce Yahoo (anlık spot kuru) — başarısız olursa Frankfurter (günlük ECB fixing)
+  const [yUsd, yEur] = await Promise.all([
+    fetchIndexYahoo('USDTRY=X'),
+    fetchIndexYahoo('EURTRY=X'),
+  ]);
+  const usd = yUsd ? { value: yUsd.value, changePct: yUsd.changePct } : await fetchUsdTry();
+  const eur = yEur ? { value: yEur.value, changePct: yEur.changePct } : await fetchEurTry();
   const nowIso = new Date().toISOString();
 
   if (usd) {

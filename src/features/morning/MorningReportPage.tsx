@@ -11,7 +11,7 @@ import { fetchIndexYahoo, fetchHistoricalYahoo, YAHOO_SYMBOLS } from '@/data/api
 import { loadStocks, loadMacroAll, clearServiceCaches, loadNews } from '@/data/services';
 import { sendTelegramMessage, isTelegramConfigured } from '@/data/api/telegram';
 import { rankMomentum, assessTradingConditions } from '@/lib/momentum';
-import { rsi, macd, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
+import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
 import { generateMarkdownReport, downloadMarkdown } from '@/lib/reportGenerator';
 import { MOCK_STOCKS, MOCK_MACRO_FALLBACK } from '@/data/mock';
 import type { Stock, MacroIndicator, NewsItem } from '@/data/types';
@@ -63,6 +63,8 @@ interface IndexTA {
   adxLabel: string;
   trend: 'yukarı' | 'aşağı' | 'yatay';
   verdict: string;
+  emas?: { period: number; value: number; abovePct: number }[]; // fiyatın EMA'ya göre konumu (%)
+  ma8?: number; // Günlük SMA8 fiyatı
 }
 
 export function MorningReportPage() {
@@ -162,17 +164,24 @@ export function MorningReportPage() {
       }
       setCryptoTA(taList);
 
-      // BIST 100 ve BIST 30 endeksleri için tam teknik analiz
+      // BIST 100 ve VIOP 30 (XU030 dayanağı) için tam teknik analiz
       const indexConfigs = [
-        { ySym: 'XU100.IS', symbol: 'BIST 100', label: 'BIST 100' },
-        { ySym: 'XU030.IS', symbol: 'BIST 30',  label: 'BIST 30 (VIOP30 dayanağı)' },
+        { ySym: 'XU100.IS', symbol: 'BIST 100', label: 'BIST 100', macroKey: 'BIST 100' },
+        { ySym: 'XU030.IS', symbol: 'VIOP 30',  label: 'VIOP 30',  macroKey: 'BIST 30' },
       ];
       const indexResults: IndexTA[] = await Promise.all(
-        indexConfigs.map(async ({ ySym, symbol, label }) => {
+        indexConfigs.map(async ({ ySym, symbol, label, macroKey }) => {
           const hist = await fetchHistoricalYahoo(ySym, '6mo', '1d');
-          const macroEntry = macrosR.data.find((m) => m.label === label || m.key === symbol);
-          const price = macroEntry?.value ?? 0;
-          const changePct = macroEntry?.changePct ?? 0;
+          const macroEntry = macrosR.data.find((m) => m.key === macroKey);
+          const lastClose = hist?.bars.at(-1)?.close ?? 0;
+          // Spot fiyat varsa macro'dan, yoksa son kapanıştan
+          const price = macroEntry?.value ?? lastClose;
+          // Değişim: macro'da varsa onu kullan, yoksa son 2 kapanış arası hesapla
+          let changePct = macroEntry?.changePct ?? 0;
+          if ((!macroEntry || !Number.isFinite(macroEntry.changePct)) && hist && hist.bars.length >= 2) {
+            const prev = hist.bars[hist.bars.length - 2].close;
+            changePct = ((lastClose - prev) / prev) * 100;
+          }
           if (!hist || hist.bars.length < 25) {
             return {
               symbol, label, price, changePct,
@@ -190,6 +199,18 @@ export function MorningReportPage() {
           const adxR = adx(bars);
           const sr = supportResistance(bars, 90);
           const cur = price || closes[closes.length - 1];
+
+          // EMA pozisyonları
+          const emaPeriods = [5, 8, 13, 21, 55, 200];
+          const emas = emaPeriods
+            .map((p) => {
+              const v = ema(closes, p).at(-1);
+              if (!Number.isFinite(v)) return null;
+              return { period: p, value: v as number, abovePct: ((cur - (v as number)) / (v as number)) * 100 };
+            })
+            .filter((x): x is { period: number; value: number; abovePct: number } => x !== null);
+          const ma8Val = sma(closes, 8).at(-1);
+          const ma8 = Number.isFinite(ma8Val) ? (ma8Val as number) : undefined;
 
           // Yön belirle
           let trend: 'yukarı' | 'aşağı' | 'yatay' = 'yatay';
@@ -230,6 +251,8 @@ export function MorningReportPage() {
             adxLabel: adxLabel(adxR.lastTrendStrength),
             trend,
             verdict: vparts.join(' '),
+            emas,
+            ma8,
           };
         }),
       );
@@ -306,15 +329,12 @@ export function MorningReportPage() {
   const usdTry = macros.find((m) => m.key === 'USD/TRY');
   const eurTry = macros.find((m) => m.key === 'EUR/TRY');
   const bist100 = macros.find((m) => m.key === 'BIST 100');
-  const bist30 = macros.find((m) => m.key === 'BIST 30');
   const gold = macros.find((m) => m.key === 'Gram Altın');
   const silver = macros.find((m) => m.key === 'Gram Gümüş');
   const platinum = macros.find((m) => m.key === 'Gram Platin');
-  const goldOz = macros.find((m) => m.key === 'Ons Altın');
-  const silverOz = macros.find((m) => m.key === 'Ons Gümüş');
-  const platinumOz = macros.find((m) => m.key === 'Ons Platin');
   const brent = macros.find((m) => m.key === 'Brent');
   const vix = macros.find((m) => m.key === 'VIX');
+  const bist100TA = indexTA.find((t) => t.symbol === 'BIST 100');
 
   return (
     <>
@@ -350,11 +370,24 @@ export function MorningReportPage() {
         </div>
       )}
 
-      {/* ============ KISA PİYASA ANALİZİ — BIST 100 + BIST 30 TAM TA ============ */}
+      {/* ============ TRADING ORTAMI — EN ÜSTTE ============ */}
+      <TradingDashboard
+        fearGreed={fearGreed}
+        cryptoTA={cryptoTA}
+        bist100={bist100}
+        bist100TA={bist100TA}
+        topGainersTA={topGainersTA}
+        conditions={conditions}
+        vix={vix}
+        usdTry={usdTry}
+        stocks={stocks}
+      />
+
+      {/* ============ KISA PİYASA ANALİZİ — BIST 100 + VIOP 30 TAM TA ============ */}
       <section className="glass-card mb-5 p-5">
         <SectionHeader icon={Zap} title="Kısa Piyasa Analizi" tone="accent" />
         <p className="mt-1 ml-13 text-xs text-slate-400">
-          BIST 100 ve BIST 30 (VIOP30 dayanağı) için kısa vadeli yön, destek-direnç ve teknik sinyaller.
+          BIST 100 ve VIOP 30 (XU030 dayanağı) için kısa vadeli yön, destek-direnç ve teknik sinyaller.
         </p>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
@@ -372,8 +405,8 @@ export function MorningReportPage() {
           {usdTry && <MiniRow label="USD/TRY" value={usdTry.value.toFixed(2)} change={usdTry.changePct ?? 0} />}
           {eurTry && <MiniRow label="EUR/TRY" value={eurTry.value.toFixed(2)} change={eurTry.changePct ?? 0} />}
           {gold && <MiniRow label="Gram Altın" value={`${gold.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}₺`} change={gold.changePct ?? 0} />}
-          {brent && <MiniRow label="Brent" value={`$${brent.value.toFixed(2)}`} change={brent.changePct ?? 0} />}
-          {vix && <MiniRow label="VIX" value={vix.value.toFixed(2)} change={vix.changePct ?? 0} warningOnRise />}
+          {silver && <MiniRow label="Gram Gümüş" value={`${silver.value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}₺`} change={silver.changePct ?? 0} />}
+          {platinum && <MiniRow label="Gram Platin" value={`${platinum.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}₺`} change={platinum.changePct ?? 0} />}
           {cryptos[0] && <MiniRow label={cryptos[0].symbol} value={`$${cryptos[0].usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}`} change={cryptos[0].change24h} />}
         </div>
       </section>
@@ -381,7 +414,7 @@ export function MorningReportPage() {
       <div className="flex flex-col">
       {/* ============ 3. KRİPTO ANALİZİ (ikincil) ============ */}
       <section className="glass-card mb-5 p-5 order-3">
-        <SectionHeader icon={Bitcoin} title="3. Kripto Analizi" tone="warning" />
+        <SectionHeader icon={Bitcoin} title="Kripto Analizi" tone="warning" />
 
         {globalCrypto && fearGreed && (
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -442,23 +475,64 @@ export function MorningReportPage() {
         )}
       </section>
 
-      {/* ============ 1. BIST ANALİZİ (öncelikli) ============ */}
+      {/* ============ 1. BIST ANALİZİ ============ */}
       <section className="glass-card mb-5 p-5 order-1">
-        <SectionHeader icon={TrendingUp} title="1. BIST Analizi" tone="success" />
+        <SectionHeader icon={TrendingUp} title="BIST Analizi" tone="success" />
 
-        {bist100 && (
+        {bist100 && bist100TA && (
           <div className="mt-4 rounded-lg border border-border bg-bg-card p-4">
-            <h4 className="text-sm font-semibold text-slate-200">BIST100 Açılış Öncesi Durum</h4>
-            <ul className="mt-2 space-y-1 text-xs text-slate-300">
-              <li>
-                <strong>BIST100:</strong> {bist100.value.toLocaleString('tr-TR')} |{' '}
-                <span className={(bist100.changePct ?? 0) >= 0 ? 'text-success' : 'text-danger'}>
-                  {(bist100.changePct ?? 0) >= 0 ? '🟢 +' : '🔴 '}{(bist100.changePct ?? 0).toFixed(2)}%
+            <div className="flex items-baseline justify-between flex-wrap gap-2">
+              <h4 className="text-sm font-semibold text-slate-200">BIST100 — EMA Pozisyonları</h4>
+              <div className="flex items-baseline gap-2">
+                <span className="text-base font-bold tabular-nums text-slate-100">
+                  {bist100.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                 </span>
-              </li>
-              {usdTry && <li><strong>USD/TRY:</strong> {usdTry.value.toFixed(2)}</li>}
-              {eurTry && <li><strong>EUR/TRY:</strong> {eurTry.value.toFixed(2)}</li>}
-            </ul>
+                <span className={cn('text-xs tabular-nums', (bist100.changePct ?? 0) >= 0 ? 'text-success' : 'text-danger')}>
+                  {(bist100.changePct ?? 0) >= 0 ? '+' : ''}{(bist100.changePct ?? 0).toFixed(2)}%
+                </span>
+              </div>
+            </div>
+
+            {bist100TA.ma8 != null && (
+              <div className="mt-3 rounded border border-accent/30 bg-accent/5 p-2.5">
+                <span className="text-[10px] uppercase tracking-wider text-accent">Günlük MA8 Fiyatı</span>
+                <div className="mt-0.5 flex items-baseline gap-2">
+                  <span className="text-lg font-bold tabular-nums text-slate-100">
+                    {bist100TA.ma8.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </span>
+                  <span className={cn('text-xs', bist100.value >= bist100TA.ma8 ? 'text-success' : 'text-danger')}>
+                    {bist100.value >= bist100TA.ma8 ? '↑ MA8 üstünde' : '↓ MA8 altında'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {bist100TA.emas && bist100TA.emas.length > 0 && (
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {bist100TA.emas.map((e) => {
+                  const above = e.abovePct >= 0;
+                  return (
+                    <div key={e.period} className={cn(
+                      'rounded border p-2',
+                      above ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5',
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400">EMA {e.period}</span>
+                        <span className={cn('text-[10px] font-bold', above ? 'text-success' : 'text-danger')}>
+                          {above ? 'ÜSTÜNDE ↑' : 'ALTINDA ↓'}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100">
+                        {e.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                      </div>
+                      <div className={cn('text-[10px] tabular-nums', above ? 'text-success' : 'text-danger')}>
+                        {above ? '+' : ''}{e.abovePct.toFixed(2)}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -514,7 +588,7 @@ export function MorningReportPage() {
 
       {/* ============ 2. GLOBAL MAKRO & EMTİA ============ */}
       <section className="glass-card mb-5 p-5 order-2">
-        <SectionHeader icon={Globe2} title="2. Global Makro & Emtia" tone="danger" />
+        <SectionHeader icon={Globe2} title="Global Makro & Emtia" tone="danger" />
 
         <h4 className="mt-4 mb-2 text-sm font-semibold text-slate-300">ABD Vadeli İşlemleri</h4>
         <div className="overflow-x-auto rounded-lg border border-border bg-bg-card">
@@ -545,52 +619,11 @@ export function MorningReportPage() {
         </div>
       </section>
 
-      {/* ============ 4. TRADING ORTAMI DEĞERLENDİRMESİ ============ */}
-      <section className="glass-card mb-5 p-5 order-4">
-        <SectionHeader icon={Target} title="4. Trading Ortamı Değerlendirmesi" tone="accent" />
-
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
-          <TradingBox
-            title="Kripto için Uygunluk"
-            verdict={fearGreed && fearGreed.value > 45 ? 'orta-yüksek' : 'düşük-orta'}
-            verdictTone={fearGreed && fearGreed.value > 45 ? 'success' : 'warning'}
-            bullets={[
-              fearGreed ? `Fear & Greed ${fearGreed.value} — ${fearGreed.classification}` : 'F&G verisi yok',
-              cryptoTA.length > 0 && cryptoTA[0].macdBullish ? `${cryptoTA[0].symbol} MACD bullish cross` : null,
-              cryptoTA.length > 0 ? `${cryptoTA[0].symbol} RSI ${cryptoTA[0].rsi.toFixed(1)} — ${cryptoTA[0].rsiNote}` : null,
-            ].filter(Boolean) as string[]}
-          />
-          <TradingBox
-            title="BIST için Uygunluk"
-            verdict={Math.abs((bist100?.changePct ?? 0)) < 1.5 ? 'orta' : 'yüksek volatilite'}
-            verdictTone={Math.abs((bist100?.changePct ?? 0)) < 1.5 ? 'success' : 'warning'}
-            bullets={[
-              bist100 ? `BIST100 ${(bist100.changePct ?? 0) >= 0 ? '+' : ''}${(bist100.changePct ?? 0).toFixed(2)}%` : null,
-              topGainersTA.filter((t) => (t.rsi ?? 0) >= 75).length > 0
-                ? `${topGainersTA.filter((t) => (t.rsi ?? 0) >= 75).length} hisse RSI ≥75 — aşırı alım`
-                : null,
-              ...conditions.notes,
-            ].filter(Boolean) as string[]}
-          />
-          <TradingBox
-            title="Scalp Trading Bugün Uygun mu?"
-            verdict={conditions.scalpFriendly ? 'EVET' : 'TEMKİNLİ'}
-            verdictTone={conditions.scalpFriendly ? 'success' : 'warning'}
-            bullets={[
-              vix ? `VIX ${vix.value.toFixed(1)}` : null,
-              conditions.scalpFriendly
-                ? 'Yüksek volatilite — kısa pozisyonlar için uygun'
-                : 'Düşük volatilite — temkinli ol, geniş stop kullan',
-              `Risk seviyesi: ${conditions.riskLevel}`,
-            ].filter(Boolean) as string[]}
-          />
-        </div>
-      </section>
 
       {/* ============ 5. PİYASA HABERLERİ ============ */}
       {news.length > 0 && (
         <section className="glass-card mb-5 p-5 order-5">
-          <SectionHeader icon={Newspaper} title="5. Piyasa Haberleri & Catalyst" tone="success" />
+          <SectionHeader icon={Newspaper} title="Piyasa Haberleri & Catalyst" tone="success" />
           <ol className="mt-4 space-y-2 text-xs">
             {news.slice(0, 7).map((n, i) => {
               const tone = n.importance >= 8 ? 'text-danger' : n.importance >= 6 ? 'text-warning' : 'text-slate-300';
@@ -890,6 +923,197 @@ function FuturesRow({ name, value, change, warningOnRise }: { name: string; valu
         {arrow} {change >= 0 ? '+' : ''}{change.toFixed(2)}%
       </td>
     </tr>
+  );
+}
+
+function TradingDashboard({
+  fearGreed, cryptoTA, bist100, bist100TA, topGainersTA, conditions, vix, usdTry, stocks,
+}: {
+  fearGreed: FearGreedSnapshot | null;
+  cryptoTA: CryptoTA[];
+  bist100: MacroIndicator | undefined;
+  bist100TA: IndexTA | undefined;
+  topGainersTA: BistTA[];
+  conditions: ReturnType<typeof assessTradingConditions>;
+  vix: MacroIndicator | undefined;
+  usdTry: MacroIndicator | undefined;
+  stocks: Stock[];
+}) {
+  // Önerilen portföy dağılımı — risk seviyesi + F&G + BIST trendine göre
+  const fgVal = fearGreed?.value ?? 50;
+  const bistTrend = bist100TA?.trend ?? 'yatay';
+  const riskLow = conditions.riskLevel === 'Düşük';
+  let cryptoPct = 20, bistPct = 50, cashPct = 30;
+  if (fgVal > 70) { cryptoPct = 15; bistPct = 40; cashPct = 45; } // greed → temkinli
+  else if (fgVal < 30) { cryptoPct = 30; bistPct = 50; cashPct = 20; } // fear → fırsat
+  if (bistTrend === 'yukarı') { bistPct += 10; cashPct -= 10; }
+  else if (bistTrend === 'aşağı') { bistPct -= 15; cashPct += 15; }
+  if (!riskLow) { cashPct += 10; bistPct -= 5; cryptoPct -= 5; }
+  // Normalize
+  const sum = cryptoPct + bistPct + cashPct;
+  cryptoPct = Math.max(0, Math.round((cryptoPct / sum) * 100));
+  bistPct = Math.max(0, Math.round((bistPct / sum) * 100));
+  cashPct = 100 - cryptoPct - bistPct;
+
+  const overbought = topGainersTA.filter((t) => (t.rsi ?? 0) >= 75).length;
+  const bestSectors = (() => {
+    const agg = new Map<string, { count: number; sum: number }>();
+    for (const s of stocks) {
+      if (!s.sector) continue;
+      const e = agg.get(s.sector) ?? { count: 0, sum: 0 };
+      e.count += 1;
+      e.sum += s.changePct;
+      agg.set(s.sector, e);
+    }
+    return Array.from(agg.entries())
+      .map(([name, e]) => ({ name, avg: e.sum / e.count }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 3);
+  })();
+
+  // BIST seans saatleri (TR saati)
+  const now = new Date();
+  const tz = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const hour = now.getHours();
+  const day = now.getDay();
+  const isWeekend = day === 0 || day === 6;
+  const isOpen = !isWeekend && hour >= 10 && hour < 18;
+  const sessionStatus = isWeekend
+    ? 'Hafta sonu — BIST kapalı'
+    : hour < 10
+      ? `BIST açılışa ${10 - hour} sa kaldı (10:00)`
+      : hour < 18
+        ? `BIST açık (${tz} • kapanış 18:00)`
+        : 'BIST kapandı — yarın 10:00 açılış';
+
+  return (
+    <section className="glass-card mb-5 p-5">
+      <SectionHeader icon={Target} title="Trading Ortamı Değerlendirmesi" tone="accent" />
+      <p className="mt-1 ml-13 text-xs text-slate-400">
+        Risk, momentum ve makro koşullara göre bugünün trading ortamı.
+      </p>
+
+      {/* Üst özet — büyük göstergeler */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <BigStat
+          label="Risk Seviyesi"
+          value={conditions.riskLevel.toUpperCase()}
+          tone={conditions.riskLevel === 'Düşük' ? 'success' : conditions.riskLevel === 'Orta' ? 'warning' : 'danger'}
+          hint={conditions.tradingFriendly ? 'Genel trading uygun' : 'Genel olarak temkinli ol'}
+        />
+        <BigStat
+          label="Scalp Uygunluğu"
+          value={conditions.scalpFriendly ? 'EVET' : 'TEMKİNLİ'}
+          tone={conditions.scalpFriendly ? 'success' : 'warning'}
+          hint={vix ? `VIX ${vix.value.toFixed(1)}` : 'Volatilite bilinmiyor'}
+        />
+        <BigStat
+          label="Fear & Greed"
+          value={fearGreed ? `${fearGreed.value}/100` : '—'}
+          tone={fgVal >= 60 ? 'success' : fgVal >= 40 ? 'warning' : 'danger'}
+          hint={fearGreed?.classification ?? ''}
+        />
+        <BigStat
+          label="BIST Seansı"
+          value={isOpen ? 'AÇIK' : 'KAPALI'}
+          tone={isOpen ? 'success' : 'warning'}
+          hint={sessionStatus}
+        />
+      </div>
+
+      {/* 3 kategori boxları */}
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <TradingBox
+          title="Kripto için Uygunluk"
+          verdict={fgVal > 55 ? 'orta-yüksek' : fgVal < 35 ? 'fırsat penceresi' : 'orta'}
+          verdictTone={fgVal > 55 ? 'success' : fgVal < 35 ? 'success' : 'warning'}
+          bullets={[
+            fearGreed ? `Fear & Greed ${fearGreed.value} — ${fearGreed.classification}` : 'F&G verisi yok',
+            cryptoTA[0]?.macdBullish ? `${cryptoTA[0].symbol} MACD bullish cross ✅` : null,
+            cryptoTA[0]?.macdBearish ? `${cryptoTA[0].symbol} MACD bearish cross ⚠️` : null,
+            cryptoTA[0] ? `${cryptoTA[0].symbol} RSI ${cryptoTA[0].rsi.toFixed(1)} — ${cryptoTA[0].rsiNote}` : null,
+            cryptoTA[0] && cryptoTA[0].adxBullish != null
+              ? `Trend: ${cryptoTA[0].adxLabel}${cryptoTA[0].adxBullish ? ' (alıcı baskın)' : ' (satıcı baskın)'}`
+              : null,
+          ].filter(Boolean) as string[]}
+        />
+        <TradingBox
+          title="BIST için Uygunluk"
+          verdict={bistTrend === 'yukarı' ? 'olumlu' : bistTrend === 'aşağı' ? 'risk yüksek' : 'kararsız'}
+          verdictTone={bistTrend === 'yukarı' ? 'success' : bistTrend === 'aşağı' ? 'danger' : 'warning'}
+          bullets={[
+            bist100 ? `BIST100 ${(bist100.changePct ?? 0) >= 0 ? '+' : ''}${(bist100.changePct ?? 0).toFixed(2)}% • ${bist100.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}` : null,
+            bist100TA ? `Kısa vadeli trend: ${bist100TA.trend.toUpperCase()}` : null,
+            bist100TA?.rsi != null ? `BIST RSI ${bist100TA.rsi.toFixed(1)} — ${bist100TA.rsiNote}` : null,
+            overbought > 0 ? `${overbought} hisse RSI ≥75 — aşırı alımda, kar realizasyonu olabilir` : 'Aşırı alımda hisse az — temiz alım ortamı',
+            ...conditions.notes,
+          ].filter(Boolean) as string[]}
+        />
+        <TradingBox
+          title="Scalp / Day-Trade Uygunluğu"
+          verdict={conditions.scalpFriendly ? 'EVET — fırsat var' : 'TEMKİNLİ ol'}
+          verdictTone={conditions.scalpFriendly ? 'success' : 'warning'}
+          bullets={[
+            vix ? `VIX ${vix.value.toFixed(1)} — ${(vix.value > 22) ? 'yüksek volatilite' : 'düşük-orta volatilite'}` : null,
+            usdTry ? `USD/TRY ${usdTry.value.toFixed(2)} (${(usdTry.changePct ?? 0) >= 0 ? '+' : ''}${(usdTry.changePct ?? 0).toFixed(2)}%)` : null,
+            conditions.scalpFriendly
+              ? 'Hızlı giriş-çıkış için uygun, sıkı stop kullan'
+              : 'Geniş stop, küçük pozisyon — sabırlı ol',
+            `Risk seviyesi: ${conditions.riskLevel.toUpperCase()}`,
+          ].filter(Boolean) as string[]}
+        />
+      </div>
+
+      {/* Önerilen portföy dağılımı */}
+      <div className="mt-5 rounded-lg border border-border bg-bg-card p-4">
+        <h4 className="mb-3 text-sm font-semibold text-slate-200">Önerilen Portföy Dağılımı (bugünün koşullarına göre)</h4>
+        <div className="flex h-5 overflow-hidden rounded">
+          {bistPct > 0 && <div className="flex items-center justify-center bg-success text-[10px] font-bold text-white" style={{ width: `${bistPct}%` }}>BIST {bistPct}%</div>}
+          {cryptoPct > 0 && <div className="flex items-center justify-center bg-warning text-[10px] font-bold text-white" style={{ width: `${cryptoPct}%` }}>Kripto {cryptoPct}%</div>}
+          {cashPct > 0 && <div className="flex items-center justify-center bg-slate-600 text-[10px] font-bold text-white" style={{ width: `${cashPct}%` }}>Nakit/Altın {cashPct}%</div>}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">
+          Bu öneri F&G ({fgVal}), BIST trendi ({bistTrend}) ve risk seviyesine ({conditions.riskLevel}) göre algoritmik olarak hesaplandı — yatırım tavsiyesi değildir.
+        </p>
+      </div>
+
+      {/* Öne çıkan sektörler */}
+      {bestSectors.length > 0 && (
+        <div className="mt-4">
+          <h4 className="mb-2 text-sm font-semibold text-slate-200">Bugünün Öne Çıkan Sektörleri</h4>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {bestSectors.map((s, i) => (
+              <div key={s.name} className={cn(
+                'rounded border p-2',
+                s.avg >= 0 ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5',
+              )}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-300">{i + 1}. {s.name}</span>
+                  <span className={cn('text-xs font-bold tabular-nums', s.avg >= 0 ? 'text-success' : 'text-danger')}>
+                    {s.avg >= 0 ? '+' : ''}{s.avg.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BigStat({ label, value, tone, hint }: { label: string; value: string; tone: 'success' | 'warning' | 'danger'; hint?: string }) {
+  const tones = {
+    success: 'border-success/30 bg-success/5 text-success',
+    warning: 'border-warning/30 bg-warning/5 text-warning',
+    danger: 'border-danger/30 bg-danger/5 text-danger',
+  };
+  return (
+    <div className={cn('rounded-lg border p-3', tones[tone])}>
+      <div className="text-[10px] uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>
+      {hint && <div className="mt-0.5 text-[10px] text-slate-400">{hint}</div>}
+    </div>
   );
 }
 

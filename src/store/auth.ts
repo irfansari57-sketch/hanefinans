@@ -173,3 +173,10 @@ export const isElite = (user: SessionUser | null): boolean => {
   if (user.tierExpiresAt && user.tierExpiresAt < Date.now()) return false;
   return true;
 };
+
+const ADMIN_EMAILS = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
+
+export const isAdmin = (user: SessionUser | null): boolean => {
+  if (!user) return false;
+  return ADMIN_EMAILS.includes(user.email.toLowerCase());
+};

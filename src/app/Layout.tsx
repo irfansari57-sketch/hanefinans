@@ -3,7 +3,6 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import {
   LayoutDashboard,
   Newspaper,
-  Globe,
   Star,
   Settings,
   Menu,
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
+import { useAuth, isAdmin } from '@/store/auth';
 import { MOCK_STOCKS } from '@/data/mock';
 import { activityRepo } from '@/data/repositories';
 import { RightNewsTicker } from '@/components/domain/RightNewsTicker';
@@ -28,7 +28,10 @@ import { AuthButton } from '@/components/auth/AuthButton';
 import { YoutubeWidget } from '@/components/domain/YoutubeWidget';
 import { Logo } from '@/components/brand/Logo';
 
-const navGroups: Array<{ title: string; items: Array<{ to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean }> }> = [
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
+type NavGroup = { title: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
   {
     title: 'Genel',
     items: [
@@ -41,7 +44,6 @@ const navGroups: Array<{ title: string; items: Array<{ to: string; label: string
     title: 'Piyasalar',
     items: [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
-      { to: '/macro', label: 'Makro', icon: Globe },
       { to: '/watchlist', label: 'Takip Listem', icon: Star },
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
     ],
@@ -56,13 +58,11 @@ const navGroups: Array<{ title: string; items: Array<{ to: string; label: string
     title: 'Hesap',
     items: [
       { to: '/uyelik', label: 'Üyelik', icon: BadgeCheck },
-      { to: '/history', label: 'Geçmiş', icon: History },
-      { to: '/settings', label: 'Ayarlar', icon: Settings },
+      { to: '/history', label: 'Geçmiş', icon: History, adminOnly: true },
+      { to: '/settings', label: 'Ayarlar', icon: Settings, adminOnly: true },
     ],
   },
 ];
-
-const allNavItems = navGroups.flatMap((g) => g.items);
 
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -71,6 +71,13 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isMockMode = useAgents((s) => s.isMockMode());
+  const user = useAuth((s) => s.user);
+  const admin = isAdmin(user);
+
+  const visibleNavGroups = navGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => !it.adminOnly || admin) }))
+    .filter((g) => g.items.length > 0);
+  const allNavItems = visibleNavGroups.flatMap((g) => g.items);
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -112,7 +119,7 @@ export function Layout() {
           <Logo variant="full" size={36} />
         </Link>
         <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
-          {navGroups.map((group) => (
+          {visibleNavGroups.map((group) => (
             <div key={group.title}>
               <div className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
                 {group.title}

@@ -14,7 +14,7 @@ import { deriveSentimentFromNews } from './sentiment';
 const CACHE_VERSION = 'v3';
 const CACHE_PREFIX = `fa.service.${CACHE_VERSION}.`;
 const STOCK_TTL_MS = 60_000;
-const NEWS_TTL_MS = 5 * 60_000;
+const NEWS_TTL_MS = 90_000; // 90 sn — daha taze haberler için
 const MACRO_TTL_MS = 60_000;
 const SENTIMENT_TTL_MS = 5 * 60_000;
 

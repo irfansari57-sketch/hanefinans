@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { PanelPage } from '@/features/panel/PanelPage';
 import { NewsPage } from '@/features/news/NewsPage';
-import { MacroPage } from '@/features/macro/MacroPage';
 import { WatchlistPage } from '@/features/watchlist/WatchlistPage';
 import { FundsPage } from '@/features/funds/FundsPage';
 import { StockDetailPage } from '@/features/stockDetail/StockDetailPage';
@@ -28,7 +27,7 @@ export const router = createBrowserRouter([
       { path: 'egitim', element: <FinancialLiteracyPage /> },
       { path: 'uyelik', element: <MembershipPage /> },
       { path: 'news', element: <NewsPage /> },
-      { path: 'macro', element: <MacroPage /> },
+      { path: 'macro', element: <Navigate to="/morning" replace /> },
       { path: 'watchlist', element: <WatchlistPage /> },
       { path: 'funds', element: <FundsPage /> },
       { path: 'stock/:symbol', element: <StockDetailPage /> },

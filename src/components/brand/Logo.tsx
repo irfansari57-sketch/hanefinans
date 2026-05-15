@@ -17,11 +17,12 @@ export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
       <div className={cn('inline-flex items-center gap-3', className)}>
         <LogoIcon size={size} />
         <div className="flex flex-col leading-tight">
-          <span className="logo-text-3d text-base font-extrabold tracking-tight">
+          <span className="logo-text-3d text-xl font-extrabold tracking-tight">
             HANE FINANS
           </span>
-          <span className="text-[9px] uppercase tracking-[0.22em] text-accent/85">
-            financial intelligence
+          {/* lang="en" — Türkçe locale'da "I" → "İ" dönüşmesini engeller */}
+          <span lang="en" className="mt-0.5 text-[11px] tracking-[0.18em] text-accent/85 font-semibold">
+            FINANCIAL INTELLIGENCE
           </span>
         </div>
       </div>

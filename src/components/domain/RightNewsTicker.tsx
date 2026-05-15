@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/date';
 
 const REFRESH_MS = 90_000;
-const SCROLL_SPEED_SECONDS = 90; // tek tur süresi
+const SCROLL_SPEED_SECONDS = 180; // tek tur süresi — daha yavaş, okunabilir akış
 
 const sourceTone: Record<string, string> = {
   KAP: 'bg-accent/15 text-accent border-accent/20',

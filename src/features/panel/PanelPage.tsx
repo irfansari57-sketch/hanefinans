@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
+import { useAuth, isPro } from '@/store/auth';
 import { NewsCard } from '@/components/domain/NewsCard';
 import { MacroCard } from '@/components/domain/MacroCard';
 import { StockRow } from '@/components/domain/StockRow';
@@ -37,6 +38,8 @@ const AUTO_REFRESH_MS = 60_000;
 export function PanelPage() {
   const symbols = useWatchlist((s) => s.symbols);
   const allSymbols = useMemo(() => MOCK_STOCKS.map((s) => s.symbol), []);
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
 
   const [macro, setMacro] = useState<MacroIndicator[]>(MOCK_MACRO_FALLBACK);
   const [stocks, setStocks] = useState<Stock[]>(MOCK_STOCKS);
@@ -126,8 +129,8 @@ export function PanelPage() {
         }
       />
 
-      {/* Reklam banner — sponsorlu içerik */}
-      <AdBanner className="mb-5" />
+      {/* Reklam banner — sponsorlu içerik (PRO/ELITE'de gizli) */}
+      {!proUser && <AdBanner className="mb-5" />}
 
       {/* Status banner */}
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">

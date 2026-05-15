@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
-import { useAuth, isAdmin } from '@/store/auth';
+import { useAuth, isAdmin, isPro } from '@/store/auth';
 import { MOCK_STOCKS } from '@/data/mock';
 import { activityRepo } from '@/data/repositories';
 import { RightNewsTicker } from '@/components/domain/RightNewsTicker';
@@ -28,6 +28,7 @@ import { AuthButton } from '@/components/auth/AuthButton';
 import { YoutubeWidget } from '@/components/domain/YoutubeWidget';
 import { Logo } from '@/components/brand/Logo';
 import { ToastContainer } from '@/components/ui/Toast';
+import { AdBanner } from '@/components/domain/AdBanner';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
@@ -116,9 +117,9 @@ export function Layout() {
       <div className="pointer-events-none fixed inset-0 bg-grid opacity-15" aria-hidden="true" />
 
       {/* Desktop sidebar */}
-      <aside className="relative z-10 hidden border-r border-border bg-bg-soft/85 backdrop-blur-md md:flex md:w-60 md:flex-col">
-        <Link to="/panel" className="block border-b border-border px-4 py-3.5 transition hover:bg-bg-card/50">
-          <Logo variant="full" size={36} />
+      <aside className="relative z-10 hidden border-r border-border bg-bg-soft/85 backdrop-blur-md md:flex md:w-64 md:flex-col">
+        <Link to="/panel" className="block border-b border-border px-4 py-4 transition hover:bg-bg-card/50">
+          <Logo variant="full" size={52} />
         </Link>
         <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
           {visibleNavGroups.map((group) => (
@@ -157,6 +158,12 @@ export function Layout() {
             </div>
           ))}
         </nav>
+        {/* Sidebar alt reklam — PRO/ELITE üye değilse */}
+        {!isPro(user) && (
+          <div className="border-t border-border p-2.5">
+            <AdBanner variant="compact" />
+          </div>
+        )}
         <div className="border-t border-border p-3 text-center text-[10px] text-slate-500">
           <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
         </div>

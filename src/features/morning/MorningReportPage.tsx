@@ -12,7 +12,7 @@ import { loadStocks, loadMacroAll, clearServiceCaches, loadNews } from '@/data/s
 import { sendTelegramMessage, isTelegramConfigured } from '@/data/api/telegram';
 import { rankMomentum, assessTradingConditions } from '@/lib/momentum';
 import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
-import { useAuth, isAdmin } from '@/store/auth';
+import { useAuth, isAdmin, isPro } from '@/store/auth';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { generateMarkdownReport, downloadMarkdown } from '@/lib/reportGenerator';
 import { MOCK_STOCKS, MOCK_MACRO_FALLBACK } from '@/data/mock';
@@ -88,6 +88,7 @@ export function MorningReportPage() {
 
   const user = useAuth((s) => s.user);
   const admin = isAdmin(user);
+  const proUser = isPro(user);
 
   const allSymbols = useMemo(() => MOCK_STOCKS.map((s) => s.symbol), []);
 
@@ -379,8 +380,8 @@ export function MorningReportPage() {
         </div>
       )}
 
-      {/* Reklam banner */}
-      <AdBanner className="mb-5" />
+      {/* Reklam banner (PRO/ELITE'de gizli) */}
+      {!proUser && <AdBanner className="mb-5" />}
 
       {/* ============ TRADING ORTAMI — EN ÜSTTE ============ */}
       <TradingDashboard

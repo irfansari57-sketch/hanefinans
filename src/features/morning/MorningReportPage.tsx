@@ -399,6 +399,7 @@ export function MorningReportPage() {
   const bist100 = macros.find((m) => m.key === 'BIST 100');
   const gold = macros.find((m) => m.key === 'Gram Altın');
   const silver = macros.find((m) => m.key === 'Gram Gümüş');
+  const silverOz = macros.find((m) => m.key === 'Ons Gümüş');
   const platinum = macros.find((m) => m.key === 'Gram Platin');
   const brent = macros.find((m) => m.key === 'Brent');
   const vix = macros.find((m) => m.key === 'VIX');
@@ -464,7 +465,7 @@ export function MorningReportPage() {
 
         {/* Mini özet sayıları */}
         <div className="mt-5 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {usdTry && <MiniRow label="USD/TRY" value={usdTry.value.toFixed(2)} change={usdTry.changePct ?? 0} />}
+          {silverOz && <MiniRow label="Ons Gümüş" value={`$${silverOz.value.toFixed(2)}`} change={silverOz.changePct ?? 0} />}
           {eurTry && <MiniRow label="EUR/TRY" value={eurTry.value.toFixed(2)} change={eurTry.changePct ?? 0} />}
           {gold && <MiniRow label="Gram Altın" value={`${gold.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}₺`} change={gold.changePct ?? 0} />}
           {silver && <MiniRow label="Gram Gümüş" value={`${silver.value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}₺`} change={silver.changePct ?? 0} />}

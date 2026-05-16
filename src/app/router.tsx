@@ -13,6 +13,7 @@ const StocksPage            = lazy(() => import('@/features/stocks/StocksPage').
 const CommoditiesPage       = lazy(() => import('@/features/commodities/CommoditiesPage').then((m) => ({ default: m.CommoditiesPage })));
 const CryptoPage            = lazy(() => import('@/features/crypto/CryptoPage').then((m) => ({ default: m.CryptoPage })));
 const PortfolioPage         = lazy(() => import('@/features/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
+const UsMarketsPage         = lazy(() => import('@/features/usMarkets/UsMarketsPage').then((m) => ({ default: m.UsMarketsPage })));
 const StockDetailPage       = lazy(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
 const FundDetailPage        = lazy(() => import('@/features/fundDetail/FundDetailPage').then((m) => ({ default: m.FundDetailPage })));
 const HistoryPage           = lazy(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })));
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
       { path: 'emtia', element: withSuspense(<CommoditiesPage />) },
       { path: 'kripto', element: withSuspense(<CryptoPage />) },
       { path: 'portfoy', element: withSuspense(<PortfolioPage />) },
+      { path: 'abd', element: withSuspense(<UsMarketsPage />) },
       { path: 'stock/:symbol', element: withSuspense(<StockDetailPage />) },
       { path: 'fund/:code', element: withSuspense(<FundDetailPage />) },
       { path: 'history', element: withSuspense(<HistoryPage />) },

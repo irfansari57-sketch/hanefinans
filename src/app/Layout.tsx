@@ -20,6 +20,7 @@ import {
   Gem,
   Bitcoin,
   Wallet,
+  Flag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
@@ -55,6 +56,7 @@ const navGroups: NavGroup[] = [
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/kripto', label: 'Kripto', icon: Bitcoin },
+      { to: '/abd', label: 'ABD Borsaları', icon: Flag },
     ],
   },
   {

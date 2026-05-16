@@ -57,7 +57,6 @@ export function StockDetailPage() {
   // User-specific data from IndexedDB
   const notes = useLiveQuery(() => notesRepo.bySymbol(sym), [sym]) ?? [];
   const alerts = useLiveQuery(() => alertsRepo.bySymbol(sym), [sym]) ?? [];
-  const symbolActivity = useLiveQuery(() => activityRepo.list({ symbol: sym, limit: 30 }), [sym]) ?? [];
 
   useEffect(() => {
     let alive = true;
@@ -548,33 +547,6 @@ export function StockDetailPage() {
                     >
                       <Trash2 size={11} />
                     </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Activity */}
-          <div className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
-                <Activity size={12} /> Bu Sembol İçin Aktivite
-              </h3>
-              <span className="text-[10px] text-slate-500">{symbolActivity.length}</span>
-            </div>
-            {symbolActivity.length === 0 ? (
-              <p className="px-4 py-4 text-center text-xs text-slate-500">Henüz etkileşim yok.</p>
-            ) : (
-              <div className="divide-y divide-border max-h-80 overflow-y-auto">
-                {symbolActivity.slice(0, 20).map((a) => (
-                  <div key={a.id} className="px-3 py-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300">{a.type}</span>
-                      <span className="text-[10px] text-slate-500">
-                        {formatRelative(new Date(a.timestamp).toISOString())}
-                      </span>
-                    </div>
-                    {a.detail && <div className="mt-0.5 truncate text-[10px] text-slate-500">{a.detail}</div>}
                   </div>
                 ))}
               </div>

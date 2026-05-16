@@ -21,10 +21,11 @@ const STATE_CONTRIBUTION_RATE = 0.20; // 2026 başı itibariyle %20
 // (Tavanın üstüne devlet katkısı yapmaz. Yıl içinde değişir, yaklaşık değer.)
 const ANNUAL_BRUT_MINIMUM_WAGE_2026 = 396_000;
 
+/** EGM ile uyumlu reel (enflasyondan arındırılmış) yıllık getiri senaryoları. */
 const SCENARIOS = [
-  { key: 'pess', label: 'Kötümser', rate: 0.15, tone: 'danger',  hint: 'Borçlanma ağırlıklı muhafazakar fon, düşük dönem' },
-  { key: 'mid',  label: 'Orta',     rate: 0.25, tone: 'accent',  hint: 'Karma fon, uzun vadeli BES ortalaması' },
-  { key: 'opt',  label: 'İyimser',  rate: 0.35, tone: 'success', hint: 'Hisse ağırlıklı agresif fon, güçlü dönem' },
+  { key: 'pess', label: 'Kötümser', rate: 0.00, tone: 'danger',  hint: 'Reel %0 — fonlar enflasyonla başa baş' },
+  { key: 'mid',  label: 'Orta',     rate: 0.03, tone: 'accent',  hint: 'Reel %3 — EGM varsayılan, uzun vadeli ortalama' },
+  { key: 'opt',  label: 'İyimser',  rate: 0.05, tone: 'success', hint: 'Reel %5 — güçlü fon performansı dönemi' },
 ] as const;
 
 type Scenario = typeof SCENARIOS[number];
@@ -72,7 +73,7 @@ export function BESCalculator() {
   const [monthly, setMonthly] = useState(2500);
   const [years, setYears] = useState(20);
   const [advanced, setAdvanced] = useState(false);
-  const [rates, setRates] = useState({ pess: 15, mid: 25, opt: 35 });
+  const [rates, setRates] = useState({ pess: 0, mid: 3, opt: 5 });
 
   const projections = useMemo(() => {
     return SCENARIOS.map((s) => {
@@ -96,7 +97,7 @@ export function BESCalculator() {
           <div>
             <h3 className="text-sm font-semibold text-slate-100">BES Birikim Hesaplayıcısı</h3>
             <p className="text-[11px] text-slate-500">
-              Aylık katkı + %20 devlet katkısı + bileşik getiri ile geleceği projeksiyonla
+              Aylık katkı + %20 devlet katkısı + reel getiri ile geleceği projeksiyonla (EGM uyumlu)
             </p>
           </div>
         </div>
@@ -199,14 +200,14 @@ export function BESCalculator() {
             {SCENARIOS.map((s) => (
               <div key={s.key} className="rounded-lg border border-border bg-bg-card p-2">
                 <label className="block text-[10px] uppercase tracking-wider text-slate-500">
-                  {s.label} (% yıllık)
+                  {s.label} (reel % / yıl)
                 </label>
                 <input
                   type="number"
                   value={rates[s.key as keyof typeof rates]}
-                  min={0}
-                  max={100}
-                  step={1}
+                  min={-5}
+                  max={20}
+                  step={0.5}
                   onChange={(e) =>
                     setRates((r) => ({ ...r, [s.key]: parseFloat(e.target.value) || 0 }))
                   }
@@ -214,6 +215,9 @@ export function BESCalculator() {
                 />
               </div>
             ))}
+            <p className="col-span-full text-[10px] text-slate-500">
+              ℹ️ Reel getiri = nominal getiri − enflasyon. Örn. nominal %25, enflasyon %22 → reel %3. EGM standardı %3 reel getiriyi varsayılan kullanır.
+            </p>
           </div>
         )}
       </div>
@@ -240,7 +244,7 @@ export function BESCalculator() {
             <thead className="text-[10px] uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-3 py-2 text-left">Senaryo</th>
-                <th className="px-3 py-2 text-right">Yıllık Getiri</th>
+                <th className="px-3 py-2 text-right">Reel Getiri</th>
                 <th className="px-3 py-2 text-right">Senin Yatırdığın</th>
                 <th className="px-3 py-2 text-right">Devlet Katkısı</th>
                 <th className="px-3 py-2 text-right">Bileşik Kazanç</th>
@@ -259,7 +263,7 @@ export function BESCalculator() {
                       ● {scenario.label}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">%{(rate * 100).toFixed(0)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">%{(rate * 100).toFixed(1)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatTL(projection.totalContributed)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-success">+{formatTL(projection.totalStateContribution)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-accent">+{formatTL(projection.totalEarnings)}</td>
@@ -272,8 +276,9 @@ export function BESCalculator() {
       </div>
 
       <p className="mt-3 text-[10px] leading-relaxed text-slate-500">
-        ⚠️ <strong>Not:</strong> Hesaplamalar nominal (enflasyon dahil) getirilerdir; yönetim ücretleri ve giriş kesintileri ihmal edilmiştir.
-        Devlet katkısı brüt değerle gösterilmiştir — erken çıkış halinde hak ediş oranı uygulanır (3 yıl %15, 6 yıl %35, 10 yıl %60, 56 yaş + 10 yıl %100).
+        ⚠️ <strong>Not:</strong> Getiriler <strong className="text-slate-400">reel</strong> (enflasyondan arındırılmış) olarak girilir — sonuçlar bugünkü satın alma gücüyle gösterilir.
+        EGM resmi hesaplayıcısı varsayılan olarak <strong className="text-slate-400">%3 reel getiri</strong> kullanır.
+        Yönetim ücretleri ve giriş kesintileri ihmal edilmiştir. Devlet katkısı brüt değerle gösterilmiştir — erken çıkış halinde hak ediş oranı uygulanır (3 yıl %15, 6 yıl %35, 10 yıl %60, 56 yaş + 10 yıl %100).
         Daha hassas hesaplama için <a className="text-accent hover:underline" href="https://www.egm.org.tr/bilgi-merkezi/birikim-hesaplayicisi/" target="_blank" rel="noreferrer">EGM resmi hesaplayıcısını</a> kullanabilirsin.
       </p>
     </section>
@@ -305,7 +310,7 @@ function ScenarioCard({
           {scenario.label}
         </span>
         <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-          <TrendingUp size={10} /> %{(rate * 100).toFixed(0)}/yıl
+          <TrendingUp size={10} /> reel %{(rate * 100).toFixed(1)}/yıl
         </span>
       </div>
       <div className="mt-2">

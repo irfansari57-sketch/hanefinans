@@ -21,6 +21,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { fetchHistoricalYahoo, computePeriodReturns, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
 import { loadStocks, loadNews } from '@/data/services';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
+import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
+import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock, NewsItem } from '@/data/types';
@@ -43,6 +45,7 @@ export function StockDetailPage() {
   const [returns, setReturns] = useState<PeriodReturnsT>({});
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mtResult, setMtResult] = useState<MultiTimeframeResult | null>(null);
 
   // AI Analysis state
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -63,7 +66,8 @@ export function StockDetailPage() {
       loadStocks([sym]),
       fetchHistoricalYahoo(sym, '1y', '1d'),
       loadNews({ max: 30 }),
-    ]).then(([liveStocks, hist, allNews]) => {
+      fetchHistoricalYahoo(sym, '1mo', '60m'),
+    ]).then(([liveStocks, hist, allNews, hist1h]) => {
       if (!alive) return;
       const found = liveStocks.data.find((s) => s.symbol === sym);
       if (found) setStock(found);
@@ -73,6 +77,31 @@ export function StockDetailPage() {
       }
       setNews(allNews.data.filter((n) => n.symbols.includes(sym)));
       setLoading(false);
+
+      // Multi-timeframe analizi
+      try {
+        const price = found?.price ?? hist?.bars.at(-1)?.close ?? 0;
+        const changePct = found?.changePct ?? 0;
+        let tf1h: TimeframeAnalysis | null = null;
+        let tf4h: TimeframeAnalysis | null = null;
+        let tf1d: TimeframeAnalysis | null = null;
+        let lean: 'alıcı' | 'satıcı' | 'kararsız' = 'kararsız';
+        if (hist1h && hist1h.bars.length > 0) {
+          tf1h = analyzeTimeframe(hist1h.bars.map((b) => b.close), [5, 8, 13, 21, 55]);
+          tf4h = analyzeTimeframe(aggregateTo4h(hist1h.bars).map((b) => b.close), [5, 8, 13, 21]);
+        }
+        if (hist && hist.bars.length > 0) {
+          const closes1d = hist.bars.map((b) => b.close);
+          tf1d = analyzeTimeframe(closes1d, [5, 8, 13, 21, 55, 200]);
+          const ohlc: OHLC[] = hist.bars.map((b) => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
+          lean = computeBigPlayerLean(ohlc);
+        }
+        const base: Omit<MultiTimeframeResult, 'verdict'> = {
+          symbol: sym, label: found?.name ?? sym, price, changePct,
+          tf1h, tf4h, tf1d, bigPlayerLean: lean,
+        };
+        setMtResult({ ...base, verdict: buildVerdict(base) });
+      } catch { /* ignore */ }
 
       // Log view
       activityRepo.log({ type: 'page-view', symbol: sym, detail: `/stock/${sym}` }).catch(() => {});
@@ -251,6 +280,17 @@ export function StockDetailPage() {
           <LiveChart symbol={sym} height={520} />
         </Suspense>
       </div>
+
+      {/* Multi-Timeframe Trend Analizi */}
+      {mtResult && (
+        <div className="card mb-4 p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <Activity size={14} className="text-accent" /> Çoklu Zaman Dilimi Yön Analizi
+            <span className="ml-auto text-[10px] text-slate-500">1H / 4H / 1D</span>
+          </h2>
+          <MultiTimeframeCard r={mtResult} currency="₺" hideHeader />
+        </div>
+      )}
 
       {/* Teknik Analiz — Fintables tarzı */}
       {technicalAnalysis && (

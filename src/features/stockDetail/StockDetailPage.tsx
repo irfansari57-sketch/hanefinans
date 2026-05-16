@@ -3,9 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   ArrowLeft, Star, Bell, StickyNote, Newspaper, Activity, TrendingUp, TrendingDown,
-  AlertCircle, ExternalLink, RefreshCw, Trash2, Calendar,
+  AlertCircle, ExternalLink, RefreshCw, Trash2, Calendar, Sparkles,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { toast } from '@/components/ui/Toast';
+import { useAuth, isPro } from '@/store/auth';
 
 // lightweight-charts heavy (~200KB) — lazy load
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
@@ -41,6 +43,13 @@ export function StockDetailPage() {
   const [returns, setReturns] = useState<PeriodReturnsT>({});
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // AI Analysis state
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
 
   // User-specific data from IndexedDB
   const notes = useLiveQuery(() => notesRepo.bySymbol(sym), [sym]) ?? [];
@@ -91,6 +100,43 @@ export function StockDetailPage() {
   const sparklineData = historical ? historical.closes.slice(-30).map((c) => c.close) : [];
   const tone = stock.changePct >= 0 ? 'text-success' : 'text-danger';
   const sign = stock.changePct >= 0 ? '+' : '';
+
+  const generateAiAnalysis = async () => {
+    if (!stock) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const r = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: stock.symbol,
+          name: stock.name,
+          price: stock.price,
+          changePct: stock.changePct,
+          rsi: technicalAnalysis?.rsi,
+          macd: technicalAnalysis?.macdBullish ? 'bullish' : technicalAnalysis?.macdBearish ? 'bearish' : 'neutral',
+          emaPositions: technicalAnalysis?.emas.map((e) => ({ period: e.period, above: e.abovePct >= 0 })),
+          sector: stock.sector,
+          news: news.slice(0, 3).map((n) => ({ title: n.title, source: n.source })),
+        }),
+      });
+      const json = await r.json() as { ok: boolean; analysis?: string; error?: string };
+      if (!json.ok) {
+        setAiError(json.error || 'AI analiz alınamadı');
+        toast.error('AI analiz hatası', json.error);
+        return;
+      }
+      setAiAnalysis(json.analysis ?? '');
+      toast.success('AI analizi hazır', `${stock.symbol} için 1 saat cache'lenir`);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setAiError(msg);
+      toast.error('Ağ hatası', msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Teknik analiz — historical varsa hesapla
   const technicalAnalysis = useMemo(() => {
@@ -295,6 +341,62 @@ export function StockDetailPage() {
           </div>
         </div>
       )}
+
+      {/* AI Hisse Analizi — PRO/ELITE özellik */}
+      <div className="card mb-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <Sparkles size={14} className="text-warning" /> AI Hisse Analizi
+            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
+              PRO
+            </span>
+          </h2>
+          {!aiAnalysis && (
+            <button
+              className="btn-primary"
+              onClick={generateAiAnalysis}
+              disabled={aiLoading || (!proUser && !!user)}
+              title={!proUser && user ? 'PRO/ELITE üyelere özel' : 'AI analiz üret'}
+            >
+              {aiLoading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {aiLoading ? 'Analiz üretiliyor…' : 'AI Analizi Üret'}
+            </button>
+          )}
+          {aiAnalysis && (
+            <button className="btn-secondary" onClick={generateAiAnalysis} disabled={aiLoading}>
+              <RefreshCw size={14} className={aiLoading ? 'animate-spin' : ''} /> Yenile
+            </button>
+          )}
+        </div>
+
+        {!proUser && user && !aiAnalysis && (
+          <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+            🔒 AI analiz PRO/ELITE üyelere özel.{' '}
+            <Link to="/uyelik" className="underline">PRO'ya yükselt →</Link>
+          </div>
+        )}
+
+        {!user && !aiAnalysis && (
+          <p className="mt-3 text-xs text-slate-400">
+            Bu hisse için Claude AI ile teknik göstergeler + son haberlerden üretilen Türkçe analiz almak için PRO üyeliğe geç.
+          </p>
+        )}
+
+        {aiAnalysis && (
+          <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-200">{aiAnalysis}</p>
+            <p className="mt-3 text-[10px] text-slate-500">
+              AI tarafından üretildi (Claude Haiku 4.5). Yatırım tavsiyesi değildir; bilgi amaçlıdır. 1 saat cache'lenir.
+            </p>
+          </div>
+        )}
+
+        {aiError && (
+          <div className="mt-3 rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs text-danger">
+            ⚠️ {aiError}
+          </div>
+        )}
+      </div>
 
       {/* Stats grid */}
       {historical && (

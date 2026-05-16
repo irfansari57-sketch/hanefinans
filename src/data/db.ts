@@ -87,6 +87,15 @@ export interface UserAccount {
   tierExpiresAt?: number;
 }
 
+export interface PortfolioPosition {
+  id?: number;
+  symbol: string;        // BIST hisse kodu
+  lot: number;           // adet
+  avgPrice: number;      // ortalama maliyet (₺/lot)
+  addedAt: number;
+  note?: string;
+}
+
 class FinansAsistanDB extends Dexie {
   activity!: Table<ActivityEntry, number>;
   notes!: Table<Note, number>;
@@ -94,6 +103,7 @@ class FinansAsistanDB extends Dexie {
   bookmarks!: Table<NewsBookmark, number>;
   funds!: Table<FundEntry, number>;
   users!: Table<UserAccount, number>;
+  portfolio!: Table<PortfolioPosition, number>;
 
   constructor() {
     super('finansasistan');
@@ -117,6 +127,15 @@ class FinansAsistanDB extends Dexie {
       bookmarks: '++id, &newsId, bookmarkedAt',
       funds: '++id, &code, addedAt, archived',
       users: '++id, &email, tier, createdAt',
+    });
+    this.version(4).stores({
+      activity: '++id, timestamp, type, symbol, newsId',
+      notes: '++id, createdAt, updatedAt, symbol, newsId, pinned',
+      alerts: '++id, createdAt, symbol, enabled, triggeredAt',
+      bookmarks: '++id, &newsId, bookmarkedAt',
+      funds: '++id, &code, addedAt, archived',
+      users: '++id, &email, tier, createdAt',
+      portfolio: '++id, symbol, addedAt',
     });
   }
 }

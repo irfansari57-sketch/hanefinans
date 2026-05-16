@@ -12,6 +12,7 @@ import { loadStocks, loadMacroAll, clearServiceCaches, loadNews } from '@/data/s
 import { sendTelegramMessage, isTelegramConfigured } from '@/data/api/telegram';
 import { rankMomentum, assessTradingConditions } from '@/lib/momentum';
 import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
+import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { useAuth, isAdmin, isPro } from '@/store/auth';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { generateMarkdownReport, downloadMarkdown } from '@/lib/reportGenerator';
@@ -80,6 +81,7 @@ export function MorningReportPage() {
   const [futures, setFutures] = useState<Array<{ label: string; value: number; changePct: number }>>([]);
   const [topGainersTA, setTopGainersTA] = useState<BistTA[]>([]);
   const [indexTA, setIndexTA] = useState<IndexTA[]>([]);
+  const [mtResults, setMtResults] = useState<MultiTimeframeResult[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
@@ -264,6 +266,66 @@ export function MorningReportPage() {
       );
       setIndexTA(indexResults);
 
+      // ============= Multi-Timeframe Analizi (1h, 4h, 1d) =============
+      const mtSymbols = [
+        { ySym: 'XU100.IS', label: 'BIST 100', macroKey: 'BIST 100' },
+        { ySym: 'XU030.IS', label: 'VIOP 30', macroKey: 'BIST 30' },
+        { ySym: 'USDTRY=X', label: 'USD/TRY', macroKey: 'USD/TRY' },
+        { ySym: 'GC=F',     label: 'Ons Altın', macroKey: 'Ons Altın' },
+      ];
+      const mtComputed = await Promise.all(
+        mtSymbols.map(async ({ ySym, label, macroKey }) => {
+          const [hist1h, hist1d] = await Promise.all([
+            fetchHistoricalYahoo(ySym, '1mo', '60m'),
+            fetchHistoricalYahoo(ySym, '1y', '1d'),
+          ]);
+          const macroEntry = macrosR.data.find((m) => m.key === macroKey);
+          const lastClose1d = hist1d?.bars.at(-1)?.close ?? 0;
+          const price = macroEntry?.value ?? lastClose1d;
+          let changePct = macroEntry?.changePct ?? 0;
+          if (!macroEntry && hist1d && hist1d.bars.length >= 2) {
+            const prev = hist1d.bars[hist1d.bars.length - 2].close;
+            changePct = ((lastClose1d - prev) / prev) * 100;
+          }
+
+          // 1h trend
+          let tf1h: TimeframeAnalysis | null = null;
+          if (hist1h && hist1h.bars.length > 0) {
+            const closes1h = hist1h.bars.map((b) => b.close);
+            tf1h = analyzeTimeframe(closes1h, [5, 8, 13, 21, 55]);
+          }
+          // 4h trend (1h barlardan üret)
+          let tf4h: TimeframeAnalysis | null = null;
+          if (hist1h && hist1h.bars.length > 0) {
+            const bars4h = aggregateTo4h(hist1h.bars);
+            const closes4h = bars4h.map((b) => b.close);
+            tf4h = analyzeTimeframe(closes4h, [5, 8, 13, 21]);
+          }
+          // 1d trend
+          let tf1d: TimeframeAnalysis | null = null;
+          let bigPlayerLean: 'alıcı' | 'satıcı' | 'kararsız' = 'kararsız';
+          if (hist1d && hist1d.bars.length > 0) {
+            const closes1d = hist1d.bars.map((b) => b.close);
+            tf1d = analyzeTimeframe(closes1d, [5, 8, 13, 21, 55, 200]);
+            const ohlcBars: OHLC[] = hist1d.bars.map((b) => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
+            bigPlayerLean = computeBigPlayerLean(ohlcBars);
+          }
+
+          const base: Omit<MultiTimeframeResult, 'verdict'> = {
+            symbol: label,
+            label,
+            price,
+            changePct,
+            tf1h,
+            tf4h,
+            tf1d,
+            bigPlayerLean,
+          };
+          return { ...base, verdict: buildVerdict(base) };
+        }),
+      );
+      setMtResults(mtComputed);
+
       // BIST Top Gainers RSI hesabı
       const topG = [...stocksR.data].sort((a, b) => b.changePct - a.changePct).slice(0, 10);
       const gainerTA: BistTA[] = await Promise.all(
@@ -383,20 +445,20 @@ export function MorningReportPage() {
       {/* Reklam banner (PRO/ELITE'de gizli) */}
       {!proUser && <AdBanner className="mb-5" />}
 
-      {/* ============ KISA PİYASA ANALİZİ — BIST 100 + VIOP 30 TAM TA ============ */}
+      {/* ============ KISA PİYASA ANALİZİ — Multi-Timeframe Long/Short ============ */}
       <section className="glass-card mb-5 p-5">
         <SectionHeader icon={Zap} title="Kısa Piyasa Analizi" tone="accent" />
         <p className="mt-1 ml-13 text-xs text-slate-400">
-          BIST 100 ve VIOP 30 (XU030 dayanağı) için kısa vadeli yön, destek-direnç ve teknik sinyaller.
+          BIST 100, VIOP 30, USD/TRY ve Altın için <strong>1 saatlik, 4 saatlik ve günlük</strong> trend yönü + büyük oyuncu eğilimi.
         </p>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {indexTA.length === 0 ? (
+          {mtResults.length === 0 ? (
             <div className="lg:col-span-2 rounded-lg border border-border bg-bg-card p-4 text-xs text-slate-500">
-              {loading ? 'Endeks teknik analizi hesaplanıyor…' : 'Veri alınamadı, frankfurter/Yahoo bağlantısını kontrol et.'}
+              {loading ? 'Çoklu zaman dilimi analizi hesaplanıyor…' : 'Veri alınamadı.'}
             </div>
           ) : (
-            indexTA.map((idx) => <IndexAnalysisCard key={idx.symbol} ta={idx} />)
+            mtResults.map((r) => <MultiTimeframeCard key={r.symbol} r={r} />)
           )}
         </div>
 
@@ -474,6 +536,82 @@ function MiniRow({ label, value, change, warningOnRise }: { label: string; value
       <div className="mt-0.5 text-base font-semibold tabular-nums text-slate-100">{value}</div>
       <div className={cn('text-[11px] tabular-nums', tone)}>
         {arrow} {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+      </div>
+    </div>
+  );
+}
+
+function MultiTimeframeCard({ r }: { r: MultiTimeframeResult }) {
+  const changeTone = r.changePct >= 0 ? 'text-success' : 'text-danger';
+  const leanColor = r.bigPlayerLean === 'alıcı' ? 'border-success/40 bg-success/10 text-success'
+    : r.bigPlayerLean === 'satıcı' ? 'border-danger/40 bg-danger/10 text-danger'
+    : 'border-slate-500/40 bg-slate-500/10 text-slate-300';
+
+  return (
+    <div className="rounded-lg border border-border bg-bg-card p-4">
+      {/* Üst — sembol + fiyat */}
+      <div className="flex items-baseline justify-between gap-3">
+        <h4 className="text-base font-bold text-slate-100">{r.label}</h4>
+        <div className="text-right">
+          <div className="text-xl font-bold tabular-nums text-slate-100">
+            {r.price.toLocaleString('tr-TR', { maximumFractionDigits: r.price < 100 ? 2 : 0 })}
+          </div>
+          <div className={cn('text-sm tabular-nums', changeTone)}>
+            {r.changePct >= 0 ? '+' : ''}{r.changePct.toFixed(2)}%
+          </div>
+        </div>
+      </div>
+
+      {/* Çoklu zaman dilimi yönleri */}
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <TimeframeBox label="1 SAATLİK" ta={r.tf1h} />
+        <TimeframeBox label="4 SAATLİK" ta={r.tf4h} />
+        <TimeframeBox label="GÜNLÜK" ta={r.tf1d} />
+      </div>
+
+      {/* Büyük oyuncu eğilimi */}
+      <div className={cn('mt-3 rounded-lg border px-3 py-2 text-xs', leanColor)}>
+        <div className="flex items-center justify-between">
+          <span className="font-semibold uppercase tracking-wider text-[10px]">Büyük Oyuncu Eğilimi</span>
+          <span className="font-bold uppercase">
+            {r.bigPlayerLean === 'alıcı' ? '↑ ALICI BASKIN' : r.bigPlayerLean === 'satıcı' ? '↓ SATICI BASKIN' : '↔ KARARSIZ'}
+          </span>
+        </div>
+      </div>
+
+      {/* Yorum */}
+      <div className="mt-3 rounded-lg border border-border bg-bg-soft p-3 text-xs leading-relaxed text-slate-300">
+        <strong className="text-accent">Yorum: </strong>
+        {r.verdict}
+      </div>
+    </div>
+  );
+}
+
+function TimeframeBox({ label, ta }: { label: string; ta: TimeframeAnalysis | null }) {
+  if (!ta) {
+    return (
+      <div className="rounded border border-border bg-bg-soft p-2 text-center">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+        <div className="mt-1 text-xs font-bold text-slate-500">—</div>
+      </div>
+    );
+  }
+  const bg = ta.trend === 'long' ? 'border-success/40 bg-success/10'
+    : ta.trend === 'short' ? 'border-danger/40 bg-danger/10'
+    : 'border-slate-500/40 bg-slate-500/10';
+  const color = ta.trend === 'long' ? 'text-success'
+    : ta.trend === 'short' ? 'text-danger'
+    : 'text-slate-400';
+  const label2 = ta.trend === 'long' ? 'LONG ↑'
+    : ta.trend === 'short' ? 'SHORT ↓'
+    : 'NEUTRAL ↔';
+  return (
+    <div className={cn('rounded border p-2 text-center', bg)}>
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={cn('mt-1 text-sm font-bold', color)}>{label2}</div>
+      <div className="mt-0.5 text-[9px] text-slate-500">
+        {ta.emaScore}/{ta.emasAbove.length + ta.emasBelow.length} EMA üstte
       </div>
     </div>
   );

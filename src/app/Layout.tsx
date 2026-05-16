@@ -19,6 +19,7 @@ import {
   BadgeCheck,
   Gem,
   Bitcoin,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
@@ -49,6 +50,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
       { to: '/watchlist', label: 'Takip Listem', icon: Star },
+      { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
       { to: '/emtia', label: 'Emtialar', icon: Gem },

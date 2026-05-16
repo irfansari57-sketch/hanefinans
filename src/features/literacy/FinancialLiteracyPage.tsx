@@ -4,6 +4,7 @@ import {
   Search, ExternalLink, ChevronRight, Briefcase,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { BESCalculator } from '@/components/domain/BESCalculator';
 import { cn } from '@/lib/utils';
 
 interface Topic {
@@ -277,11 +278,12 @@ const TOPICS: Topic[] = [
     icon: Briefcase,
     tone: 'accent',
     description:
-      'Bireysel Emeklilik Sistemi nedir, %30 devlet katkısı nasıl alınır, hangi fonlar seçilir, vergi avantajları nelerdir? Uzun vadeli birikim için 2026 rehberi.',
+      'Bireysel Emeklilik Sistemi nedir, %20 devlet katkısı nasıl alınır, hangi fonlar seçilir, vergi avantajları nelerdir? Uzun vadeli birikim için 2026 rehberi.',
     videoQuery: 'bireysel emeklilik BES nedir nasıl başlanır',
     bullets: [
-      'BES: Bireysel Emeklilik Sistemi — devletin %30 katkısı + vergi avantajı sağlayan uzun vadeli birikim',
-      'Devlet Katkısı: Yatırdığın her 100₺\'ye 30₺ devlet ekler (brüt asgari ücretin %25\'i tavanına kadar)',
+      'BES: Bireysel Emeklilik Sistemi — devletin %20 katkısı + vergi avantajı sağlayan uzun vadeli birikim',
+      'Devlet Katkısı: Yatırdığın her 100₺\'ye 20₺ devlet ekler (2026 başında %30\'dan %20\'ye indirildi)',
+      'Tavan: Yıllık brüt asgari ücret tutarı kadar katkıya devlet katkı sağlar — üstüne katkı yok',
       'Hak ediş: 3 yılda %15, 6 yılda %35, 10 yılda %60, 56 yaş + 10 yıl katılım = %100',
       'Erken çıkış: 56 yaş/10 yıl şartı sağlanmadan devlet katkısı yanar (cebine kalanın %15-25\'i bile olabilir)',
       'Fon seçimi sistemin kalbidir — agresif (hisse), dengeli (karma), muhafazakar (borçlanma), katılım, altın',
@@ -290,7 +292,7 @@ const TOPICS: Topic[] = [
       'Yılda 6 kez ücretsiz fon değişimi yapabilirsin — piyasaya göre dağılımını ayarla',
     ],
     keyTerms: [
-      { term: 'Devlet Katkısı (DK)', def: '%30 oranında devletin yatırdığın paraya eklediği teşvik' },
+      { term: 'Devlet Katkısı (DK)', def: '%20 oranında devletin yatırdığın paraya eklediği teşvik (2026 başında %30\'dan %20\'ye düşürüldü)' },
       { term: 'Hak Ediş', def: 'BES\'ten çıkışta devlet katkısının ne kadarını alabileceğin oran (yıla göre artar)' },
       { term: 'Fon Dağılımı', def: 'BES birikiminin hangi yatırım fonlarına ne oranda dağıtılacağı' },
       { term: 'OKS', def: 'Otomatik Katılım Sistemi — işverenin çalışanı otomatik kaydettiği BES' },
@@ -301,11 +303,11 @@ const TOPICS: Topic[] = [
     sections: [
       {
         heading: 'BES Nasıl Çalışır?',
-        body: 'Bireysel Emeklilik Sistemi 2003\'te Türkiye\'de kuruldu. Mantığı basit: sen aylık veya tek seferlik bir tutar yatırırsın, devlet bunun %30\'unu hesabına ekler, paran emeklilik şirketinin yönettiği yatırım fonlarında değerlenir. **56 yaş + 10 yıl katılım** şartını tamamladığında birikimini topluca veya aylık maaş gibi alırsın. Devlet katkısı, BES\'i normal yatırım fonlarından farklı yapan en önemli unsurdur — 2026\'da brüt asgari ücretin %25\'i kadar (yıllık ~22.500₺) devlet katkısı alabilirsin. Yatırdığın paranın üstüne sıfır risk ile %30 ek getiri demektir.',
+        body: 'Bireysel Emeklilik Sistemi 2003\'te Türkiye\'de kuruldu. Mantığı basit: sen aylık veya tek seferlik bir tutar yatırırsın, devlet bunun %20\'sini hesabına ekler (2026 başı itibariyle — daha önce %30\'du, yeni mevzuatla düşürüldü), paran emeklilik şirketinin yönettiği yatırım fonlarında değerlenir. **56 yaş + 10 yıl katılım** şartını tamamladığında birikimini topluca veya aylık maaş gibi alırsın. Devlet katkısı, BES\'i normal yatırım fonlarından farklı yapan en önemli unsurdur — yıllık brüt asgari ücret tutarına kadar yapılan katkıya devlet %20 ek katar. Yatırdığın paranın üstüne sıfır risk ile %20 ek getiri demektir.',
       },
       {
-        heading: '%30 Devlet Katkısı Nasıl Hesaplanır?',
-        body: 'Yatırdığın her brüt tutarın %30\'u devlet katkısıdır. **Örnek:** Aylık 5.000₺ yatırırsan, devlet 1.500₺ ekler. Yıllık 60.000₺ yatırdığında devlet 18.000₺ katkı verir. Ancak 2026 brüt asgari ücret üst limiti var — bu tavanın üzerine devlet ek katkı yapmaz. **Strateji:** "Her zaman tavan kadar yatır" en karlı opsiyondur. Ortalama bir yatırımcı için 10 yıl içinde sadece devlet katkısı sayesinde portföyünün **%30\'una yakın bedava kazanç** sağlar.',
+        heading: '%20 Devlet Katkısı Nasıl Hesaplanır?',
+        body: 'Yatırdığın her brüt tutarın %20\'si devlet katkısıdır. **Örnek:** Aylık 5.000₺ yatırırsan, devlet 1.000₺ ekler. Yıllık 60.000₺ yatırdığında devlet 12.000₺ katkı verir. Ancak yıllık brüt asgari ücret tavanı var — bu tavanın üzerine yapılan katkıya devlet ek yapmaz. 2026 brüt asgari ücret yaklaşık 33.000₺/ay olduğu için yıllık katkı tavanı yaklaşık 396.000₺/yıl, üst sınır devlet katkısı ≈ 79.200₺/yıl. **Strateji:** Bütçen elveriyorsa "her zaman tavan kadar yatır" en karlı opsiyondur. Aşağıdaki hesaplayıcı ile kendi senin için somut rakamları gör.',
       },
       {
         heading: 'Hangi Fonu Seçmeliyim?',
@@ -313,15 +315,15 @@ const TOPICS: Topic[] = [
       },
       {
         heading: 'BES vs Bireysel Yatırım Hangisi Avantajlı?',
-        body: '**BES\'in 3 büyük avantajı:** (1) %30 devlet katkısı garantili, (2) %15 → %3.75 vergi avantajı (10 yıl + 56 yaş şartı), (3) Otomatik düzenli yatırım disiplini. **Dezavantajları:** (1) Likidite yok, paranı 10 yıl bağlıyorsun, (2) Yönetim ücretleri normal fonlardan biraz daha yüksek (yıllık %1-2.5), (3) Erken çıkışta devlet katkısı yanar. **Sonuç:** Disiplinli uzun vadeli birikim hedefin varsa BES kazançlıdır. Likiditeye ihtiyacın varsa veya kısa-orta vade hedefliyorsan TEFAS yatırım fonları daha mantıklı.',
+        body: '**BES\'in 3 büyük avantajı:** (1) %20 devlet katkısı garantili (eski %30\'dan düşürülse de hala önemli), (2) %15 → %3.75 vergi avantajı (10 yıl + 56 yaş şartı), (3) Otomatik düzenli yatırım disiplini. **Dezavantajları:** (1) Likidite yok, paranı 10 yıl bağlıyorsun, (2) Yönetim ücretleri normal fonlardan biraz daha yüksek (yıllık %1-2.5), (3) Erken çıkışta devlet katkısı yanar. **Sonuç:** Disiplinli uzun vadeli birikim hedefin varsa BES kazançlıdır. Likiditeye ihtiyacın varsa veya kısa-orta vade hedefliyorsan TEFAS yatırım fonları daha mantıklı.',
       },
       {
         heading: 'OKS — Otomatik Katılım Sistemi',
-        body: '2017\'den beri 45 yaş altı çalışanlar işveren tarafından otomatik BES\'e dahil ediliyor. İşveren maaşının **%3\'ünü** BES\'e yatırır (sen istemezsen 2 ay içinde cayabilirsin). 2026 itibariyle 1000₺+ devlet ek katkısı da var. Birçok kişi cayıyor ama **matematik açıkça gösteriyor:** 30 yıl boyunca aylık 1500₺ yatırım + %30 devlet katkısı + ortalama %10 yıllık getiri = emeklilikte yaklaşık **5-7 milyon TL birikim** (bugünkü değeriyle). Cayma kararı verirken bu büyüklüğü düşünmek gerek. OKS\'ye dahil kalmak, en hızlı zenginleşme yollarından biridir küçük gelirli için.',
+        body: '2017\'den beri 45 yaş altı çalışanlar işveren tarafından otomatik BES\'e dahil ediliyor. İşveren maaşının **%3\'ünü** BES\'e yatırır (sen istemezsen 2 ay içinde cayabilirsin). 2026 itibariyle bunun üzerine devlet katkısı da var. Birçok kişi cayıyor ama **matematik açıkça gösteriyor:** uzun vadede aylık küçük rakamlar bile devlet katkısı (%20) + uzun vadeli bileşik getiriyle ciddi tutarlara dönüşür. Yukarıdaki hesaplayıcıdan kendi durumun için somut rakamı görebilirsin. Cayma kararı verirken bu büyüklüğü düşünmek gerek. OKS\'ye dahil kalmak, en hızlı zenginleşme yollarından biridir küçük gelirli için.',
       },
       {
         heading: 'Sık Yapılan 6 Hata',
-        body: '(1) **"Cayayım, kendim yatırırım"** — disiplin tutmayanların büyük çoğunluğu bireysel olarak yatırım yapmıyor; %30 devlet katkısını kaçırıyorlar. (2) **Düşük getirili fonlarda kalıp değişim yapmamak** — yılda 6 ücretsiz değişim hakkını kullanmamak büyük getiri kaybı. (3) **Tavan üstüne para yatırmak** — devlet katkısı yok, sadece yönetim ücreti ödüyorsun. (4) **2 yıl bekleme süresi dolmadan şirket değiştirmek** — komisyon ödüyorsun. (5) **9. yılda paniğe kapılıp çıkmak** — devlet katkısının %40\'ını feda ediyorsun. (6) **Tek bir fona yığılmak** — kıymetli madenler veya katılım fonu gibi sabit "güvenli" fona koymak, enflasyona yenik düşmek demektir. **BES\'te en büyük servet sabırdır.**',
+        body: '(1) **"Cayayım, kendim yatırırım"** — disiplin tutmayanların büyük çoğunluğu bireysel olarak yatırım yapmıyor; %20 devlet katkısını kaçırıyorlar. (2) **Düşük getirili fonlarda kalıp değişim yapmamak** — yılda 6 ücretsiz değişim hakkını kullanmamak büyük getiri kaybı. (3) **Tavan üstüne para yatırmak** — devlet katkısı yok, sadece yönetim ücreti ödüyorsun. (4) **2 yıl bekleme süresi dolmadan şirket değiştirmek** — komisyon ödüyorsun. (5) **9. yılda paniğe kapılıp çıkmak** — devlet katkısının %40\'ını feda ediyorsun. (6) **Tek bir fona yığılmak** — kıymetli madenler veya katılım fonu gibi sabit "güvenli" fona koymak, enflasyona yenik düşmek demektir. **BES\'te en büyük servet sabırdır.**',
       },
       {
         heading: 'En İyi Emeklilik Şirketleri (2026)',
@@ -487,6 +489,9 @@ export function FinancialLiteracyPage() {
               ℹ️ Üçüncü taraf siteler YouTube'u embed etmeye izin vermediği için doğrudan YouTube'a yönlendiriyoruz — videolar orada sorunsuz oynar.
             </p>
           </section>
+
+          {/* BES için özel hesaplayıcı — konunun başında, görsel olarak yüksek değer */}
+          {current.slug === 'bes-bireysel-emeklilik' && <BESCalculator />}
 
           {/* Geniş kapsamlı anlatım */}
           {current.sections && current.sections.length > 0 && (

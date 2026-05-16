@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Youtube, Play, ExternalLink } from 'lucide-react';
+import { Youtube, ExternalLink, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -38,14 +38,32 @@ interface Props {
   className?: string;
 }
 
+/** YouTube iframe embed URL — autoplay + mute + loop. mute=1 zorunlu (Chrome/Safari autoplay policy). */
+function embedUrl(videoId: string, muted: boolean) {
+  const params = new URLSearchParams({
+    autoplay: '1',
+    mute: muted ? '1' : '0',
+    loop: '1',
+    playlist: videoId, // tek video loop için zorunlu
+    controls: '0',
+    modestbranding: '1',
+    rel: '0',
+    playsinline: '1',
+    disablekb: '1',
+    iv_load_policy: '3',
+  });
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+}
+
 export function HaneModAdBanner({ variant = 'compact', className }: Props) {
   const [idx, setIdx] = useState(0);
+  const [muted, setMuted] = useState(true);
   const hasVideos = FEATURED_VIDEOS.length > 0;
   const video = hasVideos ? FEATURED_VIDEOS[idx] : null;
 
   useEffect(() => {
     if (FEATURED_VIDEOS.length < 2) return;
-    const id = setInterval(() => setIdx((i) => (i + 1) % FEATURED_VIDEOS.length), 7000);
+    const id = setInterval(() => setIdx((i) => (i + 1) % FEATURED_VIDEOS.length), 30000);
     return () => clearInterval(id);
   }, []);
 
@@ -55,43 +73,60 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
 
   if (variant === 'compact') {
     return (
-      <a
-        href={targetUrl}
-        target="_blank"
-        rel="noopener sponsored"
+      <div
         className={cn(
-          'group relative block overflow-hidden rounded-lg border border-red-500/40 bg-gradient-to-br from-red-950 via-rose-950 to-black shadow-md transition hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20',
+          'group relative overflow-hidden rounded-lg border border-red-500/40 bg-gradient-to-br from-red-950 via-rose-950 to-black shadow-md transition hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20',
           className,
         )}
       >
-        {/* Thumbnail */}
+        {/* Video — autoplay + mute + loop */}
         {video && (
-          <div className="relative aspect-video w-full overflow-hidden">
-            <img
-              src={`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`}
-              alt={video.title}
+          <div className="relative aspect-video w-full overflow-hidden bg-black">
+            <iframe
+              key={video.id}
+              src={embedUrl(video.id, muted)}
+              title={video.title}
               loading="lazy"
-              referrerPolicy="no-referrer"
-              className="h-full w-full object-cover transition group-hover:scale-105"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="absolute inset-0 h-full w-full"
+              frameBorder={0}
             />
-            {/* Play overlay */}
-            <div className="absolute inset-0 grid place-items-center bg-black/30 transition group-hover:bg-black/20">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-red-600/95 shadow-lg ring-2 ring-white/30 transition group-hover:scale-110">
-                <Play size={16} className="ml-0.5 fill-white text-white" />
-              </span>
-            </div>
-            {/* YouTube badge */}
-            <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+            {/* Tıklama yakalayıcı — iframe üstüne şeffaf katman, video tıklanınca YouTube'a açar */}
+            <a
+              href={targetUrl}
+              target="_blank"
+              rel="noopener sponsored"
+              aria-label={`${video.title} — YouTube'da aç`}
+              className="absolute inset-0 z-10"
+              style={{ pointerEvents: 'auto' }}
+            />
+            {/* YouTube + Sponsor rozetleri */}
+            <span className="pointer-events-none absolute left-1.5 top-1.5 z-20 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-md">
               <Youtube size={9} /> YouTube
             </span>
-            <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
+            <span className="pointer-events-none absolute right-1.5 top-1.5 z-20 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
               Sponsor
             </span>
+            {/* Mute toggle — sağ alt köşe */}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+              aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
+              className="absolute bottom-1.5 right-1.5 z-20 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white/90 backdrop-blur-sm transition hover:bg-black/90 hover:text-white"
+            >
+              {muted ? <VolumeX size={11} /> : <Volume2 size={11} />}
+            </button>
           </div>
         )}
 
         {/* Alt metin */}
-        <div className="p-2.5">
+        <a
+          href={targetUrl}
+          target="_blank"
+          rel="noopener sponsored"
+          className="block p-2.5"
+        >
           {!video && (
             <div className="mb-1.5 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
               <Youtube size={9} /> YouTube
@@ -112,7 +147,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           <div className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded bg-red-600 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition group-hover:bg-red-500">
             <Youtube size={10} /> Abone Ol
           </div>
-        </div>
+        </a>
 
         {/* Indicator dots */}
         {FEATURED_VIDEOS.length > 1 && (
@@ -128,39 +163,54 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
             ))}
           </div>
         )}
-      </a>
+      </div>
     );
   }
 
   // Wide variant — yatay
   return (
-    <a
-      href={targetUrl}
-      target="_blank"
-      rel="noopener sponsored"
+    <div
       className={cn(
         'group relative flex overflow-hidden rounded-xl border border-red-500/40 bg-gradient-to-r from-red-950 via-rose-950 to-black shadow-md transition hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20',
         className,
       )}
     >
       {video && (
-        <div className="relative aspect-video w-40 shrink-0 overflow-hidden sm:w-56">
-          <img
-            src={`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`}
-            alt={video.title}
+        <div className="relative aspect-video w-40 shrink-0 overflow-hidden bg-black sm:w-56">
+          <iframe
+            key={video.id}
+            src={embedUrl(video.id, muted)}
+            title={video.title}
             loading="lazy"
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover transition group-hover:scale-105"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin"
+            className="absolute inset-0 h-full w-full"
+            frameBorder={0}
           />
-          <div className="absolute inset-0 grid place-items-center bg-black/25">
-            <span className="grid h-12 w-12 place-items-center rounded-full bg-red-600/95 shadow-lg ring-2 ring-white/30 transition group-hover:scale-110">
-              <Play size={18} className="ml-0.5 fill-white text-white" />
-            </span>
-          </div>
+          <a
+            href={targetUrl}
+            target="_blank"
+            rel="noopener sponsored"
+            aria-label={`${video.title} — YouTube'da aç`}
+            className="absolute inset-0 z-10"
+          />
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+            aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
+            className="absolute bottom-2 right-2 z-20 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-white/90 backdrop-blur-sm transition hover:bg-black/90 hover:text-white"
+          >
+            {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+          </button>
         </div>
       )}
 
-      <div className="flex flex-1 flex-col justify-center p-4">
+      <a
+        href={targetUrl}
+        target="_blank"
+        rel="noopener sponsored"
+        className="flex flex-1 flex-col justify-center p-4"
+      >
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
             <Youtube size={10} /> YouTube
@@ -176,11 +226,11 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
         <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white transition group-hover:bg-red-500">
           <Youtube size={12} /> Abone Ol
         </span>
-      </div>
+      </a>
 
-      <span className="absolute right-2 top-2 rounded bg-black/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/80 backdrop-blur-sm">
+      <span className="pointer-events-none absolute right-2 top-2 z-20 rounded bg-black/40 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/80 backdrop-blur-sm">
         @hanemodstudio
       </span>
-    </a>
+    </div>
   );
 }

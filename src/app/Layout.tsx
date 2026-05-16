@@ -17,6 +17,8 @@ import {
   Flame,
   GraduationCap,
   BadgeCheck,
+  Gem,
+  Bitcoin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
@@ -49,6 +51,8 @@ const navGroups: NavGroup[] = [
       { to: '/watchlist', label: 'Takip Listem', icon: Star },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
+      { to: '/emtia', label: 'Emtialar', icon: Gem },
+      { to: '/kripto', label: 'Kripto', icon: Bitcoin },
     ],
   },
   {

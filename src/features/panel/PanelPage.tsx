@@ -104,7 +104,7 @@ export function PanelPage() {
     <>
       {/* Live ticker — sayfanın en üstünde */}
       <div className="mb-4">
-        <Ticker stocks={tickerStocks} />
+        <Ticker stocks={tickerStocks} speed={50} />
       </div>
 
       <PageHeader
@@ -215,27 +215,33 @@ export function PanelPage() {
         </div>
       </section>
 
-      {/* Top movers — hisseler */}
-      <section className="mb-5">
-        <div className="mb-2 flex items-center justify-between px-1">
+      {/* Top movers — hisseler (mobilde collapse) */}
+      <details className="group mb-5 lg:open:block lg:!block" open>
+        <summary className="mb-2 flex cursor-pointer items-center justify-between px-1 lg:cursor-default lg:list-none">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
             Günün Hareketleri — Hisseler ({stocks.length})
           </h2>
-          <SourceBadge source={stocksSource} />
-        </div>
+          <div className="flex items-center gap-2">
+            <SourceBadge source={stocksSource} />
+            <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>
+          </div>
+        </summary>
         <TopMovers stocks={stocks} limit={5} />
-      </section>
+      </details>
 
-      {/* Top movers — fonlar */}
-      <section className="mb-5">
-        <div className="mb-2 flex items-center justify-between px-1">
+      {/* Top movers — fonlar (mobilde collapse) */}
+      <details className="group mb-5" open>
+        <summary className="mb-2 flex cursor-pointer items-center justify-between px-1 lg:cursor-default lg:list-none">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
             Günün Hareketleri — Fonlar
           </h2>
-          <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">demo</span>
-        </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">demo</span>
+            <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>
+          </div>
+        </summary>
         <TopFundMovers funds={MOCK_FUNDS} limit={5} period="day" />
-      </section>
+      </details>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* News column (2/3) */}

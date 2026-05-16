@@ -39,7 +39,7 @@ export function RightNewsTicker() {
   const repeated = useMemo(() => [...news, ...news], [news]);
 
   return (
-    <aside className="relative z-10 hidden 2xl:flex 2xl:w-80 2xl:flex-col border-l border-border bg-bg-soft/80 backdrop-blur-md">
+    <aside className="relative z-10 hidden lg:flex lg:w-72 lg:flex-col xl:w-80 border-l border-border bg-bg-soft/80 backdrop-blur-md">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">

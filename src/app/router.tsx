@@ -10,6 +10,8 @@ const NewsPage              = lazy(() => import('@/features/news/NewsPage').then
 const WatchlistPage         = lazy(() => import('@/features/watchlist/WatchlistPage').then((m) => ({ default: m.WatchlistPage })));
 const FundsPage             = lazy(() => import('@/features/funds/FundsPage').then((m) => ({ default: m.FundsPage })));
 const StocksPage            = lazy(() => import('@/features/stocks/StocksPage').then((m) => ({ default: m.StocksPage })));
+const CommoditiesPage       = lazy(() => import('@/features/commodities/CommoditiesPage').then((m) => ({ default: m.CommoditiesPage })));
+const CryptoPage            = lazy(() => import('@/features/crypto/CryptoPage').then((m) => ({ default: m.CryptoPage })));
 const StockDetailPage       = lazy(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
 const FundDetailPage        = lazy(() => import('@/features/fundDetail/FundDetailPage').then((m) => ({ default: m.FundDetailPage })));
 const HistoryPage           = lazy(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })));
@@ -42,6 +44,8 @@ export const router = createBrowserRouter([
       { path: 'watchlist', element: withSuspense(<WatchlistPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },
+      { path: 'emtia', element: withSuspense(<CommoditiesPage />) },
+      { path: 'kripto', element: withSuspense(<CryptoPage />) },
       { path: 'stock/:symbol', element: withSuspense(<StockDetailPage />) },
       { path: 'fund/:code', element: withSuspense(<FundDetailPage />) },
       { path: 'history', element: withSuspense(<HistoryPage />) },

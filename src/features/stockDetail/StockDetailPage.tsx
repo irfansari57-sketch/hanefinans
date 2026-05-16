@@ -23,6 +23,7 @@ import { loadStocks, loadNews } from '@/data/services';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
+import { PositionSizer } from '@/components/domain/PositionSizer';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock, NewsItem } from '@/data/types';
@@ -378,6 +379,18 @@ export function StockDetailPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Pozisyon Hesaplayıcı + Stop/TP */}
+      {technicalAnalysis && (
+        <div className="mb-4">
+          <PositionSizer
+            symbol={sym}
+            currentPrice={stock.price}
+            support={technicalAnalysis.support}
+            resistance={technicalAnalysis.resistance}
+          />
         </div>
       )}
 

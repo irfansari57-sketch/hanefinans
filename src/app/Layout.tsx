@@ -21,6 +21,7 @@ import {
   Bitcoin,
   Wallet,
   Flag,
+  Grid3x3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
@@ -33,6 +34,7 @@ import { YoutubeWidget } from '@/components/domain/YoutubeWidget';
 import { Logo } from '@/components/brand/Logo';
 import { ToastContainer } from '@/components/ui/Toast';
 import { AdBanner } from '@/components/domain/AdBanner';
+import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
@@ -57,6 +59,7 @@ const navGroups: NavGroup[] = [
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/kripto', label: 'Kripto', icon: Bitcoin },
       { to: '/abd', label: 'ABD Borsaları', icon: Flag },
+      { to: '/heatmap', label: 'Heat Map', icon: Grid3x3 },
     ],
   },
   {
@@ -322,6 +325,9 @@ export function Layout() {
 
       {/* Sol alt köşede YouTube eğitim oynatıcı */}
       <YoutubeWidget />
+
+      {/* Geri bildirim widget */}
+      <FeedbackWidget />
 
       {/* Toast notifications */}
       <ToastContainer />

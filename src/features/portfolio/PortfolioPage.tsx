@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  Wallet, Plus, Trash2, RefreshCw, TrendingUp, TrendingDown, ChevronRight, Search,
+  Wallet, Plus, Trash2, RefreshCw, TrendingUp, TrendingDown, ChevronRight, Search, Sparkles, Upload, FileText,
 } from 'lucide-react';
+import { useAuth, isPro } from '@/store/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
@@ -35,7 +36,14 @@ export function PortfolioPage() {
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [toDelete, setToDelete] = useState<PortfolioPosition | null>(null);
+
+  // AI analysis
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
 
   const refresh = async () => {
     if (positions.length === 0) {
@@ -118,12 +126,93 @@ export function PortfolioPage() {
             <button className="btn-secondary" onClick={refresh} disabled={loading || positions.length === 0}>
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
             </button>
+            <button className="btn-secondary" onClick={() => setImportOpen(true)}>
+              <Upload size={14} /> CSV İçe Aktar
+            </button>
             <button className="btn-primary" onClick={() => setAddOpen(true)}>
               <Plus size={14} /> Pozisyon Ekle
             </button>
           </div>
         }
       />
+
+      {/* AI Portföy Analizi */}
+      {positions.length > 0 && (
+        <section className="card mb-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <Sparkles size={14} className="text-warning" /> AI Portföy Analizi
+              <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">PRO</span>
+            </h2>
+            {!aiAnalysis && (
+              <button
+                className="btn-primary"
+                onClick={async () => {
+                  setAiLoading(true);
+                  try {
+                    const r = await fetch('/api/ai/portfolio', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        positions: rows.map((r) => ({
+                          symbol: r.symbol,
+                          name: r.name,
+                          sector: r.sector,
+                          lot: r.lot,
+                          avgPrice: r.avgPrice,
+                          currentPrice: r.currentPrice,
+                          pnlPct: r.pnlPct,
+                          changePct: r.changePct,
+                        })),
+                        totalValue: totals.totalValue,
+                        totalCost: totals.totalCost,
+                        totalPnlPct: totals.totalPnlPct,
+                        dailyPnlPct: totals.dailyPnlPct,
+                      }),
+                    });
+                    const j = await r.json() as { ok: boolean; analysis?: string; error?: string };
+                    if (j.ok && j.analysis) {
+                      setAiAnalysis(j.analysis);
+                      toast.success('Portföy analizi hazır');
+                    } else {
+                      toast.error('AI hatası', j.error);
+                    }
+                  } catch (e) {
+                    toast.error('Ağ hatası', (e as Error).message);
+                  } finally {
+                    setAiLoading(false);
+                  }
+                }}
+                disabled={aiLoading || (!proUser && !!user)}
+                title={!proUser && user ? 'PRO/ELITE üyelere özel' : 'Portföyünü AI ile analiz et'}
+              >
+                {aiLoading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {aiLoading ? 'Analiz üretiliyor…' : 'AI Analizi Üret'}
+              </button>
+            )}
+            {aiAnalysis && (
+              <button className="btn-secondary" onClick={() => setAiAnalysis(null)}>
+                Kapat
+              </button>
+            )}
+          </div>
+
+          {!proUser && user && !aiAnalysis && (
+            <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+              🔒 PRO/ELITE üyelere özel. <Link to="/uyelik" className="underline">Yükselt →</Link>
+            </div>
+          )}
+
+          {aiAnalysis && (
+            <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
+              <p className="whitespace-pre-line text-sm leading-relaxed text-slate-200">{aiAnalysis}</p>
+              <p className="mt-3 text-[10px] text-slate-500">
+                Claude Haiku 4.5 ile üretildi. Yatırım tavsiyesi değildir.
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Özet */}
       {positions.length > 0 && (
@@ -234,6 +323,10 @@ export function PortfolioPage() {
         <AddPositionForm onClose={() => setAddOpen(false)} />
       </Modal>
 
+      <Modal open={importOpen} onClose={() => setImportOpen(false)} title="CSV / Excel ile Toplu İçe Aktar" size="lg">
+        <CsvImportForm onClose={() => setImportOpen(false)} />
+      </Modal>
+
       <ConfirmDialog
         open={!!toDelete}
         title="Pozisyonu sil?"
@@ -268,6 +361,123 @@ function SummaryBox({ label, value, subValue, tone }: {
       <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className="mt-1 text-lg font-bold tabular-nums">{value}</div>
       {subValue && <div className="mt-0.5 text-xs">{subValue}</div>}
+    </div>
+  );
+}
+
+function CsvImportForm({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState('');
+  const [preview, setPreview] = useState<Array<{ symbol: string; lot: number; avgPrice: number; ok: boolean; error?: string }>>([]);
+  const [importing, setImporting] = useState(false);
+
+  const parse = (input: string) => {
+    const lines = input.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return [];
+    // İlk satır header mı kontrol et
+    const first = lines[0].toLowerCase();
+    const hasHeader = /sembol|symbol|hisse|kod/.test(first);
+    const data = hasHeader ? lines.slice(1) : lines;
+    return data.map((line) => {
+      // Tab, virgül, noktalı virgül desteği
+      const parts = line.split(/[\t,;]/).map((p) => p.trim().replace(/^"|"$/g, ''));
+      const [symRaw, lotRaw, priceRaw] = parts;
+      const symbol = (symRaw || '').toUpperCase();
+      const lot = parseFloat((lotRaw || '').replace(',', '.'));
+      const avgPrice = parseFloat((priceRaw || '').replace(',', '.'));
+      let error: string | undefined;
+      if (!symbol) error = 'Sembol boş';
+      else if (!Number.isFinite(lot) || lot <= 0) error = 'Geçersiz lot';
+      else if (!Number.isFinite(avgPrice) || avgPrice <= 0) error = 'Geçersiz fiyat';
+      return { symbol, lot, avgPrice, ok: !error, error };
+    });
+  };
+
+  const onTextChange = (v: string) => {
+    setText(v);
+    setPreview(parse(v));
+  };
+
+  const validRows = preview.filter((r) => r.ok);
+
+  const doImport = async () => {
+    setImporting(true);
+    try {
+      const now = Date.now();
+      const entries = validRows.map((r) => ({
+        symbol: r.symbol,
+        lot: r.lot,
+        avgPrice: r.avgPrice,
+        addedAt: now,
+      }));
+      await db.portfolio.bulkAdd(entries);
+      toast.success(`${entries.length} pozisyon eklendi`, 'CSV içe aktarımı tamamlandı');
+      onClose();
+    } catch (e) {
+      toast.error('İçe aktarım hatası', (e as Error).message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs text-slate-300">
+        <strong className="text-accent">Format:</strong> Her satır bir pozisyon. Sembol, Lot, Ort. Maliyet — virgül, noktalı virgül veya TAB ile ayrılmış. Excel'den copy-paste edebilirsin.
+        <pre className="mt-2 rounded bg-bg-card p-2 text-[10px] text-slate-400 font-mono">
+{`THYAO, 100, 285.50
+GARAN, 500, 142.80
+ASELS	250	75.20`}
+        </pre>
+      </div>
+
+      <Field label="Veriyi yapıştır">
+        <textarea
+          className="input min-h-[140px] font-mono text-xs"
+          placeholder={`Sembol, Lot, Maliyet\nTHYAO, 100, 285.50\nGARAN, 500, 142.80`}
+          value={text}
+          onChange={(e) => onTextChange(e.target.value)}
+          autoFocus
+        />
+      </Field>
+
+      {preview.length > 0 && (
+        <div>
+          <div className="mb-2 text-xs text-slate-400">
+            {validRows.length} geçerli / {preview.length} toplam satır
+          </div>
+          <div className="max-h-60 overflow-y-auto rounded-lg border border-border">
+            <table className="min-w-full text-xs">
+              <thead className="bg-bg-card text-[10px] uppercase text-slate-500">
+                <tr>
+                  <th className="px-2 py-1.5 text-left">Sembol</th>
+                  <th className="px-2 py-1.5 text-right">Lot</th>
+                  <th className="px-2 py-1.5 text-right">Fiyat</th>
+                  <th className="px-2 py-1.5 text-left">Durum</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {preview.map((r, i) => (
+                  <tr key={i} className={r.ok ? '' : 'bg-danger/5'}>
+                    <td className="px-2 py-1 font-mono text-slate-100">{r.symbol || '—'}</td>
+                    <td className="px-2 py-1 text-right tabular-nums text-slate-300">{Number.isFinite(r.lot) ? r.lot : '—'}</td>
+                    <td className="px-2 py-1 text-right tabular-nums text-slate-300">{Number.isFinite(r.avgPrice) ? r.avgPrice.toFixed(2) : '—'}</td>
+                    <td className="px-2 py-1 text-xs">
+                      {r.ok ? <span className="text-success">✓ OK</span> : <span className="text-danger">✗ {r.error}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button className="btn-secondary" onClick={onClose}>İptal</button>
+        <button className="btn-primary" onClick={doImport} disabled={importing || validRows.length === 0}>
+          <FileText size={14} /> {importing ? 'İçe aktarılıyor…' : `${validRows.length} Pozisyon Ekle`}
+        </button>
+      </div>
     </div>
   );
 }

@@ -27,10 +27,10 @@ interface FeaturedVideo {
 /**
  * Öne çıkan videolar — gerçek video ID'lerini buraya yapıştır.
  * Boş bırakılırsa banner kanal logosu + jenerik mesaj gösterir.
+ * 2+ video varsa 7sn'de bir döner; 1 video varsa statik gösterilir.
  */
 export const FEATURED_VIDEOS: FeaturedVideo[] = [
-  // Örnek:
-  // { id: 'dQw4w9WgXcQ', title: 'Mod tanıtım videomuz', hook: 'Yeni: Skyrim büyücü modu' },
+  { id: '3oE3b4Oz148', title: 'FiveM Map | Auto Shop', hook: 'YENİ: FiveM Auto Shop haritası' },
 ];
 
 interface Props {

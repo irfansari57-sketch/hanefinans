@@ -48,7 +48,7 @@ export function RightNewsTicker() {
           </span>
           <div>
             <div className="text-xs font-semibold text-slate-100">Gündem & Haberler</div>
-            <div className="text-[10px] text-slate-500">aşağıdan yukarı akış</div>
+            <div className="text-[10px] text-slate-500">yukarıdan aşağı akış</div>
           </div>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-medium text-success">

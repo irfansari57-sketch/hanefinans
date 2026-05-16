@@ -72,13 +72,16 @@
   animation-play-state: paused;
 }
 
-/* Dikey haber bandı — aşağıdan yukarı sonsuz akış */
-@keyframes news-ticker-up {
-  0%   { transform: translateY(100%); }
-  100% { transform: translateY(-100%); }
+/* Dikey haber bandı — yukarıdan aşağı kesintisiz akış.
+   İçerik [news, news] olarak iki kez render edilir; track yüksekliği = 2x içerik.
+   translateY(-50%) → translateY(0%) loop'u, ikinci kopyanın başlangıç pozisyonu
+   birinci kopyayla aynı olduğu için görsel olarak hiç kesilmeden döner. */
+@keyframes news-ticker-down {
+  0%   { transform: translateY(-50%); }
+  100% { transform: translateY(0%); }
 }
 .news-ticker-track {
-  animation: news-ticker-up linear infinite;
+  animation: news-ticker-down linear infinite;
   will-change: transform;
 }
 .news-ticker-track:hover {

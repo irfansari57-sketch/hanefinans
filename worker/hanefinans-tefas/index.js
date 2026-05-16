@@ -234,6 +234,54 @@ export default {
       });
     }
 
+    // Probe Mynet — fon listesi sayfasının HTML'ini incele
+    if (url.pathname === '/probe-mynet') {
+      const sourceUrl = url.searchParams.get('url') || 'https://finans.mynet.com/borsa/fonlar/';
+      try {
+        const r = await fetch(sourceUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache',
+          },
+        });
+        const html = await r.text();
+        // İlk fund kodu (3 büyük harf) varsa onu yakala
+        const fundMatches = html.match(/\b[A-Z]{3}\b/g)?.slice(0, 20) || [];
+        // Table varlığını kontrol et
+        const hasTable = /<table[\s\S]*?<\/table>/i.test(html);
+        const tableCount = (html.match(/<table/gi) || []).length;
+        // İlk table'ı yakala
+        const firstTable = html.match(/<table[\s\S]*?<\/table>/i)?.[0]?.slice(0, 3000) || null;
+        // <script> içinde JSON var mı (Next.js __NEXT_DATA__ benzeri)
+        const nextDataMatch = html.match(/<script\s+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+        const hasNextData = !!nextDataMatch;
+        const nextDataPreview = nextDataMatch ? nextDataMatch[1].slice(0, 2000) : null;
+
+        return new Response(JSON.stringify({
+          ok: r.ok,
+          status: r.status,
+          finalUrl: r.url,
+          contentType: r.headers.get('content-type'),
+          htmlLength: html.length,
+          htmlPreview: html.slice(0, 3000),
+          fundCodesFound: fundMatches,
+          hasTable,
+          tableCount,
+          firstTablePreview: firstTable,
+          hasNextData,
+          nextDataPreview,
+        }, null, 2), {
+          headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e.message, sourceUrl }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      }
+    }
+
     // Debug endpoint — TEFAS API ham yanıtını göster (tanılama için)
     if (url.pathname === '/debug') {
       const dateStr = url.searchParams.get('date') || fmtDate(getBusinessDay(new Date(Date.now() - 86400_000)));

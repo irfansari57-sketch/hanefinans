@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Bitcoin, RefreshCw, ExternalLink, TrendingUp, TrendingDown, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bitcoin, RefreshCw, ExternalLink, TrendingUp, TrendingDown, Zap, ChevronRight } from 'lucide-react';
+import { findCrypto } from '@/data/cryptoSymbols';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -193,10 +195,14 @@ function CryptoMtCard({ r }: { r: MultiTimeframeResult }) {
   const leanColor = r.bigPlayerLean === 'alıcı' ? 'border-success/40 bg-success/10 text-success'
     : r.bigPlayerLean === 'satıcı' ? 'border-danger/40 bg-danger/10 text-danger'
     : 'border-slate-500/40 bg-slate-500/10 text-slate-300';
+  // r.symbol Yahoo formatında (BTC-USD) — sade ticker'a çevir
+  const ticker = r.symbol.split('-')[0];
   return (
     <div className="rounded-lg border border-border bg-bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h4 className="text-base font-bold text-slate-100">{r.label}</h4>
+        <Link to={`/crypto/${ticker}`} className="text-base font-bold text-slate-100 hover:text-accent inline-flex items-center gap-1">
+          {r.label} <ChevronRight size={14} />
+        </Link>
         <div className="text-right">
           <div className="text-xl font-bold tabular-nums text-slate-100">
             ${r.price.toLocaleString('en-US', { maximumFractionDigits: r.price < 100 ? 2 : 0 })}
@@ -289,19 +295,17 @@ function FearGreedBox({ fg }: { fg: FearGreedSnapshot }) {
 function MajorCryptoCard({ crypto }: { crypto: CryptoPrice }) {
   const change = crypto.change24h;
   const tone = change >= 0 ? 'text-success' : 'text-danger';
-  return (
-    <a
-      href={`https://www.coingecko.com/en/coins/${crypto.id}`}
-      target="_blank"
-      rel="noreferrer"
-      className="block rounded-lg border border-border bg-bg-card p-3 transition hover:border-accent/40 hover:-translate-y-0.5"
-    >
+  const supported = findCrypto(crypto.symbol);
+  const inner = (
+    <>
       <div className="flex items-center justify-between">
         <div>
           <span className="font-mono font-bold text-warning">{crypto.symbol}</span>
           <span className="ml-2 text-xs text-slate-400">{crypto.name}</span>
         </div>
-        <ExternalLink size={11} className="text-slate-500" />
+        {supported
+          ? <ChevronRight size={12} className="text-slate-500" />
+          : <ExternalLink size={11} className="text-slate-500" />}
       </div>
       <div className="mt-1.5 flex items-baseline justify-between">
         <span className="text-lg font-bold tabular-nums text-slate-100">
@@ -311,6 +315,26 @@ function MajorCryptoCard({ crypto }: { crypto: CryptoPrice }) {
           {change >= 0 ? '+' : ''}{change.toFixed(2)}%
         </span>
       </div>
+    </>
+  );
+  if (supported) {
+    return (
+      <Link
+        to={`/crypto/${supported.symbol}`}
+        className="block rounded-lg border border-border bg-bg-card p-3 transition hover:border-accent/40 hover:-translate-y-0.5"
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <a
+      href={`https://www.coingecko.com/en/coins/${crypto.id}`}
+      target="_blank"
+      rel="noreferrer"
+      className="block rounded-lg border border-border bg-bg-card p-3 transition hover:border-accent/40 hover:-translate-y-0.5"
+    >
+      {inner}
     </a>
   );
 }
@@ -328,23 +352,35 @@ function MoversList({ title, data, tone, icon: Icon }: {
         <Icon size={14} /> {title}
       </h2>
       <div className="space-y-1">
-        {data.map((a, i) => (
-          <a
-            key={a.id}
-            href={`https://www.coingecko.com/en/coins/${a.id}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-bg-soft"
-          >
-            <span className="w-6 text-slate-500">{i + 1}</span>
-            <span className="font-mono font-semibold text-warning">{a.symbol}</span>
-            <span className="flex-1 truncate text-slate-400">{a.name}</span>
-            <span className="tabular-nums text-slate-300">${a.priceUsd.toFixed(a.priceUsd < 1 ? 4 : 2)}</span>
-            <span className={cn('tabular-nums font-semibold w-16 text-right', a.change24h >= 0 ? 'text-success' : 'text-danger')}>
-              {a.change24h >= 0 ? '+' : ''}{a.change24h.toFixed(2)}%
-            </span>
-          </a>
-        ))}
+        {data.map((a, i) => {
+          const supported = findCrypto(a.symbol);
+          const rowInner = (
+            <>
+              <span className="w-6 text-slate-500">{i + 1}</span>
+              <span className="font-mono font-semibold text-warning">{a.symbol}</span>
+              <span className="flex-1 truncate text-slate-400">{a.name}</span>
+              <span className="tabular-nums text-slate-300">${a.priceUsd.toFixed(a.priceUsd < 1 ? 4 : 2)}</span>
+              <span className={cn('tabular-nums font-semibold w-16 text-right', a.change24h >= 0 ? 'text-success' : 'text-danger')}>
+                {a.change24h >= 0 ? '+' : ''}{a.change24h.toFixed(2)}%
+              </span>
+            </>
+          );
+          return supported ? (
+            <Link key={a.id} to={`/crypto/${supported.symbol}`} className="flex items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-bg-soft">
+              {rowInner}
+            </Link>
+          ) : (
+            <a
+              key={a.id}
+              href={`https://www.coingecko.com/en/coins/${a.id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-bg-soft"
+            >
+              {rowInner}
+            </a>
+          );
+        })}
       </div>
     </section>
   );

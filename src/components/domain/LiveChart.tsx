@@ -12,6 +12,8 @@ interface LiveChartProps {
   height?: number;
   /** TradingView dış link için kullanılır */
   tradingViewSymbol?: string;
+  /** BIST `.IS` suffix uygulanmasın (ABD hisseleri, kripto, emtia için false) */
+  bistSuffix?: boolean;
 }
 
 const RANGES: Array<{ key: Range; label: string; interval: '5m' | '15m' | '60m' | '1d' | '1wk' }> = [
@@ -24,7 +26,7 @@ const RANGES: Array<{ key: Range; label: string; interval: '5m' | '15m' | '60m' 
   { key: '5y',  label: '5Y',  interval: '1wk' },
 ];
 
-export function LiveChart({ symbol, height = 480, tradingViewSymbol }: LiveChartProps) {
+export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix = true }: LiveChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -124,7 +126,7 @@ export function LiveChart({ symbol, height = 480, tradingViewSymbol }: LiveChart
     setError(null);
 
     const rangeConfig = RANGES.find((r) => r.key === range)!;
-    fetchHistoricalYahoo(symbol, rangeConfig.key, rangeConfig.interval).then((series) => {
+    fetchHistoricalYahoo(symbol, rangeConfig.key, rangeConfig.interval, { bistSuffix }).then((series) => {
       if (!alive) return;
       setLoading(false);
       if (!series || series.bars.length === 0) {
@@ -177,7 +179,7 @@ export function LiveChart({ symbol, height = 480, tradingViewSymbol }: LiveChart
     });
 
     return () => { alive = false; };
-  }, [symbol, range, chartType]);
+  }, [symbol, range, chartType, bistSuffix]);
 
   const tvHref = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tradingViewSymbol ?? `BIST:${symbol}`)}`;
 

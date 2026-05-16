@@ -18,7 +18,7 @@ import { AlertButton } from '@/components/domain/AlertButton';
 import { NoteButton } from '@/components/domain/NoteButton';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { fetchHistoricalYahoo, computePeriodReturns, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
+import { fetchHistoricalYahoo, fetchIndexYahoo, computePeriodReturns, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
 import { loadStocks, loadNews } from '@/data/services';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
@@ -28,6 +28,7 @@ import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock, NewsItem } from '@/data/types';
 import { MOCK_STOCKS } from '@/data/mock';
+import { findUsStock } from '@/data/usStocks';
 import { formatMoney, formatNumber, formatCompact } from '@/lib/format';
 import { formatRelative, formatDateTR } from '@/lib/date';
 import { cn } from '@/lib/utils';
@@ -41,7 +42,24 @@ export function StockDetailPage() {
   const watchlistRemove = useWatchlist((s) => s.remove);
   const watchlistHas = useWatchlist((s) => s.has(sym));
 
-  const [stock, setStock] = useState<Stock | null>(() => MOCK_STOCKS.find((s) => s.symbol === sym) ?? null);
+  const usMeta = findUsStock(sym);
+  const isUs = !!usMeta;
+  const initialBistStock = !isUs ? (MOCK_STOCKS.find((s) => s.symbol === sym) ?? null) : null;
+
+  const [stock, setStock] = useState<Stock | null>(() => {
+    if (initialBistStock) return initialBistStock;
+    if (usMeta) {
+      return {
+        symbol: usMeta.symbol,
+        name: usMeta.name,
+        sector: usMeta.sector,
+        price: 0,
+        changePct: 0,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return null;
+  });
   const [historical, setHistorical] = useState<HistoricalSeries | null>(null);
   const [returns, setReturns] = useState<PeriodReturnsT>({});
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -62,14 +80,26 @@ export function StockDetailPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    // ABD hisseleri için `.IS` suffix kapalı + Yahoo quote direkt
+    const fetchQuote = isUs
+      ? fetchIndexYahoo(sym).then((r) => r ? [{
+          symbol: sym,
+          name: usMeta?.name ?? sym,
+          sector: usMeta?.sector,
+          price: r.value,
+          changePct: r.changePct,
+          updatedAt: new Date().toISOString(),
+        } satisfies Stock] : [])
+      : loadStocks([sym]).then((r) => r.data);
+
     Promise.all([
-      loadStocks([sym]),
-      fetchHistoricalYahoo(sym, '1y', '1d'),
+      fetchQuote,
+      fetchHistoricalYahoo(sym, '1y', '1d', { bistSuffix: !isUs }),
       loadNews({ max: 30 }),
-      fetchHistoricalYahoo(sym, '1mo', '60m'),
+      fetchHistoricalYahoo(sym, '1mo', '60m', { bistSuffix: !isUs }),
     ]).then(([liveStocks, hist, allNews, hist1h]) => {
       if (!alive) return;
-      const found = liveStocks.data.find((s) => s.symbol === sym);
+      const found = liveStocks.find((s) => s.symbol === sym);
       if (found) setStock(found);
       if (hist) {
         setHistorical(hist);
@@ -236,14 +266,18 @@ export function StockDetailPage() {
                   {stock.sector}
                 </span>
               )}
-              <span className="rounded-md bg-bg-soft px-2 py-0.5 text-xs text-slate-400">BIST</span>
+              <span className="rounded-md bg-bg-soft px-2 py-0.5 text-xs text-slate-400">
+                {isUs ? (usMeta?.exchange ?? 'NYSE/NASDAQ') : 'BIST'}
+              </span>
             </div>
             <p className="mt-1 text-lg text-slate-300">{stock.name}</p>
           </div>
           <div className="text-right">
             <div className="flex items-baseline justify-end gap-3">
               <span className="text-4xl font-bold tabular-nums text-slate-100">
-                {formatMoney(stock.price)}
+                {isUs
+                  ? `$${stock.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+                  : formatMoney(stock.price)}
               </span>
               {sparklineData.length > 1 && (
                 <Sparkline
@@ -277,7 +311,7 @@ export function StockDetailPage() {
           Canlı Grafik <span className="text-slate-500">(Yahoo Finance + lightweight-charts)</span>
         </h2>
         <Suspense fallback={<Skeleton variant="rect" className="w-full" height={520} />}>
-          <LiveChart symbol={sym} height={520} />
+          <LiveChart symbol={sym} height={520} bistSuffix={!isUs} />
         </Suspense>
       </div>
 
@@ -288,7 +322,7 @@ export function StockDetailPage() {
             <Activity size={14} className="text-accent" /> Çoklu Zaman Dilimi Yön Analizi
             <span className="ml-auto text-[10px] text-slate-500">1H / 4H / 1D</span>
           </h2>
-          <MultiTimeframeCard r={mtResult} currency="₺" hideHeader />
+          <MultiTimeframeCard r={mtResult} currency={isUs ? '$' : '₺'} hideHeader />
         </div>
       )}
 
@@ -339,7 +373,7 @@ export function StockDetailPage() {
             <div className="rounded-lg border border-success/30 bg-success/5 p-2.5">
               <div className="text-[10px] uppercase tracking-wider text-success">Destek</div>
               <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
-                {technicalAnalysis.support.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺
+                {isUs ? `$${technicalAnalysis.support.toFixed(2)}` : `${technicalAnalysis.support.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺`}
               </div>
               <div className="text-[10px] text-slate-400">
                 %{(((technicalAnalysis.cur - technicalAnalysis.support) / technicalAnalysis.cur) * 100).toFixed(2)} uzakta
@@ -348,7 +382,7 @@ export function StockDetailPage() {
             <div className="rounded-lg border border-danger/30 bg-danger/5 p-2.5">
               <div className="text-[10px] uppercase tracking-wider text-danger">Direnç</div>
               <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
-                {technicalAnalysis.resistance.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺
+                {isUs ? `$${technicalAnalysis.resistance.toFixed(2)}` : `${technicalAnalysis.resistance.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺`}
               </div>
               <div className="text-[10px] text-slate-400">
                 %{(((technicalAnalysis.resistance - technicalAnalysis.cur) / technicalAnalysis.cur) * 100).toFixed(2)} uzakta
@@ -358,7 +392,9 @@ export function StockDetailPage() {
 
           {/* EMA Pozisyonları */}
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            EMA Pozisyonları {technicalAnalysis.ma8 != null && <span className="text-accent">• MA8: {technicalAnalysis.ma8.toFixed(2)}₺</span>}
+            EMA Pozisyonları {technicalAnalysis.ma8 != null && (
+              <span className="text-accent">• MA8: {isUs ? `$${technicalAnalysis.ma8.toFixed(2)}` : `${technicalAnalysis.ma8.toFixed(2)}₺`}</span>
+            )}
           </h3>
           <div className="grid gap-2 grid-cols-3 lg:grid-cols-6">
             {technicalAnalysis.emas.map((e) => {
@@ -382,8 +418,8 @@ export function StockDetailPage() {
         </div>
       )}
 
-      {/* Pozisyon Hesaplayıcı + Stop/TP */}
-      {technicalAnalysis && (
+      {/* Pozisyon Hesaplayıcı + Stop/TP — BIST için TL bazlı; US için gizli */}
+      {technicalAnalysis && !isUs && (
         <div className="mb-4">
           <PositionSizer
             symbol={sym}
@@ -455,12 +491,16 @@ export function StockDetailPage() {
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
             label="52 Hafta En Yüksek"
-            value={historical.meta.fiftyTwoWeekHigh ? formatMoney(historical.meta.fiftyTwoWeekHigh) : '—'}
+            value={historical.meta.fiftyTwoWeekHigh
+              ? (isUs ? `$${historical.meta.fiftyTwoWeekHigh.toFixed(2)}` : formatMoney(historical.meta.fiftyTwoWeekHigh))
+              : '—'}
             tone="success"
           />
           <Stat
             label="52 Hafta En Düşük"
-            value={historical.meta.fiftyTwoWeekLow ? formatMoney(historical.meta.fiftyTwoWeekLow) : '—'}
+            value={historical.meta.fiftyTwoWeekLow
+              ? (isUs ? `$${historical.meta.fiftyTwoWeekLow.toFixed(2)}` : formatMoney(historical.meta.fiftyTwoWeekLow))
+              : '—'}
             tone="danger"
           />
           <Stat
@@ -570,51 +610,94 @@ export function StockDetailPage() {
           <div className="card p-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-300">Dış Bağlantılar</h3>
             <div className="space-y-1.5">
-              <a
-                href={`https://www.tradingview.com/symbols/BIST-${sym}/`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-              >
-                <span>TradingView</span>
-                <ExternalLink size={11} />
-              </a>
-              <a
-                href={`https://www.kap.org.tr/tr/sirket-bilgileri/ozet/${sym}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-              >
-                <span>KAP Şirket Bilgileri</span>
-                <ExternalLink size={11} />
-              </a>
-              <a
-                href={`https://finans.mynet.com/borsa/hisseler/${sym.toLowerCase()}/`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-              >
-                <span>Mynet Finans</span>
-                <ExternalLink size={11} />
-              </a>
-              <a
-                href={`https://fintables.com/sirketler/${sym}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-              >
-                <span>Fintables (Detay)</span>
-                <ExternalLink size={11} />
-              </a>
-              <a
-                href={`https://bigpara.hurriyet.com.tr/borsa/hisse-detayi/${sym}/`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-              >
-                <span>BigPara</span>
-                <ExternalLink size={11} />
-              </a>
+              {isUs ? (
+                <>
+                  <a
+                    href={`https://www.tradingview.com/symbols/${usMeta?.exchange ?? 'NASDAQ'}-${sym}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>TradingView</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={`https://finance.yahoo.com/quote/${sym}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>Yahoo Finance</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={`https://seekingalpha.com/symbol/${sym}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>Seeking Alpha</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={`https://www.google.com/finance/quote/${sym}:${usMeta?.exchange ?? 'NASDAQ'}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>Google Finance</span>
+                    <ExternalLink size={11} />
+                  </a>
+                </>
+              ) : (
+                <>
+                  <a
+                    href={`https://www.tradingview.com/symbols/BIST-${sym}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>TradingView</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={`https://www.kap.org.tr/tr/sirket-bilgileri/ozet/${sym}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>KAP Şirket Bilgileri</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={`https://finans.mynet.com/borsa/hisseler/${sym.toLowerCase()}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>Mynet Finans</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={`https://fintables.com/sirketler/${sym}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>Fintables (Detay)</span>
+                    <ExternalLink size={11} />
+                  </a>
+                  <a
+                    href={`https://bigpara.hurriyet.com.tr/borsa/hisse-detayi/${sym}/`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                  >
+                    <span>BigPara</span>
+                    <ExternalLink size={11} />
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </aside>

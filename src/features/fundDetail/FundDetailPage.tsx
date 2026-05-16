@@ -12,7 +12,6 @@ import { formatDateTR, formatRelative } from '@/lib/date';
 import { useEffect, useState, useMemo } from 'react';
 import { fetchTefasFund, isTefasWorkerConfigured, type TefasFundDetail } from '@/data/api/tefasWorker';
 import { fetchTefasFundByCode, isTefasGithubConfigured, type TefasFundData } from '@/data/api/tefasGithub';
-import { MOCK_FUNDS } from '@/data/mockFunds';
 import { cn } from '@/lib/utils';
 
 export function FundDetailPage() {
@@ -25,27 +24,31 @@ export function FundDetailPage() {
     return list.find((f) => f.code === fundCode) ?? null;
   }, [fundCode]);
 
-  // Watchlist'te değilse mock listesinden sentetik bir entry üret —
+  const [liveData, setLiveData] = useState<TefasFundDetail | null>(null);
+  const [githubData, setGithubData] = useState<TefasFundData | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  // Watchlist'te değilse canlı feed'den sentetik bir entry üret —
   // detay sayfası yine de açılsın (yükleniyor ekranında takılmasın)
   const fund = useMemo<FundEntry | null | undefined>(() => {
     if (watchedFund === undefined) return undefined; // hala yükleniyor
     if (watchedFund) return watchedFund;
-    const m = MOCK_FUNDS.find((f) => f.code === fundCode);
-    if (!m) return null; // gerçekten yok
-    return {
-      code: m.code,
-      name: m.name,
-      category: m.category,
-      addedAt: Date.now(),
-    } as FundEntry;
-  }, [watchedFund, fundCode]);
+    if (githubData) {
+      return {
+        code: githubData.code,
+        name: githubData.name,
+        category: githubData.category,
+        addedAt: Date.now(),
+      } as FundEntry;
+    }
+    if (liveLoading) return undefined; // feed yüklenirken bekle
+    if (!isTefasGithubConfigured() && !isTefasWorkerConfigured()) return null;
+    // Feed konfigüre ama bu fon yok
+    return null;
+  }, [watchedFund, githubData, liveLoading]);
 
   const notes = useLiveQuery(() => notesRepo.bySymbol(fundCode), [fundCode]) ?? [];
   const activity = useLiveQuery(() => activityRepo.list({ symbol: fundCode, limit: 20 }), [fundCode]) ?? [];
-
-  const [liveData, setLiveData] = useState<TefasFundDetail | null>(null);
-  const [githubData, setGithubData] = useState<TefasFundData | null>(null);
-  const [liveLoading, setLiveLoading] = useState(false);
 
   useEffect(() => {
     activityRepo.log({ type: 'page-view', symbol: fundCode, detail: `/fund/${fundCode}` }).catch(() => {});

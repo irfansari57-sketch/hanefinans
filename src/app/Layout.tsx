@@ -34,6 +34,7 @@ import { YoutubeWidget } from '@/components/domain/YoutubeWidget';
 import { Logo } from '@/components/brand/Logo';
 import { ToastContainer } from '@/components/ui/Toast';
 import { AdBanner } from '@/components/domain/AdBanner';
+import { HaneModAdBanner } from '@/components/domain/HaneModAdBanner';
 import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
@@ -169,7 +170,15 @@ export function Layout() {
             </div>
           ))}
 
-          {/* Reklam — menü başlıklarının hemen altında (PRO/ELITE'de gizli) */}
+          {/* Hane Mod Studio YouTube — kendi markamızın kanalı, herkese görünür */}
+          <div className="pt-3">
+            <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+              Resmi YouTube
+            </div>
+            <HaneModAdBanner variant="compact" />
+          </div>
+
+          {/* Affiliate sponsor reklamı — PRO/ELITE'de gizli */}
           {!isPro(user) && (
             <div className="pt-3">
               <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">

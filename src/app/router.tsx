@@ -18,6 +18,7 @@ const HeatMapPage           = lazy(() => import('@/features/heatmap/HeatMapPage'
 const CommodityDetailPage   = lazy(() => import('@/features/commodityDetail/CommodityDetailPage').then((m) => ({ default: m.CommodityDetailPage })));
 const StockDetailPage       = lazy(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
 const FundDetailPage        = lazy(() => import('@/features/fundDetail/FundDetailPage').then((m) => ({ default: m.FundDetailPage })));
+const CryptoDetailPage      = lazy(() => import('@/features/cryptoDetail/CryptoDetailPage').then((m) => ({ default: m.CryptoDetailPage })));
 const HistoryPage           = lazy(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })));
 const MorningReportPage     = lazy(() => import('@/features/morning/MorningReportPage').then((m) => ({ default: m.MorningReportPage })));
 const RecommendationsPage   = lazy(() => import('@/features/recommendations/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
@@ -27,6 +28,7 @@ const SmartSearchPage       = lazy(() => import('@/features/smartSearch/SmartSea
 const FinancialLiteracyPage = lazy(() => import('@/features/literacy/FinancialLiteracyPage').then((m) => ({ default: m.FinancialLiteracyPage })));
 const MembershipPage        = lazy(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
 const SettingsPage          = lazy(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const AdBannerPreviewPage   = lazy(() => import('@/features/preview/AdBannerPreviewPage').then((m) => ({ default: m.AdBannerPreviewPage })));
 
 const withSuspense = (node: React.ReactNode) => (
   <Suspense fallback={<PageSkeleton />}>{node}</Suspense>
@@ -51,6 +53,8 @@ export const router = createBrowserRouter([
       { path: 'emtia', element: withSuspense(<CommoditiesPage />) },
       { path: 'emtia/:symbol', element: withSuspense(<CommodityDetailPage />) },
       { path: 'kripto', element: withSuspense(<CryptoPage />) },
+      { path: 'crypto/:symbol', element: withSuspense(<CryptoDetailPage />) },
+      { path: 'kripto/:symbol', element: withSuspense(<CryptoDetailPage />) },
       { path: 'portfoy', element: withSuspense(<PortfolioPage />) },
       { path: 'abd', element: withSuspense(<UsMarketsPage />) },
       { path: 'heatmap', element: withSuspense(<HeatMapPage />) },
@@ -59,6 +63,7 @@ export const router = createBrowserRouter([
       { path: 'history', element: withSuspense(<HistoryPage />) },
       { path: 'smart-search', element: withSuspense(<SmartSearchPage />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
+      { path: 'preview/ad-banner', element: withSuspense(<AdBannerPreviewPage />) },
       { path: 'auth/login', element: withSuspense(<LoginPage />) },
       { path: 'auth/signup', element: withSuspense(<SignupPage />) },
       { path: '*', element: <Navigate to="/panel" replace /> },

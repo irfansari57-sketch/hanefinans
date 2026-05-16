@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Flag, RefreshCw, ExternalLink, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Flag, RefreshCw, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo, fetchHistoricalYahoo } from '@/data/api/yahoo';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { ema, type OHLC } from '@/lib/indicators';
+import { US_STOCKS } from '@/data/usStocks';
 import { cn } from '@/lib/utils';
 
 const INDICES: { ySym: string; label: string }[] = [
@@ -15,34 +17,11 @@ const INDICES: { ySym: string; label: string }[] = [
   { ySym: '^RUT',  label: 'Russell 2000' },
 ];
 
-// Top 20 promising US stocks (büyük teknoloji + büyüme + sektör liderleri)
-const US_STOCKS: { sym: string; name: string; sector: string }[] = [
-  { sym: 'NVDA',  name: 'NVIDIA',          sector: 'AI / Chips' },
-  { sym: 'AAPL',  name: 'Apple',           sector: 'Teknoloji' },
-  { sym: 'MSFT',  name: 'Microsoft',       sector: 'Bulut / AI' },
-  { sym: 'GOOGL', name: 'Alphabet (Google)', sector: 'AI / Reklam' },
-  { sym: 'AMZN',  name: 'Amazon',          sector: 'E-ticaret / Bulut' },
-  { sym: 'META',  name: 'Meta Platforms',  sector: 'Sosyal Medya' },
-  { sym: 'TSLA',  name: 'Tesla',           sector: 'Elektrikli Araç' },
-  { sym: 'AMD',   name: 'AMD',             sector: 'Chips' },
-  { sym: 'AVGO',  name: 'Broadcom',        sector: 'Chips' },
-  { sym: 'BRK-B', name: 'Berkshire Hathaway', sector: 'Yatırım' },
-  { sym: 'JPM',   name: 'JPMorgan Chase',  sector: 'Bankacılık' },
-  { sym: 'V',     name: 'Visa',            sector: 'Ödeme Sistemi' },
-  { sym: 'MA',    name: 'Mastercard',      sector: 'Ödeme Sistemi' },
-  { sym: 'UNH',   name: 'UnitedHealth',    sector: 'Sağlık' },
-  { sym: 'LLY',   name: 'Eli Lilly',       sector: 'İlaç' },
-  { sym: 'NFLX',  name: 'Netflix',         sector: 'Medya' },
-  { sym: 'DIS',   name: 'Walt Disney',     sector: 'Medya' },
-  { sym: 'WMT',   name: 'Walmart',         sector: 'Perakende' },
-  { sym: 'COST',  name: 'Costco',          sector: 'Perakende' },
-  { sym: 'XOM',   name: 'Exxon Mobil',     sector: 'Enerji' },
-];
-
 interface UsStockRec {
   sym: string;
   name: string;
   sector: string;
+  exchange: 'NYSE' | 'NASDAQ';
   price: number;
   changePct: number;
   trend1h: TimeframeAnalysis | null;
@@ -94,7 +73,7 @@ export function UsMarketsPage() {
       setIndexResults(indexRes);
 
       // Hisseler — fiyat ve multi-TF
-      const stockPromises = US_STOCKS.map(async ({ sym, name, sector }) => {
+      const stockPromises = US_STOCKS.map(async ({ symbol: sym, name, sector, exchange }) => {
         const [spot, hist1h, hist1d] = await Promise.all([
           fetchIndexYahoo(sym),
           fetchHistoricalYahoo(sym, '1mo', '60m', { bistSuffix: false }),
@@ -125,7 +104,7 @@ export function UsMarketsPage() {
         const shortCount = [tf1h, tf4h, tf1d].filter((t) => t?.trend === 'short').length;
         const longScore = longCount * 3 - shortCount * 2 + changePct * 0.5;
 
-        return { sym, name, sector, price, changePct, trend1h: tf1h, trend4h: tf4h, trend1d: tf1d, emas, longScore };
+        return { sym, name, sector, exchange, price, changePct, trend1h: tf1h, trend4h: tf4h, trend1d: tf1d, emas, longScore };
       });
       const stockRes = await Promise.all(stockPromises);
       stockRes.sort((a, b) => b.longScore - a.longScore);
@@ -234,7 +213,7 @@ function UsStockCard({ rec, rank }: { rec: UsStockRec; rank: number }) {
   const tone = rec.changePct >= 0 ? 'text-success' : 'text-danger';
   const sign = rec.changePct >= 0 ? '+' : '';
   return (
-    <div className="rounded-lg border border-border bg-bg-card p-4">
+    <Link to={`/stock/${rec.sym}`} className="block rounded-lg border border-border bg-bg-card p-4 transition hover:border-accent/40 hover:-translate-y-0.5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-accent/30 bg-accent/10 text-sm font-bold text-accent">
@@ -242,18 +221,13 @@ function UsStockCard({ rec, rank }: { rec: UsStockRec; rank: number }) {
           </span>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <a
-                href={`https://finance.yahoo.com/quote/${encodeURIComponent(rec.sym)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono text-lg font-bold text-accent hover:underline inline-flex items-center gap-1"
-              >
-                {rec.sym} <ExternalLink size={12} />
-              </a>
+              <span className="font-mono text-lg font-bold text-accent inline-flex items-center gap-1">
+                {rec.sym} <ChevronRight size={12} />
+              </span>
               <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[10px] text-slate-400">
                 {rec.sector}
               </span>
-              <span className="rounded bg-bg-soft px-1.5 py-0.5 text-[10px] text-slate-400">NYSE/NASDAQ</span>
+              <span className="rounded bg-bg-soft px-1.5 py-0.5 text-[10px] text-slate-400">{rec.exchange}</span>
             </div>
             <p className="mt-0.5 text-sm text-slate-300">{rec.name}</p>
           </div>
@@ -295,7 +269,7 @@ function UsStockCard({ rec, rank }: { rec: UsStockRec; rank: number }) {
           </div>
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 

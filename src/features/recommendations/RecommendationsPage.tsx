@@ -14,7 +14,7 @@ import { fetchHistoricalYahoo } from '@/data/api/yahoo';
 import { ema } from '@/lib/indicators';
 import { analyzeTimeframe, aggregateTo4h, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MOCK_STOCKS } from '@/data/mock';
-import { MOCK_FUNDS } from '@/data/mockFunds';
+import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import type { Stock, FundPerformance } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { useWatchlist } from '@/store/watchlist';
@@ -68,6 +68,8 @@ function detect5mLong(closes: number[]): { isLong: boolean; score: number } {
 export function RecommendationsPage() {
   const [tab, setTab] = useState<'scalp' | 'funds'>('scalp');
   const [recs, setRecs] = useState<ScalpRec[]>([]);
+  const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
+  const [fundsConfigured, setFundsConfigured] = useState(true);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
 
@@ -162,11 +164,22 @@ export function RecommendationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const topFunds = useMemo(() => {
-    return [...MOCK_FUNDS]
-      .filter((f) => Number.isFinite(f.year))
-      .sort((a, b) => (b.year as number) - (a.year as number))
-      .slice(0, 10);
+  useEffect(() => {
+    let alive = true;
+    loadFundsAsPerformance().then((r) => {
+      if (!alive) return;
+      if (!r) {
+        setFundsConfigured(false);
+        setTopFunds([]);
+        return;
+      }
+      const top = [...r.funds]
+        .filter((f) => Number.isFinite(f.year))
+        .sort((a, b) => (b.year as number) - (a.year as number))
+        .slice(0, 10);
+      setTopFunds(top);
+    });
+    return () => { alive = false; };
   }, []);
 
   return (
@@ -232,12 +245,25 @@ export function RecommendationsPage() {
 
       {tab === 'funds' && (
         <div className="space-y-3">
-          <p className="text-xs text-slate-500">
-            Yıllık getirisi en yüksek 10 fon. Detay için TEFAS/Fintables linklerini kullan.
-          </p>
-          {topFunds.map((fund, i) => (
-            <FundRecCard key={fund.code} fund={fund} rank={i + 1} />
-          ))}
+          {!fundsConfigured ? (
+            <div className="card border-warning/40 bg-warning/5 p-5 text-sm text-slate-300">
+              <strong className="text-warning">TEFAS canlı verisi yapılandırılmadı.</strong>
+              <p className="mt-1 text-xs text-slate-400">
+                Bu sekmede gerçek fon verisi göstermek için <Link to="/funds" className="text-accent underline">Fonlar</Link> sayfasındaki kurulum yönergesini takip et.
+              </p>
+            </div>
+          ) : topFunds.length === 0 ? (
+            <div className="card p-6 text-center text-xs text-slate-500">Fon verisi yükleniyor…</div>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500">
+                Yıllık getirisi en yüksek 10 fon (canlı TEFAS). Detay için TEFAS/Fintables linklerini kullan.
+              </p>
+              {topFunds.map((fund, i) => (
+                <FundRecCard key={fund.code} fund={fund} rank={i + 1} />
+              ))}
+            </>
+          )}
         </div>
       )}
     </>

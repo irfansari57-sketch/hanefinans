@@ -14,9 +14,9 @@ import { LiveBadge } from '@/components/domain/LiveBadge';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
 } from '@/data/mock';
-import { MOCK_FUNDS } from '@/data/mockFunds';
+import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches } from '@/data/services';
-import type { MacroIndicator, NewsItem, Stock, SentimentMention } from '@/data/types';
+import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { daysUntil, formatDateShort } from '@/lib/date';
@@ -48,6 +48,7 @@ export function PanelPage() {
   const [stocksSource, setStocksSource] = useState<'live' | 'mock' | 'mixed'>('mock');
   const [sentiment, setSentiment] = useState<SentimentMention[]>(MOCK_SENTIMENT);
   const [sentimentSource, setSentimentSource] = useState<'live' | 'mock' | 'derived'>('mock');
+  const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -55,11 +56,12 @@ export function PanelPage() {
     if (force) clearServiceCaches();
     setRefreshing(true);
     try {
-      const [s, m, n, se] = await Promise.all([
+      const [s, m, n, se, fr] = await Promise.all([
         loadStocks(allSymbols),
         loadMacroAll(),
         loadNews({ max: 8 }),
         loadSentiment(),
+        loadFundsAsPerformance(),
       ]);
       setStocks(s.data);
       setStocksSource(s.source);
@@ -68,6 +70,8 @@ export function PanelPage() {
       setNewsSource(n.source);
       setSentiment(se.data);
       setSentimentSource(se.source);
+      // Tüm fonları geçir; TopFundMovers içinde top + bottom hesaplar
+      setTopFunds(fr ? fr.funds : []);
       setUpdatedAt(Date.now());
     } finally {
       setRefreshing(false);
@@ -229,19 +233,21 @@ export function PanelPage() {
         <TopMovers stocks={stocks} limit={5} />
       </details>
 
-      {/* Top movers — fonlar (mobilde collapse) */}
-      <details className="group mb-5" open>
-        <summary className="mb-2 flex cursor-pointer items-center justify-between px-1 lg:cursor-default lg:list-none">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Günün Hareketleri — Fonlar
-          </h2>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">demo</span>
-            <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>
-          </div>
-        </summary>
-        <TopFundMovers funds={MOCK_FUNDS} limit={5} period="day" />
-      </details>
+      {/* Top movers — fonlar — sadece canlı feed bağlıyken göster */}
+      {topFunds.length > 0 && (
+        <details className="group mb-5" open>
+          <summary className="mb-2 flex cursor-pointer items-center justify-between px-1 lg:cursor-default lg:list-none">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+              Aylık En İyi Fonlar
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
+              <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>
+            </div>
+          </summary>
+          <TopFundMovers funds={topFunds} limit={5} period="month" />
+        </details>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* News column (2/3) */}

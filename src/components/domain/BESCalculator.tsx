@@ -1,27 +1,25 @@
 import { useMemo, useState } from 'react';
-import { Calculator, TrendingUp, Info, ExternalLink } from 'lucide-react';
+import { Calculator, TrendingUp, Info, ExternalLink, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * BES Birikim Hesaplayıcısı.
+ * BES Birikim Hesaplayıcısı — EGM (Emeklilik Gözetim Merkezi) ile uyumlu.
  *
- * Mantık (EGM Emeklilik Gözetim Merkezi metoduyla uyumlu):
- *  - Aylık katkı × 12 = yıllık katkı
- *  - Yıllık brüt asgari ücret tavanına kadar olan katkıya devlet %20 ekler
- *  - Tavan üstü katkıya devlet katkısı YOK (sadece kendin biriktirirsin)
- *  - Her yıl sonunda toplam birikim = (önceki birikim + yıllık katkı + devlet katkısı) × (1 + yıllık getiri)
- *  - 3 senaryo: kötümser / orta / iyimser yıllık getiri
+ * Hesaplama mantığı (her yıl için):
+ *  1. Yıllık katkı = aylık × 12  (yıllık reel %X katkı payı artışıyla büyür)
+ *  2. Yönetim gideri kesintisi = yıllık katkı × yönetim oranı (kesintiden sonra net yatırıma gider)
+ *  3. Devlet katkısı = min(brüt yıllık katkı, BAU tavan) × %20
+ *     - BAU tavanı her yıl reel %Y oranında artar
+ *  4. Yıllık net reel getiri = reel getiri − FİGK (fon işletim gider kesintisi)
+ *  5. Yıl sonu bakiye = (önceki bakiye + net katkı + devlet katkısı) × (1 + net reel getiri)
  *
- * Not: Yönetim/giriş kesintileri ve enflasyon basitlik için ihmal edilmiştir
- * (kullanıcı nominal getiri girer). Detaylı kesinti için EGM hesaplayıcısı linkini sunuyoruz.
+ * Tüm oranlar REEL (enflasyondan arındırılmış). Sonuçlar bugünkü satın alma gücüyle gösterilir.
  */
 
-const STATE_CONTRIBUTION_RATE = 0.20; // 2026 başı itibariyle %20
-// 2026 brüt asgari ücret ≈ 33.000₺/ay → yıllık katkı tavanı ≈ 396.000₺
-// (Tavanın üstüne devlet katkısı yapmaz. Yıl içinde değişir, yaklaşık değer.)
-const ANNUAL_BRUT_MINIMUM_WAGE_2026 = 396_000;
+const STATE_CONTRIBUTION_RATE = 0.20; // 2026: %30 → %20
+// 2026 brüt asgari ücret yıllık tutarı (aylık ~33.000₺ × 12 ~ 396.000₺)
+const INITIAL_ANNUAL_BAU_CAP = 396_000;
 
-/** EGM ile uyumlu reel (enflasyondan arındırılmış) yıllık getiri senaryoları. */
 const SCENARIOS = [
   { key: 'pess', label: 'Kötümser', rate: 0.00, tone: 'danger',  hint: 'Reel %0 — fonlar enflasyonla başa baş' },
   { key: 'mid',  label: 'Orta',     rate: 0.03, tone: 'accent',  hint: 'Reel %3 — EGM varsayılan, uzun vadeli ortalama' },
@@ -30,33 +28,57 @@ const SCENARIOS = [
 
 type Scenario = typeof SCENARIOS[number];
 
-interface Projection {
-  totalContributed: number;     // sadece sen yatırdın
-  totalStateContribution: number; // devlet katkısı (hak ediş düşülmeden, brüt)
-  totalEarnings: number;        // bileşik faizden gelen kazanç
-  endBalance: number;           // yıl sonu toplam birikim
-  yearlySnapshot: number[];     // her yılın sonu birikim — chart için
+interface CalcInputs {
+  monthlyContribution: number;
+  years: number;
+  contributionIncreaseRate: number;   // yıllık reel katkı artışı (örn 0.05 = %5)
+  managementFeeRate: number;          // yıllık yönetim gideri kesintisi (örn 0.02 = %2)
+  fundOperatingExpenseRate: number;   // FİGK yıllık (örn 0.01 = %1)
+  bauIncreaseRate: number;            // yıllık reel BAU artışı (örn 0.03 = %3)
+  realReturnRate: number;             // yıllık net reel getiri
 }
 
-function projectScenario(monthly: number, years: number, annualRate: number): Projection {
-  const yearlyContribution = monthly * 12;
-  const eligibleForState = Math.min(yearlyContribution, ANNUAL_BRUT_MINIMUM_WAGE_2026);
-  const yearlyStateContribution = eligibleForState * STATE_CONTRIBUTION_RATE;
+interface Projection {
+  totalContributed: number;       // brüt katılımcı katkısı (yönetim gideri düşülmeden)
+  totalManagementFees: number;    // toplam yönetim gideri kesintisi
+  totalStateContribution: number; // toplam devlet katkısı
+  totalEarnings: number;          // bileşik kazanç (yönetim sonrası net)
+  endBalance: number;             // yıl sonu birikim
+  yearlySnapshot: number[];       // her yıl sonu bakiye
+}
 
+function project(p: CalcInputs): Projection {
   let balance = 0;
   let totalContributed = 0;
   let totalStateContribution = 0;
+  let totalManagementFees = 0;
+  let currentMonthly = p.monthlyContribution;
+  let currentBauCap = INITIAL_ANNUAL_BAU_CAP;
+  const netReturnRate = p.realReturnRate - p.fundOperatingExpenseRate;
   const yearlySnapshot: number[] = [];
 
-  for (let y = 1; y <= years; y++) {
-    balance = (balance + yearlyContribution + yearlyStateContribution) * (1 + annualRate);
+  for (let y = 1; y <= p.years; y++) {
+    const yearlyContribution = currentMonthly * 12;
+    const managementFee = yearlyContribution * p.managementFeeRate;
+    const netContribution = yearlyContribution - managementFee;
+    const eligibleForState = Math.min(yearlyContribution, currentBauCap);
+    const stateContribution = eligibleForState * STATE_CONTRIBUTION_RATE;
+
+    balance = (balance + netContribution + stateContribution) * (1 + netReturnRate);
+
     totalContributed += yearlyContribution;
-    totalStateContribution += yearlyStateContribution;
+    totalManagementFees += managementFee;
+    totalStateContribution += stateContribution;
     yearlySnapshot.push(balance);
+
+    // Sonraki yıl için reel artışlar
+    currentMonthly *= 1 + p.contributionIncreaseRate;
+    currentBauCap *= 1 + p.bauIncreaseRate;
   }
 
-  const totalEarnings = balance - totalContributed - totalStateContribution;
-  return { totalContributed, totalStateContribution, totalEarnings, endBalance: balance, yearlySnapshot };
+  // Bileşik kazanç = bakiye − (toplam katılımcı katkısı − yönetim gideri) − devlet katkısı
+  const totalEarnings = balance - (totalContributed - totalManagementFees) - totalStateContribution;
+  return { totalContributed, totalManagementFees, totalStateContribution, totalEarnings, endBalance: balance, yearlySnapshot };
 }
 
 const formatTL = (n: number) =>
@@ -70,26 +92,48 @@ const formatCompactTL = (n: number) => {
 };
 
 export function BESCalculator() {
+  // Temel girdiler
+  const [currentAge, setCurrentAge] = useState(31);
+  const [retirementAge, setRetirementAge] = useState(56);
   const [monthly, setMonthly] = useState(2500);
-  const [years, setYears] = useState(20);
-  const [advanced, setAdvanced] = useState(false);
+
+  // Ek parametreler (EGM ile aynı varsayılanlar)
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [contribIncrease, setContribIncrease] = useState(5);   // % yıllık reel katkı artışı
+  const [mgmtFee, setMgmtFee] = useState(2);                    // % yıllık yönetim gideri
+  const [fundFee, setFundFee] = useState(1);                    // % FİGK
+  const [bauIncrease, setBauIncrease] = useState(3);            // % yıllık reel BAU artışı
+
+  // Senaryo getirileri (gelişmiş düzenleme)
+  const [editRates, setEditRates] = useState(false);
   const [rates, setRates] = useState({ pess: 0, mid: 3, opt: 5 });
+
+  const years = Math.max(0, retirementAge - currentAge);
 
   const projections = useMemo(() => {
     return SCENARIOS.map((s) => {
-      const rate = (advanced ? rates[s.key as keyof typeof rates] : s.rate * 100) / 100;
-      return { scenario: s, rate, projection: projectScenario(monthly, years, rate) };
+      const realReturn = (editRates ? rates[s.key as keyof typeof rates] : s.rate * 100) / 100;
+      const projection = project({
+        monthlyContribution: monthly,
+        years,
+        contributionIncreaseRate: contribIncrease / 100,
+        managementFeeRate: mgmtFee / 100,
+        fundOperatingExpenseRate: fundFee / 100,
+        bauIncreaseRate: bauIncrease / 100,
+        realReturnRate: realReturn,
+      });
+      return { scenario: s, rate: realReturn, projection };
     });
-  }, [monthly, years, advanced, rates]);
+  }, [monthly, years, contribIncrease, mgmtFee, fundFee, bauIncrease, editRates, rates]);
 
   const yearlyContribution = monthly * 12;
-  const yearlyContributionEligible = Math.min(yearlyContribution, ANNUAL_BRUT_MINIMUM_WAGE_2026);
-  const yearlyStateContribution = yearlyContributionEligible * STATE_CONTRIBUTION_RATE;
-  const isOverCap = yearlyContribution > ANNUAL_BRUT_MINIMUM_WAGE_2026;
+  const yearlyStateContribution = Math.min(yearlyContribution, INITIAL_ANNUAL_BAU_CAP) * STATE_CONTRIBUTION_RATE;
+  const isOverCap = yearlyContribution > INITIAL_ANNUAL_BAU_CAP;
+  const yearsInvalid = years <= 0;
 
   return (
     <section className="glass-card overflow-hidden p-5">
-      <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent/15 text-accent">
             <Calculator size={16} />
@@ -97,7 +141,7 @@ export function BESCalculator() {
           <div>
             <h3 className="text-sm font-semibold text-slate-100">BES Birikim Hesaplayıcısı</h3>
             <p className="text-[11px] text-slate-500">
-              Aylık katkı + %20 devlet katkısı + reel getiri ile geleceği projeksiyonla (EGM uyumlu)
+              EGM uyumlu — reel getiri, yönetim gideri, FİGK ve katkı artışı dahil
             </p>
           </div>
         </div>
@@ -111,54 +155,17 @@ export function BESCalculator() {
         </a>
       </div>
 
-      {/* Girdiler */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500">
-            Aylık Katkı
-            <span className="font-mono text-accent">{formatTL(monthly)}</span>
-          </label>
-          <input
-            type="range"
-            min={500}
-            max={50_000}
-            step={500}
-            value={monthly}
-            onChange={(e) => setMonthly(parseInt(e.target.value, 10))}
-            className="mt-2 w-full accent-accent"
-          />
-          <div className="flex items-center justify-between text-[10px] text-slate-500">
-            <span>500₺</span>
-            <input
-              type="number"
-              value={monthly}
-              min={0}
-              step={100}
-              onChange={(e) => setMonthly(Math.max(0, parseInt(e.target.value, 10) || 0))}
-              className="input text-xs w-24 text-right py-1 px-2"
-            />
-            <span>50.000₺</span>
-          </div>
-        </div>
-        <div>
-          <label className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500">
-            Süre
-            <span className="font-mono text-accent">{years} yıl</span>
-          </label>
-          <input
-            type="range"
-            min={3}
-            max={40}
-            step={1}
-            value={years}
-            onChange={(e) => setYears(parseInt(e.target.value, 10))}
-            className="mt-2 w-full accent-accent"
-          />
-          <div className="flex items-center justify-between text-[10px] text-slate-500">
-            <span>3 yıl</span>
-            <span>40 yıl</span>
-          </div>
-        </div>
+      {/* Temel girdiler */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <NumberField label="Yaşınız" value={currentAge} min={18} max={70} step={1} suffix="yaş" onChange={setCurrentAge} />
+        <NumberField label="Emeklilik Yaşı" value={retirementAge} min={Math.max(currentAge + 1, 30)} max={75} step={1} suffix="yaş" onChange={setRetirementAge} />
+        <NumberField label="Aylık Katkı" value={monthly} min={0} step={500} suffix="₺" onChange={setMonthly} />
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
+        <span>Süre: <strong className="text-accent">{years} yıl</strong></span>
+        {yearsInvalid && (
+          <span className="text-warning">⚠️ Emeklilik yaşı şu anki yaşından büyük olmalı</span>
+        )}
       </div>
 
       {/* Devlet katkısı özeti */}
@@ -170,66 +177,111 @@ export function BESCalculator() {
           <Info size={12} className={cn('mt-0.5 shrink-0', isOverCap ? 'text-warning' : 'text-success')} />
           <div className="flex-1">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-semibold text-slate-200">Bu katkı için yıllık devlet katkın:</span>
+              <span className="font-semibold text-slate-200">İlk yıl devlet katkın:</span>
               <span className="font-mono text-base font-bold text-success">{formatTL(yearlyStateContribution)}</span>
             </div>
             {isOverCap ? (
               <p className="mt-1 text-[10px] text-warning">
-                ⚠️ Aylık <strong>{formatTL(ANNUAL_BRUT_MINIMUM_WAGE_2026 / 12)}</strong> üstüne yaptığın katkıya devlet katkı sağlamıyor (2026 brüt asgari ücret tavanı).
+                ⚠️ Aylık <strong>{formatTL(INITIAL_ANNUAL_BAU_CAP / 12)}</strong> üstüne yaptığın katkıya devlet katkı yok. Tavan ileriki yıllarda BAU artışıyla büyür.
               </p>
             ) : (
               <p className="mt-1 text-[10px] text-slate-400">
-                Yıllık katkı: {formatTL(yearlyContribution)} × %20 = {formatTL(yearlyStateContribution)} devlet katkısı. Brüt asgari ücret tavanı altında kaldığın için tam yararlanıyorsun.
+                Yıllık {formatTL(yearlyContribution)} × %20 = {formatTL(yearlyStateContribution)}. BAU tavanının altındasın, tam yararlanıyorsun.
               </p>
             )}
           </div>
         </div>
       </div>
 
-      {/* Gelişmiş ayarlar */}
-      <div className="mt-3">
-        <button
-          type="button"
-          onClick={() => setAdvanced((a) => !a)}
-          className="text-[11px] text-accent hover:underline"
-        >
-          {advanced ? '− Senaryo getirilerini gizle' : '+ Senaryo getirilerini ayarla'}
-        </button>
-        {advanced && (
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {SCENARIOS.map((s) => (
-              <div key={s.key} className="rounded-lg border border-border bg-bg-card p-2">
-                <label className="block text-[10px] uppercase tracking-wider text-slate-500">
-                  {s.label} (reel % / yıl)
-                </label>
-                <input
-                  type="number"
-                  value={rates[s.key as keyof typeof rates]}
-                  min={-5}
-                  max={20}
-                  step={0.5}
-                  onChange={(e) =>
-                    setRates((r) => ({ ...r, [s.key]: parseFloat(e.target.value) || 0 }))
-                  }
-                  className="input mt-1 text-sm py-1 px-2"
-                />
-              </div>
-            ))}
-            <p className="col-span-full text-[10px] text-slate-500">
-              ℹ️ Reel getiri = nominal getiri − enflasyon. Örn. nominal %25, enflasyon %22 → reel %3. EGM standardı %3 reel getiriyi varsayılan kullanır.
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Ek Parametreler toggle */}
+      <button
+        type="button"
+        onClick={() => setAdvancedOpen((v) => !v)}
+        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+      >
+        <ChevronDown size={14} className={cn('transition', advancedOpen && 'rotate-180')} />
+        {advancedOpen ? 'Ek Parametreleri Kapat' : 'Ek Parametreleri Göster'}
+      </button>
 
-      {/* Sonuçlar — 3 senaryo */}
+      {advancedOpen && (
+        <div className="mt-3 rounded-xl border border-border bg-bg-soft/60 p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <PercentField
+              label="Yıllık Katkı Payı Artışı"
+              value={contribIncrease}
+              min={0} max={20} step={0.5}
+              onChange={setContribIncrease}
+              hint="Katkı payının her yıl REEL olarak artacağı oran. Ortalama %5 (terfi/kıdem)."
+            />
+            <PercentField
+              label="Yönetim Gideri Kesintisi"
+              value={mgmtFee}
+              min={0} max={5} step={0.1}
+              onChange={setMgmtFee}
+              hint="Ödediğin katkı payından kesilen oran. Kesinti sonrası yatırıma yönlendirilir."
+            />
+            <PercentField
+              label="Fon İşletim Gider Kesintisi (FİGK)"
+              value={fundFee}
+              min={0} max={3} step={0.05}
+              onChange={setFundFee}
+              hint="Fon portföyünün giderlerini karşılamak için. Reel getiriden düşülür. Azami yıllık %2.28."
+            />
+            <PercentField
+              label="Yıllık BAU Artışı"
+              value={bauIncrease}
+              min={0} max={10} step={0.5}
+              onChange={setBauIncrease}
+              hint="Brüt asgari ücretin yıllık reel artışı — devlet katkısı tavanını büyütür."
+            />
+          </div>
+
+          <div className="mt-4 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Senaryo Reel Getirileri
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditRates((v) => !v)}
+                className="text-[11px] text-accent hover:underline"
+              >
+                {editRates ? 'Varsayılana dön (0/3/5)' : 'Düzenle'}
+              </button>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+              {SCENARIOS.map((s) => (
+                <div key={s.key} className="rounded-lg border border-border bg-bg-card p-2">
+                  <label className="block text-[10px] uppercase tracking-wider text-slate-500">
+                    {s.label} (reel % / yıl)
+                  </label>
+                  <input
+                    type="number"
+                    value={editRates ? rates[s.key as keyof typeof rates] : s.rate * 100}
+                    disabled={!editRates}
+                    min={-5} max={20} step={0.5}
+                    onChange={(e) =>
+                      setRates((r) => ({ ...r, [s.key]: parseFloat(e.target.value) || 0 }))
+                    }
+                    className="input mt-1 text-sm py-1 px-2 disabled:opacity-60"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sonuçlar */}
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {projections.map(({ scenario, rate, projection }) => (
           <ScenarioCard
             key={scenario.key}
             scenario={scenario}
             rate={rate}
+            netRate={rate - fundFee / 100}
             projection={projection}
+            years={years}
           />
         ))}
       </div>
@@ -237,7 +289,7 @@ export function BESCalculator() {
       {/* Karşılaştırma tablosu */}
       <div className="mt-4 rounded-xl border border-border bg-bg-soft overflow-hidden">
         <div className="border-b border-border bg-bg-card px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Detaylı Karşılaştırma
+          Detaylı Karşılaştırma — {years} yıl projeksiyonu
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-xs">
@@ -246,6 +298,7 @@ export function BESCalculator() {
                 <th className="px-3 py-2 text-left">Senaryo</th>
                 <th className="px-3 py-2 text-right">Reel Getiri</th>
                 <th className="px-3 py-2 text-right">Senin Yatırdığın</th>
+                <th className="px-3 py-2 text-right">Yönetim Gideri</th>
                 <th className="px-3 py-2 text-right">Devlet Katkısı</th>
                 <th className="px-3 py-2 text-right">Bileşik Kazanç</th>
                 <th className="px-3 py-2 text-right">Toplam Birikim</th>
@@ -265,6 +318,7 @@ export function BESCalculator() {
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">%{(rate * 100).toFixed(1)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{formatTL(projection.totalContributed)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-danger">−{formatTL(projection.totalManagementFees)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-success">+{formatTL(projection.totalStateContribution)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-accent">+{formatTL(projection.totalEarnings)}</td>
                   <td className="px-3 py-2 text-right tabular-nums font-bold">{formatTL(projection.endBalance)}</td>
@@ -276,23 +330,98 @@ export function BESCalculator() {
       </div>
 
       <p className="mt-3 text-[10px] leading-relaxed text-slate-500">
-        ⚠️ <strong>Not:</strong> Getiriler <strong className="text-slate-400">reel</strong> (enflasyondan arındırılmış) olarak girilir — sonuçlar bugünkü satın alma gücüyle gösterilir.
-        EGM resmi hesaplayıcısı varsayılan olarak <strong className="text-slate-400">%3 reel getiri</strong> kullanır.
-        Yönetim ücretleri ve giriş kesintileri ihmal edilmiştir. Devlet katkısı brüt değerle gösterilmiştir — erken çıkış halinde hak ediş oranı uygulanır (3 yıl %15, 6 yıl %35, 10 yıl %60, 56 yaş + 10 yıl %100).
-        Daha hassas hesaplama için <a className="text-accent hover:underline" href="https://www.egm.org.tr/bilgi-merkezi/birikim-hesaplayicisi/" target="_blank" rel="noreferrer">EGM resmi hesaplayıcısını</a> kullanabilirsin.
+        ℹ️ Tüm oranlar <strong className="text-slate-400">reel</strong> (enflasyondan arındırılmış). Sonuçlar bugünkü satın alma gücüyle.
+        Net getiri = reel getiri − FİGK. Devlet katkısı brüt değerdir; erken çıkış halinde hak ediş uygulanır (3 yıl %15, 6 yıl %35, 10 yıl %60, 56 yaş + 10 yıl %100).
+        Karşılaştırma için <a className="text-accent hover:underline" href="https://www.egm.org.tr/bilgi-merkezi/birikim-hesaplayicisi/" target="_blank" rel="noreferrer">EGM resmi hesaplayıcısı</a>.
       </p>
     </section>
+  );
+}
+
+function NumberField({
+  label, value, min, max, step, suffix, onChange,
+}: {
+  label: string; value: number; min?: number; max?: number; step?: number;
+  suffix?: string; onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <label className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500">
+        {label}
+        {suffix && <span className="font-mono text-accent">{value.toLocaleString('tr-TR')} {suffix}</span>}
+      </label>
+      <div className="mt-1 flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(min ?? 0, value - (step ?? 1)))}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-bg-card text-slate-300 hover:border-accent/40 hover:text-accent"
+        >−</button>
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="input text-sm py-1 px-2 text-center"
+        />
+        <button
+          type="button"
+          onClick={() => onChange(max != null ? Math.min(max, value + (step ?? 1)) : value + (step ?? 1))}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-bg-card text-slate-300 hover:border-accent/40 hover:text-accent"
+        >+</button>
+      </div>
+    </div>
+  );
+}
+
+function PercentField({
+  label, value, min, max, step, hint, onChange,
+}: {
+  label: string; value: number; min: number; max: number; step: number;
+  hint?: string; onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <label className="flex items-center justify-between text-[11px] font-medium text-slate-300">
+        {label}
+        <span className="font-mono text-accent">%{value.toFixed(2)}</span>
+      </label>
+      <input
+        type="range"
+        min={min} max={max} step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="mt-2 w-full accent-accent"
+      />
+      <div className="flex items-center justify-between text-[10px] text-slate-500">
+        <span>%{min}</span>
+        <input
+          type="number"
+          value={value}
+          min={min} max={max} step={step}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="input text-xs w-20 text-right py-1 px-2"
+        />
+        <span>%{max}</span>
+      </div>
+      {hint && <p className="mt-1 text-[10px] text-slate-500 leading-snug">{hint}</p>}
+    </div>
   );
 }
 
 function ScenarioCard({
   scenario,
   rate,
+  netRate,
   projection,
+  years,
 }: {
   scenario: Scenario;
   rate: number;
+  netRate: number;
   projection: Projection;
+  years: number;
 }) {
   const borderTone =
     scenario.tone === 'success' ? 'border-success/40 bg-success/5'
@@ -310,17 +439,21 @@ function ScenarioCard({
           {scenario.label}
         </span>
         <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-          <TrendingUp size={10} /> reel %{(rate * 100).toFixed(1)}/yıl
+          <TrendingUp size={10} /> reel %{(rate * 100).toFixed(1)}
         </span>
       </div>
       <div className="mt-2">
-        <div className="text-[10px] uppercase tracking-wider text-slate-500">Toplam Birikim</div>
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">
+          {years} yıl sonra
+        </div>
         <div className="mt-0.5 text-2xl font-bold tabular-nums text-slate-100">
           {formatCompactTL(projection.endBalance)}
         </div>
+        <div className="text-[10px] text-slate-500">net reel getiri: %{(netRate * 100).toFixed(1)}/yıl</div>
       </div>
       <div className="mt-3 space-y-1 text-[11px]">
         <Row label="Senin yatırdığın" value={formatCompactTL(projection.totalContributed)} />
+        <Row label="Yönetim gideri" value={`−${formatCompactTL(projection.totalManagementFees)}`} tone="danger" />
         <Row label="Devlet katkısı" value={`+${formatCompactTL(projection.totalStateContribution)}`} tone="success" />
         <Row label="Bileşik kazanç" value={`+${formatCompactTL(projection.totalEarnings)}`} tone="accent" />
       </div>
@@ -329,8 +462,12 @@ function ScenarioCard({
   );
 }
 
-function Row({ label, value, tone }: { label: string; value: string; tone?: 'success' | 'accent' }) {
-  const toneClass = tone === 'success' ? 'text-success' : tone === 'accent' ? 'text-accent' : 'text-slate-200';
+function Row({ label, value, tone }: { label: string; value: string; tone?: 'success' | 'accent' | 'danger' }) {
+  const toneClass =
+    tone === 'success' ? 'text-success'
+    : tone === 'accent' ? 'text-accent'
+    : tone === 'danger' ? 'text-danger'
+    : 'text-slate-200';
   return (
     <div className="flex items-baseline justify-between">
       <span className="text-slate-400">{label}</span>

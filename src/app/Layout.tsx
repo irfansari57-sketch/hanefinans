@@ -193,7 +193,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <div className="relative z-10 flex flex-1 flex-col">
+      <div className="relative z-10 flex flex-1 flex-col min-w-0">
         {/* Top bar */}
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-bg-soft/90 px-4 py-3 backdrop-blur md:px-6">
           <button
@@ -324,7 +324,13 @@ export function Layout() {
           </div>
         )}
 
-        <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        {/* Mobil reklam alanı — sidebar mobilde gizli olduğu için banner'ları burada gösteriyoruz */}
+        <div className="md:hidden mx-auto w-full max-w-7xl px-3 pt-3 space-y-2">
+          <HaneModAdBanner variant="compact" />
+          {!isPro(user) && <AdBanner variant="compact" />}
+        </div>
+
+        <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
           <Outlet />
         </main>
       </div>

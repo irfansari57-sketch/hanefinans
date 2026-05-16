@@ -8,6 +8,11 @@
   #root {
     height: 100%;
   }
+  html, body {
+    /* Mobil yatay scroll'u engelle — sızıntı yapan child'lar viewport'u taşıramasın */
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
   body {
     @apply bg-bg text-slate-100 antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';

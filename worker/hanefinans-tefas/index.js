@@ -178,7 +178,7 @@ export default {
   },
 
   // 2) HTTP endpoint — frontend buradan okur
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = {
       'Access-Control-Allow-Origin': '*',
@@ -190,7 +190,7 @@ export default {
       return new Response(null, { headers: cors });
     }
 
-    // Manuel tetikleyici — secret korumalı
+    // Manuel tetikleyici — secret korumalı, FIRE-AND-FORGET
     if (url.pathname === '/trigger') {
       if (!env.TRIGGER_SECRET) {
         return new Response(JSON.stringify({ ok: false, error: 'TRIGGER_SECRET binding yok' }), {
@@ -203,16 +203,48 @@ export default {
           status: 401, headers: { 'Content-Type': 'application/json', ...cors },
         });
       }
-      try {
-        const result = await runFetch(env);
-        return new Response(JSON.stringify({ ok: true, count: result.count, latestDate: result.latestDate }), {
-          headers: { 'Content-Type': 'application/json', ...cors },
-        });
-      } catch (e) {
-        return new Response(JSON.stringify({ ok: false, error: e.message }), {
-          status: 500, headers: { 'Content-Type': 'application/json', ...cors },
+
+      // İşlemi arka plana at — tarayıcı timeout vermeden cevap dön
+      ctx.waitUntil((async () => {
+        try {
+          const result = await runFetch(env);
+          await env.FUNDS_KV.put('tefas:last_run', JSON.stringify({
+            ok: true,
+            count: result.count,
+            latestDate: result.latestDate,
+            finishedAt: new Date().toISOString(),
+          }));
+          console.log(`✅ Trigger tamamlandı: ${result.count} fon`);
+        } catch (e) {
+          await env.FUNDS_KV.put('tefas:last_run', JSON.stringify({
+            ok: false,
+            error: e.message,
+            finishedAt: new Date().toISOString(),
+          }));
+          console.error('❌ Trigger hatası:', e.message);
+        }
+      })());
+
+      return new Response(JSON.stringify({
+        ok: true,
+        status: 'started',
+        message: 'TEFAS fetch arka planda başladı (~30-60 sn). Durum için /status, veri için / endpoint\'lerini kullan.',
+      }), {
+        headers: { 'Content-Type': 'application/json', ...cors },
+      });
+    }
+
+    // Status endpoint — son trigger durumunu göster
+    if (url.pathname === '/status') {
+      const last = await env.FUNDS_KV.get('tefas:last_run');
+      if (!last) {
+        return new Response(JSON.stringify({ ok: false, message: 'Henüz trigger çalışmadı' }), {
+          status: 404, headers: { 'Content-Type': 'application/json', ...cors },
         });
       }
+      return new Response(last, {
+        headers: { 'Content-Type': 'application/json', ...cors },
+      });
     }
 
     // Default → cached JSON

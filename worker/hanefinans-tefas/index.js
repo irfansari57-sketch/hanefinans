@@ -234,6 +234,33 @@ export default {
       });
     }
 
+    // Debug endpoint — TEFAS API ham yanıtını göster (tanılama için)
+    if (url.pathname === '/debug') {
+      const dateStr = url.searchParams.get('date') || fmtDate(getBusinessDay(new Date(Date.now() - 86400_000)));
+      const body = `fontip=YAT&bastarih=${encodeURIComponent(dateStr)}&bittarih=${encodeURIComponent(dateStr)}&fonkod=&fongrup=`;
+      try {
+        const r = await fetch(TEFAS_URL, { method: 'POST', headers: HEADERS, body });
+        const raw = await r.text();
+        return new Response(JSON.stringify({
+          ok: r.ok,
+          status: r.status,
+          statusText: r.statusText,
+          requestedDate: dateStr,
+          requestBody: body,
+          responseHeaders: Object.fromEntries(r.headers.entries()),
+          responseBodyLength: raw.length,
+          responseBodyPreview: raw.slice(0, 2000),
+          isJson: r.headers.get('content-type')?.includes('application/json'),
+        }, null, 2), {
+          headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e.message, requestedDate: dateStr }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      }
+    }
+
     // Status endpoint — son trigger durumunu göster
     if (url.pathname === '/status') {
       const last = await env.FUNDS_KV.get('tefas:last_run');

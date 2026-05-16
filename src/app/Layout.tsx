@@ -169,15 +169,13 @@ export function Layout() {
             </div>
           ))}
 
-          {/* Reklam — menü başlıklarının hemen altında (PRO/ELITE üye değilse) */}
-          {!isPro(user) && (
-            <div className="pt-3">
-              <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-                Sponsor
-              </div>
-              <AdBanner variant="compact" />
+          {/* Reklam — menü başlıklarının hemen altında */}
+          <div className="pt-3">
+            <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+              Sponsor
             </div>
-          )}
+            <AdBanner variant="compact" />
+          </div>
         </nav>
         <div className="border-t border-border p-3 text-center text-[10px] text-slate-500">
           <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme

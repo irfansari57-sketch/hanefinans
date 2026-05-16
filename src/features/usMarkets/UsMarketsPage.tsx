@@ -97,8 +97,8 @@ export function UsMarketsPage() {
       const stockPromises = US_STOCKS.map(async ({ sym, name, sector }) => {
         const [spot, hist1h, hist1d] = await Promise.all([
           fetchIndexYahoo(sym),
-          fetchHistoricalYahoo(sym, '1mo', '60m'),
-          fetchHistoricalYahoo(sym, '6mo', '1d'),
+          fetchHistoricalYahoo(sym, '1mo', '60m', { bistSuffix: false }),
+          fetchHistoricalYahoo(sym, '6mo', '1d', { bistSuffix: false }),
         ]);
         const price = spot?.value ?? 0;
         const changePct = spot?.changePct ?? 0;

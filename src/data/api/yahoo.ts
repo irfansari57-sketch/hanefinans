@@ -146,8 +146,14 @@ export async function fetchHistoricalYahoo(
   symbol: string,
   range: '1d' | '5d' | '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | 'ytd' = '1y',
   interval: '1m' | '5m' | '15m' | '30m' | '60m' | '1d' | '1wk' | '1mo' = '1d',
+  options?: { bistSuffix?: boolean },
 ): Promise<HistoricalSeries | null> {
-  const ySym = symbol.includes('.') || symbol.startsWith('^') || symbol.includes('=')
+  // Default true — BIST hisseleri için THYAO → THYAO.IS dönüşümü.
+  // ABD/kripto/forex için false geçilmeli (sembol olduğu gibi kullanılır).
+  const useBistSuffix = options?.bistSuffix !== false;
+  const ySym = (
+    symbol.includes('.') || symbol.startsWith('^') || symbol.includes('=') || symbol.includes('-') || !useBistSuffix
+  )
     ? symbol
     : `${symbol}.IS`;
   try {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Gem, RefreshCw, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Gem, RefreshCw, ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -152,21 +153,18 @@ function CommodityCard({ row, loading, usdTry }: { row: CommodityRow; loading: b
   }
   const change = row.changePct ?? 0;
   const tone = change >= 0 ? 'text-success' : 'text-danger';
-  const yahooUrl = `https://finance.yahoo.com/quote/${encodeURIComponent(row.symbolYahoo)}`;
 
   return (
-    <a
-      href={yahooUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="block rounded-lg border border-border bg-bg-card p-3 transition-all hover:border-accent/40 hover:shadow-md hover:shadow-accent/10 hover:-translate-y-0.5"
+    <Link
+      to={`/emtia/${encodeURIComponent(row.symbolYahoo)}`}
+      className="group block rounded-lg border border-border bg-bg-card p-3 transition-all hover:border-accent/40 hover:shadow-md hover:shadow-accent/10 hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-slate-100">{row.label}</div>
           {row.description && <div className="mt-0.5 text-[10px] text-slate-500">{row.description}</div>}
         </div>
-        <ExternalLink size={11} className="shrink-0 text-slate-500" />
+        <ChevronRight size={11} className="shrink-0 text-slate-500 opacity-0 transition group-hover:opacity-100" />
       </div>
       <div className="mt-2 flex items-baseline justify-between">
         <div>
@@ -184,6 +182,6 @@ function CommodityCard({ row, loading, usdTry }: { row: CommodityRow; loading: b
           ≈ {row.priceTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}₺ / gram
         </div>
       )}
-    </a>
+    </Link>
   );
 }

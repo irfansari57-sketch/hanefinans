@@ -270,7 +270,7 @@ export function MorningReportPage() {
       const mtSymbols = [
         { ySym: 'XU100.IS', label: 'BIST 100', macroKey: 'BIST 100' },
         { ySym: 'XU030.IS', label: 'VIOP 30', macroKey: 'BIST 30' },
-        { ySym: 'USDTRY=X', label: 'USD/TRY', macroKey: 'USD/TRY' },
+        { ySym: 'SI=F',     label: 'Ons Gümüş', macroKey: 'Ons Gümüş' },
         { ySym: 'GC=F',     label: 'Ons Altın', macroKey: 'Ons Altın' },
       ];
       const mtComputed = await Promise.all(
@@ -443,8 +443,8 @@ export function MorningReportPage() {
         </div>
       )}
 
-      {/* Reklam banner (PRO/ELITE'de gizli) */}
-      {!proUser && <AdBanner className="mb-5" />}
+      {/* Reklam banner */}
+      <AdBanner className="mb-5" />
 
       {/* ============ KISA PİYASA ANALİZİ — Multi-Timeframe Long/Short ============ */}
       <section className="glass-card mb-5 p-5">

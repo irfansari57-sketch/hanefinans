@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import {
   BookOpen, TrendingUp, PiggyBank, Activity, ShieldAlert, Bitcoin, Calculator, GraduationCap,
-  Search, ExternalLink, ChevronRight,
+  Search, ExternalLink, ChevronRight, Briefcase,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { cn } from '@/lib/utils';
@@ -269,6 +269,69 @@ const TOPICS: Topic[] = [
         heading: 'Beyanname ne zaman gerekir?',
         body: 'Çoğu küçük yatırımcı için yıllık beyanname zorunlu değildir, çünkü stopaj kesintisi vergi yükümlülüğünü kapatır. Ancak şu durumlarda beyan vermen gerekir: (1) Stopajsız gelirin var ise (örn. yurtdışı borsadan kazanç, kripto kazancı 2026 sonrası), (2) Yıllık menkul sermaye iradı 2026 için 600.000₺\'yi aşıyorsa, (3) Birden fazla işverenden ücret alıyorsan ve toplamı eşiği geçtiyse, (4) Ticari faaliyet niteliği taşıyan trading yapıyorsan (gün içi yoğun işlem — vergi dairesi "ticari" sayabilir). Beyanname GİB e-Beyanname sisteminden Mart ayında verilir. Şüphedeyken mali müşavire danış — vergi cezaları yüksek.',
       },
+    ],
+  },
+  {
+    slug: 'bes-bireysel-emeklilik',
+    title: 'BES — Bireysel Emeklilik',
+    icon: Briefcase,
+    tone: 'accent',
+    description:
+      'Bireysel Emeklilik Sistemi nedir, %30 devlet katkısı nasıl alınır, hangi fonlar seçilir, vergi avantajları nelerdir? Uzun vadeli birikim için 2026 rehberi.',
+    videoQuery: 'bireysel emeklilik BES nedir nasıl başlanır',
+    bullets: [
+      'BES: Bireysel Emeklilik Sistemi — devletin %30 katkısı + vergi avantajı sağlayan uzun vadeli birikim',
+      'Devlet Katkısı: Yatırdığın her 100₺\'ye 30₺ devlet ekler (brüt asgari ücretin %25\'i tavanına kadar)',
+      'Hak ediş: 3 yılda %15, 6 yılda %35, 10 yılda %60, 56 yaş + 10 yıl katılım = %100',
+      'Erken çıkış: 56 yaş/10 yıl şartı sağlanmadan devlet katkısı yanar (cebine kalanın %15-25\'i bile olabilir)',
+      'Fon seçimi sistemin kalbidir — agresif (hisse), dengeli (karma), muhafazakar (borçlanma), katılım, altın',
+      'OKS (Otomatik): 45 yaş altı çalışan otomatik dahil edilir — istemiyorsan 2 ay içinde ücretsiz cayma hakkı',
+      'Vergi: Çıkışta birikim üzerinden %5 stopaj (10 yıl + 56 yaş = %3.75\'e düşer)',
+      'Yılda 6 kez ücretsiz fon değişimi yapabilirsin — piyasaya göre dağılımını ayarla',
+    ],
+    keyTerms: [
+      { term: 'Devlet Katkısı (DK)', def: '%30 oranında devletin yatırdığın paraya eklediği teşvik' },
+      { term: 'Hak Ediş', def: 'BES\'ten çıkışta devlet katkısının ne kadarını alabileceğin oran (yıla göre artar)' },
+      { term: 'Fon Dağılımı', def: 'BES birikiminin hangi yatırım fonlarına ne oranda dağıtılacağı' },
+      { term: 'OKS', def: 'Otomatik Katılım Sistemi — işverenin çalışanı otomatik kaydettiği BES' },
+      { term: 'Cayma', def: 'OKS\'ye girdikten sonraki ilk 2 ay içinde ücretsiz çıkma hakkı' },
+      { term: 'Aktarım', def: 'BES birikimini başka şirkete taşıma — 2 yıl sonra ücretsiz, devlet katkısı korunur' },
+      { term: 'Yıllık Gelir Sigortası', def: 'Birikimi maaş gibi aylık almayı sağlayan opsiyon (vergi avantajı +)' },
+    ],
+    sections: [
+      {
+        heading: 'BES Nasıl Çalışır?',
+        body: 'Bireysel Emeklilik Sistemi 2003\'te Türkiye\'de kuruldu. Mantığı basit: sen aylık veya tek seferlik bir tutar yatırırsın, devlet bunun %30\'unu hesabına ekler, paran emeklilik şirketinin yönettiği yatırım fonlarında değerlenir. **56 yaş + 10 yıl katılım** şartını tamamladığında birikimini topluca veya aylık maaş gibi alırsın. Devlet katkısı, BES\'i normal yatırım fonlarından farklı yapan en önemli unsurdur — 2026\'da brüt asgari ücretin %25\'i kadar (yıllık ~22.500₺) devlet katkısı alabilirsin. Yatırdığın paranın üstüne sıfır risk ile %30 ek getiri demektir.',
+      },
+      {
+        heading: '%30 Devlet Katkısı Nasıl Hesaplanır?',
+        body: 'Yatırdığın her brüt tutarın %30\'u devlet katkısıdır. **Örnek:** Aylık 5.000₺ yatırırsan, devlet 1.500₺ ekler. Yıllık 60.000₺ yatırdığında devlet 18.000₺ katkı verir. Ancak 2026 brüt asgari ücret üst limiti var — bu tavanın üzerine devlet ek katkı yapmaz. **Strateji:** "Her zaman tavan kadar yatır" en karlı opsiyondur. Ortalama bir yatırımcı için 10 yıl içinde sadece devlet katkısı sayesinde portföyünün **%30\'una yakın bedava kazanç** sağlar.',
+      },
+      {
+        heading: 'Hangi Fonu Seçmeliyim?',
+        body: 'BES içinde 7-10 fon arasından seçim yaparsın. **Genel rehber:** 30 yaş altıysan %70-80 hisse senedi fonu (yüksek risk, yüksek getiri), 30-45 yaş arası %50-60 hisse + %30-40 borçlanma araçları (dengeli), 45+ yaş %30 hisse + %60 borçlanma + %10 altın (muhafazakar). **Kural:** Emekliliğine "100\'den yaşını çıkararak hisse oranını belirle" yöntemi yaygındır (35 yaşında %65 hisse). Yılda 6 kez ücretsiz fon değişimi yapabilirsin — piyasa şartlarına göre ayarla. Performansları TEFAS\'ta veya Fintables\'da karşılaştırabilirsin.',
+      },
+      {
+        heading: 'BES vs Bireysel Yatırım Hangisi Avantajlı?',
+        body: '**BES\'in 3 büyük avantajı:** (1) %30 devlet katkısı garantili, (2) %15 → %3.75 vergi avantajı (10 yıl + 56 yaş şartı), (3) Otomatik düzenli yatırım disiplini. **Dezavantajları:** (1) Likidite yok, paranı 10 yıl bağlıyorsun, (2) Yönetim ücretleri normal fonlardan biraz daha yüksek (yıllık %1-2.5), (3) Erken çıkışta devlet katkısı yanar. **Sonuç:** Disiplinli uzun vadeli birikim hedefin varsa BES kazançlıdır. Likiditeye ihtiyacın varsa veya kısa-orta vade hedefliyorsan TEFAS yatırım fonları daha mantıklı.',
+      },
+      {
+        heading: 'OKS — Otomatik Katılım Sistemi',
+        body: '2017\'den beri 45 yaş altı çalışanlar işveren tarafından otomatik BES\'e dahil ediliyor. İşveren maaşının **%3\'ünü** BES\'e yatırır (sen istemezsen 2 ay içinde cayabilirsin). 2026 itibariyle 1000₺+ devlet ek katkısı da var. Birçok kişi cayıyor ama **matematik açıkça gösteriyor:** 30 yıl boyunca aylık 1500₺ yatırım + %30 devlet katkısı + ortalama %10 yıllık getiri = emeklilikte yaklaşık **5-7 milyon TL birikim** (bugünkü değeriyle). Cayma kararı verirken bu büyüklüğü düşünmek gerek. OKS\'ye dahil kalmak, en hızlı zenginleşme yollarından biridir küçük gelirli için.',
+      },
+      {
+        heading: 'Sık Yapılan 6 Hata',
+        body: '(1) **"Cayayım, kendim yatırırım"** — disiplin tutmayanların büyük çoğunluğu bireysel olarak yatırım yapmıyor; %30 devlet katkısını kaçırıyorlar. (2) **Düşük getirili fonlarda kalıp değişim yapmamak** — yılda 6 ücretsiz değişim hakkını kullanmamak büyük getiri kaybı. (3) **Tavan üstüne para yatırmak** — devlet katkısı yok, sadece yönetim ücreti ödüyorsun. (4) **2 yıl bekleme süresi dolmadan şirket değiştirmek** — komisyon ödüyorsun. (5) **9. yılda paniğe kapılıp çıkmak** — devlet katkısının %40\'ını feda ediyorsun. (6) **Tek bir fona yığılmak** — kıymetli madenler veya katılım fonu gibi sabit "güvenli" fona koymak, enflasyona yenik düşmek demektir. **BES\'te en büyük servet sabırdır.**',
+      },
+      {
+        heading: 'En İyi Emeklilik Şirketleri (2026)',
+        body: 'Türkiye\'deki başlıca BES şirketleri: **AvivaSA, Anadolu Hayat Emeklilik, Garanti Emeklilik, Allianz Yaşam ve Emeklilik, BNP Paribas Cardif Emeklilik, NN Hayat ve Emeklilik, AGESA, Vakıf Emeklilik, Halk Emeklilik, Ziraat Emeklilik.** Şirket seçimi 3 kritere dayanır: (1) **Fon çeşitliliği** ve performans (TEFAS\'tan kontrol et), (2) **Yönetim ücretleri** (yıllık net %1.5\'in altı iyi), (3) **Online erişim ve mobil app** kalitesi. Geçmiş performans gelecek garantisi değildir ama 5-10 yıllık dönem getirilerini karşılaştırarak makul bir seçim yapabilirsin. Şirket değiştirmek istersen 2 yıl bekledikten sonra ücretsiz aktarım hakkın var, devlet katkısı korunur.',
+      },
+    ],
+    externalLinks: [
+      { label: 'EGM — Emeklilik Gözetim Merkezi', url: 'https://www.egm.org.tr' },
+      { label: 'TEFAS — Emeklilik Fonları', url: 'https://www.tefas.gov.tr/EmeklilikFonu/EmeklilikFonu.aspx' },
+      { label: 'Fintables — Emeklilik Fonu Karşılaştırma', url: 'https://fintables.com/fonlar' },
     ],
   },
 ];

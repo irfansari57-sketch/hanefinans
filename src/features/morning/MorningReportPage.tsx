@@ -443,8 +443,8 @@ export function MorningReportPage() {
         </div>
       )}
 
-      {/* Reklam banner */}
-      <AdBanner className="mb-5" />
+      {/* Reklam banner — PRO/ELITE'de gizli */}
+      {!proUser && <AdBanner className="mb-5" />}
 
       {/* ============ KISA PİYASA ANALİZİ — Multi-Timeframe Long/Short ============ */}
       <section className="glass-card mb-5 p-5">

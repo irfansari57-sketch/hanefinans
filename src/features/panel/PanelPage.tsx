@@ -129,8 +129,8 @@ export function PanelPage() {
         }
       />
 
-      {/* Reklam banner — sponsorlu içerik */}
-      <AdBanner className="mb-5" />
+      {/* Reklam banner — PRO/ELITE'de gizli */}
+      {!proUser && <AdBanner className="mb-5" />}
 
       {/* Status banner */}
       <div className="mb-5 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">

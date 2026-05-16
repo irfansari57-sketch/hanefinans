@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Calculator, Shield, Target } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calculator, Shield, Target, Lock, Sparkles } from 'lucide-react';
+import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
 interface PositionSizerProps {
@@ -21,12 +23,55 @@ const DEFAULT_RISK_PCT = 2;
  * - Destek/direnç bazlı otomatik stop ve TP1/TP2 önerir
  */
 export function PositionSizer({ symbol, currentPrice, support, resistance }: PositionSizerProps) {
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
+
   const [capital, setCapital] = useState(DEFAULT_CAPITAL);
   const [riskPct, setRiskPct] = useState(DEFAULT_RISK_PCT);
   // Default stop = support (varsa), yoksa -%3
   const [stopPrice, setStopPrice] = useState(
     support && support < currentPrice ? support : currentPrice * 0.97,
   );
+
+  // PRO gating
+  if (!proUser) {
+    return (
+      <div className="card relative overflow-hidden p-5">
+        <div className="pointer-events-none absolute inset-0 opacity-20 blur-sm">
+          <div className="grid h-full gap-2 p-4 grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded bg-accent/10" />
+            ))}
+          </div>
+        </div>
+        <div className="relative flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/15 text-warning">
+              <Lock size={18} />
+            </span>
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                <Calculator size={14} className="text-accent" />
+                Pozisyon Hesaplayıcı + Stop/TP
+                <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
+                  PRO
+                </span>
+              </h3>
+              <p className="mt-1 text-xs text-slate-400 max-w-md">
+                Sermaye + risk % + stop fiyatından lot adedi otomatik. Destek-direnç bazlı Stop-Loss ve TP1/TP2 önerisi.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/uyelik"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-accent-fg transition hover:brightness-110 shadow-md shadow-accent/30"
+          >
+            <Sparkles size={12} /> PRO'ya Yükselt
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const calc = useMemo(() => {
     const riskAmount = capital * (riskPct / 100);

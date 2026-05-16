@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Grid3x3, RefreshCw, ChevronRight } from 'lucide-react';
+import { Grid3x3, RefreshCw, ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { loadStocks, clearServiceCaches } from '@/data/services';
 import { MOCK_STOCKS } from '@/data/mock';
 import type { Stock } from '@/data/types';
+import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
 const AUTO_REFRESH_MS = 60_000;
 
 export function HeatMapPage() {
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
+
   const [stocks, setStocks] = useState<Stock[]>(MOCK_STOCKS);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
@@ -32,11 +36,12 @@ export function HeatMapPage() {
   };
 
   useEffect(() => {
+    if (!proUser) return; // Sadece PRO için veri çek
     refresh(true);
     const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [proUser]);
 
   // Sektörlere göre grupla
   const sectorGroups = useMemo(() => {
@@ -64,6 +69,52 @@ export function HeatMapPage() {
     const avg = valid.reduce((sum, s) => sum + s.changePct, 0) / Math.max(1, valid.length);
     return { up, down, flat, avg, total: valid.length };
   }, [stocks]);
+
+  // PRO gating — sadece PRO/ELITE üyelere açık
+  if (!proUser) {
+    return (
+      <>
+        <PageHeader
+          title="Heat Map"
+          subtitle="BIST tüm sektörler tek bakışta — renkli sıcaklık haritası."
+        />
+        <div className="glass-card relative overflow-hidden p-8 text-center">
+          <div className="pointer-events-none absolute inset-0 opacity-30">
+            {/* Bulanık preview */}
+            <div className="grid h-full gap-1 p-4 grid-cols-6 blur-sm">
+              {Array.from({ length: 24 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded"
+                  style={{
+                    background: i % 3 === 0 ? 'rgba(34,197,94,0.4)' : i % 3 === 1 ? 'rgba(239,68,68,0.4)' : 'rgba(100,116,139,0.2)',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="relative">
+            <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
+              <Lock size={28} />
+            </span>
+            <h2 className="mt-4 text-xl font-bold text-slate-100">Heat Map PRO Üyelere Özel</h2>
+            <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
+              BIST 50+ hisseyi sektör bazlı, canlı renkli sıcaklık haritasıyla tek bakışta gör. Piyasanın nabzını saniyeler içinde anla.
+            </p>
+            <Link
+              to="/uyelik"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:brightness-110 shadow-lg shadow-accent/30"
+            >
+              <Sparkles size={14} /> PRO'ya Yükselt
+            </Link>
+            <p className="mt-3 text-[11px] text-slate-500">
+              PRO ile ek olarak: 4H + Günlük trend analizi, AI hisse analizi, AI portföy raporu, reklamsız deneyim.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

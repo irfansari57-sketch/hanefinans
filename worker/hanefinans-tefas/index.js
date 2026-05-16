@@ -234,6 +234,88 @@ export default {
       });
     }
 
+    // Probe Fonoloji — açık kaynak Türk fon API'leri
+    if (url.pathname === '/probe-fonoloji') {
+      const candidates = [
+        'https://api.fonoloji.com/funds',
+        'https://api.fonoloji.com/fonlar',
+        'https://fonoloji.com/api/funds',
+        'https://fonoloji.com/api/v1/funds',
+        'https://raw.githubusercontent.com/fonoloji/fonoloji-data/main/funds.json',
+        'https://raw.githubusercontent.com/fonoloji/data/main/funds.json',
+        'https://raw.githubusercontent.com/burakyilmaz321/tefas-data/main/funds.json',
+      ];
+      const results = await Promise.all(
+        candidates.map(async (u) => {
+          try {
+            const r = await fetch(u, {
+              headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
+              cf: { cacheTtl: 0 },
+            });
+            const text = r.ok ? await r.text() : '';
+            return {
+              url: u,
+              status: r.status,
+              ok: r.ok,
+              contentType: r.headers.get('content-type'),
+              preview: text.slice(0, 300),
+              size: text.length,
+            };
+          } catch (e) {
+            return { url: u, error: e.message };
+          }
+        }),
+      );
+      return new Response(JSON.stringify({ results }, null, 2), {
+        headers: { 'Content-Type': 'application/json', ...cors },
+      });
+    }
+
+    // Probe TEFAS — tek bir fon detay sayfası (FonAnaliz.aspx HTML)
+    // TEFAS API'si kapalı ama bu HTML sayfası HALA ÇALIŞIYOR
+    if (url.pathname === '/probe-tefas-fund') {
+      const code = url.searchParams.get('code') || 'AAL';
+      const tefasUrl = `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(code)}`;
+      try {
+        const r = await fetch(tefasUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'tr-TR,tr;q=0.9',
+          },
+        });
+        const html = await r.text();
+        // Fiyat (NAV) yakalama denemesi — çeşitli pattern
+        const navMatch1 = html.match(/Son\s+Fiyat[^<]*<[^>]+>([0-9.,]+)/i);
+        const navMatch2 = html.match(/<span[^>]*id="[^"]*FonFiyat[^"]*"[^>]*>([0-9.,]+)<\/span>/i);
+        const navMatch3 = html.match(/data-fiyat="([0-9.,]+)"/i);
+        const nameMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+
+        return new Response(JSON.stringify({
+          ok: r.ok,
+          status: r.status,
+          finalUrl: r.url,
+          htmlLength: html.length,
+          title: titleMatch?.[1],
+          name: nameMatch?.[1]?.replace(/<[^>]+>/g, '').trim(),
+          navAttempts: {
+            sonFiyat: navMatch1?.[1],
+            fiyatSpan: navMatch2?.[1],
+            dataAttr: navMatch3?.[1],
+          },
+          // İlk 5000 karakter — pattern bulalım
+          htmlPreview: html.slice(0, 5000),
+        }, null, 2), {
+          headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e.message, code }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...cors },
+        });
+      }
+    }
+
     // Probe Mynet — fon listesi sayfasının HTML'ini incele
     if (url.pathname === '/probe-mynet') {
       const sourceUrl = url.searchParams.get('url') || 'https://finans.mynet.com/borsa/fonlar/';

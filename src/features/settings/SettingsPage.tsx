@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   Info, RotateCcw, Cpu, Activity, Newspaper, MessageSquare, Globe, KeyRound,
-  Check, X, ExternalLink, Database, Send, Percent,
+  Check, X, ExternalLink, Database, Send, Percent, Crown, Shield,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useAgents } from '@/store/agents';
 import { useWatchlist } from '@/store/watchlist';
+import { useAuth, isAdmin } from '@/store/auth';
+import { usePricing } from '@/store/pricing';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import type { AgentStatus } from '@/data/types';
@@ -38,6 +40,9 @@ const stateLabel: Record<AgentStatus['state'], string> = {
 export function SettingsPage() {
   const agents = useAgents((s) => s.agents);
   const symbols = useWatchlist((s) => s.symbols);
+  const user = useAuth((s) => s.user);
+  const admin = isAdmin(user);
+  const pricing = usePricing();
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDbReset, setConfirmDbReset] = useState(false);
   const [counts, setCounts] = useState({ activity: 0, notes: 0, alerts: 0, bookmarks: 0 });
@@ -45,6 +50,7 @@ export function SettingsPage() {
   const [tgResult, setTgResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [policyRate, setPolicyRate] = useState(() => localStorage.getItem('fa.macro.policyRate') ?? '');
   const [policySaved, setPolicySaved] = useState(false);
+  const [pricingSaved, setPricingSaved] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -126,6 +132,53 @@ export function SettingsPage() {
             </details>
           )}
         </div>
+
+        {/* Admin: Üyelik Ücretleri */}
+        {admin && (
+          <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 lg:col-span-2">
+            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
+              <Crown size={14} /> Üyelik Ücretleri <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Admin</span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              MembershipPage'deki fiyatlar burada yönetilir. Değer girdiğin an MembershipPage anında günceller (Zustand persist).
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <PriceField
+                label="PRO Aylık"
+                icon={Crown}
+                value={pricing.proMonthly}
+                onChange={(v) => { pricing.setProMonthly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
+              />
+              <PriceField
+                label="PRO Yıllık"
+                icon={Crown}
+                value={pricing.proYearly}
+                onChange={(v) => { pricing.setProYearly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
+              />
+              <PriceField
+                label="ELITE Aylık"
+                icon={Shield}
+                value={pricing.eliteMonthly}
+                onChange={(v) => { pricing.setEliteMonthly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
+              />
+              <PriceField
+                label="ELITE Yıllık"
+                icon={Shield}
+                value={pricing.eliteYearly}
+                onChange={(v) => { pricing.setEliteYearly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
+              />
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                className="btn-secondary text-xs"
+                onClick={() => { pricing.resetToDefaults(); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
+              >
+                <RotateCcw size={12} /> Varsayılana sıfırla (99/999/299/2999₺)
+              </button>
+              {pricingSaved && <span className="text-xs text-success">✓ Kaydedildi</span>}
+            </div>
+          </div>
+        )}
 
         {/* Politika Faizi manuel override */}
         <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
@@ -328,5 +381,33 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className="mt-0.5 text-lg font-semibold text-slate-100">{value}</div>
     </div>
+  );
+}
+
+function PriceField({
+  label, value, icon: Icon, onChange,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Crown;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-slate-400">
+        <Icon size={10} /> {label}
+      </span>
+      <div className="mt-1 flex items-center gap-1.5 rounded-lg border border-border bg-bg-card px-2.5 py-1.5">
+        <span className="text-sm text-slate-400">₺</span>
+        <input
+          type="number"
+          min={0}
+          step={10}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="w-full bg-transparent text-sm font-bold tabular-nums text-slate-100 focus:outline-none"
+        />
+      </div>
+    </label>
   );
 }

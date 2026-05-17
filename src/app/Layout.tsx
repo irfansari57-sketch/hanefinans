@@ -327,17 +327,29 @@ export function Layout() {
           </div>
         )}
 
-        {/* Mobil reklam alanı — sidebar mobilde gizli olduğu için banner'ları burada gösteriyoruz (PRO/ELITE'de tamamen gizli) */}
+        <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+          <Outlet />
+        </main>
+
+        {/* Mobil reklam alanı — sidebar mobilde gizli olduğu için banner'ları main'in altında gösteriyoruz
+            (PRO/ELITE'de tamamen gizli, sayfayı en üstte değil aşağıya kaydırıyoruz) */}
         {!isPro(user) && (
-          <div className="md:hidden mx-auto w-full max-w-7xl px-3 pt-3 space-y-2">
+          <div className="md:hidden mx-auto w-full max-w-7xl px-3 pb-4 space-y-2">
             <HaneModAdBanner variant="compact" />
             <AdBanner variant="compact" />
           </div>
         )}
 
-        <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
-          <Outlet />
-        </main>
+        {/* Footer — telif + yatırım tavsiyesi disclaimer (web + mobil) */}
+        <footer className="mx-auto w-full max-w-7xl border-t border-border px-3 py-5 text-[10px] leading-relaxed text-slate-500 sm:px-6 sm:py-6 lg:px-8">
+          <p className="mb-2">
+            <strong className="font-semibold text-slate-400">Yatırım Tavsiyesi Değildir (YTD).</strong>{' '}
+            Burada paylaşılan hiçbir içerik, yorum veya bilgi bir menkul kıymetin veya dijital varlığın satın alınması ya da
+            satılması için bir teklif, talep veya yatırım tavsiyesi olarak yorumlanamaz. Tüm yatırım stratejileri kayıp riski
+            içerir; okuyucuların yapacakları işlemlerde tüm sorumluluk kendilerine aittir.
+          </p>
+          <p className="text-slate-600">© 2026 Hane Digital Technology Inc. All rights reserved.</p>
+        </footer>
       </div>
 
       {/* Sağ haber bandı — aşağıdan yukarı akan gündem */}

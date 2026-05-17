@@ -7,6 +7,7 @@ import {
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuth, isPro } from '@/store/auth';
+import { usePricing } from '@/store/pricing';
 import { cn } from '@/lib/utils';
 
 interface Plan {
@@ -87,10 +88,20 @@ const TIER_ORDER: Array<'free' | 'pro' | 'elite'> = ['free', 'pro', 'elite'];
 export function MembershipPage() {
   const user = useAuth((s) => s.user);
   const upgrade = useAuth((s) => s.upgradeTier);
+  // Fiyatları store'dan oku — admin Ayarlar'dan değiştirebilir
+  const proMonthly = usePricing((s) => s.proMonthly);
+  const eliteMonthly = usePricing((s) => s.eliteMonthly);
   const [processing, setProcessing] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ tier: 'free' | 'pro' | 'elite'; label: string } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  // PLANS const'undaki hardcoded fiyatları runtime'da override et
+  const PLANS_LIVE: Plan[] = PLANS.map((p) => {
+    if (p.tier === 'pro') return { ...p, price: `₺${proMonthly}` };
+    if (p.tier === 'elite') return { ...p, price: `₺${eliteMonthly}` };
+    return p;
+  });
 
   if (!user) {
     return (
@@ -115,7 +126,7 @@ export function MembershipPage() {
 
   const currentTier = user.tier;
   const proActive = isPro(user);
-  const currentPlan = PLANS.find((p) => p.tier === currentTier) ?? PLANS[0];
+  const currentPlan = PLANS_LIVE.find((p) => p.tier === currentTier) ?? PLANS_LIVE[0];
   const CurrentIcon = currentPlan.icon;
 
   const tierIndex = TIER_ORDER.indexOf(currentTier);
@@ -287,7 +298,7 @@ export function MembershipPage() {
       {/* Plan karşılaştırma grid */}
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">Tüm Paketler</h2>
       <div className="grid gap-3 md:grid-cols-3">
-        {PLANS.map((plan) => {
+        {PLANS_LIVE.map((plan) => {
           const Icon = plan.icon;
           const current = plan.tier === currentTier;
           const isUpgrade = TIER_ORDER.indexOf(plan.tier) > tierIndex;

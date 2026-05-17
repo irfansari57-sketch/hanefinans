@@ -1,13 +1,16 @@
 {
-  "fetchedAt": "1970-01-01T00:00:00Z",
+  "fetchedAt": "2026-05-17T18:56:49Z",
   "bulletins": {
     "osmanli-yatirim": {
       "id": "osmanli-yatirim",
       "name": "Osmanlı Yatırım",
       "pdfUrl": "https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "ok": false,
-      "error": "İlk scrape henüz çalışmadı — GitHub Actions sabah 09:30 TR'da güncelleyecek"
+      "ok": true,
+      "title": "Günlük Piyasa Bülteni",
+      "date": null,
+      "excerpt": "Borsa Günlük BIST 100 USDTRY EURTRY EURUSD FAİZ ALTIN BRENT Yorum ve Strateji 10,167.3 40.0430 46.9370 1.1722 40.2 3,313.7 69.6 k z 5 1.69% 0.00% -0.01% -0.03% 0.11% 0.37% 0.10% Güne 10,008.49 seviyesinden başlayan XU100 u 2 endeksi gün içinde en düşük 9,986.70, en yüksek ü m 0 10,171.95 seviyesinden işlem görürken günü l m BİST Endeksleri 169.06 puan yükselişle 10167.26 seviyesinden n tamamlamıştır. ü T Kapanış G. Dğ. % Haf. Dğ.% Ay. Dğ. % Yb. Dğ. % Aşağıda birinci destek seviyesi 10,045 g 0 BİST 100 10,167.26 1.69 -0.21 7.18 3.43 seviyesinde geçmekte olup son kapanış bu 1 seviyenin %1.20 üzerinde gerçekleşmiştir. BİST 30 11,362.55 1.71 -0.43 7.81 5.64 Yukarıda ise dirençler sırasıyla 10,231, 10,294 ve 10,416 seviyelerinden geçmekte olup son BİST Tüm 12,310.61 1.44 0.12 7.10 7.48 kapanış…",
+      "fullLength": 4404
     },
     "kt-yatirim": {
       "id": "kt-yatirim",

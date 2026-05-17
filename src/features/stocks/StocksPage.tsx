@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, ExternalLink, Search, Filter, ChevronUp, ChevronDown, ChevronRight, Star, RefreshCw } from 'lucide-react';
+import { TrendingUp, ExternalLink, Search, ChevronUp, ChevronDown, ChevronRight, Star, RefreshCw, Lock, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LiveBadge } from '@/components/domain/LiveBadge';
@@ -9,6 +9,7 @@ import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
 import { useWatchlist } from '@/store/watchlist';
+import { useAuth, isPro } from '@/store/auth';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +23,8 @@ type SortKey =
   | 'r1g' | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'rytd' | 'r1y';
 
 const SORT_COLUMNS: Array<{ key: SortKey; label: string; period?: keyof PeriodReturns; hideOnMobile?: boolean }> = [
-  { key: 'symbol',    label: 'Sembol' },
+  // Sembol sütun başlığı boş — hisse kodları satırlarda zaten görünüyor
+  { key: 'symbol',    label: '' },
   { key: 'price',     label: 'Fiyat' },
   { key: 'changePct', label: 'Gün %' },
   { key: 'r1g',  label: '1 Gün',   period: '1g', hideOnMobile: true },
@@ -33,12 +35,6 @@ const SORT_COLUMNS: Array<{ key: SortKey; label: string; period?: keyof PeriodRe
   { key: 'rytd', label: 'YTD',     period: '1y', hideOnMobile: true },
   { key: 'r1y',  label: '1 Yıl',   period: '1y' },
 ];
-
-// Sektör seti hem zengin MOCK_STOCKS (~50) hem geniş BIST_UNIQUE (~270) birleşimi
-const ALL_SECTORS = Array.from(new Set([
-  ...(MOCK_STOCKS.map((s) => s.sector).filter(Boolean) as string[]),
-  ...BIST_UNIQUE.map((s) => s.sector),
-])).sort();
 
 const STOCK_RETURNS_CACHE_KEY = 'fa.stocks.returns.v1';
 const STOCK_RETURNS_TTL_MS = 30 * 60_000; // 30 dk
@@ -65,6 +61,9 @@ function writeReturnsCache(data: Record<string, PeriodReturns>) {
 }
 
 export function StocksPage() {
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
+
   const watchedSymbolsList = useWatchlist((s) => s.symbols);
   const toggleWatchlist = useWatchlist((s) => s.toggle);
   const watchedSymbols = useMemo(() => new Set(watchedSymbolsList), [watchedSymbolsList]);
@@ -75,7 +74,6 @@ export function StocksPage() {
   const [returnsLoading, setReturnsLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [search, setSearch] = useState('');
-  const [sector, setSector] = useState<'all' | string>('all');
   const [sortKey, setSortKey] = useState<SortKey>('r1y');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [tab, setTab] = useState<'all' | 'watched'>('all');
@@ -157,9 +155,10 @@ export function StocksPage() {
   };
 
   useEffect(() => {
+    if (!proUser) return;
     refresh(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [proUser]);
 
   const toggleWatch = (symbol: string) => {
     toggleWatchlist(symbol);
@@ -175,14 +174,13 @@ export function StocksPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((s) => {
-      if (sector !== 'all' && s.sector !== sector) return false;
       if (q) {
         const blob = `${s.symbol} ${s.name}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [rows, search, sector]);
+  }, [rows, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -216,6 +214,45 @@ export function StocksPage() {
       setSortDir(k === 'symbol' ? 'asc' : 'desc');
     }
   };
+
+  // PRO gating
+  if (!proUser) {
+    return (
+      <>
+        <PageHeader
+          title="Hisseler"
+          subtitle="BIST hisselerinin gün/hafta/ay/3ay/6ay/yıl getirileri — canlı Yahoo Finance verisi."
+        />
+        <div className="glass-card relative overflow-hidden p-8 text-center">
+          <div className="pointer-events-none absolute inset-0 opacity-25">
+            <div className="grid h-full gap-1.5 p-4 grid-cols-4 blur-sm">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <div key={i} className="rounded bg-accent/15" />
+              ))}
+            </div>
+          </div>
+          <div className="relative">
+            <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
+              <Lock size={28} />
+            </span>
+            <h2 className="mt-4 text-xl font-bold text-slate-100">Hisseler Sayfası PRO Üyelere Özel</h2>
+            <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
+              270+ BIST hissesinin gün/hafta/ay/3ay/6ay/YTD/1Y getirileri tek tabloda. Canlı fiyat, sıralama, takip yıldızlama.
+            </p>
+            <Link
+              to="/uyelik"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:brightness-110 shadow-lg shadow-accent/30"
+            >
+              <Sparkles size={14} /> PRO'ya Yükselt
+            </Link>
+            <p className="mt-3 text-[11px] text-slate-500">
+              PRO ile ek: ABD Borsaları, Global Piyasalar, Heat Map, AI hisse/portföy analizi, reklamsız panel.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -263,20 +300,6 @@ export function StocksPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
-        <div className="relative">
-          <Filter size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-          <select
-            className="input pl-8 w-44"
-            value={sector}
-            onChange={(e) => setSector(e.target.value)}
-          >
-            <option value="all">Tüm sektörler</option>
-            {ALL_SECTORS.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {returnsLoading && (
@@ -315,7 +338,6 @@ export function StocksPage() {
                     </span>
                   </th>
                 ))}
-                <th className="hidden md:table-cell px-3 py-2.5 text-left whitespace-nowrap">Sektör</th>
                 <th className="px-3 py-2.5 text-center w-28 whitespace-nowrap">Detay</th>
               </tr>
             </thead>
@@ -358,7 +380,6 @@ export function StocksPage() {
                     <PerfCell value={s.returns?.['6a']} hideOnMobile />
                     <PerfCell value={s.returns?.['1y']} hideOnMobile />
                     <PerfCell value={s.returns?.['1y']} />
-                    <td className="hidden md:table-cell px-3 py-2.5 text-left text-slate-400 whitespace-nowrap">{s.sector ?? '—'}</td>
                     <td className="px-3 py-2.5 text-center">
                       <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <Link

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Globe, RefreshCw, TrendingUp, TrendingDown, Flag, Gem, DollarSign, Activity, ExternalLink, Info,
+  Globe, RefreshCw, TrendingUp, TrendingDown, Flag, Gem, DollarSign, Activity, ExternalLink, Info, Lock, Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo } from '@/data/api/yahoo';
+import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
 interface IndexItem {
@@ -101,6 +102,9 @@ interface QuoteState {
 }
 
 export function GlobalPage() {
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
+
   const [quotes, setQuotes] = useState<Record<string, QuoteState>>({});
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
@@ -136,10 +140,51 @@ export function GlobalPage() {
   };
 
   useEffect(() => {
+    if (!proUser) return;
     refresh();
     const id = setInterval(refresh, 3 * 60_000); // 3 dakikada bir
     return () => clearInterval(id);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proUser]);
+
+  // PRO gating
+  if (!proUser) {
+    return (
+      <>
+        <PageHeader
+          title="Global Piyasalar"
+          subtitle="ABD, Avrupa, Asya endeksleri + emtia + dolar endeksi + volatilite — tek sayfada anlık takip."
+        />
+        <div className="glass-card relative overflow-hidden p-8 text-center">
+          <div className="pointer-events-none absolute inset-0 opacity-25">
+            <div className="grid h-full gap-1.5 p-4 grid-cols-4 blur-sm">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <div key={i} className="rounded bg-accent/15" />
+              ))}
+            </div>
+          </div>
+          <div className="relative">
+            <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
+              <Lock size={28} />
+            </span>
+            <h2 className="mt-4 text-xl font-bold text-slate-100">Global Piyasalar PRO Üyelere Özel</h2>
+            <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
+              ABD/Avrupa/Asya endeksleri, Brent, WTI, Altın, Gümüş, VIX, DXY ve Türkiye CDS — global piyasayı tek bakışta izle, makro yön sezgisi kazan.
+            </p>
+            <Link
+              to="/uyelik"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:brightness-110 shadow-lg shadow-accent/30"
+            >
+              <Sparkles size={14} /> PRO'ya Yükselt
+            </Link>
+            <p className="mt-3 text-[11px] text-slate-500">
+              PRO ile ek: ABD Borsaları, Heat Map, AI hisse/portföy analizi, reklamsız panel.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

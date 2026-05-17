@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import {
   PiggyBank, Plus, ExternalLink, Search, Info, Star, ChevronRight,
-  ChevronUp, ChevronDown, Filter, Trophy, AlertCircle,
+  ChevronUp, ChevronDown, Trophy, AlertCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -60,7 +60,6 @@ export function FundsPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [toDelete, setToDelete] = useState<FundEntry | null>(null);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<'all' | FundCategory>('all');
   const [sortKey, setSortKey] = useState<SortKey>('year');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
@@ -111,14 +110,13 @@ export function FundsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return universe.filter((f) => {
-      if (category !== 'all' && f.category !== category) return false;
       if (q) {
-        const blob = `${f.code} ${f.name ?? ''} ${f.category}`.toLowerCase();
+        const blob = `${f.code} ${f.name ?? ''}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [universe, search, category]);
+  }, [universe, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -272,21 +270,6 @@ export function FundsPage() {
           />
         </div>
 
-        <div className="relative">
-          <Filter size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-          <select
-            className="input pl-8 w-44"
-            value={category}
-            onChange={(e) => setCategory(e.target.value as 'all' | FundCategory)}
-          >
-            <option value="all">Tüm kategoriler</option>
-            {ALL_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {/* Hızlı sıralama presetleri */}
@@ -361,7 +344,6 @@ export function FundsPage() {
                     </span>
                   </th>
                 ))}
-                <th className="hidden md:table-cell px-3 py-2.5 text-left w-32 whitespace-nowrap">Şemsiye</th>
                 <th className="px-3 py-2.5 text-center w-40 whitespace-nowrap">Canlı Veri</th>
               </tr>
             </thead>
@@ -399,7 +381,6 @@ export function FundsPage() {
                     <PerfCell value={f.sixMonth} />
                     <PerfCell value={f.ytd} hideOnMobile />
                     <PerfCell value={f.year} />
-                    <td className="hidden md:table-cell px-3 py-2.5 text-left text-slate-400 whitespace-nowrap">{f.category}</td>
                     <td className="px-3 py-2.5 text-center">
                       <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <a

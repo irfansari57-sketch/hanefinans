@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Flag, RefreshCw, ChevronRight } from 'lucide-react';
+import { Flag, RefreshCw, ChevronRight, Lock, Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -8,6 +8,7 @@ import { fetchIndexYahoo, fetchHistoricalYahoo } from '@/data/api/yahoo';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { ema, type OHLC } from '@/lib/indicators';
 import { US_STOCKS } from '@/data/usStocks';
+import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
 const INDICES: { ySym: string; label: string }[] = [
@@ -32,6 +33,9 @@ interface UsStockRec {
 }
 
 export function UsMarketsPage() {
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
+
   const [indexResults, setIndexResults] = useState<MultiTimeframeResult[]>([]);
   const [stockRecs, setStockRecs] = useState<UsStockRec[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,10 +121,51 @@ export function UsMarketsPage() {
   };
 
   useEffect(() => {
+    if (!proUser) return;
     refresh();
     const id = setInterval(refresh, 3 * 60_000); // 3 dk
     return () => clearInterval(id);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proUser]);
+
+  // PRO gating
+  if (!proUser) {
+    return (
+      <>
+        <PageHeader
+          title="ABD Borsaları"
+          subtitle="S&P 500, Dow, NASDAQ endeksleri + 20 gelecek vaad eden ABD hissesi — 1h/4h/1d trend analizi."
+        />
+        <div className="glass-card relative overflow-hidden p-8 text-center">
+          <div className="pointer-events-none absolute inset-0 opacity-25">
+            <div className="grid h-full gap-1.5 p-4 grid-cols-4 blur-sm">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <div key={i} className="rounded bg-accent/15" />
+              ))}
+            </div>
+          </div>
+          <div className="relative">
+            <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
+              <Lock size={28} />
+            </span>
+            <h2 className="mt-4 text-xl font-bold text-slate-100">ABD Borsaları PRO Üyelere Özel</h2>
+            <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
+              S&P 500, Dow, NASDAQ endeksleri + 20 gelecek vaad eden ABD hissesi (NVDA, AAPL, MSFT, TSLA, AMD…) — multi-timeframe trend analiziyle birlikte.
+            </p>
+            <Link
+              to="/uyelik"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:brightness-110 shadow-lg shadow-accent/30"
+            >
+              <Sparkles size={14} /> PRO'ya Yükselt
+            </Link>
+            <p className="mt-3 text-[11px] text-slate-500">
+              PRO ile ek: Global Piyasalar, Heat Map, AI hisse/portföy analizi, reklamsız panel.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

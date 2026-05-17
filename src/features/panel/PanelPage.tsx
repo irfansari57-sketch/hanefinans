@@ -290,69 +290,16 @@ export function PanelPage() {
             )}
           </div>
 
-          {/* Macro — PRO/ELITE'de gizli, onlara daha sade alan */}
-          {!proUser && (
-            <div className="rounded-xl border border-border bg-bg-soft p-3">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Makro</h2>
-                <Link to="/macro" className="text-[10px] text-accent hover:underline">tümü →</Link>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {topMacro.map((m) => (
-                  <MacroCard key={m.key} item={m} compact />
-                ))}
-              </div>
-              <div className="mt-3 border-t border-border pt-3">
-                <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  <CalendarClock size={11} /> Yaklaşan Olaylar
-                </div>
-                <ul className="space-y-1.5 px-1 text-xs">
-                  {upcomingEvents.map((e) => {
-                    const dleft = daysUntil(e.date);
-                    return (
-                      <li key={e.id} className="flex items-center justify-between gap-2">
-                        <span className="truncate text-slate-300">{e.title}</span>
-                        <span className="shrink-0 text-slate-500">
-                          {formatDateShort(e.date)}
-                          <span className="ml-1 text-[10px] text-slate-600">
-                            ({dleft <= 0 ? 'bugün' : `${dleft} gün`})
-                          </span>
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {/* Sentiment — PRO/ELITE'de gizli */}
-          {!proUser && (
-            <div className="rounded-xl border border-border bg-bg-soft p-3">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  <MessageSquare size={11} /> En Çok Bahsedilen
-                </h2>
-                <SourceBadge source={sentimentSource} />
-              </div>
-              <div className="divide-y divide-border">
-                {topMentions.map((m, i) => (
-                  <div key={m.symbol} className="flex items-center justify-between px-1 py-2 text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="w-3 text-slate-500">{i + 1}</span>
-                      <span className="font-mono text-accent">{m.symbol}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-slate-400">{m.count} bahis</span>
-                      <span className={cn('w-12 text-right font-medium', sentimentTone[m.sentiment])}>
-                        {sentimentLabel[m.sentiment]}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Makro + Sentiment blokları kaldırıldı — global piyasa verisi için /global sayfasına yönlendir */}
+          <Link
+            to="/global"
+            className="block rounded-xl border border-accent/30 bg-accent/5 p-3 transition hover:border-accent/60 hover:bg-accent/10"
+          >
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">Global Piyasalar →</h2>
+            <p className="mt-1 text-[11px] text-slate-400">
+              ABD/Avrupa/Asya endeksleri, Brent, VIX, DXY, Türkiye CDS — hepsi tek sayfada
+            </p>
+          </Link>
         </aside>
       </div>
     </>

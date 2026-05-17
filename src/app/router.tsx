@@ -43,6 +43,7 @@ const CommoditiesPage       = lazyWithRetry(() => import('@/features/commodities
 const CryptoPage            = lazyWithRetry(() => import('@/features/crypto/CryptoPage').then((m) => ({ default: m.CryptoPage })));
 const PortfolioPage         = lazyWithRetry(() => import('@/features/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
 const UsMarketsPage         = lazyWithRetry(() => import('@/features/usMarkets/UsMarketsPage').then((m) => ({ default: m.UsMarketsPage })));
+const GlobalPage            = lazyWithRetry(() => import('@/features/global/GlobalPage').then((m) => ({ default: m.GlobalPage })));
 const HeatMapPage           = lazyWithRetry(() => import('@/features/heatmap/HeatMapPage').then((m) => ({ default: m.HeatMapPage })));
 const CommodityDetailPage   = lazyWithRetry(() => import('@/features/commodityDetail/CommodityDetailPage').then((m) => ({ default: m.CommodityDetailPage })));
 const StockDetailPage       = lazyWithRetry(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
@@ -86,6 +87,7 @@ export const router = createBrowserRouter([
       { path: 'kripto/:symbol', element: withSuspense(<CryptoDetailPage />) },
       { path: 'portfoy', element: withSuspense(<PortfolioPage />) },
       { path: 'abd', element: withSuspense(<UsMarketsPage />) },
+      { path: 'global', element: withSuspense(<GlobalPage />) },
       { path: 'heatmap', element: withSuspense(<HeatMapPage />) },
       { path: 'stock/:symbol', element: withSuspense(<StockDetailPage />) },
       { path: 'fund/:code', element: withSuspense(<FundDetailPage />) },

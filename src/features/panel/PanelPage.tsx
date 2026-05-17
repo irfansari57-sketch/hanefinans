@@ -11,6 +11,7 @@ import { TopMovers } from '@/components/domain/TopMovers';
 import { TopFundMovers } from '@/components/domain/TopFundMovers';
 import { Ticker } from '@/components/domain/Ticker';
 import { LiveBadge } from '@/components/domain/LiveBadge';
+import { TradingViewMiniWidget } from '@/components/domain/TradingViewMiniWidget';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
 } from '@/data/mock';
@@ -180,8 +181,9 @@ export function PanelPage() {
           <span className="text-[10px] text-slate-500">öncelikli</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* BIST 100 — Yahoo spot endeks */}
           {macro
-            .filter((m) => m.key === 'BIST 100' || m.key === 'BIST 30')
+            .filter((m) => m.key === 'BIST 100')
             .map((m) => (
               <div key={m.key} className="glass-card p-4">
                 <div className="flex items-center justify-between">
@@ -202,6 +204,19 @@ export function PanelPage() {
                 )}
               </div>
             ))}
+
+          {/* BIST 30 / VIOP30 — TradingView XU030D1! continuous futures widget */}
+          <div className="glass-card overflow-hidden p-3 sm:col-span-2 lg:col-span-2">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500">
+                BIST 30 / VIOP30 (XU030D1!)
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+                <Radio size={8} /> TradingView
+              </span>
+            </div>
+            <TradingViewMiniWidget symbol="BIST:XU030D1!" height={140} dateRange="3M" />
+          </div>
           {/* USD/TRY ve EUR/TRY de BIST'le birlikte göster */}
           {macro
             .filter((m) => m.key === 'USD/TRY' || m.key === 'EUR/TRY')

@@ -45,19 +45,40 @@ export function StockDetailPage() {
 
   const usMeta = findUsStock(sym);
   const isUs = !!usMeta;
-  // BIST sembolü: önce MOCK_STOCKS (zengin), yoksa BIST_UNIQUE'ten temel meta
+  // BIST endeksleri (XU100, XU030, vb.) için özel meta
+  const bistIndexMeta: Record<string, { name: string; sector: string }> = {
+    XU100: { name: 'BIST 100 Endeksi', sector: 'Endeks' },
+    XU030: { name: 'BIST 30 Endeksi', sector: 'Endeks' },
+    XUSIN: { name: 'BIST Sınai Endeksi', sector: 'Endeks' },
+    XUMAL: { name: 'BIST Mali Endeksi', sector: 'Endeks' },
+    XUTUM: { name: 'BIST Tüm Endeksi', sector: 'Endeks' },
+  };
+  // BIST sembolü: önce MOCK_STOCKS (zengin), yoksa BIST_UNIQUE, yoksa endeks fallback
   const initialBistStock = !isUs
     ? (MOCK_STOCKS.find((s) => s.symbol === sym) ?? (() => {
         const bist = findBistStock(sym);
-        if (!bist) return null;
-        return {
-          symbol: bist.symbol,
-          name: bist.name,
-          sector: bist.sector,
-          price: 0,
-          changePct: 0,
-          updatedAt: new Date().toISOString(),
-        } as Stock;
+        if (bist) {
+          return {
+            symbol: bist.symbol,
+            name: bist.name,
+            sector: bist.sector,
+            price: 0,
+            changePct: 0,
+            updatedAt: new Date().toISOString(),
+          } as Stock;
+        }
+        const idx = bistIndexMeta[sym];
+        if (idx) {
+          return {
+            symbol: sym,
+            name: idx.name,
+            sector: idx.sector,
+            price: 0,
+            changePct: 0,
+            updatedAt: new Date().toISOString(),
+          } as Stock;
+        }
+        return null;
       })())
     : null;
 
@@ -156,6 +177,43 @@ export function StockDetailPage() {
     };
   }, [sym]);
 
+  // Teknik analiz — historical varsa hesapla.
+  // Hook order'ı stabil tutmak için early return'dan ÖNCE çağırılmalı
+  // (aksi halde stock null → null değil arası render'da React #310).
+  const technicalAnalysis = useMemo(() => {
+    if (!historical || historical.bars.length < 25) return null;
+    const closes = historical.bars.map((b) => b.close);
+    const bars: OHLC[] = historical.bars.map((b) => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
+    const cur = closes[closes.length - 1];
+    const r = rsi(closes, 14).at(-1);
+    const macdR = macd(closes);
+    const boll = bollinger(closes);
+    const adxR = adx(bars);
+    const sr = supportResistance(bars, 60);
+    const emaPeriods = [5, 8, 13, 21, 55, 200];
+    const emas = emaPeriods
+      .map((p) => {
+        const v = ema(closes, p).at(-1);
+        if (!Number.isFinite(v)) return null;
+        return { period: p, value: v as number, abovePct: ((cur - (v as number)) / (v as number)) * 100 };
+      })
+      .filter((x): x is { period: number; value: number; abovePct: number } => x !== null);
+    const ma8Val = sma(closes, 8).at(-1);
+    return {
+      rsi: r,
+      rsiNote: r != null ? rsiSignal(r) : '',
+      macdBullish: macdR.recentBullishCross,
+      macdBearish: macdR.recentBearishCross,
+      bollingerLabel: bollingerLabel(boll.position),
+      adxLabel: adxLabel(adxR.lastTrendStrength),
+      support: sr.support,
+      resistance: sr.resistance,
+      emas,
+      ma8: Number.isFinite(ma8Val) ? (ma8Val as number) : undefined,
+      cur,
+    };
+  }, [historical]);
+
   if (!stock) {
     return (
       <>
@@ -211,41 +269,6 @@ export function StockDetailPage() {
       setAiLoading(false);
     }
   };
-
-  // Teknik analiz — historical varsa hesapla
-  const technicalAnalysis = useMemo(() => {
-    if (!historical || historical.bars.length < 25) return null;
-    const closes = historical.bars.map((b) => b.close);
-    const bars: OHLC[] = historical.bars.map((b) => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
-    const cur = closes[closes.length - 1];
-    const r = rsi(closes, 14).at(-1);
-    const macdR = macd(closes);
-    const boll = bollinger(closes);
-    const adxR = adx(bars);
-    const sr = supportResistance(bars, 60);
-    const emaPeriods = [5, 8, 13, 21, 55, 200];
-    const emas = emaPeriods
-      .map((p) => {
-        const v = ema(closes, p).at(-1);
-        if (!Number.isFinite(v)) return null;
-        return { period: p, value: v as number, abovePct: ((cur - (v as number)) / (v as number)) * 100 };
-      })
-      .filter((x): x is { period: number; value: number; abovePct: number } => x !== null);
-    const ma8Val = sma(closes, 8).at(-1);
-    return {
-      rsi: r,
-      rsiNote: r != null ? rsiSignal(r) : '',
-      macdBullish: macdR.recentBullishCross,
-      macdBearish: macdR.recentBearishCross,
-      bollingerLabel: bollingerLabel(boll.position),
-      adxLabel: adxLabel(adxR.lastTrendStrength),
-      support: sr.support,
-      resistance: sr.resistance,
-      emas,
-      ma8: Number.isFinite(ma8Val) ? (ma8Val as number) : undefined,
-      cur,
-    };
-  }, [historical]);
 
   return (
     <>

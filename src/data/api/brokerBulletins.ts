@@ -26,8 +26,10 @@ export interface BrokerBulletinFeed {
 }
 
 const FEED_URL = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/broker-bulletins.json';
-const CACHE_KEY = 'fa.brokerBulletins.feed';
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 saat client cache
+// Cache key versioning — eski "KT JS-rendered, scrape edilemiyor" sonucu kullanıcı localStorage'larında
+// 1 saat takılı kalmasın diye v2'ye bumpluyoruz (KT scraper artık çalışıyor).
+const CACHE_KEY = 'fa.brokerBulletins.feed.v2';
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 dk client cache (önceden 1 saatti)
 
 interface CachedFeed {
   fetchedAt: number;

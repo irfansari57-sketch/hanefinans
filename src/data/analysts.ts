@@ -49,7 +49,7 @@ export const ANALYSTS: Analyst[] = [
     affiliation: 'Aracı Kurum',
     role: 'Günlük Bülten + Sektörel Raporlar',
     bulletinUrl: 'https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten&search=&date=&page=1',
-    twitterHandle: 'KTYatirim',
+    twitterHandle: 'kuveytturkytrm',
     websiteUrl: 'https://kuveytturkyatirim.com.tr',
     initials: 'KT',
     colorSeed: '#0ea5e9',

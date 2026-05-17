@@ -114,29 +114,49 @@ SECTION_PATTERNS = [
 ]
 
 
+TR_CHARS = set("şŞçÇğĞüÜıİöÖâîû")
+SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÇĞIİÖŞÜ])")
+TABLE_CHUNK_RE = re.compile(r"(?:[A-Z]{2,5}\s+[-+]?\d+(?:[.,]\d+)?\s*%?\s*){2,}|\b\d{1,2}[.,]\d{2}\b\s+[-+]?\d+(?:[.,]\d+)?\s*%?\b")
+
+
 def clean_section_body(body: str) -> str:
-    """Bölüm gövdesinden tablo verilerini (sadece sayı/kısa parçalar) at, paragrafları birleştir."""
-    parts = re.split(r"[\n\r]+", body)
+    """
+    İki aşamalı temizlik:
+      1) Tüm metni tek satıra getir + inline tablo bloklarını sil
+         (örn "DAX 24,549.56 1.42 3.19 1.55 23.31" gibi spread number listeleri).
+      2) Cümlelere böl, düzgün Türkçe cümle olanları seç.
+    """
+    # 1) Satır kırılmalarını boşluğa çevir
+    text = re.sub(r"[\n\r]+", " ", body)
+    text = re.sub(r"\s{2,}", " ", text).strip()
+
+    # Inline tablo bloklarını çıkar (ardışık sayı kümeleri)
+    text = TABLE_CHUNK_RE.sub(" ", text)
+    text = re.sub(r"\s{2,}", " ", text).strip()
+
+    # 2) Cümlelere böl
+    sentences = SENTENCE_END_RE.split(text)
     keep = []
-    for p in parts:
-        s = p.strip()
+    for s in sentences:
+        s = s.strip()
         if not s:
             continue
-        # Sadece sayı/punctuation satırlarını at (tablo verisi)
-        if re.fullmatch(r"[\d.,%\s\-+()/]+", s):
+        if len(s) < 25:  # çok kısa parçalar tablo cell
             continue
-        # Çok kısa parçaları at (tablo hücreleri, 3 kelimeden az)
-        words = s.split()
-        if len(words) < 4:
+        # Türkçe karakter içermeli (saf İngilizce/tablo değil)
+        if not any(c in TR_CHARS for c in s) and not re.search(r"\b(ve|bir|olan|gibi|için|ile|olarak)\b", s):
             continue
-        # Sayı yoğunluğu çok yüksek (>%45) — büyük olasılıkla tablo satırı
-        digit_chars = sum(1 for c in s if c.isdigit())
-        if len(s) > 0 and digit_chars / len(s) > 0.45:
+        # Sayı yoğunluğu > %30 ise tablo satırı
+        digit_count = sum(1 for c in s if c.isdigit())
+        if len(s) > 0 and digit_count / len(s) > 0.30:
+            continue
+        # Ardışık 4+ sayı/% kümesi varsa tablo
+        if re.search(r"(?:[-+]?\d+(?:[.,]\d+)?\s*%?\s+){3,}[-+]?\d+(?:[.,]\d+)?", s):
             continue
         keep.append(s)
-    text = " ".join(keep)
-    text = re.sub(r"\s{2,}", " ", text)
-    return text.strip()
+
+    result = " ".join(keep)
+    return re.sub(r"\s{2,}", " ", result).strip()
 
 
 def extract_sections(text: str) -> list:

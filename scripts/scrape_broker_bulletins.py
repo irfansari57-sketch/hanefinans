@@ -115,6 +115,45 @@ SECTION_PATTERNS = [
 
 
 TR_CHARS = set("şŞçÇğĞüÜıİöÖâîû")
+
+
+def extract_page_columns(page) -> str:
+    """
+    Sayfayı 2 kolon olarak ayır (Osmanlı PDF'i çift-kolonlu — sol haberler,
+    sağ tablolar). Önce sol kolonu y-order'da, sonra sağ kolonu birleştir.
+    Bu sayede satır-bazında pdfplumber'ın yaptığı 'sol metin + sağ tablo'
+    karışıklığı önlenir.
+    """
+    words = page.extract_words()
+    if not words:
+        return page.extract_text() or ""
+
+    page_mid = page.width / 2
+    left, right = [], []
+    for w in words:
+        xc = (w["x0"] + w["x1"]) / 2
+        (left if xc < page_mid else right).append(w)
+
+    def reconstruct(col_words):
+        if not col_words:
+            return ""
+        col_words.sort(key=lambda w: (round(w["top"]), w["x0"]))
+        lines = []
+        current = []
+        last_top = None
+        for w in col_words:
+            if last_top is not None and abs(w["top"] - last_top) > 4:
+                if current:
+                    lines.append(" ".join(x["text"] for x in current))
+                current = []
+            current.append(w)
+            last_top = w["top"]
+        if current:
+            lines.append(" ".join(x["text"] for x in current))
+        return "\n".join(lines)
+
+    return reconstruct(left) + "\n\n" + reconstruct(right)
+
 SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÇĞIİÖŞÜ])")
 TABLE_CHUNK_RE = re.compile(r"(?:[A-Z]{2,5}\s+[-+]?\d+(?:[.,]\d+)?\s*%?\s*){2,}|\b\d{1,2}[.,]\d{2}\b\s+[-+]?\d+(?:[.,]\d+)?\s*%?\b")
 
@@ -213,9 +252,11 @@ def fetch_osmanli() -> dict:
             if not pdf.pages:
                 result["error"] = "PDF sayfa içermiyor"
                 return result
-            # TÜM sayfaları çıkar — sections cross-page olabilir (haberler 2-3. sayfada)
-            raw_pages = [(p.extract_text() or "") for p in pdf.pages[:5]]
-            all_raw = "\n".join(raw_pages)
+            # Column-aware extraction: sol kolon (haber metni) önce, sağ kolon
+            # (tablolar) sonra. Bu Osmanlı'nın 2-kolonlu layout'unda haber
+            # metninin tablo verileriyle satır-bazında karışmasını önler.
+            raw_pages = [extract_page_columns(p) for p in pdf.pages[:5]]
+            all_raw = "\n\n".join(raw_pages)
 
         if not all_raw.strip():
             result["error"] = "PDF'ten metin çıkarılamadı"

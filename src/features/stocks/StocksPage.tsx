@@ -7,6 +7,7 @@ import { LiveBadge } from '@/components/domain/LiveBadge';
 import { loadStocks } from '@/data/services';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { MOCK_STOCKS } from '@/data/mock';
+import { BIST_UNIQUE } from '@/data/bistAll';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
@@ -33,7 +34,11 @@ const SORT_COLUMNS: Array<{ key: SortKey; label: string; period?: keyof PeriodRe
   { key: 'r1y',  label: '1 Yıl',   period: '1y' },
 ];
 
-const ALL_SECTORS = Array.from(new Set(MOCK_STOCKS.map((s) => s.sector).filter(Boolean) as string[])).sort();
+// Sektör seti hem zengin MOCK_STOCKS (~50) hem geniş BIST_UNIQUE (~270) birleşimi
+const ALL_SECTORS = Array.from(new Set([
+  ...(MOCK_STOCKS.map((s) => s.sector).filter(Boolean) as string[]),
+  ...BIST_UNIQUE.map((s) => s.sector),
+])).sort();
 
 const STOCK_RETURNS_CACHE_KEY = 'fa.stocks.returns.v1';
 const STOCK_RETURNS_TTL_MS = 30 * 60_000; // 30 dk
@@ -78,26 +83,72 @@ export function StocksPage() {
   const refresh = async (forceReturns = false) => {
     setLoading(true);
     try {
-      const all = MOCK_STOCKS.map((s) => s.symbol);
-      const { data } = await loadStocks(all);
-      setStocks(data);
+      // Tüm BIST evreni — MOCK_STOCKS (zengin meta) + BIST_UNIQUE (geniş kapsam) birleşik
+      const richMap = new Map(MOCK_STOCKS.map((s) => [s.symbol, s]));
+      const universe: { symbol: string; name: string; sector: string }[] = [];
+      const seen = new Set<string>();
+      // Önce zengin olanlar
+      for (const s of MOCK_STOCKS) {
+        if (seen.has(s.symbol)) continue;
+        seen.add(s.symbol);
+        universe.push({ symbol: s.symbol, name: s.name, sector: s.sector ?? '' });
+      }
+      for (const s of BIST_UNIQUE) {
+        if (seen.has(s.symbol)) continue;
+        seen.add(s.symbol);
+        universe.push({ symbol: s.symbol, name: s.name, sector: s.sector });
+      }
+      const all = universe.map((s) => s.symbol);
+
+      // İlk paint: tüm sembolleri placeholder Stock ile göster (price=0)
+      const placeholderStocks: Stock[] = universe.map((u) => {
+        const rich = richMap.get(u.symbol);
+        return {
+          symbol: u.symbol,
+          name: rich?.name ?? u.name,
+          sector: rich?.sector ?? u.sector,
+          price: rich?.price ?? 0,
+          changePct: 0,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      setStocks(placeholderStocks);
+
+      // Quote'ları 50'şer batch — Yahoo proxy'yi zorlamadan tüm 270'i çek
+      const BATCH_SIZE = 50;
+      const liveStocks: Stock[] = [];
+      for (let i = 0; i < all.length; i += BATCH_SIZE) {
+        const batch = all.slice(i, i + BATCH_SIZE);
+        const { data } = await loadStocks(batch);
+        liveStocks.push(...data);
+        // Her batch sonrası UI'a yansıt (incremental)
+        const liveMap = new Map(liveStocks.map((s) => [s.symbol, s]));
+        const merged = placeholderStocks.map((p) => liveMap.get(p.symbol) ?? p);
+        setStocks(merged);
+      }
       setUpdatedAt(Date.now());
+
       // Returns cache'i oku
       const cached = forceReturns ? null : readReturnsCache();
       if (cached) {
         setReturnsMap(cached);
         return;
       }
-      // Cache yoksa veya zorlandı — historical fetch
+      // Cache yoksa: historical fetch — yine 30'lu batch'te (1Y data daha ağır)
       setReturnsLoading(true);
       const newReturns: Record<string, PeriodReturns> = {};
-      await Promise.all(
-        data.map(async (s) => {
-          const hist = await fetchHistoricalYahoo(s.symbol, '1y', '1d');
-          if (hist) newReturns[s.symbol] = computePeriodReturns(hist.closes);
-        }),
-      );
-      setReturnsMap(newReturns);
+      const RETURNS_BATCH = 30;
+      for (let i = 0; i < all.length; i += RETURNS_BATCH) {
+        const batch = all.slice(i, i + RETURNS_BATCH);
+        await Promise.all(
+          batch.map(async (sym) => {
+            const hist = await fetchHistoricalYahoo(sym, '1y', '1d');
+            if (hist) newReturns[sym] = computePeriodReturns(hist.closes);
+          }),
+        );
+        // İncremental update — kullanıcı dolan satırları gerçek zamanlı görsün
+        setReturnsMap({ ...newReturns });
+      }
       writeReturnsCache(newReturns);
     } finally {
       setLoading(false);

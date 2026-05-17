@@ -29,6 +29,7 @@ const SCENARIOS = [
 type Scenario = typeof SCENARIOS[number];
 
 interface CalcInputs {
+  initialDeposit: number;             // başlangıçta tek seferlik yatırım (lump sum)
   monthlyContribution: number;
   years: number;
   contributionIncreaseRate: number;   // yıllık reel katkı artışı (örn 0.05 = %5)
@@ -39,7 +40,8 @@ interface CalcInputs {
 }
 
 interface Projection {
-  totalContributed: number;       // brüt katılımcı katkısı (yönetim gideri düşülmeden)
+  initialDeposit: number;
+  totalContributed: number;       // aylık katkılardan toplam (lump sum hariç)
   totalManagementFees: number;    // toplam yönetim gideri kesintisi
   totalStateContribution: number; // toplam devlet katkısı
   totalEarnings: number;          // bileşik kazanç (yönetim sonrası net)
@@ -48,26 +50,37 @@ interface Projection {
 }
 
 function project(p: CalcInputs): Projection {
-  let balance = 0;
+  // Başlangıç yatırımı (lump sum) — yönetim gideri kesintisinden geçer
+  // ama EGM'ye göre BES'te devlet katkısı yıllık katkı limitiyle hesaplanır,
+  // tek seferlik büyük yatırım da yıllık katkı tavanına dahildir.
+  const initialMgmtFee = p.initialDeposit * p.managementFeeRate;
+  const initialNet = p.initialDeposit - initialMgmtFee;
+  let balance = initialNet;
+
   let totalContributed = 0;
   let totalStateContribution = 0;
-  let totalManagementFees = 0;
+  let totalManagementFees = initialMgmtFee;
   let currentMonthly = p.monthlyContribution;
   let currentBauCap = INITIAL_ANNUAL_BAU_CAP;
   const netReturnRate = p.realReturnRate - p.fundOperatingExpenseRate;
   const yearlySnapshot: number[] = [];
 
+  // İlk yılın katkısı: aylık × 12 + (initial deposit'in BAU tavanı içindeki kısmı için devlet katkısı)
+  // BES'te yıllık katkı = düzenli + ek katkı; tavan altındaysa hepsine devlet katkısı uygulanır
   for (let y = 1; y <= p.years; y++) {
-    const yearlyContribution = currentMonthly * 12;
-    const managementFee = yearlyContribution * p.managementFeeRate;
-    const netContribution = yearlyContribution - managementFee;
-    const eligibleForState = Math.min(yearlyContribution, currentBauCap);
+    const monthlyYearly = currentMonthly * 12;
+    // 1. yıl: lump sum'u da yıllık katkıya ekle (devlet katkısı için)
+    const totalYearlyForState = monthlyYearly + (y === 1 ? p.initialDeposit : 0);
+    const eligibleForState = Math.min(totalYearlyForState, currentBauCap);
     const stateContribution = eligibleForState * STATE_CONTRIBUTION_RATE;
+
+    const yearMgmtFee = monthlyYearly * p.managementFeeRate;
+    const netContribution = monthlyYearly - yearMgmtFee;
 
     balance = (balance + netContribution + stateContribution) * (1 + netReturnRate);
 
-    totalContributed += yearlyContribution;
-    totalManagementFees += managementFee;
+    totalContributed += monthlyYearly;
+    totalManagementFees += yearMgmtFee;
     totalStateContribution += stateContribution;
     yearlySnapshot.push(balance);
 
@@ -76,9 +89,18 @@ function project(p: CalcInputs): Projection {
     currentBauCap *= 1 + p.bauIncreaseRate;
   }
 
-  // Bileşik kazanç = bakiye − (toplam katılımcı katkısı − yönetim gideri) − devlet katkısı
-  const totalEarnings = balance - (totalContributed - totalManagementFees) - totalStateContribution;
-  return { totalContributed, totalManagementFees, totalStateContribution, totalEarnings, endBalance: balance, yearlySnapshot };
+  // Bileşik kazanç = bakiye − (lump sum + aylık katkılar − yönetim gideri) − devlet katkısı
+  const totalContributedAll = p.initialDeposit + totalContributed;
+  const totalEarnings = balance - (totalContributedAll - totalManagementFees) - totalStateContribution;
+  return {
+    initialDeposit: p.initialDeposit,
+    totalContributed,
+    totalManagementFees,
+    totalStateContribution,
+    totalEarnings,
+    endBalance: balance,
+    yearlySnapshot,
+  };
 }
 
 const formatTL = (n: number) =>
@@ -96,6 +118,7 @@ export function BESCalculator() {
   const [currentAge, setCurrentAge] = useState(31);
   const [retirementAge, setRetirementAge] = useState(56);
   const [monthly, setMonthly] = useState(2500);
+  const [initialDeposit, setInitialDeposit] = useState(0);
 
   // Ek parametreler (EGM ile aynı varsayılanlar)
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -114,6 +137,7 @@ export function BESCalculator() {
     return SCENARIOS.map((s) => {
       const realReturn = (editRates ? rates[s.key as keyof typeof rates] : s.rate * 100) / 100;
       const projection = project({
+        initialDeposit,
         monthlyContribution: monthly,
         years,
         contributionIncreaseRate: contribIncrease / 100,
@@ -124,7 +148,7 @@ export function BESCalculator() {
       });
       return { scenario: s, rate: realReturn, projection };
     });
-  }, [monthly, years, contribIncrease, mgmtFee, fundFee, bauIncrease, editRates, rates]);
+  }, [initialDeposit, monthly, years, contribIncrease, mgmtFee, fundFee, bauIncrease, editRates, rates]);
 
   const yearlyContribution = monthly * 12;
   const yearlyStateContribution = Math.min(yearlyContribution, INITIAL_ANNUAL_BAU_CAP) * STATE_CONTRIBUTION_RATE;
@@ -156,11 +180,18 @@ export function BESCalculator() {
       </div>
 
       {/* Temel girdiler */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <NumberField label="Yaşınız" value={currentAge} min={18} max={70} step={1} suffix="yaş" onChange={setCurrentAge} />
         <NumberField label="Emeklilik Yaşı" value={retirementAge} min={Math.max(currentAge + 1, 30)} max={75} step={1} suffix="yaş" onChange={setRetirementAge} />
         <NumberField label="Aylık Katkı" value={monthly} min={0} step={500} suffix="₺" onChange={setMonthly} />
+        <NumberField label="Başlangıç Yatırımı" value={initialDeposit} min={0} step={10_000} suffix="₺" onChange={setInitialDeposit} />
       </div>
+      {initialDeposit > 0 && (
+        <p className="mt-1 text-[10px] text-slate-500">
+          ℹ️ Tek seferlik başlangıç tutarı sisteme gün-1'de eklenir; bileşik getiri tüm süre boyunca üzerine işler.
+          1. yılda BAU tavanı içinde kaldığı kısma %20 devlet katkısı uygulanır.
+        </p>
+      )}
       <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
         <span>Süre: <strong className="text-accent">{years} yıl</strong></span>
         {yearsInvalid && (
@@ -297,7 +328,8 @@ export function BESCalculator() {
               <tr>
                 <th className="px-3 py-2 text-left">Senaryo</th>
                 <th className="px-3 py-2 text-right">Reel Getiri</th>
-                <th className="px-3 py-2 text-right">Senin Yatırdığın</th>
+                {initialDeposit > 0 && <th className="px-3 py-2 text-right">Başlangıç</th>}
+                <th className="px-3 py-2 text-right">Aylık Katkılar</th>
                 <th className="px-3 py-2 text-right">Yönetim Gideri</th>
                 <th className="px-3 py-2 text-right">Devlet Katkısı</th>
                 <th className="px-3 py-2 text-right">Bileşik Kazanç</th>
@@ -317,6 +349,9 @@ export function BESCalculator() {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">%{(rate * 100).toFixed(1)}</td>
+                  {initialDeposit > 0 && (
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-300">{formatTL(projection.initialDeposit)}</td>
+                  )}
                   <td className="px-3 py-2 text-right tabular-nums">{formatTL(projection.totalContributed)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-danger">−{formatTL(projection.totalManagementFees)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-success">+{formatTL(projection.totalStateContribution)}</td>
@@ -452,7 +487,10 @@ function ScenarioCard({
         <div className="text-[10px] text-slate-500">net reel getiri: %{(netRate * 100).toFixed(1)}/yıl</div>
       </div>
       <div className="mt-3 space-y-1 text-[11px]">
-        <Row label="Senin yatırdığın" value={formatCompactTL(projection.totalContributed)} />
+        {projection.initialDeposit > 0 && (
+          <Row label="Başlangıç" value={formatCompactTL(projection.initialDeposit)} />
+        )}
+        <Row label="Aylık katkılar" value={formatCompactTL(projection.totalContributed)} />
         <Row label="Yönetim gideri" value={`−${formatCompactTL(projection.totalManagementFees)}`} tone="danger" />
         <Row label="Devlet katkısı" value={`+${formatCompactTL(projection.totalStateContribution)}`} tone="success" />
         <Row label="Bileşik kazanç" value={`+${formatCompactTL(projection.totalEarnings)}`} tone="accent" />

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   BookOpen, TrendingUp, PiggyBank, Activity, ShieldAlert, Bitcoin, Calculator, GraduationCap,
   Search, ExternalLink, ChevronRight, Briefcase,
@@ -361,19 +361,31 @@ const toneClasses: Record<Topic['tone'], string> = {
   danger: 'bg-danger/15 text-danger',
 };
 
+// İstenen görüntü sırası — BES en başta, gerisi orijinal sırada.
+const PRIORITY_SLUGS = ['bes-bireysel-emeklilik'];
+const ORDERED_TOPICS = (() => {
+  const priority = PRIORITY_SLUGS
+    .map((slug) => TOPICS.find((t) => t.slug === slug))
+    .filter((t): t is Topic => !!t);
+  const rest = TOPICS.filter((t) => !PRIORITY_SLUGS.includes(t.slug));
+  return [...priority, ...rest];
+})();
+
 export function FinancialLiteracyPage() {
-  const [active, setActive] = useState<string>(TOPICS[0].slug);
+  const [active, setActive] = useState<string>(ORDERED_TOPICS[0].slug);
   const [search, setSearch] = useState('');
 
-  const filtered = search.trim()
-    ? TOPICS.filter((t) =>
-        (t.title + t.description + t.bullets.join(' ') + t.keyTerms.map((k) => k.term).join(' '))
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      )
-    : TOPICS;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return ORDERED_TOPICS;
+    return ORDERED_TOPICS.filter((t) =>
+      (t.title + t.description + t.bullets.join(' ') + t.keyTerms.map((k) => k.term).join(' '))
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [search]);
 
-  const current = TOPICS.find((t) => t.slug === active) ?? TOPICS[0];
+  const current = ORDERED_TOPICS.find((t) => t.slug === active) ?? ORDERED_TOPICS[0];
   const Icon = current.icon;
 
   return (

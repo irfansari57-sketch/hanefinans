@@ -77,6 +77,31 @@
   animation-play-state: paused;
 }
 
+/* Brand 3D başlık — parlama (shine) geçişli arka plan */
+@keyframes brand-shine {
+  0% { background-position: -150% 50%; }
+  100% { background-position: 250% 50%; }
+}
+.brand-shine-bg {
+  background-image:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.65) 0%, rgba(15, 23, 42, 0.95) 100%),
+    linear-gradient(110deg,
+      transparent 0%,
+      transparent 30%,
+      rgba(34, 211, 238, 0.18) 45%,
+      rgba(168, 85, 247, 0.14) 55%,
+      transparent 70%,
+      transparent 100%
+    );
+  background-size: 100% 100%, 200% 100%;
+  background-repeat: no-repeat;
+  animation: brand-shine 6s linear infinite;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 /* Dikey haber bandı — yukarıdan aşağı kesintisiz akış.
    İçerik [news, news] olarak iki kez render edilir; track yüksekliği = 2x içerik.
    translateY(-50%) → translateY(0%) loop'u, ikinci kopyanın başlangıç pozisyonu

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Bitcoin, ExternalLink, RefreshCw, Activity,
 } from 'lucide-react';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import {
@@ -28,7 +27,16 @@ export function CryptoDetailPage() {
   const { symbol = '' } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
   const sym = symbol.toUpperCase();
-  const meta = findCrypto(sym);
+  // Bilinen kripto varsa onun zengin meta'sını kullan; yoksa sembolden sentetik meta üret.
+  // Bu sayede ANY altcoin için iç detay sayfası açılır (Yahoo'da veri yoksa kart fallback'e düşer).
+  const knownMeta = findCrypto(sym);
+  const meta = knownMeta ?? {
+    symbol: sym,
+    name: sym,
+    coingeckoId: sym.toLowerCase(),
+    yahoo: `${sym}-USD`,
+    category: 'L1 Blockchain' as const,
+  };
 
   const [spot, setSpot] = useState<{ value: number; changePct: number } | null>(null);
   const [historical, setHistorical] = useState<HistoricalSeries | null>(null);
@@ -38,7 +46,6 @@ export function CryptoDetailPage() {
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
 
   const refresh = async () => {
-    if (!meta) return;
     setLoading(true);
     try {
       const [spotR, hist1d, hist1h] = await Promise.all([
@@ -121,20 +128,9 @@ export function CryptoDetailPage() {
     };
   }, [historical]);
 
-  if (!meta) {
-    return (
-      <>
-        <button onClick={() => navigate(-1)} className="btn-ghost mb-3">
-          <ArrowLeft size={14} /> Geri
-        </button>
-        <EmptyState
-          icon={<Bitcoin size={28} />}
-          title="Kripto bulunamadı"
-          description={`"${sym}" desteklenmiyor. Desteklenenler: BTC, ETH, BNB, SOL, XRP, ADA, DOGE, AVAX, DOT, LINK, MATIC, TRX, LTC.`}
-        />
-      </>
-    );
-  }
+  // Meta her zaman var (knownMeta yoksa sentetik). Yahoo veri dönmediyse:
+  // chart + TA bölümleri kendi şartlı render'larıyla zaten "veri yok" görünür,
+  // dış kaynak linkleri (CoinGecko/Binance/Paribu) altta hep çalışır.
 
   const price = spot?.value ?? 0;
   const change = spot?.changePct ?? 0;

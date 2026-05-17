@@ -38,6 +38,7 @@ import { HaneModAdBanner } from '@/components/domain/HaneModAdBanner';
 import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
+import { BrandingBlock } from '@/components/domain/BrandingBlock';
 import { ShieldAlert, ChevronDown } from 'lucide-react';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
@@ -174,67 +175,9 @@ export function Layout() {
             </div>
           ))}
 
-          {/* Hane Mod Studio görseli + 3D başlık + © — sidebar branding (YouTube'un ÜSTÜNDE) */}
+          {/* Hane Mod Studio görseli + 3D parlama başlık + © — sidebar branding (YouTube'un ÜSTÜNDE) */}
           <div className="pt-3">
-            {/* Görsel → Hane Mod Studio YouTube kanalı */}
-            <a
-              href="https://www.youtube.com/@hanemodstudio"
-              target="_blank"
-              rel="noreferrer"
-              className="block overflow-hidden rounded-lg border border-border bg-gradient-to-br from-slate-900 via-slate-800 to-black transition hover:border-accent/40 hover:shadow-lg hover:shadow-accent/10"
-              title="Hane Mod Studio YouTube kanalı"
-            >
-              <img
-                src="/brand/hane-mod-studio.png"
-                alt="Hane Mod Studio"
-                className="w-full h-auto object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                  const fallback = (e.currentTarget.nextElementSibling as HTMLElement);
-                  if (fallback) fallback.style.display = 'flex';
-                }}
-              />
-              {/* Fallback: görsel yokken metin logo */}
-              <div
-                lang="en"
-                className="hidden h-20 items-center justify-center text-xs font-black tracking-[0.2em] text-slate-300"
-                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
-              >
-                HANE MOD STUDIO
-              </div>
-            </a>
-            {/* 3D katmanlı şirket adı + © → hanetechnology.com */}
-            <a
-              href="https://www.hanetechnology.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="block group"
-              title="Hane Digital Technology Inc."
-            >
-              <h3
-                lang="en"
-                className="mt-3 text-center text-[14px] font-black tracking-wider transition group-hover:brightness-125"
-                style={{
-                  color: '#e2e8f0',
-                  textShadow: [
-                    '0 1px 0 #1e293b',
-                    '0 2px 0 #1a253a',
-                    '0 3px 0 #16213a',
-                    '0 4px 0 #131e36',
-                    '0 5px 0 #0f1a32',
-                    '0 6px 4px rgba(0,0,0,0.6)',
-                    '0 0 12px rgba(34, 211, 238, 0.25)',
-                  ].join(', '),
-                  letterSpacing: '0.05em',
-                  lineHeight: '1.2',
-                }}
-              >
-                © 2026 HANE DIGITAL<br />TECHNOLOGY INC.
-              </h3>
-              <p lang="en" className="mt-1 text-center text-[10px] text-slate-500 transition group-hover:text-slate-400">
-                All rights reserved.
-              </p>
-            </a>
+            <BrandingBlock />
           </div>
 
           {/* YouTube banner (PRO'da gizli) — branding bloğunun altında */}
@@ -412,17 +355,23 @@ export function Layout() {
           <Outlet />
         </main>
 
-        {/* Mobil reklam alanı — sidebar mobilde gizli olduğu için banner'ları main'in altında gösteriyoruz
-            (PRO/ELITE'de tamamen gizli, sayfayı en üstte değil aşağıya kaydırıyoruz) */}
-        {!isPro(user) && (
-          <div className="md:hidden mx-auto w-full max-w-7xl px-3 pb-4 space-y-2">
-            <HaneModAdBanner variant="compact" />
-            <AdBanner variant="compact" />
-          </div>
-        )}
+        {/* Mobil branding + reklam + disclaimer — desktop sidebar ile aynı sıra:
+            BRANDING → YouTube → YTD/KVKK → Sponsor */}
+        <div className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 pt-4 pb-2 space-y-3">
+          {/* 1. Branding (görsel + 3D parlama başlık) — herkese */}
+          <BrandingBlock />
 
-        {/* Mobil footer — disclaimer default açık + telif. Desktop'ta sidebar'da görünür. */}
-        <footer className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 py-4">
+          {/* 2. YouTube banner — PRO'da gizli */}
+          {!isPro(user) && (
+            <div>
+              <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                Resmi YouTube
+              </div>
+              <HaneModAdBanner variant="compact" />
+            </div>
+          )}
+
+          {/* 3. YTD + KVKK — default açık, herkese */}
           <details className="group rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5" open>
             <summary className="flex cursor-pointer items-center gap-2 list-none">
               <ShieldAlert size={13} className="shrink-0 text-warning" />
@@ -433,10 +382,21 @@ export function Layout() {
               <DisclaimerBody compact />
             </div>
           </details>
-          <div className="mt-3 text-center text-[10px]">
-            <p className="font-semibold text-slate-400">© 2026 Hane Digital Technology Inc.</p>
-            <p className="text-slate-500">All rights reserved.</p>
-          </div>
+
+          {/* 4. Sponsor banner — PRO'da gizli */}
+          {!isPro(user) && (
+            <div>
+              <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                Sponsor
+              </div>
+              <AdBanner variant="compact" />
+            </div>
+          )}
+        </div>
+
+        {/* Mobil footer — sadece version (telif branding bloğunda) */}
+        <footer className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 py-2 text-center text-[9px] text-slate-600">
+          <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
         </footer>
       </div>
 

@@ -34,8 +34,9 @@ export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix 
   const areaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
-  const [range, setRange] = useState<Range>('3mo');
-  const [chartType, setChartType] = useState<ChartType>('line');
+  // Default: 1 yıllık alan grafik (kullanıcı tercihi)
+  const [range, setRange] = useState<Range>('1y');
+  const [chartType, setChartType] = useState<ChartType>('area');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<{ first?: number; last?: number; change?: number } | null>(null);

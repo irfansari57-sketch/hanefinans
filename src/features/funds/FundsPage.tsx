@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -62,6 +63,8 @@ export function FundsPage() {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('week');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 50;
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
   const [feedError, setFeedError] = useState<TefasFeedFetchResult | null>(null);
@@ -136,6 +139,18 @@ export function FundsPage() {
     });
     return arr;
   }, [filtered, sortKey, sortDir]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginated = useMemo(
+    () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [sorted, safePage],
+  );
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, tab, sortKey, sortDir]);
+
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -348,11 +363,12 @@ export function FundsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {sorted.map((f, i) => {
+              {paginated.map((f, i) => {
                 const isWatched = watchedCodes.has(f.code);
+                const globalIndex = (safePage - 1) * PAGE_SIZE + i + 1;
                 return (
                   <tr key={f.code} className="group hover:bg-bg-card transition-colors">
-                    <td className="px-3 py-2.5 text-slate-500 tabular-nums">{i + 1}</td>
+                    <td className="px-3 py-2.5 text-slate-500 tabular-nums">{globalIndex}</td>
                     <td className="px-3 py-2.5">
                       <button
                         onClick={() => toggleWatch(f)}
@@ -415,9 +431,17 @@ export function FundsPage() {
         </div>
       )}
 
+      <Pagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        totalItems={sorted.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
+      />
+
       {feedUpdatedAt && hasLiveData && (
         <p className="mt-3 text-[11px] text-slate-500">
-          {sorted.length} fon listelendi. Veri güncelleme: {formatRelative(feedUpdatedAt)}. Sembole tıklayarak detay sayfasına, yıldıza basarak takibe ekle.
+          Toplam {sorted.length} fon. Veri güncelleme: {formatRelative(feedUpdatedAt)}. Sembole tıklayarak detay sayfasına, yıldıza basarak takibe ekle.
         </p>
       )}
 

@@ -54,7 +54,7 @@ export const ANALYSTS: Analyst[] = [
     affiliation: 'Aracı Kurum',
     role: 'Günlük Bülten + Sektör Analizleri',
     bulletinUrl: 'https://www.garantibbvayatirim.com.tr/arastirma/gunluk-bulten',
-    twitterHandle: 'GarantiBBVAYatirim',
+    twitterHandle: 'garantibbvaytrm',
     websiteUrl: 'https://www.garantibbvayatirim.com.tr',
     initials: 'GY',
     colorSeed: '#22c55e',

@@ -13,9 +13,11 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 import sys
+import traceback
 
 try:
     from tefasfon import get_funds
+    print(f"tefasfon import OK", flush=True)
 except ImportError as e:
     print(f"ERROR: tefasfon yüklenmedi: {e}", file=sys.stderr)
     sys.exit(1)
@@ -74,17 +76,34 @@ def main() -> int:
     today = datetime.now(timezone.utc).replace(tzinfo=None)
     start = today - timedelta(days=HISTORY_DAYS)
 
-    print(f"TEFAS fetch: {fmt_tr_date(start)} → {fmt_tr_date(today)}")
-    print("fund_type=YAT (yatırım fonları)")
+    print(f"TEFAS fetch: {fmt_tr_date(start)} → {fmt_tr_date(today)}", flush=True)
 
-    try:
-        df = get_funds(
-            fund_type="YAT",
-            start_date=fmt_tr_date(start),
-            end_date=fmt_tr_date(today),
-        )
-    except Exception as e:
-        print(f"❌ get_funds hatası: {e}", file=sys.stderr)
+    # tefasfon paketinde fund_type değerleri: SEC (Securities/yatırım) ve EMK (Emeklilik).
+    # Eski tefas-crawler ile uyumluluk için YAT da dene.
+    df = None
+    last_err: Exception | None = None
+    for ftype in ("SEC", "YAT"):
+        print(f"  Deneme: get_funds(fund_type={ftype!r}, start={fmt_tr_date(start)}, end={fmt_tr_date(today)})", flush=True)
+        try:
+            df = get_funds(
+                fund_type=ftype,
+                start_date=fmt_tr_date(start),
+                end_date=fmt_tr_date(today),
+            )
+            if df is not None and not df.empty:
+                print(f"  ✓ {ftype} ile başarılı, {len(df)} satır", flush=True)
+                break
+            else:
+                print(f"  ⚠ {ftype} boş dönüş", flush=True)
+        except Exception as e:
+            last_err = e
+            print(f"  ✗ {ftype} hata: {type(e).__name__}: {e}", flush=True)
+            traceback.print_exc()
+
+    if df is None or df.empty:
+        print(f"\n❌ TÜM fund_type değerleri başarısız", file=sys.stderr)
+        if last_err:
+            print(f"Son hata: {type(last_err).__name__}: {last_err}", file=sys.stderr)
         return 1
 
     if df is None or df.empty:
@@ -168,4 +187,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        print(f"\n❌ Yakalanmamış hata: {type(e).__name__}: {e}", file=sys.stderr)
+        traceback.print_exc()
+        sys.exit(1)

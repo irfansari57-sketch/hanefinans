@@ -38,7 +38,7 @@ export const ANALYSTS: Analyst[] = [
     affiliation: 'Aracı Kurum',
     role: 'Günlük Bülten + Strateji Raporları',
     bulletinUrl: 'https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep',
-    twitterHandle: 'osmanliyatirim',
+    twitterHandle: 'osmanlimenkul',
     websiteUrl: 'https://www.osmanlimenkul.com.tr',
     initials: 'OY',
     colorSeed: '#10b981',

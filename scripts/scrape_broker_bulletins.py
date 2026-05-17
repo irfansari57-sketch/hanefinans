@@ -159,14 +159,77 @@ def fetch_osmanli() -> dict:
 
 
 def fetch_kt() -> dict:
-    """KT Yatırım — site JS-rendered, sadece link tutuyoruz şimdilik."""
-    return {
+    """KT Yatırım — listing sayfasından en yeni gunluk-bulten_DDMMYYYY.pdf URL'sini bul + parse et."""
+    base = "https://kuveytturkyatirim.com.tr"
+    listing_url = f"{base}/arastirma-raporlari/"
+    result = {
         "id": "kt-yatirim",
         "name": "KT Yatırım",
-        "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten&search=&date=&page=1",
+        "sourceUrl": f"{listing_url}?category=G%C3%BCnl%C3%BCk+B%C3%BClten&search=&date=&page=1",
         "ok": False,
-        "error": "KT sitesi JS-rendered; bülten metni server-side scrape edilemiyor. Link aktif.",
     }
+    try:
+        r = requests.get(listing_url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        html = r.text
+
+        # /media/[hash]/gunluk-bulten_DDMMYYYY.pdf pattern
+        pdf_pattern = re.compile(r'(/media/[a-z0-9]+/gunluk-bulten_(\d{2})(\d{2})(\d{4})\.pdf)', re.IGNORECASE)
+        matches = pdf_pattern.findall(html)
+        if not matches:
+            result["error"] = "Listing'de gunluk-bulten PDF bulunamadı (sayfa yapısı değişmiş olabilir)"
+            return result
+
+        # En yeni tarihi seç
+        latest = max(matches, key=lambda m: (m[3], m[2], m[1]))  # (yıl, ay, gün)
+        pdf_path, dd, mm, yyyy = latest
+        pdf_url = base + pdf_path
+        bulletin_date = f"{dd}.{mm}.{yyyy}"
+        result["pdfUrl"] = pdf_url
+
+        # PDF indir + parse
+        pr = requests.get(pdf_url, headers=HEADERS, timeout=30)
+        pr.raise_for_status()
+        if not pr.content or len(pr.content) < 1000:
+            result["error"] = f"PDF içeriği boş ({len(pr.content)} byte)"
+            return result
+
+        with pdfplumber.open(io.BytesIO(pr.content)) as pdf:
+            if not pdf.pages:
+                result["error"] = "PDF sayfa içermiyor"
+                return result
+            first_page_text = pdf.pages[0].extract_text() or ""
+            if len(first_page_text) < 400 and len(pdf.pages) > 1:
+                second = pdf.pages[1].extract_text() or ""
+                first_page_text = first_page_text + "\n" + second
+
+        cleaned = clean_text(first_page_text)
+        if not cleaned:
+            result["error"] = "PDF'ten metin çıkarılamadı"
+            return result
+
+        excerpt = cleaned[:EXCERPT_MAX_CHARS]
+        if len(cleaned) > EXCERPT_MAX_CHARS:
+            last_space = excerpt.rfind(" ")
+            if last_space > EXCERPT_MAX_CHARS - 100:
+                excerpt = excerpt[:last_space]
+            excerpt = excerpt.rstrip(" .,;:") + "…"
+
+        result.update({
+            "ok": True,
+            "title": "Günlük Bülten",
+            "date": bulletin_date,
+            "excerpt": excerpt,
+            "fullLength": len(cleaned),
+        })
+        return result
+
+    except requests.RequestException as e:
+        result["error"] = f"İndirme hatası: {e}"
+        return result
+    except Exception as e:
+        result["error"] = f"Parse hatası: {e}"
+        return result
 
 
 def main() -> int:

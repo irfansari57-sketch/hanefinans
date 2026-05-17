@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  ArrowLeft, PiggyBank, ExternalLink, BarChart3, StickyNote, Trash2, AlertCircle, Radio,
+  ArrowLeft, PiggyBank, ExternalLink, BarChart3, StickyNote, Trash2, AlertCircle, Radio, TrendingUp,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -215,6 +215,11 @@ export function FundDetailPage() {
               <p className="mt-3 text-[10px] text-slate-500">Kaynak: TEFAS via GitHub Actions feed (saatlik)</p>
             </div>
           ) : null}
+
+          {/* Performans grafiği — anchor noktalardan reconstruct */}
+          <div className="card sm:col-span-3 p-4">
+            <FundPerformanceChart fund={githubData} />
+          </div>
         </div>
       ) : isTefasWorkerConfigured() ? (
         liveLoading ? (
@@ -355,5 +360,186 @@ function ExtLink({ title, description, url }: { title: string; description: stri
         <p className="mt-0.5 text-xs text-slate-400">{description}</p>
       </div>
     </a>
+  );
+}
+
+/**
+ * Fonun NAV performansını anchor noktalardan reconstruct edip çizgi grafik çizer.
+ * Veri = bugünkü NAV + 1H/1A/3A/6A/YTD/1Y geri yansıtmalar.
+ * Önce TEFAS sadece bu anchor return'leri verdiği için tam günlük history yok;
+ * yine de eğilim ve büyüklük hakkında net bir görsel sağlar.
+ */
+function FundPerformanceChart({ fund }: { fund: TefasFundData }) {
+  const today = new Date();
+  const points: Array<{ date: string; label: string; nav: number; ts: number }> = [];
+
+  const addPoint = (label: string, daysAgo: number, returnPct: number | null) => {
+    if (returnPct == null) return;
+    const d = new Date(today);
+    d.setDate(d.getDate() - daysAgo);
+    // pastNav × (1 + return/100) = todayNav  →  pastNav = todayNav / (1 + return/100)
+    const pastNav = fund.nav / (1 + returnPct / 100);
+    if (!Number.isFinite(pastNav) || pastNav <= 0) return;
+    points.push({
+      date: d.toISOString().slice(0, 10),
+      label,
+      nav: pastNav,
+      ts: d.getTime(),
+    });
+  };
+
+  // YTD için yıl başından geçen gün sayısı
+  const ytdDays = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / 86_400_000);
+  addPoint('1Y önce',   365, fund.returns['1y']);
+  addPoint('Yılbaşı',   ytdDays, fund.returns.ytd);
+  addPoint('6A önce',   180, fund.returns['6m']);
+  addPoint('3A önce',   90,  fund.returns['3m']);
+  addPoint('1A önce',   30,  fund.returns['1m']);
+  addPoint('1H önce',   7,   fund.returns['1w']);
+
+  // Bugün noktasını ekle
+  points.push({
+    date: fund.date || today.toISOString().slice(0, 10),
+    label: 'Bugün',
+    nav: fund.nav,
+    ts: today.getTime(),
+  });
+
+  // Sıralı: eski → yeni
+  points.sort((a, b) => a.ts - b.ts);
+
+  if (points.length < 2) {
+    return (
+      <div className="text-center text-xs text-slate-500 py-8">
+        Performans verisi yetersiz — grafik çizilemiyor.
+      </div>
+    );
+  }
+
+  const minNav = Math.min(...points.map((p) => p.nav));
+  const maxNav = Math.max(...points.map((p) => p.nav));
+  const pad = (maxNav - minNav) * 0.08;
+  const firstNav = points[0].nav;
+  const lastNav = points[points.length - 1].nav;
+  const totalReturn = ((lastNav - firstNav) / firstNav) * 100;
+  const isPositive = totalReturn >= 0;
+
+  return (
+    <div>
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+          <TrendingUp size={14} className="text-accent" />
+          NAV Performans Eğrisi
+          <span className="text-[10px] font-normal text-slate-500">son 1 yıl • anchor noktalar</span>
+        </h3>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500">1Y toplam</div>
+          <div className={`text-base font-bold tabular-nums ${isPositive ? 'text-success' : 'text-danger'}`}>
+            {isPositive ? '+' : ''}{totalReturn.toFixed(2)}%
+          </div>
+        </div>
+      </div>
+      <FundLineSvg points={points} minNav={minNav} maxNav={maxNav} pad={pad} firstNav={firstNav} isPositive={isPositive} />
+      <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
+        ℹ️ Grafik, mevcut NAV ve TEFAS dönemsel getirilerinden geri-hesaplanan 7 anchor noktayı kullanır.
+        Günlük NAV detayı için <a href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fund.code}`} target="_blank" rel="noreferrer" className="text-accent hover:underline">TEFAS</a>.
+      </p>
+    </div>
+  );
+}
+
+/** Native SVG çizgi grafik — recharts gerekmez, 7 anchor için yeter. */
+function FundLineSvg({
+  points,
+  minNav,
+  maxNav,
+  pad,
+  firstNav,
+  isPositive,
+}: {
+  points: Array<{ date: string; label: string; nav: number; ts: number }>;
+  minNav: number;
+  maxNav: number;
+  pad: number;
+  firstNav: number;
+  isPositive: boolean;
+}) {
+  const W = 800;
+  const H = 200;
+  const padX = 50;
+  const padY = 24;
+  const innerW = W - padX * 2;
+  const innerH = H - padY * 2;
+  const yMin = minNav - pad;
+  const yMax = maxNav + pad;
+  const yRange = yMax - yMin || 1;
+  const stepX = innerW / Math.max(1, points.length - 1);
+
+  const coords = points.map((p, i) => ({
+    ...p,
+    x: padX + i * stepX,
+    y: padY + innerH - ((p.nav - yMin) / yRange) * innerH,
+  }));
+
+  const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
+  const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${(padY + innerH).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(padY + innerH).toFixed(1)} Z`;
+
+  const stroke = isPositive ? '#22c55e' : '#ef4444';
+  const fill = isPositive ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+
+  // Referans çizgisi y koordinatı
+  const refY = padY + innerH - ((firstNav - yMin) / yRange) * innerH;
+
+  // 3 Y-axis tick
+  const yTicks = [yMin + yRange * 0.1, yMin + yRange * 0.5, yMin + yRange * 0.9];
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-56" preserveAspectRatio="xMidYMid meet">
+        {/* Y-axis tick labels + grid çizgileri */}
+        {yTicks.map((v, i) => {
+          const y = padY + innerH - ((v - yMin) / yRange) * innerH;
+          return (
+            <g key={`tick-${i}`}>
+              <line x1={padX} x2={W - padX} y1={y} y2={y} stroke="rgba(31,42,68,0.5)" strokeDasharray="2 4" />
+              <text x={padX - 6} y={y + 3} fill="#94a3b8" fontSize="10" textAnchor="end">
+                {v.toFixed(4)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Başlangıç referans çizgisi (1Y önce NAV) */}
+        <line x1={padX} x2={W - padX} y1={refY} y2={refY} stroke="#475569" strokeDasharray="3 3" strokeWidth="1" />
+
+        {/* Area dolgusu */}
+        <path d={areaPath} fill={fill} />
+
+        {/* Çizgi */}
+        <path d={linePath} fill="none" stroke={stroke} strokeWidth="2.5" />
+
+        {/* Noktalar + label'lar */}
+        {coords.map((c) => (
+          <g key={c.label}>
+            <circle cx={c.x} cy={c.y} r="4" fill={stroke} />
+            <title>{c.label}: {c.nav.toFixed(6)}₺ ({c.date})</title>
+          </g>
+        ))}
+
+        {/* X-axis label'ları */}
+        {coords.map((c) => (
+          <text
+            key={`x-${c.label}`}
+            x={c.x}
+            y={H - 6}
+            fill="#94a3b8"
+            fontSize="10"
+            textAnchor="middle"
+          >
+            {c.label}
+          </text>
+        ))}
+      </svg>
+    </div>
   );
 }

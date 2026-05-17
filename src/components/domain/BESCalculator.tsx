@@ -114,11 +114,11 @@ const formatCompactTL = (n: number) => {
 };
 
 export function BESCalculator() {
-  // Temel girdiler
-  const [currentAge, setCurrentAge] = useState(31);
+  // Temel girdiler — varsayılan profil: 40 yaş, 10K aylık, 300K başlangıç
+  const [currentAge, setCurrentAge] = useState(40);
   const [retirementAge, setRetirementAge] = useState(56);
-  const [monthly, setMonthly] = useState(2500);
-  const [initialDeposit, setInitialDeposit] = useState(0);
+  const [monthly, setMonthly] = useState(10_000);
+  const [initialDeposit, setInitialDeposit] = useState(300_000);
 
   // Ek parametreler (EGM ile aynı varsayılanlar)
   const [advancedOpen, setAdvancedOpen] = useState(false);

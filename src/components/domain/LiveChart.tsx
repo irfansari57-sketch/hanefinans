@@ -35,7 +35,7 @@ export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix 
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
   const [range, setRange] = useState<Range>('3mo');
-  const [chartType, setChartType] = useState<ChartType>('candles');
+  const [chartType, setChartType] = useState<ChartType>('line');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<{ first?: number; last?: number; change?: number } | null>(null);

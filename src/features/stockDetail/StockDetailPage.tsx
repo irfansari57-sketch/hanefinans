@@ -29,6 +29,7 @@ import { useWatchlist } from '@/store/watchlist';
 import type { Stock, NewsItem } from '@/data/types';
 import { MOCK_STOCKS } from '@/data/mock';
 import { findUsStock } from '@/data/usStocks';
+import { findBistStock } from '@/data/bistAll';
 import { formatMoney, formatNumber, formatCompact } from '@/lib/format';
 import { formatRelative, formatDateTR } from '@/lib/date';
 import { cn } from '@/lib/utils';
@@ -44,7 +45,21 @@ export function StockDetailPage() {
 
   const usMeta = findUsStock(sym);
   const isUs = !!usMeta;
-  const initialBistStock = !isUs ? (MOCK_STOCKS.find((s) => s.symbol === sym) ?? null) : null;
+  // BIST sembolü: önce MOCK_STOCKS (zengin), yoksa BIST_UNIQUE'ten temel meta
+  const initialBistStock = !isUs
+    ? (MOCK_STOCKS.find((s) => s.symbol === sym) ?? (() => {
+        const bist = findBistStock(sym);
+        if (!bist) return null;
+        return {
+          symbol: bist.symbol,
+          name: bist.name,
+          sector: bist.sector,
+          price: 0,
+          changePct: 0,
+          updatedAt: new Date().toISOString(),
+        } as Stock;
+      })())
+    : null;
 
   const [stock, setStock] = useState<Stock | null>(() => {
     if (initialBistStock) return initialBistStock;

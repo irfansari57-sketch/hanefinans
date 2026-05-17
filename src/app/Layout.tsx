@@ -26,7 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
 import { useAuth, isAdmin, isPro } from '@/store/auth';
-import { MOCK_STOCKS } from '@/data/mock';
+import { BIST_UNIQUE } from '@/data/bistAll';
 import { activityRepo } from '@/data/repositories';
 import { RightNewsTicker } from '@/components/domain/RightNewsTicker';
 import { AuthButton } from '@/components/auth/AuthButton';
@@ -97,11 +97,11 @@ export function Layout() {
   const closeMobile = () => setMobileOpen(false);
 
   const suggestions = query.trim()
-    ? MOCK_STOCKS.filter(
+    ? BIST_UNIQUE.filter(
         (s) =>
           s.symbol.toLowerCase().includes(query.toLowerCase()) ||
           s.name.toLowerCase().includes(query.toLowerCase()),
-      ).slice(0, 6)
+      ).slice(0, 8)
     : [];
 
   useEffect(() => {
@@ -237,7 +237,8 @@ export function Layout() {
                       e.preventDefault();
                       setQuery('');
                       setSearchOpen(false);
-                      navigate(`/watchlist?focus=${encodeURIComponent(s.symbol)}`);
+                      // Direkt detay sayfasına git — canlı fiyat orada çekilir
+                      navigate(`/stock/${encodeURIComponent(s.symbol)}`);
                     }}
                     className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-bg-soft"
                   >
@@ -245,8 +246,8 @@ export function Layout() {
                       <span className="font-mono text-xs text-accent">{s.symbol}</span>
                       <span className="text-slate-300">{s.name}</span>
                     </div>
-                    <span className={s.changePct >= 0 ? 'text-success text-xs' : 'text-danger text-xs'}>
-                      {s.changePct >= 0 ? '+' : ''}{s.changePct.toFixed(2)}%
+                    <span className="text-[10px] text-slate-500">
+                      {s.sector}
                     </span>
                   </button>
                 ))}

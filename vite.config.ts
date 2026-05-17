@@ -38,6 +38,10 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+          // Yeni SW indiğinde hemen aktif olsun + tüm açık sekmeleri yönetsin
+          // (eski deploy'lar kullanıcı sekme kapatana kadar takılı kalmasın).
+          skipWaiting: true,
+          clientsClaim: true,
           // API çağrılarını ASLA cache'leme (canlı veri için)
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
@@ -46,6 +50,8 @@ export default defineConfig(({ mode }) => {
             { urlPattern: /^https:\/\/api\.twelvedata\.com/, handler: 'NetworkOnly' },
             { urlPattern: /^https:\/\/gnews\.io/, handler: 'NetworkOnly' },
             { urlPattern: /^https:\/\/www\.goldapi\.io/, handler: 'NetworkOnly' },
+            // jsdelivr CDN cache'i bypass — günde 1 kez güncellenen veri için NetworkFirst
+            { urlPattern: /^https:\/\/cdn\.jsdelivr\.net\//, handler: 'NetworkFirst', options: { cacheName: 'jsdelivr', expiration: { maxAgeSeconds: 600 } } },
           ],
         },
       }),

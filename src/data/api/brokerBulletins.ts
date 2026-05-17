@@ -26,10 +26,17 @@ export interface BrokerBulletinFeed {
 }
 
 const FEED_URL = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/broker-bulletins.json';
-// Cache key versioning — eski "KT JS-rendered, scrape edilemiyor" sonucu kullanıcı localStorage'larında
-// 1 saat takılı kalmasın diye v2'ye bumpluyoruz (KT scraper artık çalışıyor).
-const CACHE_KEY = 'fa.brokerBulletins.feed.v2';
-const CACHE_TTL_MS = 15 * 60 * 1000; // 15 dk client cache (önceden 1 saatti)
+// Cache key v3 — eski v1/v2 cache'lerinde "KT JS-rendered" hatalı sonucu temizleniyor.
+const CACHE_KEY = 'fa.brokerBulletins.feed.v3';
+const LEGACY_KEYS = ['fa.brokerBulletins.feed', 'fa.brokerBulletins.feed.v2'];
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 dk
+
+// Modül yüklendiğinde eski cache key'leri temizle (bir kerelik migration)
+try {
+  LEGACY_KEYS.forEach((k) => localStorage.removeItem(k));
+} catch {
+  /* SSR / privacy mode */
+}
 
 interface CachedFeed {
   fetchedAt: number;
@@ -66,7 +73,9 @@ export async function fetchBrokerBulletins(): Promise<BrokerBulletinFeed | null>
 
   inflight = (async () => {
     try {
-      const r = await fetch(FEED_URL, { cache: 'no-store' });
+      // Cache busting: jsdelivr CDN 12 saate kadar eski JSON sunabilir
+      const bust = `?_=${Date.now()}`;
+      const r = await fetch(FEED_URL + bust, { cache: 'no-store' });
       if (!r.ok) return null;
       const data = (await r.json()) as BrokerBulletinFeed;
       if (!data.bulletins) return null;

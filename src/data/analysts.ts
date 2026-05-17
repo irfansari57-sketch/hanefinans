@@ -1,11 +1,9 @@
 /**
  * Türkiye piyasası için aracı kurum bültenleri.
  *
- * Sadece resmi aracı kurumlar (Osmanlı Yatırım, KT Yatırım vb.) — kişisel
- * analist hesapları burada listelenmez. Her kurum için:
- *  - Günlük bülten/strateji raporu URL'i (resmi web)
- *  - YouTube kanalı (varsa son video özeti otomatik gözükür)
- *  - X/Twitter hesabı (varsa)
+ * Sadece resmi aracı kurumlar — kişisel analist hesapları burada listelenmez.
+ * Her kurum için günlük bülten/strateji raporu URL'i, web sayfası ve sosyal medya.
+ * Tıklayan kullanıcı doğrudan kurumun bülten sayfasına gider.
  */
 
 export interface Analyst {
@@ -17,10 +15,6 @@ export interface Analyst {
   role: string;
   /** Günlük bülten / strateji raporu doğrudan sayfası */
   bulletinUrl: string;
-  /** YouTube kanal handle (varsa son video gösterilir) */
-  youtubeHandle?: string;
-  /** YouTube kanal ID (UC...) — RSS feed için, biliniyorsa */
-  youtubeChannelId?: string;
   /** Twitter/X kullanıcı adı */
   twitterHandle?: string;
   /** Resmi web sayfası */
@@ -43,20 +37,62 @@ export const ANALYSTS: Analyst[] = [
     initials: 'OY',
     colorSeed: '#10b981',
   },
+  {
+    id: 'is-yatirim',
+    name: 'İş Yatırım',
+    affiliation: 'Aracı Kurum',
+    role: 'Sabah Stratejisi + Şirket Raporları',
+    bulletinUrl: 'https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/default.aspx',
+    twitterHandle: 'IsYatirim',
+    websiteUrl: 'https://www.isyatirim.com.tr',
+    initials: 'İY',
+    colorSeed: '#0ea5e9',
+  },
+  {
+    id: 'garanti-bbva-yatirim',
+    name: 'Garanti BBVA Yatırım',
+    affiliation: 'Aracı Kurum',
+    role: 'Günlük Bülten + Sektör Analizleri',
+    bulletinUrl: 'https://www.garantibbvayatirim.com.tr/arastirma/gunluk-bulten',
+    twitterHandle: 'GarantiBBVAYatirim',
+    websiteUrl: 'https://www.garantibbvayatirim.com.tr',
+    initials: 'GY',
+    colorSeed: '#22c55e',
+  },
+  {
+    id: 'halk-yatirim',
+    name: 'Halk Yatırım',
+    affiliation: 'Aracı Kurum',
+    role: 'Günlük Bülten + Araştırma Raporları',
+    bulletinUrl: 'https://www.halkyatirim.com.tr/content/tr/arastirma',
+    twitterHandle: 'halkyatirim',
+    websiteUrl: 'https://www.halkyatirim.com.tr',
+    initials: 'HY',
+    colorSeed: '#f59e0b',
+  },
+  {
+    id: 'ziraat-yatirim',
+    name: 'Ziraat Yatırım',
+    affiliation: 'Aracı Kurum',
+    role: 'Günlük Bülten + Yayınlar',
+    bulletinUrl: 'https://www.ziraatyatirim.com.tr/tr/arastirma/yayinlar',
+    twitterHandle: 'ziraatyatirim',
+    websiteUrl: 'https://www.ziraatyatirim.com.tr',
+    initials: 'ZY',
+    colorSeed: '#8b5cf6',
+  },
+  {
+    id: 'kt-yatirim',
+    name: 'KT Yatırım',
+    affiliation: 'Aracı Kurum',
+    role: 'Günlük Bülten + Sektörel Raporlar',
+    bulletinUrl: 'https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten',
+    twitterHandle: 'kuveytturkytrm',
+    websiteUrl: 'https://kuveytturkyatirim.com.tr',
+    initials: 'KT',
+    colorSeed: '#ec4899',
+  },
 ];
-
-// İleride eklenebilecekler (server-side scrape için Playwright/headless browser gerek):
-//   - İş Yatırım — SharePoint based, cookie/referer kontrolü
-//   - Garanti BBVA Yatırım — JS-rendered SPA
-//   - Halk Yatırım — JS-rendered
-//   - KT Yatırım — JS-rendered (curl ile çalışıyor ama format düzensiz)
-// Bu kurumlar için GH Actions'a playwright kurmak veya direkt RSS bulmak gerek.
-
-/** YouTube linki — handle varsa direkt, yoksa kurum adı araması */
-export function analystYoutubeUrl(a: Analyst): string {
-  if (a.youtubeHandle) return `https://www.youtube.com/@${a.youtubeHandle}`;
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(a.name + ' günlük bülten')}`;
-}
 
 /** Twitter/X linki */
 export function analystTwitterUrl(a: Analyst): string {

@@ -37,6 +37,9 @@ import { ToastContainer } from '@/components/ui/Toast';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { HaneModAdBanner } from '@/components/domain/HaneModAdBanner';
 import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
+import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
+import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
+import { ShieldAlert, ChevronDown } from 'lucide-react';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
 type NavGroup = { title: string; items: NavItem[] };
@@ -172,36 +175,44 @@ export function Layout() {
             </div>
           ))}
 
-          {/* Tüm reklam alanları PRO/ELITE'de gizli — onlara daha konforlu alan */}
+          {/* YouTube banner (PRO'da gizli) */}
           {!isPro(user) && (
-            <>
-              <div className="pt-3">
-                <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-                  Resmi YouTube
-                </div>
-                <HaneModAdBanner variant="compact" />
+            <div className="pt-3">
+              <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                Resmi YouTube
               </div>
-              <div className="pt-3">
-                <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-                  Sponsor
-                </div>
-                <AdBanner variant="compact" />
+              <HaneModAdBanner variant="compact" />
+            </div>
+          )}
+
+          {/* YTD + KVKK Disclaimer — herkese görünür, YouTube ile Sponsor arasında */}
+          <details className="group mt-3 rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-2">
+            <summary className="flex cursor-pointer items-center gap-2 list-none">
+              <ShieldAlert size={12} className="shrink-0 text-warning" />
+              <span className="flex-1 text-[11px] font-bold text-warning">{DISCLAIMER_TITLE}</span>
+              <ChevronDown size={12} className="text-warning/70 transition group-open:rotate-180" />
+            </summary>
+            <div className="mt-2 max-h-72 overflow-y-auto pr-1">
+              <DisclaimerBody compact />
+            </div>
+          </details>
+
+          {/* Sponsor banner (PRO'da gizli) */}
+          {!isPro(user) && (
+            <div className="pt-3">
+              <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                Sponsor
               </div>
-            </>
+              <AdBanner variant="compact" />
+            </div>
           )}
         </nav>
 
-        {/* Sidebar footer — telif + YTD disclaimer (desktop). Mobilde main altında ayrı footer var. */}
-        <div className="border-t border-border bg-bg-soft/95 p-3.5 text-[11px] leading-snug">
-          <p className="font-bold text-warning">Yatırım Tavsiyesi Değildir (YTD)</p>
-          <p className="mt-1.5 text-slate-300">
-            Burada paylaşılan hiçbir içerik, yorum veya bilgi bir menkul kıymetin veya dijital varlığın satın alınması ya da satılması için bir teklif, talep veya yatırım tavsiyesi olarak yorumlanamaz. Tüm yatırım stratejileri kayıp riski içerir; okuyucuların yapacakları işlemlerde tüm sorumluluk kendilerine aittir.
-          </p>
-          <p className="mt-2.5 border-t border-border pt-2 text-[10px] font-semibold text-slate-400">
-            © 2026 Hane Digital Technology Inc.
-          </p>
-          <p className="text-[10px] text-slate-500">All rights reserved.</p>
-          <p className="mt-1.5 text-[9px] text-slate-600">
+        {/* Sidebar footer — sadece telif + version */}
+        <div className="border-t border-border bg-bg-soft/95 p-3 text-center text-[10px] leading-relaxed">
+          <p className="font-semibold text-slate-400">© 2026 Hane Digital Technology Inc.</p>
+          <p className="text-slate-500">All rights reserved.</p>
+          <p className="mt-1 text-[9px] text-slate-600">
             <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
           </p>
         </div>
@@ -352,18 +363,22 @@ export function Layout() {
           </div>
         )}
 
-        {/* Footer — mobilde main altında (desktop'ta sidebar'ın altında zaten görünüyor) */}
-        <footer className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 py-5 text-[11px] leading-snug">
-          <p className="font-bold text-warning">Yatırım Tavsiyesi Değildir (YTD)</p>
-          <p className="mt-1.5 text-slate-300">
-            Burada paylaşılan hiçbir içerik, yorum veya bilgi bir menkul kıymetin veya dijital varlığın satın alınması ya da
-            satılması için bir teklif, talep veya yatırım tavsiyesi olarak yorumlanamaz. Tüm yatırım stratejileri kayıp riski
-            içerir; okuyucuların yapacakları işlemlerde tüm sorumluluk kendilerine aittir.
-          </p>
-          <p className="mt-3 border-t border-border pt-2 text-[10px] font-semibold text-slate-400">
-            © 2026 Hane Digital Technology Inc.
-          </p>
-          <p className="text-[10px] text-slate-500">All rights reserved.</p>
+        {/* Mobil footer — disclaimer (collapse) + telif. Desktop'ta sidebar'da görünür. */}
+        <footer className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 py-4">
+          <details className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5">
+            <summary className="flex cursor-pointer items-center gap-2 list-none">
+              <ShieldAlert size={13} className="shrink-0 text-warning" />
+              <span className="flex-1 text-xs font-bold text-warning">{DISCLAIMER_TITLE}</span>
+              <ChevronDown size={13} className="text-warning/70 transition group-open:rotate-180" />
+            </summary>
+            <div className="mt-2.5 max-h-80 overflow-y-auto pr-1">
+              <DisclaimerBody compact />
+            </div>
+          </details>
+          <div className="mt-3 text-center text-[10px]">
+            <p className="font-semibold text-slate-400">© 2026 Hane Digital Technology Inc.</p>
+            <p className="text-slate-500">All rights reserved.</p>
+          </div>
         </footer>
       </div>
 
@@ -378,6 +393,9 @@ export function Layout() {
 
       {/* Toast notifications */}
       <ToastContainer />
+
+      {/* İlk girişte YTD + KVKK onay pop-up'ı (localStorage'da accepted flag) */}
+      <DisclaimerModal />
     </div>
   );
 }

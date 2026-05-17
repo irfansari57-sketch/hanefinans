@@ -33,12 +33,12 @@ const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string; hideOnMo
 ];
 
 const PRESET_SORTS: Array<{ key: Exclude<SortKey, 'code'>; label: string }> = [
-  { key: 'year',       label: '1 Yıl' },
-  { key: 'sixMonth',   label: '6 Ay' },
-  { key: 'threeMonth', label: '3 Ay' },
-  { key: 'month',      label: '1 Ay' },
   { key: 'week',       label: '1 Hafta' },
+  { key: 'month',      label: '1 Ay' },
+  { key: 'threeMonth', label: '3 Ay' },
+  { key: 'sixMonth',   label: '6 Ay' },
   { key: 'ytd',        label: 'Yılbaşı' },
+  { key: 'year',       label: '1 Yıl' },
 ];
 
 const ALL_CATEGORIES: FundCategory[] = [
@@ -60,7 +60,7 @@ export function FundsPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [toDelete, setToDelete] = useState<FundEntry | null>(null);
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('year');
+  const [sortKey, setSortKey] = useState<SortKey>('week');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);

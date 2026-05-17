@@ -14,6 +14,7 @@ import { LiveBadge } from '@/components/domain/LiveBadge';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
 } from '@/data/mock';
+import { BIST_UNIQUE } from '@/data/bistAll';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches } from '@/data/services';
 import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance } from '@/data/types';
@@ -37,7 +38,18 @@ const AUTO_REFRESH_MS = 60_000;
 
 export function PanelPage() {
   const symbols = useWatchlist((s) => s.symbols);
-  const allSymbols = useMemo(() => MOCK_STOCKS.map((s) => s.symbol), []);
+  // Tüm BIST evreni — top gainers/losers tam kapsamlı hesaplanacak (MOCK 50 değil 270+)
+  const allSymbols = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const s of MOCK_STOCKS) {
+      if (!seen.has(s.symbol)) { seen.add(s.symbol); list.push(s.symbol); }
+    }
+    for (const s of BIST_UNIQUE) {
+      if (!seen.has(s.symbol)) { seen.add(s.symbol); list.push(s.symbol); }
+    }
+    return list;
+  }, []);
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
 
@@ -56,8 +68,11 @@ export function PanelPage() {
     if (force) clearServiceCaches();
     setRefreshing(true);
     try {
+      // 1. Hızlı first paint: macro, news, sentiment, funds + watchlist hisseler
+      // (watchlist watchlist'teki sembollerden + diğer top movers'ı sonra ekle)
+      const priorityStockSyms = Array.from(new Set([...symbols, ...MOCK_STOCKS.slice(0, 30).map((s) => s.symbol)]));
       const [s, m, n, se, fr] = await Promise.all([
-        loadStocks(allSymbols),
+        loadStocks(priorityStockSyms),
         loadMacroAll(),
         loadNews({ max: 8 }),
         loadSentiment(),
@@ -70,13 +85,24 @@ export function PanelPage() {
       setNewsSource(n.source);
       setSentiment(se.data);
       setSentimentSource(se.source);
-      // Tüm fonları geçir; TopFundMovers içinde top + bottom hesaplar
       setTopFunds(fr ? fr.funds : []);
       setUpdatedAt(Date.now());
+
+      // 2. Background: kalan BIST sembollerini 50'lik batch'lerle çek
+      // top gainers/losers tam kapsam için
+      const remaining = allSymbols.filter((sym) => !priorityStockSyms.includes(sym));
+      const BATCH_SIZE = 50;
+      const accumulated: Stock[] = [...s.data];
+      for (let i = 0; i < remaining.length; i += BATCH_SIZE) {
+        const batch = remaining.slice(i, i + BATCH_SIZE);
+        const batchResult = await loadStocks(batch);
+        accumulated.push(...batchResult.data);
+        setStocks([...accumulated]);
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [allSymbols]);
+  }, [allSymbols, symbols]);
 
   useEffect(() => {
     // İlk yüklemede daima cache'i atla → eski mock değer asla görünmesin
@@ -238,14 +264,14 @@ export function PanelPage() {
         <details className="group mb-5" open>
           <summary className="mb-2 flex cursor-pointer items-center justify-between px-1 lg:cursor-default lg:list-none">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-              Aylık En İyi Fonlar
+              Haftalık En İyi & En Kötü Fonlar
             </h2>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
               <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>
             </div>
           </summary>
-          <TopFundMovers funds={topFunds} limit={5} period="month" />
+          <TopFundMovers funds={topFunds} limit={5} period="week" />
         </details>
       )}
 

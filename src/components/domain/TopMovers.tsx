@@ -10,7 +10,11 @@ interface TopMoversProps {
 }
 
 export function TopMovers({ stocks, limit = 5 }: TopMoversProps) {
-  const sorted = stocks.filter((s) => Number.isFinite(s.changePct)).sort((a, b) => b.changePct - a.changePct);
+  // Yahoo veri dönmeyen hisseler (price=0 veya changePct=0 yani mock fallback) elensin —
+  // sadece gerçekten hareket eden hisseleri göster
+  const sorted = stocks
+    .filter((s) => Number.isFinite(s.changePct) && s.price > 0 && s.changePct !== 0)
+    .sort((a, b) => b.changePct - a.changePct);
   const top = sorted.slice(0, limit);
   const bottom = sorted.slice(-limit).reverse();
 

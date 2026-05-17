@@ -1,13 +1,13 @@
 """
-TEFAS fon verilerini doğrudan resmi API'den çeker, data/tefas.json'a yazar.
+TEFAS fon verilerini çeker → data/tefas.json yazar.
 
 Strateji:
-  - 7 / 30 / 90 / 180 / 365 gün geri tek noktalardan NAV oku
-  - Son gün NAV ile compare et → dönemsel getiri
-  - Tüm fonları tek tabloda topla
-  - jsDelivr CDN üzerinden frontend'a sunulur
+  - tefas-crawler paketi (burhanyldzz/tefas-crawler) TEFAS ASP.NET session ile
+    çalışır; doğrudan API çağırmaktan daha güvenilirdir
+  - Tüm fon listesini POPULAR_FUNDS dışında dinamik olarak da çekmeye çalışır
+  - Son 400 günlük history'den dönemsel getiri hesaplanır
 
-Çıktı: data/tefas.json (src/data/api/tefasGithub.ts ile uyumlu)
+Çıktı: data/tefas.json — src/data/api/tefasGithub.ts şemasıyla uyumlu
 """
 
 from datetime import datetime, timedelta, timezone
@@ -16,188 +16,174 @@ import os
 import sys
 import time
 
-import requests
+try:
+    from tefas import Crawler
+except ImportError:
+    print("ERROR: tefas-crawler yüklenmedi", file=sys.stderr)
+    sys.exit(1)
 
-API_URL = "https://www.tefas.gov.tr/api/DB/BindHistoryInfo"
+import pandas as pd
+
 OUTPUT_PATH = "data/tefas.json"
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "Origin": "https://www.tefas.gov.tr",
-    "Referer": "https://www.tefas.gov.tr/TarihselVeriler.aspx",
-    "X-Requested-With": "XMLHttpRequest",
-}
+# Geniş fon evreni — tefas-crawler hepsini tek tek dener; başarısızlar atlanır.
+# Kullanıcı eklemek isterse buraya ticker eklesin.
+FUND_CODES = [
+    # İş Portföy
+    "AAL", "AAS", "AAV", "AC1", "AC4", "AC5", "AC6", "ACC", "ACD", "ACU",
+    "AGC", "AHI", "AHN", "AHU", "AHV", "AIS", "AJ1", "AJK", "AK2", "AK3",
+    # Ak Portföy
+    "ADE", "ADP", "AED", "AES", "AEV", "AFA", "AFO", "AFS", "AFT", "AFV",
+    "AKE", "AYR",
+    # Garanti Portföy
+    "GHF", "GAF", "GBE", "GBV", "GMR", "GO1", "GO2", "GO3", "GPF", "GPG",
+    "GSP", "GTA", "GTE", "GTI", "GTL", "GTU", "GUB", "GUF", "GUH", "GUS",
+    # Yapı Kredi Portföy
+    "YAY", "YBS", "YHS", "YAS", "YBA", "YBE", "YBL", "YBM", "YGF", "YJK",
+    "YKB", "YKO", "YKR", "YKS", "YKT", "YLT", "YOK", "YOT", "YYL", "YZC",
+    # Türkiye Garanti / TLY
+    "TLY", "TMG", "TPP", "TFF", "TGE", "TGY", "TI2", "TI4", "TIE", "TJZ",
+    "TKF", "TMM", "TNF", "TPL", "TPZ", "TTA", "TUA", "TYH",
+    # Allianz / NN / AGESA
+    "AHB", "AHL", "AHT", "AHE", "AGA",
+    # Diğer büyük yöneticiler
+    "ABD", "ACP", "ACR", "ACS", "AFL", "AGI", "AGM", "AGN", "AHO", "AIN",
+    "AJG", "AJL", "AJN", "AJP", "AJR", "AJT", "AJU", "AJV", "AKB", "AKK",
+    "AKL", "AKR", "AKU", "ALC", "ALL", "ALN", "ALO", "ALS", "ALV", "AOB",
+    "AOK", "AOO", "AOR", "AOS", "AOT", "AOY", "APC", "APL", "APS", "APT",
+    "APV", "APY", "AQA", "AQE", "AQF", "AQG", "AQK", "AQL", "AQM", "AQN",
+    "AQR", "AQS", "AQT", "AQU", "AQV", "AQY", "ARD", "ARF", "ARK", "ARM",
+    "ARN", "ARO", "ARP", "ARS", "ART", "ARV", "ARW", "ARX", "ARY", "ARZ",
+    # Teknoloji & sektörel popüler
+    "IJC", "IIH", "BMU", "KLH", "SNY", "NTI", "BTK", "CPU", "RIH", "DVT",
+    "BVV", "YIT", "CPT", "IJZ", "RTD", "GPT", "FSH", "TEJ", "ZFB", "RTG",
+    # Para piyasası
+    "GPS", "ICF", "IPM", "IPP",
+    # BES (emeklilik fonları popüler) — fontip=YAT olduğu için bu liste belki çalışmaz
+    "BHF", "BNI", "BAS", "AZP",
+    # Karma / Değişken
+    "MJG", "BES", "BIF", "TIF", "FYK", "FIB",
+    # Kıymetli madenler
+    "AFO", "GAU", "GUM", "GHA",
+]
+
+START_DATE = (datetime.now() - timedelta(days=400)).strftime("%Y-%m-%d")
+END_DATE = datetime.now().strftime("%Y-%m-%d")
 
 
-def fmt_tr_date(d) -> str:
-    """TEFAS dd.mm.yyyy formatı"""
-    if isinstance(d, str):
-        return d
-    return d.strftime("%d.%m.%Y")
-
-
-def fetch_tefas_for_date(date_str: str, retries: int = 3) -> list[dict]:
-    """Tek bir gün için tüm fonların verisini çek."""
-    payload = {
-        "fontip": "YAT",       # yatırım fonu (emeklilik için 'EYF')
-        "bastarih": date_str,
-        "bittarih": date_str,
-        "fonkod": "",
-        "fongrup": "",
-    }
-    for attempt in range(retries):
-        try:
-            r = requests.post(API_URL, data=payload, headers=HEADERS, timeout=30)
-            if r.status_code == 200:
-                j = r.json()
-                return j.get("data", [])
-            print(f"  ⚠️ {date_str} HTTP {r.status_code} (deneme {attempt + 1})", file=sys.stderr)
-            time.sleep(1 + attempt)
-        except Exception as e:
-            print(f"  ⚠️ {date_str} hata: {e} (deneme {attempt + 1})", file=sys.stderr)
-            time.sleep(1 + attempt)
-    return []
-
-
-def parse_date_str(s: str) -> datetime:
-    """TEFAS dd.mm.yyyy → datetime"""
-    return datetime.strptime(s, "%d.%m.%Y")
-
-
-def get_business_day(target: datetime, max_back: int = 5) -> datetime:
-    """Verilen tarih hafta sonuysa Cuma'ya çek."""
-    d = target
-    for _ in range(max_back):
-        if d.weekday() < 5:  # 0=Mon, 4=Fri
-            return d
-        d -= timedelta(days=1)
-    return target
-
-
-def pct_change(latest: float, past: float | None) -> float | None:
-    if past is None or past == 0:
+def calc_return(history: list[dict], days: int) -> float | None:
+    """history: [{date, price}, ...] — son tarihten N gün öncesi"""
+    if not history or len(history) < 2:
         return None
-    return round(((latest - past) / past) * 100, 2)
+    history = sorted(history, key=lambda x: x["date"])
+    last = history[-1]
+    target = (datetime.strptime(last["date"], "%Y-%m-%d") - timedelta(days=days)).strftime("%Y-%m-%d")
+    candidate = None
+    for h in history:
+        if h["date"] <= target:
+            candidate = h
+        else:
+            break
+    if not candidate or candidate["price"] == 0:
+        return None
+    return round(((last["price"] - candidate["price"]) / candidate["price"]) * 100, 2)
+
+
+def calc_ytd(history: list[dict]) -> float | None:
+    if not history:
+        return None
+    history = sorted(history, key=lambda x: x["date"])
+    last = history[-1]
+    year_prefix = last["date"][:4]
+    for h in history:
+        if h["date"].startswith(year_prefix):
+            if h["price"] == 0:
+                return None
+            return round(((last["price"] - h["price"]) / h["price"]) * 100, 2)
+    return None
+
+
+def fetch_fund(crawler: Crawler, code: str) -> dict | None:
+    try:
+        df = crawler.fetch(start=START_DATE, end=END_DATE, name=code)
+        if df is None or df.empty:
+            return None
+    except Exception as e:
+        print(f"  ! {code}: {e}", file=sys.stderr)
+        return None
+
+    df = df.sort_values("date")
+    history = [
+        {"date": str(row["date"])[:10], "price": float(row["price"])}
+        for _, row in df.tail(120).iterrows()
+        if pd.notna(row.get("price"))
+    ]
+    if not history:
+        return None
+
+    last_row = df.iloc[-1]
+    return {
+        "code": code,
+        "name": str(last_row.get("title", "")).strip() or code,
+        "category": str(last_row.get("fon_kategorisi") or last_row.get("title_full") or "").strip(),
+        "nav": float(last_row["price"]),
+        "date": str(last_row["date"])[:10],
+        "marketCap": float(last_row.get("market_cap") or 0) or None,
+        "investorCount": int(last_row.get("number_of_investors") or 0) or None,
+        "shareCount": int(last_row.get("number_of_shares") or 0) or None,
+        "returns": {
+            "1w":  calc_return(history, 7),
+            "1m":  calc_return(history, 30),
+            "3m":  calc_return(history, 90),
+            "6m":  calc_return(history, 180),
+            "ytd": calc_ytd(history),
+            "1y":  calc_return(history, 365),
+        },
+        "history": history[-30:],
+    }
 
 
 def main() -> int:
     os.makedirs("data", exist_ok=True)
+    crawler = Crawler()
+    seen: set[str] = set()
+    funds: list[dict] = []
+    failed: list[str] = []
 
-    today = datetime.now(timezone.utc).replace(tzinfo=None)
-    # Anchor tarihler — son iş gününe yuvarla
-    anchors = {
-        "last":  get_business_day(today - timedelta(days=1)),
-        "1w":    get_business_day(today - timedelta(days=8)),
-        "1m":    get_business_day(today - timedelta(days=31)),
-        "3m":    get_business_day(today - timedelta(days=92)),
-        "6m":    get_business_day(today - timedelta(days=183)),
-        "1y":    get_business_day(today - timedelta(days=366)),
-        "ytd":   get_business_day(datetime(today.year, 1, 2)),
-    }
-
-    print("Anchor tarihleri:")
-    for k, v in anchors.items():
-        print(f"  {k}: {v.strftime('%d.%m.%Y')} ({v.strftime('%A')})")
-
-    # Her anchor için tek POST → tüm fonlar
-    snapshots: dict[str, dict[str, dict]] = {}  # anchor_key → {code → row}
-    for key, dt in anchors.items():
-        date_str = fmt_tr_date(dt)
-        print(f"\nFetching {key} = {date_str}…")
-        # TEFAS bazen tek gün boş döner — 3 iş günü geriye bak
-        rows = []
-        attempt_date = dt
-        for back in range(5):
-            rows = fetch_tefas_for_date(fmt_tr_date(attempt_date))
-            if rows:
-                print(f"  ✓ {len(rows)} fon @ {fmt_tr_date(attempt_date)}")
-                break
-            attempt_date -= timedelta(days=1)
-            attempt_date = get_business_day(attempt_date)
-        if not rows:
-            print(f"  ✗ {key} için veri alınamadı")
-            snapshots[key] = {}
+    for code in FUND_CODES:
+        if code in seen:
             continue
-        snapshots[key] = {row.get("FONKODU", ""): row for row in rows if row.get("FONKODU")}
-        time.sleep(0.5)  # nezaket aralığı
+        seen.add(code)
+        data = fetch_fund(crawler, code)
+        if data:
+            funds.append(data)
+            r = data["returns"]
+            print(f"  ✓ {code}: NAV={data['nav']:.4f}  1A={r.get('1m')}%  1Y={r.get('1y')}%")
+        else:
+            failed.append(code)
+        time.sleep(0.3)  # nezaket aralığı
 
-    # Son güne göre fonları birleştir
-    last_snap = snapshots.get("last", {})
-    if not last_snap:
-        print("\n❌ Son gün verisi alınamadı — TEFAS şu anda erişilmez olabilir.", file=sys.stderr)
-        return 1
+    print(f"\nOK: {len(funds)} / FAIL: {len(failed)}")
 
-    funds = []
-    for code, last_row in last_snap.items():
-        try:
-            latest_nav = float(last_row.get("FIYAT", 0) or 0)
-            if latest_nav <= 0:
-                continue
-
-            def get_past(key: str) -> float | None:
-                row = snapshots.get(key, {}).get(code)
-                if not row:
-                    return None
-                try:
-                    v = float(row.get("FIYAT", 0) or 0)
-                    return v if v > 0 else None
-                except Exception:
-                    return None
-
-            returns = {
-                "1w":  pct_change(latest_nav, get_past("1w")),
-                "1m":  pct_change(latest_nav, get_past("1m")),
-                "3m":  pct_change(latest_nav, get_past("3m")),
-                "6m":  pct_change(latest_nav, get_past("6m")),
-                "1y":  pct_change(latest_nav, get_past("1y")),
-                "ytd": pct_change(latest_nav, get_past("ytd")),
-            }
-
-            tarih_raw = last_row.get("TARIH", "")
-            iso_date = ""
-            try:
-                # TARIH bazen unix-ms format döner, bazen "01.01.2024"
-                if isinstance(tarih_raw, int) or (isinstance(tarih_raw, str) and tarih_raw.isdigit()):
-                    iso_date = datetime.fromtimestamp(int(tarih_raw) / 1000).date().isoformat()
-                elif "/Date(" in str(tarih_raw):
-                    ms = int(str(tarih_raw).split("(")[1].split(")")[0])
-                    iso_date = datetime.fromtimestamp(ms / 1000).date().isoformat()
-                else:
-                    iso_date = parse_date_str(str(tarih_raw)).date().isoformat()
-            except Exception:
-                iso_date = anchors["last"].date().isoformat()
-
-            funds.append({
-                "code": code,
-                "name": str(last_row.get("FONUNVAN") or "").strip(),
-                "category": "",  # tek POST'ta kategori bilgisi sınırlı — boş bırak
-                "nav": latest_nav,
-                "date": iso_date,
-                "marketCap": float(last_row.get("PORTFOYBUYUKLUK", 0) or 0) or None,
-                "investorCount": int(last_row.get("KISISAYISI", 0) or 0) or None,
-                "shareCount": int(last_row.get("TEDPAYSAYISI", 0) or 0) or None,
-                "returns": returns,
-                "history": [],
-            })
-        except Exception as e:
-            print(f"  ⚠️ {code} işlenemedi: {e}", file=sys.stderr)
-
-    funds.sort(key=lambda x: x["code"])
+    # En yüksek 1-yıllık getiriye göre sırala (frontend zaten sıralıyor ama burada da yapalım)
+    funds.sort(key=lambda f: (f["returns"].get("1y") or -9999), reverse=True)
 
     payload = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "count": len(funds),
         "funds": funds,
+        "failed": failed,
     }
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
 
     size_kb = os.path.getsize(OUTPUT_PATH) // 1024
-    print(f"\n✅ {len(funds)} fon yazıldı → {OUTPUT_PATH} ({size_kb} KB)")
+    print(f"\n✅ {OUTPUT_PATH} yazıldı ({size_kb} KB, {len(funds)} fon)")
+
+    if len(funds) == 0:
+        print("❌ Hiç fon alınamadı — tefas-crawler ile TEFAS arasındaki bağlantı kopuk olabilir", file=sys.stderr)
+        return 1
     return 0
 
 

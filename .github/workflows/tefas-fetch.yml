@@ -1,14 +1,21 @@
 name: TEFAS Fund Fetch
-# TEFAS'tan tüm fonların güncel NAV ve dönemsel getirilerini çekip data/tefas.json'a yazar.
-# Saatlik çalışır (TEFAS verisi gün sonu güncellenir ama biz güne yakın kalalım).
+# TEFAS'tan tüm fonların güncel NAV + dönemsel getirilerini çekip data/tefas.json'a yazar.
+# tefas-crawler paketi (burhanyldzz/tefas-crawler) — TEFAS ASP.NET session ile çalışır.
 
 on:
-  # Schedule şimdilik iptal — TEFAS API'si GitHub Actions IP'lerinde
-  # yavaş çalışıyor / rate-limit yiyor. Manuel tetikleme korundu.
-  workflow_dispatch:
+  schedule:
+    # Günde 4 kez (saat 06:00, 12:00, 18:00, 00:00 TR — UTC -3) — Cloudflare Pages free
+    # tier'da ayda max 500 build limitine takılmamak için seyrek tutuldu.
+    - cron: '0 3,9,15,21 * * *'
+  workflow_dispatch:    # Actions'tan manuel tetikleme
+  push:
+    paths:
+      - 'scripts/tefas_fetch.py'
+      - 'scripts/requirements.txt'
+      - '.github/workflows/tefas-fetch.yml'
 
 permissions:
-  contents: write              # data/tefas.json commit için
+  contents: write       # data/tefas.json commit için
 
 jobs:
   fetch:
@@ -20,12 +27,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r scripts/requirements.txt
-          pip list
 
       - name: Fetch TEFAS data
         run: python -u scripts/tefas_fetch.py
@@ -38,6 +45,7 @@ jobs:
             echo "TEFAS verisinde değişiklik yok, commit atlanıyor"
           else
             git add data/tefas.json
-            git commit -m "chore: TEFAS verisi güncellendi $(date -u +%Y-%m-%d_%H:%M)"
+            # [skip ci] → Cloudflare Pages rebuild tetiklemesin (data değişikliği UI'yi etkilemez)
+            git commit -m "data: TEFAS otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
             git push
           fi

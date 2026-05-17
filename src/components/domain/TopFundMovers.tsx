@@ -75,7 +75,13 @@ function FundMoverList({
                 </span>
                 <div className="min-w-0">
                   <div className="font-mono text-xs text-accent">{f.code}</div>
-                  <div className="truncate text-[10px] text-slate-500 max-w-[160px]">{f.category}</div>
+                  {/* Fon adı varsa (kod ile farklıysa) göster; yoksa kategori; ikisi de yoksa boş */}
+                  {f.name && f.name !== f.code && (
+                    <div className="truncate text-[10px] text-slate-500 max-w-[200px]">{f.name}</div>
+                  )}
+                  {(!f.name || f.name === f.code) && f.category && f.category !== 'Serbest' && (
+                    <div className="truncate text-[10px] text-slate-500 max-w-[200px]">{f.category}</div>
+                  )}
                 </div>
               </div>
               <div className={cn('text-sm font-semibold tabular-nums', stoneTone)}>

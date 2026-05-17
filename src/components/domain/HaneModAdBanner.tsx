@@ -57,8 +57,9 @@ function embedUrl(videoId: string, muted: boolean) {
 
 export function HaneModAdBanner({ variant = 'compact', className }: Props) {
   const [idx, setIdx] = useState(0);
-  // Sesli başla — tarayıcı autoplay policy'si bloklarsa kendi muted'a düşer
-  const [muted, setMuted] = useState(false);
+  // Muted başla — tarayıcı autoplay policy'si sesli otomatik oynatmayı bloklar.
+  // Kullanıcı sağ alt 🔊 ikonu ile sesi açabilir.
+  const [muted, setMuted] = useState(true);
   const hasVideos = FEATURED_VIDEOS.length > 0;
   const video = hasVideos ? FEATURED_VIDEOS[idx] : null;
 

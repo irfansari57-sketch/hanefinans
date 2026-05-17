@@ -373,7 +373,9 @@ export function FundsPage() {
                         {f.code}
                         <ChevronRight size={10} className="opacity-0 transition group-hover:opacity-100" />
                       </Link>
-                      {f.name && <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[260px]">{f.name}</div>}
+                      {f.name && f.name !== f.code && (
+                        <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[260px]">{f.name}</div>
+                      )}
                     </td>
                     <PerfCell value={f.week} hideOnMobile />
                     <PerfCell value={f.month} />

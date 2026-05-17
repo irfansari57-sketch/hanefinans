@@ -66,16 +66,36 @@ def fetch_snapshot(ftype: str, target_date: datetime, max_back: int = 5) -> pd.D
 
 
 def detect_columns(df: pd.DataFrame) -> dict[str, str | None]:
-    """Sütun isimlerini paket versiyonuna göre keşfet."""
+    """Sütun isimlerini paket versiyonuna göre keşfet (geniş varyant listesi)."""
     return {
-        'code':       next((c for c in ['fon_kodu', 'fonKodu', 'kod', 'code'] if c in df.columns), None),
-        'name':       next((c for c in ['fon_adi', 'fonAdi', 'isim', 'name', 'title'] if c in df.columns), None),
+        'code':       next((c for c in [
+            'fon_kodu', 'fonKodu', 'fonkod', 'fonKod', 'fon_kod', 'kod', 'code',
+        ] if c in df.columns), None),
+        'name':       next((c for c in [
+            'fon_adi', 'fonAdi', 'fon_unvan', 'fonUnvan', 'fonunvan', 'isim', 'name',
+            'title', 'long_name', 'unvan', 'ad', 'tanim', 'fon_ad',
+        ] if c in df.columns), None),
         'date':       next((c for c in ['tarih', 'date'] if c in df.columns), None),
-        'price':      next((c for c in ['fiyat', 'price', 'nav', 'son_fiyat'] if c in df.columns), None),
-        'category':   next((c for c in ['fon_kategorisi', 'kategori', 'category'] if c in df.columns), None),
-        'mcap':       next((c for c in ['portfoy_buyuklugu', 'market_cap', 'buyukluk'] if c in df.columns), None),
-        'investors':  next((c for c in ['yatirimci_sayisi', 'kisi_sayisi', 'number_of_investors'] if c in df.columns), None),
-        'shares':     next((c for c in ['ted_pay_sayisi', 'pay_sayisi', 'number_of_shares'] if c in df.columns), None),
+        'price':      next((c for c in [
+            'fiyat', 'price', 'nav', 'son_fiyat', 'birim_pay_degeri', 'bpd',
+        ] if c in df.columns), None),
+        'category':   next((c for c in [
+            'fon_kategorisi', 'kategori', 'category', 'fon_kategori', 'fonKategori',
+            'fon_kategorisi_ad', 'kategori_ad', 'category_name', 'fon_grubu',
+            'semsiye_fon_turu', 'semsiye', 'umbrella',
+        ] if c in df.columns), None),
+        'mcap':       next((c for c in [
+            'portfoy_buyuklugu', 'market_cap', 'buyukluk', 'portfoyBuyuklugu',
+            'fon_portfoy_degeri', 'portfoy_degeri',
+        ] if c in df.columns), None),
+        'investors':  next((c for c in [
+            'yatirimci_sayisi', 'kisi_sayisi', 'number_of_investors',
+            'yatirimciSayisi', 'kisi', 'investor_count',
+        ] if c in df.columns), None),
+        'shares':     next((c for c in [
+            'ted_pay_sayisi', 'pay_sayisi', 'number_of_shares', 'tedPaySayisi',
+            'pay_adedi', 'share_count',
+        ] if c in df.columns), None),
     }
 
 
@@ -116,10 +136,18 @@ def main() -> int:
         return 1
 
     cols = detect_columns(snapshots['last'])
-    print(f"\nAlgılanan sütunlar: {cols}", flush=True)
+    print(f"\n📋 TÜM sütunlar: {list(snapshots['last'].columns)}", flush=True)
+    print(f"📋 Algılanan eşleme: {cols}", flush=True)
+    # Örnek bir satır — gerçek değerleri göster
+    first_row = snapshots['last'].iloc[0].to_dict()
+    print(f"📋 Örnek satır (ilk fon): {first_row}", flush=True)
     if not (cols['code'] and cols['date'] and cols['price']):
         print(f"❌ Zorunlu sütunlar (code/date/price) eksik", file=sys.stderr)
         return 1
+    if not cols['name']:
+        print(f"⚠️ Name sütunu bulunamadı — fonlar isim yerine kod gösterecek", file=sys.stderr)
+    if not cols['category']:
+        print(f"⚠️ Category sütunu bulunamadı — kategori boş gelecek", file=sys.stderr)
 
     # Diğer anchor'ları çek
     for key in ['1w', '1m', '3m', '6m', '1y', 'ytd']:

@@ -43,18 +43,14 @@ export const ANALYSTS: Analyst[] = [
     initials: 'OY',
     colorSeed: '#10b981',
   },
-  {
-    id: 'kt-yatirim',
-    name: 'KT Yatırım',
-    affiliation: 'Aracı Kurum',
-    role: 'Günlük Bülten + Sektörel Raporlar',
-    bulletinUrl: 'https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten&search=&date=&page=1',
-    twitterHandle: 'kuveytturkytrm',
-    websiteUrl: 'https://kuveytturkyatirim.com.tr',
-    initials: 'KT',
-    colorSeed: '#0ea5e9',
-  },
 ];
+
+// İleride eklenebilecekler (server-side scrape için Playwright/headless browser gerek):
+//   - İş Yatırım — SharePoint based, cookie/referer kontrolü
+//   - Garanti BBVA Yatırım — JS-rendered SPA
+//   - Halk Yatırım — JS-rendered
+//   - KT Yatırım — JS-rendered (curl ile çalışıyor ama format düzensiz)
+// Bu kurumlar için GH Actions'a playwright kurmak veya direkt RSS bulmak gerek.
 
 /** YouTube linki — handle varsa direkt, yoksa kurum adı araması */
 export function analystYoutubeUrl(a: Analyst): string {

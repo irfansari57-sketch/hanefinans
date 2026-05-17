@@ -237,7 +237,6 @@ def main() -> int:
 
     bulletins = {
         "osmanli-yatirim": fetch_osmanli(),
-        "kt-yatirim": fetch_kt(),
     }
 
     for bid, b in bulletins.items():

@@ -47,7 +47,7 @@ export function AnalystCommentary() {
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className={ANALYSTS.length > 1 ? 'grid gap-3 sm:grid-cols-2' : 'grid gap-3'}>
         {ANALYSTS.map((a) => (
           <AnalystCard key={a.id} a={a} bulletin={bulletins?.[a.id]} loading={loading} />
         ))}

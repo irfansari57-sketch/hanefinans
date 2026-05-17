@@ -64,7 +64,7 @@ export function FundsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('week');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 25;
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
   const [feedError, setFeedError] = useState<TefasFeedFetchResult | null>(null);
@@ -335,6 +335,16 @@ export function FundsPage() {
           }
         />
       ) : (
+        <>
+        <div className="mb-3">
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            totalItems={sorted.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+        </div>
         <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
           <table className="min-w-full text-xs">
             <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
@@ -429,15 +439,17 @@ export function FundsPage() {
             </tbody>
           </table>
         </div>
+        <div className="mt-3">
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            totalItems={sorted.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+        </>
       )}
-
-      <Pagination
-        currentPage={safePage}
-        totalPages={totalPages}
-        totalItems={sorted.length}
-        pageSize={PAGE_SIZE}
-        onPageChange={setCurrentPage}
-      />
 
       {feedUpdatedAt && hasLiveData && (
         <p className="mt-3 text-[11px] text-slate-500">

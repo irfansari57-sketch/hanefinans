@@ -75,7 +75,7 @@ export function StocksPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [tab, setTab] = useState<'all' | 'watched'>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 25;
 
   const refresh = async (forceReturns = false) => {
     setLoading(true);
@@ -286,6 +286,16 @@ export function StocksPage() {
           description={tab === 'watched' ? 'Bir hisseye yıldız basarak takibe ekle.' : undefined}
         />
       ) : (
+        <>
+        <div className="mb-3">
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            totalItems={sorted.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+        </div>
         <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
           <table className="min-w-full text-xs">
             <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
@@ -379,15 +389,17 @@ export function StocksPage() {
             </tbody>
           </table>
         </div>
+        <div className="mt-3">
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            totalItems={sorted.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+        </>
       )}
-
-      <Pagination
-        currentPage={safePage}
-        totalPages={totalPages}
-        totalItems={sorted.length}
-        pageSize={PAGE_SIZE}
-        onPageChange={setCurrentPage}
-      />
 
       <p className="mt-3 text-[11px] text-slate-500">
         Toplam {sorted.length} hisse. Fiyat ve günlük değişim 60 sn cache, dönemsel getiriler 30 dk cache (Yahoo Finance).

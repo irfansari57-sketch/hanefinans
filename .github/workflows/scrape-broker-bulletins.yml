@@ -44,6 +44,10 @@ jobs:
             echo "Bülten verisinde değişiklik yok, commit atlanıyor"
           else
             git commit -m "data: aracı kurum bültenleri otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
-            git push
-            echo "✅ data/broker-bulletins.json commit'lendi"
+            # Race condition koruması — paralel commit varsa rebase + retry
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && { echo "✅ data/broker-bulletins.json commit'lendi (deneme $i)"; break; }
+              echo "⏳ Deneme $i başarısız, 5sn sonra tekrar"
+              sleep 5
+            done
           fi

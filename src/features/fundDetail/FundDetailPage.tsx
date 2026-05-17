@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  ArrowLeft, PiggyBank, ExternalLink, BarChart3, StickyNote, Trash2, AlertCircle, Activity, Radio,
+  ArrowLeft, PiggyBank, ExternalLink, BarChart3, StickyNote, Trash2, AlertCircle, Radio,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -48,7 +48,6 @@ export function FundDetailPage() {
   }, [watchedFund, githubData, liveLoading]);
 
   const notes = useLiveQuery(() => notesRepo.bySymbol(fundCode), [fundCode]) ?? [];
-  const activity = useLiveQuery(() => activityRepo.list({ symbol: fundCode, limit: 20 }), [fundCode]) ?? [];
 
   useEffect(() => {
     activityRepo.log({ type: 'page-view', symbol: fundCode, detail: `/fund/${fundCode}` }).catch(() => {});
@@ -76,7 +75,6 @@ export function FundDetailPage() {
 
   const tefasUrl = `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(fundCode)}`;
   const tefasComp = `https://www.tefas.gov.tr/FonKarsilastirma.aspx?FonKod=${encodeURIComponent(fundCode)}`;
-  const mynetUrl = `https://finans.mynet.com/yatirim-fonlari/${fundCode.toLowerCase()}/`;
   const fintablesUrl = `https://fintables.com/fonlar/${fundCode}`;
 
   if (fund === undefined) {
@@ -299,11 +297,6 @@ export function FundDetailPage() {
               url={tefasComp}
             />
             <ExtLink
-              title="Mynet Yatırım Fonları"
-              description="Türkçe özet, geçmiş fiyat, yorumlar"
-              url={mynetUrl}
-            />
-            <ExtLink
               title="Fintables (Premium)"
               description="Detaylı portföy analizi, en büyük pozisyonlar"
               url={fintablesUrl}
@@ -342,30 +335,6 @@ export function FundDetailPage() {
             )}
           </div>
 
-          {/* Activity */}
-          <div className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
-                <Activity size={12} /> Aktivite
-              </h3>
-            </div>
-            {activity.length === 0 ? (
-              <p className="px-4 py-4 text-center text-xs text-slate-500">Henüz etkileşim yok.</p>
-            ) : (
-              <div className="divide-y divide-border max-h-80 overflow-y-auto">
-                {activity.slice(0, 15).map((a) => (
-                  <div key={a.id} className="px-3 py-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-300">{a.type}</span>
-                      <span className="text-[10px] text-slate-500">
-                        {formatRelative(new Date(a.timestamp).toISOString())}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </aside>
       </div>
     </>

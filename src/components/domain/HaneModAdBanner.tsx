@@ -57,7 +57,8 @@ function embedUrl(videoId: string, muted: boolean) {
 
 export function HaneModAdBanner({ variant = 'compact', className }: Props) {
   const [idx, setIdx] = useState(0);
-  const [muted, setMuted] = useState(true);
+  // Sesli başla — tarayıcı autoplay policy'si bloklarsa kendi muted'a düşer
+  const [muted, setMuted] = useState(false);
   const hasVideos = FEATURED_VIDEOS.length > 0;
   const video = hasVideos ? FEATURED_VIDEOS[idx] : null;
 
@@ -67,9 +68,8 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
     return () => clearInterval(id);
   }, []);
 
-  const targetUrl = video
-    ? `https://www.youtube.com/watch?v=${video.id}`
-    : CHANNEL_URL;
+  // Tıklama her zaman kanal sayfasına (spesifik video URL'i yerine)
+  const targetUrl = CHANNEL_URL;
 
   if (variant === 'compact') {
     return (

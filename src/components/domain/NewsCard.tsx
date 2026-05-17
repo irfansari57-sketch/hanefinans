@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/date';
 import { BookmarkButton } from './BookmarkButton';
 import { NoteButton } from './NoteButton';
+import { SymbolBadge } from './SymbolBadge';
 import { activityRepo } from '@/data/repositories';
 
 interface NewsCardProps {
@@ -36,9 +37,7 @@ export function NewsCard({ item }: NewsCardProps) {
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex flex-wrap items-center gap-1.5">
           {item.symbols.map((s) => (
-            <span key={s} className="rounded border border-border bg-bg-card px-1.5 py-0.5 font-mono text-[11px] text-accent">
-              {s}
-            </span>
+            <SymbolBadge key={s} symbol={s} />
           ))}
           <span className={cn('rounded border px-1.5 py-0.5 text-[11px]', sourceTone[item.source])}>
             {item.source}

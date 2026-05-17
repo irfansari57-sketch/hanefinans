@@ -4,6 +4,7 @@ import { loadNews } from '@/data/services';
 import type { NewsItem } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/date';
+import { SymbolBadge } from './SymbolBadge';
 
 const REFRESH_MS = 90_000;
 const SCROLL_SPEED_SECONDS = 180; // tek tur süresi — daha yavaş, okunabilir akış
@@ -85,12 +86,7 @@ export function RightNewsTicker() {
                       {item.source}
                     </span>
                     {item.symbols.slice(0, 1).map((s) => (
-                      <span
-                        key={s}
-                        className="rounded border border-border bg-bg-soft px-1 py-0.5 font-mono text-accent"
-                      >
-                        {s}
-                      </span>
+                      <SymbolBadge key={s} symbol={s} className="!text-[9px] !px-1 !py-0.5" />
                     ))}
                     <span className={cn('font-medium', importanceTone)}>●{importance}</span>
                   </div>

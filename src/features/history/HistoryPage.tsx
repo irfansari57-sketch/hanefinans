@@ -13,6 +13,7 @@ import { formatRelative, formatDateTR } from '@/lib/date';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { db } from '@/data/db';
+import { SymbolBadge } from '@/components/domain/SymbolBadge';
 
 type Tab = 'timeline' | 'notes' | 'alerts' | 'bookmarks';
 
@@ -165,11 +166,7 @@ function Timeline() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-slate-200">{activityLabel[a.type]}</span>
-                        {a.symbol && (
-                          <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 font-mono text-[11px] text-accent">
-                            {a.symbol}
-                          </span>
-                        )}
+                        {a.symbol && <SymbolBadge symbol={a.symbol} />}
                       </div>
                       {a.detail && (
                         <div className="mt-0.5 truncate text-xs text-slate-500">{a.detail}</div>
@@ -209,11 +206,7 @@ function NotesList() {
           <div key={n.id} className="rounded-xl border border-border bg-bg-soft p-3">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <div className="flex items-center gap-2">
-                {n.symbol && (
-                  <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 font-mono text-[11px] text-accent">
-                    {n.symbol}
-                  </span>
-                )}
+                {n.symbol && <SymbolBadge symbol={n.symbol} />}
                 {n.newsId && <span className="text-slate-500">haber notu</span>}
                 <span>{formatDateTR(new Date(n.updatedAt).toISOString())}</span>
               </div>
@@ -280,7 +273,7 @@ function AlertRow({ alert }: { alert: PriceAlert }) {
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-mono text-accent">{alert.symbol}</span>
+          <SymbolBadge symbol={alert.symbol} variant="inline" />
           <span className="text-slate-300">
             {alert.direction === 'above' ? '≥' : '≤'} {formatMoney(alert.threshold)}
           </span>
@@ -336,9 +329,7 @@ function BookmarksList() {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <div className="flex flex-wrap items-center gap-1.5">
               {b.snapshot?.symbols?.map((s) => (
-                <span key={s} className="rounded border border-border bg-bg-card px-1.5 py-0.5 font-mono text-[11px] text-accent">
-                  {s}
-                </span>
+                <SymbolBadge key={s} symbol={s} />
               ))}
               {b.snapshot?.source && <span>{b.snapshot.source}</span>}
             </div>

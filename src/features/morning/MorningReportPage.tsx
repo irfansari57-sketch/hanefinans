@@ -20,6 +20,8 @@ import { MOCK_STOCKS, MOCK_MACRO_FALLBACK } from '@/data/mock';
 import type { Stock, MacroIndicator, NewsItem } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { formatMoney, formatCompact } from '@/lib/format';
+import { SymbolBadge } from '@/components/domain/SymbolBadge';
+import { AnalystCommentary } from '@/components/domain/AnalystCommentary';
 
 const STORAGE_LAST_SENT = 'fa.morning.lastSent';
 
@@ -475,33 +477,10 @@ export function MorningReportPage() {
       </section>
 
       <div className="flex flex-col">
-      {/* ============ PİYASA HABERLERİ ============ */}
-      {news.length > 0 && (
-        <section className="glass-card mb-5 p-5 order-5">
-          <SectionHeader icon={Newspaper} title="Piyasa Haberleri & Catalyst" tone="success" />
-          <ol className="mt-4 space-y-2 text-xs">
-            {news.slice(0, 7).map((n, i) => {
-              const tone = n.importance >= 8 ? 'text-danger' : n.importance >= 6 ? 'text-warning' : 'text-slate-300';
-              return (
-                <li key={n.id} className="flex items-start gap-3 rounded-lg border border-border bg-bg-card p-3">
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-bg-soft text-[10px] text-slate-400">{i + 1}</span>
-                  <div className="min-w-0">
-                    <div className={cn('font-medium', tone)}>{n.title}</div>
-                    {n.summary && <p className="mt-0.5 line-clamp-2 text-slate-400">{n.summary}</p>}
-                    <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-500">
-                      <span className="rounded bg-bg-soft px-1.5 py-0.5">{n.source}</span>
-                      {n.symbols.slice(0, 3).map((s) => (
-                        <span key={s} className="rounded border border-border bg-bg-soft px-1.5 py-0.5 font-mono text-accent">{s}</span>
-                      ))}
-                      <span>Önem {n.importance}</span>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
+      {/* ============ PİYASA YORUMCULARI ============ */}
+      <div className="mb-5 order-5">
+        <AnalystCommentary />
+      </div>
       </div>
     </>
   );

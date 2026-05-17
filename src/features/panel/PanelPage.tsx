@@ -21,6 +21,7 @@ import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { daysUntil, formatDateShort } from '@/lib/date';
+import { macroKeyToRoute } from '@/lib/macroRoutes';
 
 const sentimentTone = {
   positive: 'text-success',
@@ -182,49 +183,69 @@ export function PanelPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {macro
             .filter((m) => m.key === 'BIST 100' || m.key === 'BIST 30')
-            .map((m) => (
-              <div key={m.key} className="glass-card p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
-                  {m.source === 'live' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-medium text-success">
-                      <Radio size={8} /> CANLI
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
-                  {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                </div>
-                {m.changePct != null && (
-                  <div className={cn('text-sm tabular-nums', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                    {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+            .map((m) => {
+              const route = macroKeyToRoute(m.key);
+              const card = (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
+                    {m.source === 'live' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-medium text-success">
+                        <Radio size={8} /> CANLI
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
+                    {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </div>
+                  {m.changePct != null && (
+                    <div className={cn('text-sm tabular-nums', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                    </div>
+                  )}
+                </>
+              );
+              return route ? (
+                <Link key={m.key} to={route} className="glass-card block p-4 transition hover:border-accent/40">
+                  {card}
+                </Link>
+              ) : (
+                <div key={m.key} className="glass-card p-4">{card}</div>
+              );
+            })}
           {/* USD/TRY ve EUR/TRY de BIST'le birlikte göster */}
           {macro
             .filter((m) => m.key === 'USD/TRY' || m.key === 'EUR/TRY')
-            .map((m) => (
-              <div key={m.key} className="glass-card p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
-                  {m.source === 'live' && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-medium text-success">
-                      <Radio size={8} /> CANLI
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
-                  {m.value.toFixed(2)}
-                </div>
-                {m.changePct != null && (
-                  <div className={cn('text-sm tabular-nums', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                    {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+            .map((m) => {
+              const route = macroKeyToRoute(m.key);
+              const card = (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
+                    {m.source === 'live' && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-medium text-success">
+                        <Radio size={8} /> CANLI
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
+                    {m.value.toFixed(2)}
+                  </div>
+                  {m.changePct != null && (
+                    <div className={cn('text-sm tabular-nums', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                    </div>
+                  )}
+                </>
+              );
+              return route ? (
+                <Link key={m.key} to={route} className="glass-card block p-4 transition hover:border-accent/40">
+                  {card}
+                </Link>
+              ) : (
+                <div key={m.key} className="glass-card p-4">{card}</div>
+              );
+            })}
         </div>
       </section>
 

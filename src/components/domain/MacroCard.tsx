@@ -1,7 +1,9 @@
+import { Link } from 'react-router-dom';
 import { Radio } from 'lucide-react';
 import type { MacroIndicator } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/lib/format';
+import { macroKeyToRoute } from '@/lib/macroRoutes';
 
 interface MacroCardProps {
   item: MacroIndicator;
@@ -16,9 +18,10 @@ export function MacroCard({ item, compact = false }: MacroCardProps) {
       : item.changePct >= 0
       ? 'text-success'
       : 'text-danger';
+  const route = macroKeyToRoute(item.key);
 
-  return (
-    <div className={cn('rounded-xl border border-border bg-bg-soft', compact ? 'p-3' : 'p-4')}>
+  const inner = (
+    <>
       <div className="flex items-center justify-between">
         <div className="text-[10px] uppercase tracking-wider text-slate-500">{item.label}</div>
         {item.source === 'live' ? (
@@ -50,6 +53,20 @@ export function MacroCard({ item, compact = false }: MacroCardProps) {
           <span className="text-slate-500">{item.subLabel}</span>
         )}
       </div>
-    </div>
+    </>
   );
+
+  const baseClass = cn(
+    'block rounded-xl border border-border bg-bg-soft transition',
+    compact ? 'p-3' : 'p-4',
+  );
+
+  if (route) {
+    return (
+      <Link to={route} className={cn(baseClass, 'hover:border-accent/40 hover:bg-bg-soft/80')}>
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={baseClass}>{inner}</div>;
 }

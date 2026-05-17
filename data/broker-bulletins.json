@@ -1,0 +1,20 @@
+{
+  "fetchedAt": "1970-01-01T00:00:00Z",
+  "bulletins": {
+    "osmanli-yatirim": {
+      "id": "osmanli-yatirim",
+      "name": "Osmanlı Yatırım",
+      "pdfUrl": "https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
+      "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
+      "ok": false,
+      "error": "İlk scrape henüz çalışmadı — GitHub Actions sabah 09:30 TR'da güncelleyecek"
+    },
+    "kt-yatirim": {
+      "id": "kt-yatirim",
+      "name": "KT Yatırım",
+      "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten&search=&date=&page=1",
+      "ok": false,
+      "error": "KT sitesi JS-rendered; bülten metni server-side scrape edilemiyor. Link aktif."
+    }
+  }
+}

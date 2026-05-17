@@ -1,0 +1,49 @@
+name: Aracı Kurum Bültenleri
+# Osmanlı Yatırım günlük PDF bültenini indirir, metin özetini data/broker-bulletins.json'a yazar.
+
+on:
+  schedule:
+    # Her sabah 09:30 TR (06:30 UTC) — bültenler genelde 08:00-09:00 arası yayınlanır
+    - cron: '30 6 * * 1-5'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/scrape_broker_bulletins.py'
+      - 'scripts/requirements.txt'
+      - '.github/workflows/scrape-broker-bulletins.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Scrape broker bulletins
+        run: python -u scripts/scrape_broker_bulletins.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/broker-bulletins.json
+          if git diff --staged --quiet; then
+            echo "Bülten verisinde değişiklik yok, commit atlanıyor"
+          else
+            git commit -m "data: aracı kurum bültenleri otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
+            git push
+            echo "✅ data/broker-bulletins.json commit'lendi"
+          fi

@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-05-17T18:56:49Z",
+  "fetchedAt": "2026-05-17T19:04:39Z",
   "bulletins": {
     "osmanli-yatirim": {
       "id": "osmanli-yatirim",
@@ -16,8 +16,12 @@
       "id": "kt-yatirim",
       "name": "KT Yatırım",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten&search=&date=&page=1",
-      "ok": false,
-      "error": "KT sitesi JS-rendered; bülten metni server-side scrape edilemiyor. Link aktif."
+      "ok": true,
+      "pdfUrl": "https://kuveytturkyatirim.com.tr/media/beemem4v/gunluk-bulten_15052026.pdf",
+      "title": "Günlük Bülten",
+      "date": "15.05.2026",
+      "excerpt": "Katılım Endeksleri T L U S D 19,182 423 17,722 391 14,645 323 1.06% 0.96% 0.32% TL104,282 mn TL82,083 mn TL160,837 mn TL7,312.4 mn 35% TL95,329 mn XK100 Getiriler (TL) ∆ ∆ -0.01% 9.20% 17.93% 72.29% XKTUM En Yüksek Hacim TL mn ∆ 5,414 -1.88% 5,315 1.66% 4,332 0.67% 3,392 1.85% 3,352 3.04% XKTUM En Çok Yükselenler TL ∆ 19.36 10.00% 52.20 9.99% 49.24 9.96% 133.80 9.94% 7.89 9.89% ▪ XKTUM En Çok Düşenler TL ∆ 19.01 -9.99% 292.50 -9.72% 27.72 -6.03% 11.54 -4.79% 857.00 -4.57% * XKTUM = BIST Katılım Tüm Endeksi ** XK100 = BIST Katılım 100 Endeksi *** XU100 = BIST 100 Endeksi",
+      "fullLength": 576
     }
   }
 }

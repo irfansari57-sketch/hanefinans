@@ -170,7 +170,7 @@ def fetch_kt() -> dict:
 
 
 def main() -> int:
-    print("Aracı kurum bültenleri scrape başlıyor…")
+    print("Aracı kurum bültenleri scrape başlıyor (v1.0.1)…")
 
     bulletins = {
         "osmanli-yatirim": fetch_osmanli(),

@@ -90,16 +90,31 @@ export function MembershipPage() {
   const upgrade = useAuth((s) => s.upgradeTier);
   // Fiyatları store'dan oku — admin Ayarlar'dan değiştirebilir
   const proMonthly = usePricing((s) => s.proMonthly);
+  const proYearly = usePricing((s) => s.proYearly);
   const eliteMonthly = usePricing((s) => s.eliteMonthly);
+  const eliteYearly = usePricing((s) => s.eliteYearly);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [processing, setProcessing] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ tier: 'free' | 'pro' | 'elite'; label: string } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  // PLANS const'undaki hardcoded fiyatları runtime'da override et
+  // Yıllık indirim yüzdesi (12 ay × aylık vs yıllık)
+  const proSavings = Math.max(0, Math.round(((proMonthly * 12 - proYearly) / (proMonthly * 12)) * 100));
+  const eliteSavings = Math.max(0, Math.round(((eliteMonthly * 12 - eliteYearly) / (eliteMonthly * 12)) * 100));
+
+  // PLANS — billingPeriod'a göre fiyat ve etiket runtime'da
   const PLANS_LIVE: Plan[] = PLANS.map((p) => {
-    if (p.tier === 'pro') return { ...p, price: `₺${proMonthly}` };
-    if (p.tier === 'elite') return { ...p, price: `₺${eliteMonthly}` };
+    if (p.tier === 'pro') {
+      const price = billingPeriod === 'yearly' ? proYearly : proMonthly;
+      const period = billingPeriod === 'yearly' ? '/yıl' : '/ay';
+      return { ...p, price: `₺${price}`, periodPrice: period };
+    }
+    if (p.tier === 'elite') {
+      const price = billingPeriod === 'yearly' ? eliteYearly : eliteMonthly;
+      const period = billingPeriod === 'yearly' ? '/yıl' : '/ay';
+      return { ...p, price: `₺${price}`, periodPrice: period };
+    }
     return p;
   });
 
@@ -296,7 +311,41 @@ export function MembershipPage() {
       </section>
 
       {/* Plan karşılaştırma grid */}
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">Tüm Paketler</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Tüm Paketler</h2>
+        {/* Aylık/Yıllık toggle + indirim badge */}
+        <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-bg-soft p-1">
+          <button
+            type="button"
+            onClick={() => setBillingPeriod('monthly')}
+            className={cn(
+              'rounded-lg px-4 py-1.5 text-xs font-semibold transition',
+              billingPeriod === 'monthly'
+                ? 'bg-bg-card text-slate-100 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200',
+            )}
+          >
+            Aylık
+          </button>
+          <button
+            type="button"
+            onClick={() => setBillingPeriod('yearly')}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition',
+              billingPeriod === 'yearly'
+                ? 'bg-bg-card text-slate-100 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200',
+            )}
+          >
+            Yıllık
+            {(proSavings > 0 || eliteSavings > 0) && (
+              <span className="rounded bg-success/20 px-1.5 py-0.5 text-[9px] font-bold text-success">
+                %{Math.max(proSavings, eliteSavings)} İNDİRİM
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
       <div className="grid gap-3 md:grid-cols-3">
         {PLANS_LIVE.map((plan) => {
           const Icon = plan.icon;

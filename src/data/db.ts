@@ -96,6 +96,44 @@ export interface PortfolioPosition {
   note?: string;
 }
 
+/** Tek seferlik ödeme veya abonelik yenileme kaydı. */
+export interface PaymentTransaction {
+  id?: number;
+  userId: number;
+  tier: 'pro' | 'elite';
+  period: 'monthly' | 'yearly';
+  amount: number;                  // TRY cinsinden ödenen
+  currency: 'TRY';
+  status: 'pending' | 'success' | 'failed' | 'refunded';
+  iyzicoPaymentId?: string;        // Iyzico ödeme referansı
+  iyzicoConversationId?: string;   // Iyzico unique tracking id
+  cardLastFour?: string;           // ör. "4242"
+  installments?: number;           // 1 = peşin
+  errorCode?: string;              // başarısızsa
+  errorMessage?: string;
+  invoiceNumber?: string;          // e-arşiv fatura no
+  createdAt: number;
+  completedAt?: number;
+}
+
+/** Aktif/iptal abonelik kaydı. */
+export interface Subscription {
+  id?: number;
+  userId: number;
+  tier: 'pro' | 'elite';
+  period: 'monthly' | 'yearly';
+  startDate: number;
+  expiresAt: number;
+  autoRenew: 0 | 1;
+  status: 'active' | 'cancelled' | 'expired' | 'past_due';
+  iyzicoSubscriptionId?: string;   // Iyzico subscription referansı
+  iyzicoCustomerId?: string;
+  cancelledAt?: number;
+  cancellationReason?: string;
+  /** En son başarılı yenileme transaction id'si */
+  lastPaymentId?: number;
+}
+
 class FinansAsistanDB extends Dexie {
   activity!: Table<ActivityEntry, number>;
   notes!: Table<Note, number>;
@@ -104,6 +142,8 @@ class FinansAsistanDB extends Dexie {
   funds!: Table<FundEntry, number>;
   users!: Table<UserAccount, number>;
   portfolio!: Table<PortfolioPosition, number>;
+  transactions!: Table<PaymentTransaction, number>;
+  subscriptions!: Table<Subscription, number>;
 
   constructor() {
     super('finansasistan');
@@ -136,6 +176,17 @@ class FinansAsistanDB extends Dexie {
       funds: '++id, &code, addedAt, archived',
       users: '++id, &email, tier, createdAt',
       portfolio: '++id, symbol, addedAt',
+    });
+    this.version(5).stores({
+      activity: '++id, timestamp, type, symbol, newsId',
+      notes: '++id, createdAt, updatedAt, symbol, newsId, pinned',
+      alerts: '++id, createdAt, symbol, enabled, triggeredAt',
+      bookmarks: '++id, &newsId, bookmarkedAt',
+      funds: '++id, &code, addedAt, archived',
+      users: '++id, &email, tier, createdAt',
+      portfolio: '++id, symbol, addedAt',
+      transactions: '++id, userId, status, createdAt, iyzicoPaymentId',
+      subscriptions: '++id, userId, status, expiresAt, iyzicoSubscriptionId',
     });
   }
 }

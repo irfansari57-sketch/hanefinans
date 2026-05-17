@@ -40,6 +40,7 @@ import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
 import { BrandingBlock } from '@/components/domain/BrandingBlock';
+import { CookieConsent } from '@/components/domain/CookieConsent';
 import { ShieldAlert, ChevronDown } from 'lucide-react';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
@@ -215,9 +216,20 @@ export function Layout() {
           )}
         </nav>
 
-        {/* Sidebar footer — sadece version (© bloğu yukarıda branding'de) */}
-        <div className="border-t border-border bg-bg-soft/95 p-2 text-center text-[9px] text-slate-600">
-          <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
+        {/* Sidebar footer — yasal linkler + version */}
+        <div className="border-t border-border bg-bg-soft/95 p-2.5 text-center text-[9px] text-slate-600">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5">
+            <Link to="/legal/kvkk" className="hover:text-accent">KVKK</Link>
+            <span>·</span>
+            <Link to="/legal/mesafeli-satis-sozlesmesi" className="hover:text-accent">Mesafeli Satış</Link>
+            <span>·</span>
+            <Link to="/legal/uyelik-sozlesmesi" className="hover:text-accent">Üyelik</Link>
+            <span>·</span>
+            <Link to="/legal/iade-politikasi" className="hover:text-accent">İade</Link>
+            <span>·</span>
+            <Link to="/legal/cerez-politikasi" className="hover:text-accent">Çerezler</Link>
+          </div>
+          <div className="mt-1.5"><span className="text-accent/80">v0.2</span> • Hafta 0 önizleme</div>
         </div>
       </aside>
 
@@ -396,9 +408,22 @@ export function Layout() {
           )}
         </div>
 
-        {/* Mobil footer — sadece version (telif branding bloğunda) */}
-        <footer className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 py-2 text-center text-[9px] text-slate-600">
-          <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
+        {/* Mobil footer — yasal linkler + version (telif branding bloğunda) */}
+        <footer className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 py-3 text-center text-[10px] text-slate-500">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <Link to="/legal/kvkk" className="hover:text-accent">KVKK</Link>
+            <span>·</span>
+            <Link to="/legal/mesafeli-satis-sozlesmesi" className="hover:text-accent">Mesafeli Satış</Link>
+            <span>·</span>
+            <Link to="/legal/uyelik-sozlesmesi" className="hover:text-accent">Üyelik Sözleşmesi</Link>
+            <span>·</span>
+            <Link to="/legal/iade-politikasi" className="hover:text-accent">İade Politikası</Link>
+            <span>·</span>
+            <Link to="/legal/cerez-politikasi" className="hover:text-accent">Çerezler</Link>
+          </div>
+          <div className="mt-2 text-[9px] text-slate-600">
+            <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
+          </div>
         </footer>
       </div>
 
@@ -413,6 +438,9 @@ export function Layout() {
 
       {/* İlk girişte YTD + KVKK onay pop-up'ı (localStorage'da accepted flag) */}
       <DisclaimerModal />
+
+      {/* Çerez onay banner — KVKK+GDPR uyumlu, ilk ziyarette gösterilir */}
+      <CookieConsent />
     </div>
   );
 }

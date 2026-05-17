@@ -46,6 +46,11 @@ const UsMarketsPage         = lazyWithRetry(() => import('@/features/usMarkets/U
 const GlobalPage            = lazyWithRetry(() => import('@/features/global/GlobalPage').then((m) => ({ default: m.GlobalPage })));
 const ForexPage             = lazyWithRetry(() => import('@/features/forex/ForexPage').then((m) => ({ default: m.ForexPage })));
 const ForexDetailPage       = lazyWithRetry(() => import('@/features/forexDetail/ForexDetailPage').then((m) => ({ default: m.ForexDetailPage })));
+const KvkkPage              = lazyWithRetry(() => import('@/features/legal/LegalPages').then((m) => ({ default: m.KvkkPage })));
+const MesafeliPage          = lazyWithRetry(() => import('@/features/legal/LegalPages').then((m) => ({ default: m.MesafeliPage })));
+const UyelikSozlesmesiPage  = lazyWithRetry(() => import('@/features/legal/LegalPages').then((m) => ({ default: m.UyelikSozlesmesiPage })));
+const IadePolitikasiPage    = lazyWithRetry(() => import('@/features/legal/LegalPages').then((m) => ({ default: m.IadePolitikasiPage })));
+const CerezPolitikasiPage   = lazyWithRetry(() => import('@/features/legal/LegalPages').then((m) => ({ default: m.CerezPolitikasiPage })));
 const HeatMapPage           = lazyWithRetry(() => import('@/features/heatmap/HeatMapPage').then((m) => ({ default: m.HeatMapPage })));
 const CommodityDetailPage   = lazyWithRetry(() => import('@/features/commodityDetail/CommodityDetailPage').then((m) => ({ default: m.CommodityDetailPage })));
 const StockDetailPage       = lazyWithRetry(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
@@ -92,6 +97,11 @@ export const router = createBrowserRouter([
       { path: 'global', element: withSuspense(<GlobalPage />) },
       { path: 'doviz', element: withSuspense(<ForexPage />) },
       { path: 'doviz/:symbol', element: withSuspense(<ForexDetailPage />) },
+      { path: 'legal/kvkk', element: withSuspense(<KvkkPage />) },
+      { path: 'legal/mesafeli-satis-sozlesmesi', element: withSuspense(<MesafeliPage />) },
+      { path: 'legal/uyelik-sozlesmesi', element: withSuspense(<UyelikSozlesmesiPage />) },
+      { path: 'legal/iade-politikasi', element: withSuspense(<IadePolitikasiPage />) },
+      { path: 'legal/cerez-politikasi', element: withSuspense(<CerezPolitikasiPage />) },
       { path: 'heatmap', element: withSuspense(<HeatMapPage />) },
       { path: 'stock/:symbol', element: withSuspense(<StockDetailPage />) },
       { path: 'fund/:code', element: withSuspense(<FundDetailPage />) },

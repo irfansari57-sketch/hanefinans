@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, ExternalLink, Search, ChevronUp, ChevronDown, ChevronRight, Star, RefreshCw, Lock, Sparkles } from 'lucide-react';
+import { TrendingUp, ExternalLink, Search, ChevronUp, ChevronDown, ChevronRight, Star, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LiveBadge } from '@/components/domain/LiveBadge';
@@ -9,7 +9,6 @@ import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
 import { useWatchlist } from '@/store/watchlist';
-import { useAuth, isPro } from '@/store/auth';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
 
@@ -61,9 +60,6 @@ function writeReturnsCache(data: Record<string, PeriodReturns>) {
 }
 
 export function StocksPage() {
-  const user = useAuth((s) => s.user);
-  const proUser = isPro(user);
-
   const watchedSymbolsList = useWatchlist((s) => s.symbols);
   const toggleWatchlist = useWatchlist((s) => s.toggle);
   const watchedSymbols = useMemo(() => new Set(watchedSymbolsList), [watchedSymbolsList]);
@@ -155,10 +151,9 @@ export function StocksPage() {
   };
 
   useEffect(() => {
-    if (!proUser) return;
     refresh(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proUser]);
+  }, []);
 
   const toggleWatch = (symbol: string) => {
     toggleWatchlist(symbol);
@@ -214,45 +209,6 @@ export function StocksPage() {
       setSortDir(k === 'symbol' ? 'asc' : 'desc');
     }
   };
-
-  // PRO gating
-  if (!proUser) {
-    return (
-      <>
-        <PageHeader
-          title="Hisseler"
-          subtitle="BIST hisselerinin gün/hafta/ay/3ay/6ay/yıl getirileri — canlı Yahoo Finance verisi."
-        />
-        <div className="glass-card relative overflow-hidden p-8 text-center">
-          <div className="pointer-events-none absolute inset-0 opacity-25">
-            <div className="grid h-full gap-1.5 p-4 grid-cols-4 blur-sm">
-              {Array.from({ length: 16 }).map((_, i) => (
-                <div key={i} className="rounded bg-accent/15" />
-              ))}
-            </div>
-          </div>
-          <div className="relative">
-            <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
-              <Lock size={28} />
-            </span>
-            <h2 className="mt-4 text-xl font-bold text-slate-100">Hisseler Sayfası PRO Üyelere Özel</h2>
-            <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
-              270+ BIST hissesinin gün/hafta/ay/3ay/6ay/YTD/1Y getirileri tek tabloda. Canlı fiyat, sıralama, takip yıldızlama.
-            </p>
-            <Link
-              to="/uyelik"
-              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:brightness-110 shadow-lg shadow-accent/30"
-            >
-              <Sparkles size={14} /> PRO'ya Yükselt
-            </Link>
-            <p className="mt-3 text-[11px] text-slate-500">
-              PRO ile ek: ABD Borsaları, Global Piyasalar, Heat Map, AI hisse/portföy analizi, reklamsız panel.
-            </p>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   return (
     <>

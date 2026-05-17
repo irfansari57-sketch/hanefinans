@@ -281,62 +281,57 @@ export function FundDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* External resources */}
-        <section className="lg:col-span-2 space-y-3">
-          <h2 className="text-sm font-semibold text-slate-200">Detaylı Bilgi Kaynakları</h2>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <ExtLink
-              title="TEFAS — Fon Analizi"
-              description="Resmi: NAV, getiri, fon büyüklüğü, yatırımcı sayısı, varlık dağılımı"
-              url={tefasUrl}
-            />
-            <ExtLink
-              title="TEFAS — Karşılaştırma"
-              description="Benchmark karşılaştırma, getiri grafikleri"
-              url={tefasComp}
-            />
-            <ExtLink
-              title="Fintables (Premium)"
-              description="Detaylı portföy analizi, en büyük pozisyonlar"
-              url={fintablesUrl}
-            />
-          </div>
-        </section>
+      {/* Dış kaynaklar — tam genişlik, 3 link tek satırda simetrik */}
+      <section className="mb-4 space-y-3">
+        <h2 className="text-sm font-semibold text-slate-200">Detaylı Bilgi Kaynakları</h2>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <ExtLink
+            title="TEFAS — Fon Analizi"
+            description="Resmi: NAV, getiri, fon büyüklüğü, yatırımcı sayısı, varlık dağılımı"
+            url={tefasUrl}
+          />
+          <ExtLink
+            title="TEFAS — Karşılaştırma"
+            description="Benchmark karşılaştırma, getiri grafikleri"
+            url={tefasComp}
+          />
+          <ExtLink
+            title="Fintables (Premium)"
+            description="Detaylı portföy analizi, en büyük pozisyonlar"
+            url={fintablesUrl}
+          />
+        </div>
+      </section>
 
-        <aside className="space-y-4">
-          {/* Notes */}
-          <div className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
-                <StickyNote size={12} /> Notlarım
-              </h3>
-              <span className="text-[10px] text-slate-500">{notes.length}</span>
-            </div>
-            {notes.length === 0 ? (
-              <p className="px-4 py-4 text-center text-xs text-slate-500">Not yok.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {notes.slice(0, 5).map((n) => (
-                  <div key={n.id} className="p-3">
-                    <p className="text-xs text-slate-300">{n.body}</p>
-                    <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
-                      <span>{formatDateTR(new Date(n.updatedAt).toISOString())}</span>
-                      <button
-                        onClick={() => n.id && notesRepo.remove(n.id)}
-                        className="text-danger/70 hover:text-danger"
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+      {/* Notlarım — tam genişlik, dış kaynakların altında simetrik şerit */}
+      <section className="card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+          <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <StickyNote size={12} /> Notlarım
+          </h3>
+          <span className="text-[10px] text-slate-500">{notes.length}</span>
+        </div>
+        {notes.length === 0 ? (
+          <p className="px-4 py-4 text-center text-xs text-slate-500">Not yok — sağ üstteki "Not" butonundan ekleyebilirsin.</p>
+        ) : (
+          <div className="grid divide-y divide-border md:grid-cols-2 md:divide-y-0 md:divide-x">
+            {notes.slice(0, 6).map((n) => (
+              <div key={n.id} className="p-3">
+                <p className="text-xs text-slate-300">{n.body}</p>
+                <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+                  <span>{formatDateTR(new Date(n.updatedAt).toISOString())}</span>
+                  <button
+                    onClick={() => n.id && notesRepo.remove(n.id)}
+                    className="text-danger/70 hover:text-danger"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
               </div>
-            )}
+            ))}
           </div>
-
-        </aside>
-      </div>
+        )}
+      </section>
     </>
   );
 }

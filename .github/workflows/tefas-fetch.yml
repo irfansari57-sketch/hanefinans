@@ -41,11 +41,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet data/tefas.json 2>/dev/null; then
+          # Önce stage et (untracked yeni dosya da dahil), sonra staged diff kontrolü
+          git add data/tefas.json
+          if git diff --staged --quiet; then
             echo "TEFAS verisinde değişiklik yok, commit atlanıyor"
           else
-            git add data/tefas.json
             # [skip ci] → Cloudflare Pages rebuild tetiklemesin (data değişikliği UI'yi etkilemez)
             git commit -m "data: TEFAS otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
             git push
+            echo "✅ data/tefas.json commit'lendi ve push edildi"
           fi

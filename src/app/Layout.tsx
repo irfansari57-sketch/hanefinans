@@ -190,8 +190,20 @@ export function Layout() {
             </>
           )}
         </nav>
-        <div className="border-t border-border p-3 text-center text-[10px] text-slate-500">
-          <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
+
+        {/* Sidebar footer — telif + YTD disclaimer (desktop). Mobilde main altında ayrı footer var. */}
+        <div className="border-t border-border bg-bg-soft/95 p-3.5 text-[11px] leading-snug">
+          <p className="font-bold text-warning">Yatırım Tavsiyesi Değildir (YTD)</p>
+          <p className="mt-1.5 text-slate-300">
+            Burada paylaşılan hiçbir içerik, yorum veya bilgi bir menkul kıymetin veya dijital varlığın satın alınması ya da satılması için bir teklif, talep veya yatırım tavsiyesi olarak yorumlanamaz. Tüm yatırım stratejileri kayıp riski içerir; okuyucuların yapacakları işlemlerde tüm sorumluluk kendilerine aittir.
+          </p>
+          <p className="mt-2.5 border-t border-border pt-2 text-[10px] font-semibold text-slate-400">
+            © 2026 Hane Digital Technology Inc.
+          </p>
+          <p className="text-[10px] text-slate-500">All rights reserved.</p>
+          <p className="mt-1.5 text-[9px] text-slate-600">
+            <span className="text-accent/80">v0.2</span> • Hafta 0 önizleme
+          </p>
         </div>
       </aside>
 
@@ -340,15 +352,18 @@ export function Layout() {
           </div>
         )}
 
-        {/* Footer — telif + yatırım tavsiyesi disclaimer (web + mobil) */}
-        <footer className="mx-auto w-full max-w-7xl border-t border-border px-3 py-5 text-[10px] leading-relaxed text-slate-500 sm:px-6 sm:py-6 lg:px-8">
-          <p className="mb-2">
-            <strong className="font-semibold text-slate-400">Yatırım Tavsiyesi Değildir (YTD).</strong>{' '}
+        {/* Footer — mobilde main altında (desktop'ta sidebar'ın altında zaten görünüyor) */}
+        <footer className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 py-5 text-[11px] leading-snug">
+          <p className="font-bold text-warning">Yatırım Tavsiyesi Değildir (YTD)</p>
+          <p className="mt-1.5 text-slate-300">
             Burada paylaşılan hiçbir içerik, yorum veya bilgi bir menkul kıymetin veya dijital varlığın satın alınması ya da
             satılması için bir teklif, talep veya yatırım tavsiyesi olarak yorumlanamaz. Tüm yatırım stratejileri kayıp riski
             içerir; okuyucuların yapacakları işlemlerde tüm sorumluluk kendilerine aittir.
           </p>
-          <p className="text-slate-600">© 2026 Hane Digital Technology Inc. All rights reserved.</p>
+          <p className="mt-3 border-t border-border pt-2 text-[10px] font-semibold text-slate-400">
+            © 2026 Hane Digital Technology Inc.
+          </p>
+          <p className="text-[10px] text-slate-500">All rights reserved.</p>
         </footer>
       </div>
 

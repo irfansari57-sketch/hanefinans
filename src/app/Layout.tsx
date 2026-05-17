@@ -170,22 +170,22 @@ export function Layout() {
             </div>
           ))}
 
-          {/* Hane Mod Studio YouTube — kendi markamızın kanalı, herkese görünür */}
-          <div className="pt-3">
-            <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-              Resmi YouTube
-            </div>
-            <HaneModAdBanner variant="compact" />
-          </div>
-
-          {/* Affiliate sponsor reklamı — PRO/ELITE'de gizli */}
+          {/* Tüm reklam alanları PRO/ELITE'de gizli — onlara daha konforlu alan */}
           {!isPro(user) && (
-            <div className="pt-3">
-              <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-                Sponsor
+            <>
+              <div className="pt-3">
+                <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                  Resmi YouTube
+                </div>
+                <HaneModAdBanner variant="compact" />
               </div>
-              <AdBanner variant="compact" />
-            </div>
+              <div className="pt-3">
+                <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                  Sponsor
+                </div>
+                <AdBanner variant="compact" />
+              </div>
+            </>
           )}
         </nav>
         <div className="border-t border-border p-3 text-center text-[10px] text-slate-500">
@@ -324,11 +324,13 @@ export function Layout() {
           </div>
         )}
 
-        {/* Mobil reklam alanı — sidebar mobilde gizli olduğu için banner'ları burada gösteriyoruz */}
-        <div className="md:hidden mx-auto w-full max-w-7xl px-3 pt-3 space-y-2">
-          <HaneModAdBanner variant="compact" />
-          {!isPro(user) && <AdBanner variant="compact" />}
-        </div>
+        {/* Mobil reklam alanı — sidebar mobilde gizli olduğu için banner'ları burada gösteriyoruz (PRO/ELITE'de tamamen gizli) */}
+        {!isPro(user) && (
+          <div className="md:hidden mx-auto w-full max-w-7xl px-3 pt-3 space-y-2">
+            <HaneModAdBanner variant="compact" />
+            <AdBanner variant="compact" />
+          </div>
+        )}
 
         <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
           <Outlet />

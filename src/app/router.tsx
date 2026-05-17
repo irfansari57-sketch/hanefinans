@@ -1,34 +1,63 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { PageSkeleton } from '@/components/ui/Skeleton';
 
+/**
+ * Cloudflare Pages'e yeni build deploy edilince eski tarayıcı index.html'i
+ * eski chunk hash'lerini ister; bu chunk'lar artık 404 verir. Lazy import
+ * hata yakalanır ve (oturumda 1 kez) sayfa otomatik yenilenir → fresh index.html.
+ */
+function lazyWithRetry<T extends ComponentType<unknown>>(factory: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    factory().catch((err: Error) => {
+      const msg = err?.message ?? '';
+      const isChunkError =
+        msg.includes('Failed to fetch dynamically imported module') ||
+        msg.includes('Importing a module script failed') ||
+        msg.includes('error loading dynamically imported module');
+      if (isChunkError && typeof window !== 'undefined') {
+        const last = sessionStorage.getItem('fa.lastChunkReload');
+        const now = Date.now();
+        // 30 saniye debounce — sonsuz reload döngüsünü engelle
+        if (!last || now - parseInt(last, 10) > 30_000) {
+          sessionStorage.setItem('fa.lastChunkReload', String(now));
+          window.location.reload();
+          // Reload tetiklendi; geri dönüş yapma
+          return new Promise<{ default: T }>(() => {});
+        }
+      }
+      throw err;
+    }),
+  );
+}
+
 // Route-level code splitting — her sayfa ayrı chunk
 // İlk açılış JS bundle'ı ~%70 küçülür
-const PanelPage             = lazy(() => import('@/features/panel/PanelPage').then((m) => ({ default: m.PanelPage })));
-const NewsPage              = lazy(() => import('@/features/news/NewsPage').then((m) => ({ default: m.NewsPage })));
-const WatchlistPage         = lazy(() => import('@/features/watchlist/WatchlistPage').then((m) => ({ default: m.WatchlistPage })));
-const FundsPage             = lazy(() => import('@/features/funds/FundsPage').then((m) => ({ default: m.FundsPage })));
-const StocksPage            = lazy(() => import('@/features/stocks/StocksPage').then((m) => ({ default: m.StocksPage })));
-const CommoditiesPage       = lazy(() => import('@/features/commodities/CommoditiesPage').then((m) => ({ default: m.CommoditiesPage })));
-const CryptoPage            = lazy(() => import('@/features/crypto/CryptoPage').then((m) => ({ default: m.CryptoPage })));
-const PortfolioPage         = lazy(() => import('@/features/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
-const UsMarketsPage         = lazy(() => import('@/features/usMarkets/UsMarketsPage').then((m) => ({ default: m.UsMarketsPage })));
-const HeatMapPage           = lazy(() => import('@/features/heatmap/HeatMapPage').then((m) => ({ default: m.HeatMapPage })));
-const CommodityDetailPage   = lazy(() => import('@/features/commodityDetail/CommodityDetailPage').then((m) => ({ default: m.CommodityDetailPage })));
-const StockDetailPage       = lazy(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
-const FundDetailPage        = lazy(() => import('@/features/fundDetail/FundDetailPage').then((m) => ({ default: m.FundDetailPage })));
-const CryptoDetailPage      = lazy(() => import('@/features/cryptoDetail/CryptoDetailPage').then((m) => ({ default: m.CryptoDetailPage })));
-const HistoryPage           = lazy(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })));
-const MorningReportPage     = lazy(() => import('@/features/morning/MorningReportPage').then((m) => ({ default: m.MorningReportPage })));
-const RecommendationsPage   = lazy(() => import('@/features/recommendations/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
-const LoginPage             = lazy(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.LoginPage })));
-const SignupPage            = lazy(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.SignupPage })));
-const SmartSearchPage       = lazy(() => import('@/features/smartSearch/SmartSearchPage').then((m) => ({ default: m.SmartSearchPage })));
-const FinancialLiteracyPage = lazy(() => import('@/features/literacy/FinancialLiteracyPage').then((m) => ({ default: m.FinancialLiteracyPage })));
-const MembershipPage        = lazy(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
-const SettingsPage          = lazy(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
-const AdBannerPreviewPage   = lazy(() => import('@/features/preview/AdBannerPreviewPage').then((m) => ({ default: m.AdBannerPreviewPage })));
+const PanelPage             = lazyWithRetry(() => import('@/features/panel/PanelPage').then((m) => ({ default: m.PanelPage })));
+const NewsPage              = lazyWithRetry(() => import('@/features/news/NewsPage').then((m) => ({ default: m.NewsPage })));
+const WatchlistPage         = lazyWithRetry(() => import('@/features/watchlist/WatchlistPage').then((m) => ({ default: m.WatchlistPage })));
+const FundsPage             = lazyWithRetry(() => import('@/features/funds/FundsPage').then((m) => ({ default: m.FundsPage })));
+const StocksPage            = lazyWithRetry(() => import('@/features/stocks/StocksPage').then((m) => ({ default: m.StocksPage })));
+const CommoditiesPage       = lazyWithRetry(() => import('@/features/commodities/CommoditiesPage').then((m) => ({ default: m.CommoditiesPage })));
+const CryptoPage            = lazyWithRetry(() => import('@/features/crypto/CryptoPage').then((m) => ({ default: m.CryptoPage })));
+const PortfolioPage         = lazyWithRetry(() => import('@/features/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
+const UsMarketsPage         = lazyWithRetry(() => import('@/features/usMarkets/UsMarketsPage').then((m) => ({ default: m.UsMarketsPage })));
+const HeatMapPage           = lazyWithRetry(() => import('@/features/heatmap/HeatMapPage').then((m) => ({ default: m.HeatMapPage })));
+const CommodityDetailPage   = lazyWithRetry(() => import('@/features/commodityDetail/CommodityDetailPage').then((m) => ({ default: m.CommodityDetailPage })));
+const StockDetailPage       = lazyWithRetry(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
+const FundDetailPage        = lazyWithRetry(() => import('@/features/fundDetail/FundDetailPage').then((m) => ({ default: m.FundDetailPage })));
+const CryptoDetailPage      = lazyWithRetry(() => import('@/features/cryptoDetail/CryptoDetailPage').then((m) => ({ default: m.CryptoDetailPage })));
+const HistoryPage           = lazyWithRetry(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })));
+const MorningReportPage     = lazyWithRetry(() => import('@/features/morning/MorningReportPage').then((m) => ({ default: m.MorningReportPage })));
+const RecommendationsPage   = lazyWithRetry(() => import('@/features/recommendations/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
+const LoginPage             = lazyWithRetry(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.LoginPage })));
+const SignupPage            = lazyWithRetry(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.SignupPage })));
+const SmartSearchPage       = lazyWithRetry(() => import('@/features/smartSearch/SmartSearchPage').then((m) => ({ default: m.SmartSearchPage })));
+const FinancialLiteracyPage = lazyWithRetry(() => import('@/features/literacy/FinancialLiteracyPage').then((m) => ({ default: m.FinancialLiteracyPage })));
+const MembershipPage        = lazyWithRetry(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
+const SettingsPage          = lazyWithRetry(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const AdBannerPreviewPage   = lazyWithRetry(() => import('@/features/preview/AdBannerPreviewPage').then((m) => ({ default: m.AdBannerPreviewPage })));
 
 const withSuspense = (node: React.ReactNode) => (
   <Suspense fallback={<PageSkeleton />}>{node}</Suspense>

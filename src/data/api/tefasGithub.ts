@@ -35,21 +35,89 @@ export interface TefasFeed {
 }
 
 export const isTefasGithubConfigured = () => !!FEED_URL;
+export const getTefasFeedUrl = () => FEED_URL;
+
+export interface TefasFeedFetchResult {
+  ok: boolean;
+  feed?: TefasFeed;
+  /** Hata tanılaması için detay — UI'da debug paneline gösterilir */
+  error?: string;
+  status?: number;
+  url?: string;
+  preview?: string;
+}
 
 let cache: { fetchedAt: number; data: TefasFeed } | null = null;
+let lastError: TefasFeedFetchResult | null = null;
 const CACHE_TTL_MS = 5 * 60_000;
 
+export function getLastFeedError(): TefasFeedFetchResult | null {
+  return lastError;
+}
+
 export async function fetchTefasFeed(): Promise<TefasFeed | null> {
-  if (!FEED_URL) return null;
-  if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) return cache.data;
+  const r = await fetchTefasFeedDetailed();
+  return r.ok ? r.feed ?? null : null;
+}
+
+export async function fetchTefasFeedDetailed(): Promise<TefasFeedFetchResult> {
+  if (!FEED_URL) {
+    return { ok: false, error: 'VITE_TEFAS_GITHUB_URL ayarlanmamış' };
+  }
+  if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
+    return { ok: true, feed: cache.data, url: FEED_URL };
+  }
   try {
     const r = await fetch(FEED_URL, { cache: 'no-store' });
-    if (!r.ok) return null;
-    const data = (await r.json()) as TefasFeed;
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      const result: TefasFeedFetchResult = {
+        ok: false,
+        status: r.status,
+        url: FEED_URL,
+        error: `HTTP ${r.status} ${r.statusText}`,
+        preview: text.slice(0, 200),
+      };
+      lastError = result;
+      return result;
+    }
+    const text = await r.text();
+    let data: TefasFeed;
+    try {
+      data = JSON.parse(text) as TefasFeed;
+    } catch (parseErr) {
+      const result: TefasFeedFetchResult = {
+        ok: false,
+        status: r.status,
+        url: FEED_URL,
+        error: `JSON parse hatası: ${(parseErr as Error).message}`,
+        preview: text.slice(0, 200),
+      };
+      lastError = result;
+      return result;
+    }
+    if (!data.funds || !Array.isArray(data.funds) || data.funds.length === 0) {
+      const result: TefasFeedFetchResult = {
+        ok: false,
+        status: r.status,
+        url: FEED_URL,
+        error: `Feed çağrısı başarılı ama 'funds' alanı boş/yok (count: ${data.count ?? 0})`,
+        preview: text.slice(0, 200),
+      };
+      lastError = result;
+      return result;
+    }
     cache = { fetchedAt: Date.now(), data };
-    return data;
-  } catch {
-    return null;
+    lastError = null;
+    return { ok: true, feed: data, url: FEED_URL };
+  } catch (err) {
+    const result: TefasFeedFetchResult = {
+      ok: false,
+      url: FEED_URL,
+      error: `Ağ hatası: ${(err as Error).message}`,
+    };
+    lastError = result;
+    return result;
   }
 }
 
@@ -84,4 +152,13 @@ export async function loadFundsAsPerformance(): Promise<{
   const feed = await fetchTefasFeed();
   if (!feed) return null;
   return { funds: mapTefasToPerformance(feed.funds), updatedAt: feed.updatedAt };
+}
+
+/** Detaylı sonuç + perf map'i — FundsPage debug panel için. */
+export async function loadFundsAsPerformanceDetailed(): Promise<TefasFeedFetchResult & {
+  funds?: FundPerformance[];
+}> {
+  const result = await fetchTefasFeedDetailed();
+  if (!result.ok || !result.feed) return result;
+  return { ...result, funds: mapTefasToPerformance(result.feed.funds) };
 }

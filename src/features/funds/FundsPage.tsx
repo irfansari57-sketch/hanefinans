@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { fundsRepo } from '@/data/repositories';
 import type { FundEntry } from '@/data/db';
-import { loadFundsAsPerformance, isTefasGithubConfigured } from '@/data/api/tefasGithub';
+import { loadFundsAsPerformanceDetailed, isTefasGithubConfigured, type TefasFeedFetchResult } from '@/data/api/tefasGithub';
 import type { FundPerformance, FundCategory } from '@/data/types';
 import { formatRelative } from '@/lib/date';
 import { cn } from '@/lib/utils';
@@ -65,19 +65,22 @@ export function FundsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<TefasFeedFetchResult | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    loadFundsAsPerformance()
+    loadFundsAsPerformanceDetailed()
       .then((r) => {
         if (!alive) return;
-        if (r) {
+        if (r.ok && r.funds && r.feed) {
           setLiveFunds(r.funds);
-          setFeedUpdatedAt(r.updatedAt);
+          setFeedUpdatedAt(r.feed.updatedAt);
+          setFeedError(null);
         } else {
           setLiveFunds([]);
+          setFeedError(r);
         }
       })
       .finally(() => alive && setLoading(false));
@@ -203,9 +206,36 @@ export function FundsPage() {
         </div>
       )}
 
-      {feedConfigured && !loading && !hasLiveData && (
-        <div className="card mb-4 border-danger/40 bg-danger/5 p-4 text-xs text-danger">
-          <strong>Feed yapılandırıldı ama veri gelmiyor.</strong> URL'i tarayıcıda aç, JSON görüyor musun? Workflow loglarını kontrol et.
+      {feedConfigured && !loading && !hasLiveData && feedError && (
+        <div className="card mb-4 border-danger/40 bg-danger/5 p-4 text-xs text-slate-300">
+          <strong className="text-danger">Feed yapılandırıldı ama veri gelmiyor.</strong>
+          <dl className="mt-2 grid gap-x-3 gap-y-1.5 text-[11px]" style={{ gridTemplateColumns: 'max-content 1fr' }}>
+            <dt className="font-semibold text-slate-400">Hata:</dt>
+            <dd className="font-mono text-danger break-all">{feedError.error ?? 'bilinmiyor'}</dd>
+            {feedError.status != null && (
+              <>
+                <dt className="font-semibold text-slate-400">HTTP:</dt>
+                <dd className="font-mono">{feedError.status}</dd>
+              </>
+            )}
+            {feedError.url && (
+              <>
+                <dt className="font-semibold text-slate-400">URL:</dt>
+                <dd className="font-mono text-slate-400 break-all">
+                  <a href={feedError.url} target="_blank" rel="noreferrer" className="text-accent underline">{feedError.url}</a>
+                </dd>
+              </>
+            )}
+            {feedError.preview && (
+              <>
+                <dt className="font-semibold text-slate-400">İlk yanıt:</dt>
+                <dd className="font-mono text-slate-500 break-all max-h-24 overflow-y-auto">{feedError.preview}</dd>
+              </>
+            )}
+          </dl>
+          <p className="mt-3 text-[10px] text-slate-500">
+            <strong>Yaygın sebepler:</strong> (1) GitHub Actions workflow henüz çalışmadı → repoda Actions sekmesi → "Run workflow" tetikle. (2) jsDelivr CDN cache 10 dk sürer → URL sonuna <code className="rounded bg-bg-card px-1">?v=123</code> ekleyip test et. (3) Workflow log'unda Python scraper hata vermiş olabilir → repoda Actions → son run → logları aç.
+          </p>
         </div>
       )}
 

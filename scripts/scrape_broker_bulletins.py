@@ -100,6 +100,78 @@ def clean_text(raw: str) -> str:
     return text.strip()
 
 
+# Osmanlı bülten bölüm başlıkları — pdfplumber soldan sağa okuduğu için
+# "Borsa Günlük" ile "Yorum ve Strateji" arasında tablo header'ları çıkıyor;
+# bu yüzden esnek regex kullanılıyor.
+SECTION_PATTERNS = [
+    (re.compile(r"Borsa\s+Günlük.{0,250}?Yorum\s+ve\s+Strateji", re.DOTALL), "Borsa Günlük Yorum ve Strateji"),
+    (re.compile(r"\bGünlük\s+Haberler\b"), "Günlük Haberler"),
+    (re.compile(r"\bEkonomi\s+Haberleri\b"), "Ekonomi Haberleri"),
+    (re.compile(r"\bŞirket\s+Haberleri\b"), "Şirket Haberleri"),
+    (re.compile(r"\bSektör\s+Haberleri\b"), "Sektör Haberleri"),
+    (re.compile(r"\bVeri\s+Takvimi\b"), "Veri Takvimi"),
+    (re.compile(r"\bGünün\s+Verileri\b"), "Günün Verileri"),
+]
+
+
+def clean_section_body(body: str) -> str:
+    """Bölüm gövdesinden tablo verilerini (sadece sayı/kısa parçalar) at, paragrafları birleştir."""
+    parts = re.split(r"[\n\r]+", body)
+    keep = []
+    for p in parts:
+        s = p.strip()
+        if not s:
+            continue
+        # Sadece sayı/punctuation satırlarını at (tablo verisi)
+        if re.fullmatch(r"[\d.,%\s\-+()/]+", s):
+            continue
+        # Çok kısa parçaları at (tablo hücreleri, 3 kelimeden az)
+        words = s.split()
+        if len(words) < 4:
+            continue
+        # Sayı yoğunluğu çok yüksek (>%45) — büyük olasılıkla tablo satırı
+        digit_chars = sum(1 for c in s if c.isdigit())
+        if len(s) > 0 and digit_chars / len(s) > 0.45:
+            continue
+        keep.append(s)
+    text = " ".join(keep)
+    text = re.sub(r"\s{2,}", " ", text)
+    return text.strip()
+
+
+def extract_sections(text: str) -> list:
+    """Bilinen başlıklara göre PDF metnini bölümlere ayır."""
+    matches = []
+    for pattern, label in SECTION_PATTERNS:
+        for m in pattern.finditer(text):
+            matches.append((m.start(), m.end(), label))
+    if not matches:
+        return []
+
+    matches.sort(key=lambda x: x[0])
+    # Aynı başlığın birden fazla geçtiği durumda ilkini kullan
+    deduped = []
+    seen = set()
+    for start, end, label in matches:
+        if label in seen:
+            continue
+        seen.add(label)
+        deduped.append((start, end, label))
+
+    sections = []
+    for i, (_, end, label) in enumerate(deduped):
+        next_start = deduped[i + 1][0] if i + 1 < len(deduped) else len(text)
+        body = text[end:next_start]
+        body = clean_section_body(body)
+        if body and len(body) > 30:
+            # Section başına max 1200 karakter
+            if len(body) > 1200:
+                last_space = body[:1200].rfind(" ")
+                body = (body[:last_space] if last_space > 1000 else body[:1200]).rstrip(" .,;:") + "…"
+            sections.append({"title": label, "content": body})
+    return sections
+
+
 def fetch_osmanli() -> dict:
     """Osmanlı Menkul günlük bülten PDF'ini indir + ilk sayfa metnini çıkar."""
     pdf_url = "https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf"
@@ -121,21 +193,22 @@ def fetch_osmanli() -> dict:
             if not pdf.pages:
                 result["error"] = "PDF sayfa içermiyor"
                 return result
-            first_page_text = pdf.pages[0].extract_text() or ""
-            # 2. sayfa varsa onu da ekle (kısa bültenler için)
-            if len(first_page_text) < 400 and len(pdf.pages) > 1:
-                second = pdf.pages[1].extract_text() or ""
-                first_page_text = first_page_text + "\n" + second
+            # TÜM sayfaları çıkar — sections cross-page olabilir (haberler 2-3. sayfada)
+            raw_pages = [(p.extract_text() or "") for p in pdf.pages[:5]]
+            all_raw = "\n".join(raw_pages)
 
-        cleaned = clean_text(first_page_text)
-        if not cleaned:
+        if not all_raw.strip():
             result["error"] = "PDF'ten metin çıkarılamadı"
             return result
 
+        # Bölümleri parse et (ham metinden — başlıkları satır kırılma olmadan bulmak için)
+        sections = extract_sections(all_raw)
+
+        # Geriye uyumlu excerpt (sections boşsa fallback için)
+        cleaned = clean_text(all_raw)
         date = extract_date(cleaned)
         excerpt = cleaned[:EXCERPT_MAX_CHARS]
         if len(cleaned) > EXCERPT_MAX_CHARS:
-            # Son kelimeyi yarım kesme
             last_space = excerpt.rfind(" ")
             if last_space > EXCERPT_MAX_CHARS - 100:
                 excerpt = excerpt[:last_space]
@@ -146,6 +219,7 @@ def fetch_osmanli() -> dict:
             "title": "Günlük Piyasa Bülteni",
             "date": date,
             "excerpt": excerpt,
+            "sections": sections,
             "fullLength": len(cleaned),
         })
         return result

@@ -69,6 +69,7 @@ interface CardProps {
 
 function AnalystCard({ a, bulletin, loading }: CardProps) {
   const primaryUrl = bulletin?.pdfUrl ?? bulletin?.sourceUrl ?? a.bulletinUrl;
+  const hasSections = bulletin?.ok && bulletin.sections && bulletin.sections.length > 0;
   const hasExcerpt = bulletin?.ok && bulletin.excerpt;
 
   return (
@@ -102,6 +103,19 @@ function AnalystCard({ a, bulletin, loading }: CardProps) {
             <div className="h-2 w-11/12 animate-pulse rounded bg-bg-soft/60" />
             <div className="h-2 w-9/12 animate-pulse rounded bg-bg-soft/60" />
             <div className="h-2 w-10/12 animate-pulse rounded bg-bg-soft/60" />
+          </div>
+        ) : hasSections ? (
+          <div className="space-y-3 rounded-md border border-border/60 bg-bg-soft/40 p-3">
+            {bulletin.sections!.map((sec, i) => (
+              <div key={i}>
+                <h4 className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-accent">
+                  <FileText size={10} /> {sec.title}
+                </h4>
+                <p className="text-[11px] leading-relaxed text-slate-300">
+                  {sec.content}
+                </p>
+              </div>
+            ))}
           </div>
         ) : hasExcerpt ? (
           <div className="rounded-md border border-border/60 bg-bg-soft/40 p-2.5">

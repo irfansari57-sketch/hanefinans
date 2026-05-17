@@ -7,6 +7,11 @@
  * yeni dosyayı 12h içinde yansıtır).
  */
 
+export interface BulletinSection {
+  title: string;
+  content: string;
+}
+
 export interface BrokerBulletin {
   id: string;
   name: string;
@@ -15,6 +20,8 @@ export interface BrokerBulletin {
   title?: string;
   date?: string;
   excerpt?: string;
+  /** Yapılandırılmış bölümler (Borsa Yorumu, Günlük Haberler, Ekonomi Haberleri vb.) */
+  sections?: BulletinSection[];
   fullLength?: number;
   ok: boolean;
   error?: string;
@@ -26,9 +33,9 @@ export interface BrokerBulletinFeed {
 }
 
 const FEED_URL = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/broker-bulletins.json';
-// Cache key v3 — eski v1/v2 cache'lerinde "KT JS-rendered" hatalı sonucu temizleniyor.
-const CACHE_KEY = 'fa.brokerBulletins.feed.v3';
-const LEGACY_KEYS = ['fa.brokerBulletins.feed', 'fa.brokerBulletins.feed.v2'];
+// Cache key v4 — schema değişti (sections eklendi), eski cache geçersiz.
+const CACHE_KEY = 'fa.brokerBulletins.feed.v4';
+const LEGACY_KEYS = ['fa.brokerBulletins.feed', 'fa.brokerBulletins.feed.v2', 'fa.brokerBulletins.feed.v3'];
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 dk
 
 // Modül yüklendiğinde eski cache key'leri temizle (bir kerelik migration)

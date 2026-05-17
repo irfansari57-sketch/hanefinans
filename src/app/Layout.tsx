@@ -23,6 +23,7 @@ import {
   Flag,
   Grid3x3,
   Globe,
+  Coins,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
@@ -62,6 +63,7 @@ const navGroups: NavGroup[] = [
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
+      { to: '/doviz', label: 'Döviz Kurları', icon: Coins },
       { to: '/kripto', label: 'Kripto', icon: Bitcoin },
       { to: '/abd', label: 'ABD Borsaları', icon: Flag, pro: true },
       { to: '/global', label: 'Global Piyasalar', icon: Globe, pro: true },

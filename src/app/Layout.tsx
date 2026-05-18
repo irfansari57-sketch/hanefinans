@@ -42,6 +42,7 @@ import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer
 import { BrandingBlock } from '@/components/domain/BrandingBlock';
 import { CookieConsent } from '@/components/domain/CookieConsent';
 import { OnboardingTour } from '@/components/domain/OnboardingTour';
+import { PwaInstallBanner } from '@/components/domain/PwaInstallBanner';
 import { MobileBottomNav } from '@/components/ui/MobileBottomNav';
 import { ShieldAlert, ChevronDown } from 'lucide-react';
 
@@ -449,6 +450,9 @@ export function Layout() {
 
       {/* İlk ziyarette 5 adımlık onboarding overlay (DisclaimerModal sonrasında) */}
       <OnboardingTour />
+
+      {/* PWA "Ana ekrana ekle" banner — beforeinstallprompt + iOS Safari manuel */}
+      <PwaInstallBanner />
     </div>
   );
 }

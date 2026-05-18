@@ -39,10 +39,10 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
           // Yeni SW indiğinde hemen aktif olsun + tüm açık sekmeleri yönetsin
-          // (eski deploy'lar kullanıcı sekme kapatana kadar takılı kalmasın).
           skipWaiting: true,
           clientsClaim: true,
-          // API çağrılarını ASLA cache'leme (canlı veri için)
+          // Offline navigation — bilinmeyen route'larda index.html serve et
+          navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             { urlPattern: /^\/api\//, handler: 'NetworkOnly' },

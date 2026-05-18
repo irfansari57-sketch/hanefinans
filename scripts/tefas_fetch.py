@@ -65,6 +65,50 @@ def fetch_snapshot(ftype: str, target_date: datetime, max_back: int = 5) -> pd.D
     return None
 
 
+def categorize_fund(name: str) -> str:
+    """
+    Fon isminden kategori çıkar — TEFAS'ın resmi kategorilerini tefasfon
+    döndürmediği için isim bazlı heuristic. Çoğunluğu doğru yakalar.
+    """
+    n = name.upper()
+
+    # Önce spesifik kategoriler (genel'den önce kontrol)
+    if 'PARA PİYASASI' in n or 'PARA PIYASASI' in n:
+        return 'Para Piyasası'
+    if 'KIYMETLİ MADEN' in n or 'KIYMETLI MADEN' in n:
+        return 'Kıymetli Maden'
+    if 'ALTIN' in n:
+        return 'Altın'
+    if 'EMTİA' in n or 'EMTIA' in n:
+        return 'Emtia'
+    if 'GÜMÜŞ' in n or 'GUMUS' in n:
+        return 'Gümüş'
+    if 'KATILIM' in n:
+        return 'Katılım'
+    if 'BORÇLANMA' in n or 'BORCLANMA' in n or 'TAHVIL' in n or 'BONO' in n or 'EUROBOND' in n:
+        return 'Borçlanma Araçları'
+    if 'HİSSE SENEDİ' in n or 'HISSE SENEDI' in n or 'HİSSE' in n:
+        return 'Hisse Senedi'
+    if 'KARMA' in n:
+        return 'Karma'
+    if 'DEĞİŞKEN' in n or 'DEGISKEN' in n:
+        return 'Değişken'
+    if 'FON SEPETİ' in n or 'FON SEPETI' in n:
+        return 'Fon Sepeti'
+    if 'DÖVİZ' in n or 'DOVIZ' in n:
+        return 'Döviz'
+    if 'SERBEST' in n:
+        return 'Serbest'
+    if 'EMEKLİLİK' in n or 'EMEKLILIK' in n or 'BES' in n:
+        return 'Emeklilik (BES)'
+    if 'GİRİŞİM' in n or 'GIRISIM' in n or 'VENTURE' in n:
+        return 'Girişim Sermayesi'
+    if 'GAYRİMENKUL' in n or 'GAYRIMENKUL' in n or 'GMYO' in n:
+        return 'Gayrimenkul'
+
+    return 'Diğer'
+
+
 def detect_columns(df: pd.DataFrame) -> dict[str, str | None]:
     """Sütun isimlerini paket versiyonuna göre keşfet (geniş varyant listesi)."""
     return {
@@ -207,10 +251,14 @@ def main() -> int:
         except Exception:
             iso_date = anchors['last'].strftime('%Y-%m-%d')
 
+        fund_name = str(last_row.get(cols['name'], "") if cols['name'] else "").strip() or str(code)
+        # Resmi kategori varsa onu kullan, yoksa isim-bazlı heuristic
+        official_cat = str(last_row.get(cols['category'], "") if cols['category'] else "").strip()
+        fund_category = official_cat if official_cat else categorize_fund(fund_name)
         funds.append({
             "code": str(code),
-            "name": str(last_row.get(cols['name'], "") if cols['name'] else "").strip() or str(code),
-            "category": str(last_row.get(cols['category'], "") if cols['category'] else "").strip(),
+            "name": fund_name,
+            "category": fund_category,
             "nav": latest_nav,
             "date": iso_date,
             "marketCap": float(last_row.get(cols['mcap'], 0) or 0) if cols['mcap'] else None,

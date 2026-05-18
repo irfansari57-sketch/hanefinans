@@ -64,6 +64,7 @@ export function FundsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('week');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const PAGE_SIZE = 25;
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
@@ -110,16 +111,27 @@ export function FundsPage() {
     return source;
   }, [tab, watched, liveFunds]);
 
+  // Universe'taki gerçek kategori değerleri (canlı feed'den dinamik)
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    universe.forEach((f) => {
+      const c = (f.category ?? '').trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort();
+  }, [universe]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return universe.filter((f) => {
+      if (categoryFilter !== 'all' && (f.category ?? '') !== categoryFilter) return false;
       if (q) {
         const blob = `${f.code} ${f.name ?? ''}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [universe, search]);
+  }, [universe, search, categoryFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -149,7 +161,7 @@ export function FundsPage() {
   );
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, tab, sortKey, sortDir]);
+  }, [search, tab, sortKey, sortDir, categoryFilter]);
 
 
   const setSort = (k: SortKey) => {
@@ -275,14 +287,29 @@ export function FundsPage() {
           </button>
         </div>
 
-        <div className="relative ml-auto">
-          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            className="input pl-8 w-56"
-            placeholder="Fon kodu veya adı…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {availableCategories.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="input h-9 cursor-pointer text-xs"
+              title="Kategori filtresi"
+            >
+              <option value="all">Tüm Kategoriler</option>
+              {availableCategories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
+          <div className="relative">
+            <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              className="input pl-8 w-56"
+              placeholder="Fon kodu veya adı…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
 
       </div>
@@ -401,6 +428,11 @@ export function FundsPage() {
                       </Link>
                       {f.name && f.name !== f.code && (
                         <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[260px]">{f.name}</div>
+                      )}
+                      {f.category && (
+                        <span className="mt-1 inline-block rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+                          {f.category}
+                        </span>
                       )}
                     </td>
                     <PerfCell value={f.week} hideOnMobile />

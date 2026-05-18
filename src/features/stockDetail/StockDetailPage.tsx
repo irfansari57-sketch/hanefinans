@@ -25,6 +25,7 @@ import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, ty
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { PositionSizer } from '@/components/domain/PositionSizer';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
+import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock, NewsItem } from '@/data/types';
 import { MOCK_STOCKS } from '@/data/mock';
@@ -589,7 +590,7 @@ export function StockDetailPage() {
               <div className="divide-y divide-border">
                 {notes.slice(0, 5).map((n) => (
                   <div key={n.id} className="p-3">
-                    <p className="text-xs text-slate-300">{n.body}</p>
+                    <MiniMarkdown text={n.body} className="space-y-1 text-xs text-slate-300" />
                     <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
                       <span>{formatDateTR(new Date(n.updatedAt).toISOString())}</span>
                       <button

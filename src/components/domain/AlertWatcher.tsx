@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { alertsRepo } from '@/data/repositories';
 import { loadStocks } from '@/data/services';
+import { fetchTefasFeed } from '@/data/api/tefasGithub';
 import { toast } from '@/components/ui/Toast';
 import { notifyPriceAlert, getTelegramChatId } from '@/lib/telegram';
 
@@ -54,9 +55,23 @@ export function AlertWatcher() {
       inFlightRef.current = true;
       lastCheckRef.current = Date.now();
       try {
-        const symbols = Array.from(new Set(activeAlerts.map((a) => a.symbol)));
-        const { data } = await loadStocks(symbols);
-        const priceMap = new Map(data.map((s) => [s.symbol, s.price]));
+        // Stock ve fund alarmlarını ayrı kaynaktan al
+        const stockSymbols = Array.from(new Set(activeAlerts.filter((a) => a.assetType !== 'fund').map((a) => a.symbol)));
+        const fundCodes = new Set(activeAlerts.filter((a) => a.assetType === 'fund').map((a) => a.symbol));
+
+        const priceMap = new Map<string, number>();
+        if (stockSymbols.length > 0) {
+          const { data } = await loadStocks(stockSymbols);
+          data.forEach((s) => priceMap.set(s.symbol, s.price));
+        }
+        if (fundCodes.size > 0) {
+          const feed = await fetchTefasFeed();
+          if (feed?.funds) {
+            for (const f of feed.funds) {
+              if (fundCodes.has(f.code)) priceMap.set(f.code, f.nav);
+            }
+          }
+        }
 
         for (const alert of activeAlerts) {
           const price = priceMap.get(alert.symbol);

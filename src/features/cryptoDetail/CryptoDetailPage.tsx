@@ -19,6 +19,7 @@ import {
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { PeriodReturns } from '@/components/domain/PeriodReturns';
 import { findCrypto } from '@/data/cryptoSymbols';
+import { fetchCryptoDetail, type CryptoMarketDetail } from '@/data/api/coingecko';
 import { cn } from '@/lib/utils';
 
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
@@ -43,6 +44,7 @@ export function CryptoDetailPage() {
   const [returns, setReturns] = useState<PeriodReturnsT>({});
   const [mtResult, setMtResult] = useState<MultiTimeframeResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [marketDetail, setMarketDetail] = useState<CryptoMarketDetail | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
 
   const refresh = async () => {
@@ -93,6 +95,12 @@ export function CryptoDetailPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sym]);
+
+  // CoinGecko detayı — market cap, supply, ATH/ATL
+  useEffect(() => {
+    if (!meta.coingeckoId) return;
+    fetchCryptoDetail(meta.coingeckoId).then((d) => setMarketDetail(d));
+  }, [meta.coingeckoId]);
 
   const technicalAnalysis = useMemo(() => {
     if (!historical || historical.bars.length < 25) return null;
@@ -191,6 +199,51 @@ export function CryptoDetailPage() {
           <LiveChart symbol={meta.yahoo} height={500} bistSuffix={false} />
         </Suspense>
       </div>
+
+      {/* CoinGecko market enrichment */}
+      {marketDetail && (
+        <div className="card mb-4 p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <Bitcoin size={14} className="text-accent" /> Piyasa Bilgileri
+            {marketDetail.marketCapRank && (
+              <span className="ml-auto rounded bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent">
+                #{marketDetail.marketCapRank}
+              </span>
+            )}
+          </h2>
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <MetricCell
+              label="Market Cap"
+              value={formatUsdCompact(marketDetail.marketCapUsd)}
+              hint={marketDetail.fullyDilutedValuationUsd
+                ? `FDV: ${formatUsdCompact(marketDetail.fullyDilutedValuationUsd)}`
+                : undefined}
+            />
+            <MetricCell
+              label="24s Hacim"
+              value={formatUsdCompact(marketDetail.totalVolumeUsd)}
+            />
+            <MetricCell
+              label="Dolaşımdaki Arz"
+              value={formatSupply(marketDetail.circulatingSupply, marketDetail.symbol)}
+              hint={marketDetail.maxSupply
+                ? `Max: ${formatSupply(marketDetail.maxSupply, marketDetail.symbol)}`
+                : marketDetail.totalSupply
+                ? `Toplam: ${formatSupply(marketDetail.totalSupply, marketDetail.symbol)}`
+                : 'Sınırsız arz'}
+            />
+            <MetricCell
+              label="All-Time High"
+              value={`$${marketDetail.athUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
+              hint={`${marketDetail.athChangePct.toFixed(1)}% ATH'den • ${new Date(marketDetail.athDate).toLocaleDateString('tr-TR')}`}
+              valueClass={marketDetail.athChangePct >= -5 ? 'text-success' : marketDetail.athChangePct <= -50 ? 'text-danger' : 'text-slate-100'}
+            />
+          </div>
+          <p className="mt-3 text-[10px] text-slate-500">
+            Veri: CoinGecko • Detay sayfası açıldığında bir kez çekilir
+          </p>
+        </div>
+      )}
 
       {/* Multi-Timeframe */}
       {mtResult && (
@@ -332,4 +385,38 @@ export function CryptoDetailPage() {
       </div>
     </>
   );
+}
+
+interface MetricCellProps {
+  label: string;
+  value: string;
+  hint?: string;
+  valueClass?: string;
+}
+
+function MetricCell({ label, value, hint, valueClass }: MetricCellProps) {
+  return (
+    <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={cn('mt-1 text-base font-bold tabular-nums', valueClass ?? 'text-slate-100')}>
+        {value}
+      </div>
+      {hint && <div className="mt-0.5 text-[10px] text-slate-500">{hint}</div>}
+    </div>
+  );
+}
+
+function formatUsdCompact(v: number): string {
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+function formatSupply(v: number, symbol: string): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B ${symbol}`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M ${symbol}`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K ${symbol}`;
+  return `${v.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ${symbol}`;
 }

@@ -14,6 +14,7 @@ import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { db } from '@/data/db';
 import { SymbolBadge } from '@/components/domain/SymbolBadge';
+import { MiniMarkdown } from '@/lib/miniMarkdown';
 
 type Tab = 'timeline' | 'notes' | 'alerts' | 'bookmarks';
 
@@ -228,7 +229,7 @@ function NotesList() {
                 </button>
               </div>
             </div>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-200">{n.body}</p>
+            <MiniMarkdown text={n.body} className="mt-2 space-y-1.5 text-sm text-slate-200" />
           </div>
         ))}
     </div>

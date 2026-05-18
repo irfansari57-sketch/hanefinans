@@ -46,10 +46,13 @@ export function NoteButton({ symbol, newsId, hint, size = 13 }: NoteButtonProps)
         title={`Not ekle${symbol ? ` — ${symbol}` : ''}`}
         size="sm"
       >
-        <Field label="Not içeriği" hint={hint}>
+        <Field
+          label="Not içeriği"
+          hint={hint ?? 'Markdown desteklenir: **kalın**, *italik*, `kod`, [link](https://...), - madde'}
+        >
           <textarea
-            className="input min-h-[120px]"
-            placeholder="Bu hisse / haber hakkında düşüncen…"
+            className="input min-h-[120px] font-mono text-xs"
+            placeholder="Örn: **AKBNK** için target 80₺ — [analizi gör](https://...)"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             autoFocus

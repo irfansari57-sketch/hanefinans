@@ -126,6 +126,77 @@ export async function fetchCryptoOhlc(coinId: string, days = 30): Promise<Crypto
   }
 }
 
+/** Coin detayı — market cap, supply, ATH/ATL bilgileri (CryptoDetailPage için). */
+export interface CryptoMarketDetail {
+  id: string;
+  symbol: string;
+  name: string;
+  marketCapUsd: number;
+  marketCapRank: number | null;
+  totalVolumeUsd: number;
+  circulatingSupply: number;
+  totalSupply: number | null;
+  maxSupply: number | null;
+  athUsd: number;
+  athDate: string;
+  athChangePct: number;
+  atlUsd: number;
+  atlDate: string;
+  atlChangePct: number;
+  fullyDilutedValuationUsd: number | null;
+}
+
+interface CoinMarketResponse {
+  id: string;
+  symbol: string;
+  name: string;
+  market_cap: number;
+  market_cap_rank: number | null;
+  total_volume: number;
+  circulating_supply: number;
+  total_supply: number | null;
+  max_supply: number | null;
+  ath: number;
+  ath_date: string;
+  ath_change_percentage: number;
+  atl: number;
+  atl_date: string;
+  atl_change_percentage: number;
+  fully_diluted_valuation: number | null;
+}
+
+export async function fetchCryptoDetail(coinId: string): Promise<CryptoMarketDetail | null> {
+  try {
+    const r = await fetch(
+      `${BASE}/coins/markets?vs_currency=usd&ids=${coinId}&sparkline=false&price_change_percentage=24h`,
+    );
+    if (!r.ok) return null;
+    const j = (await r.json()) as CoinMarketResponse[];
+    if (!j.length) return null;
+    const c = j[0];
+    return {
+      id: c.id,
+      symbol: c.symbol.toUpperCase(),
+      name: c.name,
+      marketCapUsd: c.market_cap,
+      marketCapRank: c.market_cap_rank,
+      totalVolumeUsd: c.total_volume,
+      circulatingSupply: c.circulating_supply,
+      totalSupply: c.total_supply,
+      maxSupply: c.max_supply,
+      athUsd: c.ath,
+      athDate: c.ath_date,
+      athChangePct: c.ath_change_percentage,
+      atlUsd: c.atl,
+      atlDate: c.atl_date,
+      atlChangePct: c.atl_change_percentage,
+      fullyDilutedValuationUsd: c.fully_diluted_valuation,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchTopAltcoinMovers(limit = 50): Promise<AltcoinMover[]> {
   try {
     const r = await fetch(

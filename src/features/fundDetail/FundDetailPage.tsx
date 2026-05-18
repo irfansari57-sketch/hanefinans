@@ -6,6 +6,7 @@ import {
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { NoteButton } from '@/components/domain/NoteButton';
+import { AlertButton } from '@/components/domain/AlertButton';
 import { fundsRepo, notesRepo, activityRepo } from '@/data/repositories';
 import type { FundEntry } from '@/data/db';
 import { formatDateTR, formatRelative } from '@/lib/date';
@@ -13,6 +14,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { fetchTefasFund, isTefasWorkerConfigured, type TefasFundDetail } from '@/data/api/tefasWorker';
 import { fetchTefasFundByCode, isTefasGithubConfigured, type TefasFundData } from '@/data/api/tefasGithub';
 import { cn } from '@/lib/utils';
+import { MiniMarkdown } from '@/lib/miniMarkdown';
 
 export function FundDetailPage() {
   const { code = '' } = useParams<{ code: string }>();
@@ -107,7 +109,16 @@ export function FundDetailPage() {
         <button onClick={() => navigate(-1)} className="btn-ghost">
           <ArrowLeft size={14} /> Geri
         </button>
-        <NoteButton symbol={fundCode} hint={`${fundCode} fonu için not`} />
+        <div className="flex items-center gap-1">
+          <AlertButton
+            fund={{
+              code: fundCode,
+              name: githubData?.name ?? fund?.name,
+              nav: githubData?.nav ?? liveData?.nav ?? 0,
+            }}
+          />
+          <NoteButton symbol={fundCode} hint={`${fundCode} fonu için not`} />
+        </div>
       </div>
 
       {/* Hero */}
@@ -322,7 +333,7 @@ export function FundDetailPage() {
           <div className="grid divide-y divide-border md:grid-cols-2 md:divide-y-0 md:divide-x">
             {notes.slice(0, 6).map((n) => (
               <div key={n.id} className="p-3">
-                <p className="text-xs text-slate-300">{n.body}</p>
+                <MiniMarkdown text={n.body} className="space-y-1 text-xs text-slate-300" />
                 <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
                   <span>{formatDateTR(new Date(n.updatedAt).toISOString())}</span>
                   <button

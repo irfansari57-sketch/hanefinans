@@ -6,23 +6,36 @@ import { alertsRepo } from '@/data/repositories';
 import type { Stock } from '@/data/types';
 
 interface AlertButtonProps {
-  stock: Stock;
+  stock?: Stock;
+  /** Fund modu: bu prop'la AlertButton fonlar için de kullanılabilir */
+  fund?: { code: string; name?: string; nav: number };
   size?: number;
 }
 
-export function AlertButton({ stock, size = 13 }: AlertButtonProps) {
+export function AlertButton({ stock, fund, size = 13 }: AlertButtonProps) {
   const [open, setOpen] = useState(false);
   const [direction, setDirection] = useState<'above' | 'below'>('above');
   const [threshold, setThreshold] = useState<string>('');
   const [note, setNote] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
+  const isFund = !!fund;
+  const symbol = stock?.symbol ?? fund?.code ?? '';
+  const currentPrice = stock?.price ?? fund?.nav ?? 0;
+  const priceDecimals = isFund ? 4 : 2;
+
   const save = async () => {
     const v = parseFloat(threshold.replace(',', '.'));
     if (!Number.isFinite(v) || v <= 0) return;
     setSaving(true);
     try {
-      await alertsRepo.add({ symbol: stock.symbol, direction, threshold: v, note: note.trim() || undefined });
+      await alertsRepo.add({
+        symbol,
+        assetType: isFund ? 'fund' : 'stock',
+        direction,
+        threshold: v,
+        note: note.trim() || undefined,
+      });
       setThreshold('');
       setNote('');
       setOpen(false);
@@ -31,25 +44,27 @@ export function AlertButton({ stock, size = 13 }: AlertButtonProps) {
     }
   };
 
+  if (!symbol || currentPrice <= 0) return null;
+
   return (
     <>
       <button
         type="button"
         onClick={() => {
-          setThreshold(stock.price.toFixed(2));
+          setThreshold(currentPrice.toFixed(priceDecimals));
           setOpen(true);
         }}
         className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-slate-400 transition hover:bg-bg-card hover:text-slate-200"
-        title="Alarm kur"
+        title={isFund ? 'Fon NAV alarmı kur' : 'Alarm kur'}
       >
         <Bell size={size} />
         <span className="hidden sm:inline">Alarm</span>
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={`Alarm kur — ${stock.symbol}`} size="sm">
+      <Modal open={open} onClose={() => setOpen(false)} title={`${isFund ? 'Fon NAV alarmı' : 'Alarm kur'} — ${symbol}`} size="sm">
         <div className="space-y-3">
           <div className="text-xs text-slate-500">
-            Şu anki fiyat: <span className="text-slate-200">{stock.price.toFixed(2)} ₺</span>
+            Şu anki {isFund ? 'NAV' : 'fiyat'}: <span className="text-slate-200">{currentPrice.toFixed(priceDecimals)} ₺</span>
           </div>
           <Field label="Yön">
             <div className="grid grid-cols-2 gap-2">

@@ -63,9 +63,10 @@ export const alertsRepo = {
   list: () => db.alerts.orderBy('createdAt').reverse().toArray(),
   bySymbol: (symbol: string) =>
     db.alerts.where('symbol').equals(symbol).reverse().sortBy('createdAt'),
-  async add(input: { symbol: string; direction: 'above' | 'below'; threshold: number; note?: string }) {
+  async add(input: { symbol: string; direction: 'above' | 'below'; threshold: number; note?: string; assetType?: 'stock' | 'fund' }) {
     const id = await db.alerts.add({
       symbol: input.symbol.toUpperCase(),
+      assetType: input.assetType ?? 'stock',
       direction: input.direction,
       threshold: input.threshold,
       note: input.note,
@@ -76,7 +77,7 @@ export const alertsRepo = {
     await activityRepo.log({
       type: 'alert-created',
       symbol: input.symbol.toUpperCase(),
-      detail: `${input.direction === 'above' ? '≥' : '≤'} ${input.threshold}`,
+      detail: `${input.assetType === 'fund' ? 'Fon ' : ''}${input.direction === 'above' ? '≥' : '≤'} ${input.threshold}`,
     });
     return id;
   },

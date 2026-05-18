@@ -40,6 +40,8 @@ export interface PriceAlert {
   id?: number;
   createdAt: number;
   symbol: string;
+  /** Varlık tipi — 'fund' alarmları TEFAS NAV ile, 'stock' alarmları Yahoo ile karşılaştırılır. */
+  assetType?: 'stock' | 'fund';
   direction: 'above' | 'below';
   threshold: number;
   enabled: 0 | 1;

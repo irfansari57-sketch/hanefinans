@@ -4,6 +4,7 @@ import {
   Check, X, ExternalLink, Database, Send, Percent, Crown, Shield, Bell,
 } from 'lucide-react';
 import { getTelegramChatId, setTelegramChatId, sendTelegram } from '@/lib/telegram';
+import { resetOnboarding } from '@/components/domain/OnboardingTour';
 import { toast } from '@/components/ui/Toast';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useAgents } from '@/store/agents';
@@ -140,6 +141,19 @@ export function SettingsPage() {
 
         {/* Telegram bildirimleri */}
         <TelegramSection />
+
+        {/* Onboarding turunu tekrar göster */}
+        <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
+          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
+            <Info size={14} className="text-accent" /> Tanıtım Turu
+          </h2>
+          <p className="text-xs leading-relaxed text-slate-400">
+            5 adımlık tanıtım turunu (Panel, Takip Listem, Alarmlar, BES Hesaplayıcı) tekrar görmek için aşağıdaki butona bas.
+          </p>
+          <button onClick={resetOnboarding} className="btn-secondary mt-3 text-xs">
+            <RotateCcw size={12} /> Tanıtım turunu tekrar başlat
+          </button>
+        </div>
 
         {/* Admin: Üyelik Ücretleri */}
         {admin && (

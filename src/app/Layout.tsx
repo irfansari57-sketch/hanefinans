@@ -41,6 +41,7 @@ import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
 import { BrandingBlock } from '@/components/domain/BrandingBlock';
 import { CookieConsent } from '@/components/domain/CookieConsent';
+import { MobileBottomNav } from '@/components/ui/MobileBottomNav';
 import { ShieldAlert, ChevronDown } from 'lucide-react';
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; pro?: boolean; adminOnly?: boolean };
@@ -365,7 +366,7 @@ export function Layout() {
           </div>
         )}
 
-        <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 pb-20 sm:px-6 sm:py-6 sm:pb-20 md:pb-6 lg:px-8">
           <Outlet />
         </main>
 
@@ -441,6 +442,9 @@ export function Layout() {
 
       {/* Çerez onay banner — KVKK+GDPR uyumlu, ilk ziyarette gösterilir */}
       <CookieConsent />
+
+      {/* Mobil fiks alt bar — Panel/Gelişmeler/Takip/Portföy + Daha */}
+      <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
     </div>
   );
 }

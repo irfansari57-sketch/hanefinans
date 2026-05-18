@@ -41,6 +41,7 @@ import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
 import { BrandingBlock } from '@/components/domain/BrandingBlock';
 import { CookieConsent } from '@/components/domain/CookieConsent';
+import { OnboardingTour } from '@/components/domain/OnboardingTour';
 import { MobileBottomNav } from '@/components/ui/MobileBottomNav';
 import { ShieldAlert, ChevronDown } from 'lucide-react';
 
@@ -445,6 +446,9 @@ export function Layout() {
 
       {/* Mobil fiks alt bar — Panel/Gelişmeler/Takip/Portföy + Daha */}
       <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
+
+      {/* İlk ziyarette 5 adımlık onboarding overlay (DisclaimerModal sonrasında) */}
+      <OnboardingTour />
     </div>
   );
 }

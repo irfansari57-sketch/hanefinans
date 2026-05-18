@@ -43,6 +43,7 @@ import { BrandingBlock } from '@/components/domain/BrandingBlock';
 import { CookieConsent } from '@/components/domain/CookieConsent';
 import { OnboardingTour } from '@/components/domain/OnboardingTour';
 import { PwaInstallBanner } from '@/components/domain/PwaInstallBanner';
+import { AlertWatcher } from '@/components/domain/AlertWatcher';
 import { MobileBottomNav } from '@/components/ui/MobileBottomNav';
 import { ShieldAlert, ChevronDown } from 'lucide-react';
 
@@ -453,6 +454,9 @@ export function Layout() {
 
       {/* PWA "Ana ekrana ekle" banner — beforeinstallprompt + iOS Safari manuel */}
       <PwaInstallBanner />
+
+      {/* Arka planda fiyat alarmı izleyici — Telegram + browser bildirimi tetikler */}
+      <AlertWatcher />
     </div>
   );
 }

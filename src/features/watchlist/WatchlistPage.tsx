@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Plus, Star, X, Search, RefreshCw, Radio } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Plus, Star, X, Search, RefreshCw, Radio, PiggyBank, TrendingUp, ExternalLink, ChevronRight, Trash2 } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StockRow } from '@/components/domain/StockRow';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { MOCK_STOCKS } from '@/data/mock';
 import { loadStocks, clearServiceCaches } from '@/data/services';
+import { fundsRepo } from '@/data/repositories';
+import { fetchTefasFeed, type TefasFundData } from '@/data/api/tefasGithub';
 import type { Stock } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
@@ -28,6 +31,19 @@ export function WatchlistPage() {
   const [query, setQuery] = useState('');
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const focusRef = useRef<HTMLDivElement | null>(null);
+  const [kind, setKind] = useState<'stocks' | 'funds'>('stocks');
+  const [tefasFunds, setTefasFunds] = useState<TefasFundData[] | null>(null);
+
+  // Takipteki fonlar (Dexie)
+  const watchedFunds = useLiveQuery(() => fundsRepo.active(), []) ?? [];
+
+  // TEFAS feed — fonların NAV ve getirisi
+  useEffect(() => {
+    if (kind !== 'funds') return;
+    fetchTefasFeed().then((feed) => {
+      if (feed?.funds) setTefasFunds(feed.funds);
+    });
+  }, [kind]);
 
   const fetchData = useCallback(async (force = false) => {
     if (force) clearServiceCaches();
@@ -78,11 +94,18 @@ export function WatchlistPage() {
     return { positives, negatives, avg };
   }, [watched]);
 
+  // Takipteki fonların TEFAS verisi ile birleşimi
+  const watchedFundsWithData = useMemo(() => {
+    if (!tefasFunds) return watchedFunds.map((f) => ({ entry: f, tefas: undefined as TefasFundData | undefined }));
+    const tefasMap = new Map(tefasFunds.map((t) => [t.code, t]));
+    return watchedFunds.map((f) => ({ entry: f, tefas: tefasMap.get(f.code) }));
+  }, [watchedFunds, tefasFunds]);
+
   return (
     <>
       <PageHeader
         title="Takip Listem"
-        subtitle="İlgilendiğin hisseleri takip et, fiyatları ve değişimleri gör."
+        subtitle="İlgilendiğin hisse ve fonları takip et, fiyatları ve değişimleri gör."
         actions={
           <div className="flex items-center gap-2">
             <LiveBadge updatedAt={updatedAt} refreshing={loading} label={source === 'live' ? 'CANLI' : source === 'mixed' ? 'KARMA' : 'DEMO'} />
@@ -93,6 +116,34 @@ export function WatchlistPage() {
         }
       />
 
+      {/* Tab: Hisseler / Fonlar */}
+      <div className="mb-4 inline-flex rounded-lg border border-border bg-bg-soft p-1">
+        <button
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition',
+            kind === 'stocks' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setKind('stocks')}
+        >
+          <TrendingUp size={13} /> Hisseler ({symbols.length})
+        </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition',
+            kind === 'funds' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setKind('funds')}
+        >
+          <PiggyBank size={13} /> Fonlar ({watchedFunds.length})
+        </button>
+      </div>
+
+      {kind === 'funds' && (
+        <FundsTab watchedFundsWithData={watchedFundsWithData} />
+      )}
+
+      {kind === 'stocks' && (
+      <>
       <div className="mb-4 rounded-xl border border-border bg-bg-soft p-3">
         <div className="relative">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -198,6 +249,117 @@ export function WatchlistPage() {
           ? 'Fiyatlar Twelve Data\'dan canlı, 60 saniye önbelleğe alınır.'
           : 'Fiyatlar şu an mock\'tur. Ayarlar > API Bağlantıları sayfasından Twelve Data anahtarını ekleyerek canlıya geçebilirsin.'}
       </p>
+      </>
+      )}
     </>
+  );
+}
+
+interface FundsTabProps {
+  watchedFundsWithData: Array<{
+    entry: { id?: number; code: string; name?: string; category?: string };
+    tefas: TefasFundData | undefined;
+  }>;
+}
+
+function FundsTab({ watchedFundsWithData }: FundsTabProps) {
+  const fmtPct = (v: number | null | undefined) => {
+    if (v == null || !Number.isFinite(v)) return '—';
+    const sign = v >= 0 ? '+' : '';
+    return `${sign}${v.toFixed(2)}%`;
+  };
+  const toneFor = (v: number | null | undefined) =>
+    v == null || !Number.isFinite(v) ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
+
+  const remove = async (id?: number) => {
+    if (id == null) return;
+    await fundsRepo.remove(id);
+  };
+
+  if (watchedFundsWithData.length === 0) {
+    return (
+      <EmptyState
+        icon={<PiggyBank size={28} />}
+        title="Takipte fon yok"
+        description="Fonlar sayfasından yıldıza basarak takip ekleyebilirsin."
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+      <table className="min-w-full text-xs">
+        <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
+          <tr>
+            <th className="px-3 py-2.5 text-left">Kod</th>
+            <th className="px-3 py-2.5 text-right">NAV (TL)</th>
+            <th className="px-3 py-2.5 text-right hidden md:table-cell">1 Hafta</th>
+            <th className="px-3 py-2.5 text-right">1 Ay</th>
+            <th className="px-3 py-2.5 text-right hidden md:table-cell">3 Ay</th>
+            <th className="px-3 py-2.5 text-right">1 Yıl</th>
+            <th className="px-3 py-2.5 text-center w-32">İşlem</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {watchedFundsWithData.map(({ entry, tefas }) => (
+            <tr key={entry.code} className="group hover:bg-bg-card transition-colors">
+              <td className="px-3 py-2.5 text-left whitespace-nowrap">
+                <Link
+                  to={`/fund/${entry.code}`}
+                  className="inline-flex items-center gap-1.5 font-mono font-semibold text-accent hover:underline"
+                >
+                  {entry.code}
+                  <ChevronRight size={10} className="opacity-0 transition group-hover:opacity-100" />
+                </Link>
+                {(tefas?.name ?? entry.name) && (
+                  <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[260px]">
+                    {tefas?.name ?? entry.name}
+                  </div>
+                )}
+                {(tefas?.category ?? entry.category) && (
+                  <span className="mt-1 inline-block rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+                    {tefas?.category ?? entry.category}
+                  </span>
+                )}
+              </td>
+              <td className="px-3 py-2.5 text-right tabular-nums text-slate-100">
+                {tefas?.nav != null ? `₺${tefas.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}` : '—'}
+              </td>
+              <td className={cn('px-3 py-2.5 text-right tabular-nums hidden md:table-cell', toneFor(tefas?.returns['1w']))}>
+                {fmtPct(tefas?.returns['1w'])}
+              </td>
+              <td className={cn('px-3 py-2.5 text-right tabular-nums', toneFor(tefas?.returns['1m']))}>
+                {fmtPct(tefas?.returns['1m'])}
+              </td>
+              <td className={cn('px-3 py-2.5 text-right tabular-nums hidden md:table-cell', toneFor(tefas?.returns['3m']))}>
+                {fmtPct(tefas?.returns['3m'])}
+              </td>
+              <td className={cn('px-3 py-2.5 text-right tabular-nums', toneFor(tefas?.returns['1y']))}>
+                {fmtPct(tefas?.returns['1y'])}
+              </td>
+              <td className="px-3 py-2.5 text-center">
+                <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <a
+                    href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(entry.code)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success hover:bg-success/20"
+                  >
+                    TEFAS <ExternalLink size={9} />
+                  </a>
+                  <button
+                    onClick={() => remove(entry.id)}
+                    className="inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger hover:bg-danger/20"
+                    title="Takipten çıkar"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

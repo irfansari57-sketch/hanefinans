@@ -59,6 +59,28 @@ if not ANTHROPIC_API_KEY:
 CLIENT = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 MODEL = "claude-haiku-4-5-20251001"
 
+PORTFOLIO_PROMPT = """Aşağıdaki Türk aracı kurum MODEL PORTFÖY raporundan hisse ağırlıklarını çıkar.
+
+KURALLAR:
+- Sadece hisse kodu + ağırlık (%) çıkar — başka metrik yok
+- BIST kodları UPPERCASE (THYAO, AKBNK gibi)
+- Ağırlıklar sayısal (% işareti olmadan), toplam yaklaşık 100 olmalı
+- Maksimum 15 hisse
+
+YALNIZCA bu JSON formatında dön:
+{
+  "holdings": [
+    {"symbol": "THYAO", "weight": 15},
+    {"symbol": "AKBNK", "weight": 12}
+  ]
+}
+
+Eğer portföy bulunamazsa: {"holdings": []}
+
+PORTFÖY İÇERİĞİ:
+"""
+
+
 EXTRACTION_PROMPT = """Aşağıdaki Türk aracı kurum günlük bülteni / araştırma raporundan öne çıkarılan HİSSE ÖNERİLERİNİ çıkar.
 
 KURALLAR:
@@ -295,23 +317,73 @@ def fetch_isyatirim() -> dict:
     return result
 
 
+def parse_portfolio_with_claude(broker_name: str, text: str) -> list[dict]:
+    """Claude'a model portföy PDF metnini yolla, holdings JSON listesi al."""
+    if not text or len(text) < 200:
+        print(f"  ! {broker_name} portföy: metin çok kısa ({len(text)} chars)")
+        return []
+    truncated = text[:12000]
+    try:
+        response = CLIENT.messages.create(
+            model=MODEL,
+            max_tokens=2000,
+            messages=[{
+                "role": "user",
+                "content": PORTFOLIO_PROMPT + truncated,
+            }],
+        )
+        content = response.content[0].text  # type: ignore[union-attr]
+        match = re.search(r"\{[\s\S]*\}", content)
+        if not match:
+            print(f"  ! {broker_name} portföy: JSON bulunamadı")
+            return []
+        data = json.loads(match.group(0))
+        holdings = data.get("holdings", [])
+        if not isinstance(holdings, list):
+            return []
+        cleaned = []
+        for h in holdings:
+            sym = str(h.get("symbol", "")).strip().upper()
+            w = h.get("weight")
+            if not sym or len(sym) > 8 or w is None:
+                continue
+            try:
+                weight = float(w)
+            except (TypeError, ValueError):
+                continue
+            if weight <= 0 or weight > 100:
+                continue
+            cleaned.append({"symbol": sym, "weight": round(weight, 2)})
+        return cleaned[:15]
+    except Exception as e:
+        print(f"  ! {broker_name} portföy: Claude hatası: {type(e).__name__}: {e}")
+        return []
+
+
 def fetch_kt() -> dict:
-    """KT Yatırım — listing'den en yeni gunluk-bulten PDF'i bul."""
+    """
+    KT Yatırım — iki kaynak:
+      1. gunluk-bulten_DDMMYYYY.pdf → recommendations (Günlük Bülten kategorisi)
+      2. model-portfoey-guencelleme.pdf → portfolio (Model Portföy Güncelleme kategorisi)
+    Her ikisi de aynı listing'den (?category=...) PDF link'leri ile bulunur.
+    """
     base = "https://kuveytturkyatirim.com.tr"
-    listing_url = f"{base}/arastirma-raporlari/"
     result = {
         "brokerId": "kt-yatirim",
         "brokerName": "KT Yatırım",
         "initials": "KT",
         "colorSeed": "#ec4899",
-        "sourceUrl": f"{listing_url}?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
+        "sourceUrl": f"{base}/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
         "lastUpdate": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "recommendations": [],
+        "portfolio": [],
         "ok": False,
     }
-    print(f"KT Yatırım scrape başlıyor...")
+    print("KT Yatırım scrape başlıyor...")
+
+    # 1) Günlük Bülten — recommendations
     try:
-        r = requests.get(listing_url, headers=HEADERS, timeout=20)
+        r = requests.get(f"{base}/arastirma-raporlari/", headers=HEADERS, timeout=20)
         r.raise_for_status()
         html = r.text
         pdf_pattern = re.compile(
@@ -319,24 +391,53 @@ def fetch_kt() -> dict:
             re.IGNORECASE,
         )
         matches = pdf_pattern.findall(html)
-        if not matches:
-            result["error"] = "Listing'de gunluk-bulten PDF bulunamadı"
-            print(f"  ✗ PDF link bulunamadı")
-            return result
-        latest = max(matches, key=lambda m: (m[3], m[2], m[1]))
-        pdf_url = base + latest[0]
-        print(f"  Latest PDF: {latest[0]}")
-        pr = requests.get(pdf_url, headers=HEADERS, timeout=30)
-        pr.raise_for_status()
-        text = extract_pdf_text(pr.content)
-        print(f"  PDF: {len(text)} karakter çıkarıldı")
-        recs = parse_with_claude("KT Yatırım", text)
-        result["recommendations"] = recs
-        result["ok"] = len(recs) > 0
-        print(f"  ✓ {len(recs)} öneri")
+        if matches:
+            latest = max(matches, key=lambda m: (m[3], m[2], m[1]))
+            pdf_url = base + latest[0]
+            print(f"  Bülten PDF: {latest[0]}")
+            pr = requests.get(pdf_url, headers=HEADERS, timeout=30)
+            pr.raise_for_status()
+            text = extract_pdf_text(pr.content)
+            recs = parse_with_claude("KT Yatırım", text)
+            result["recommendations"] = recs
+            print(f"  ✓ {len(recs)} öneri")
+        else:
+            print("  ! Günlük bülten PDF bulunamadı")
     except Exception as e:
-        print(f"  ✗ Hata: {type(e).__name__}: {e}")
-        result["error"] = str(e)
+        print(f"  ✗ Bülten hata: {type(e).__name__}: {e}")
+
+    # 2) Model Portföy Güncelleme — portfolio
+    try:
+        mp_listing_url = f"{base}/arastirma-raporlari/?category=Model+Portf%C3%B6y+G%C3%BCncelleme&search=&date=&page=1"
+        r = requests.get(mp_listing_url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        html = r.text
+        # model-portfoey-guencelleme.pdf veya 2026-model-portfoey.pdf
+        mp_pattern = re.compile(
+            r'(/media/[a-z0-9]+/[^"]*model-portfoey[^"]*\.pdf)',
+            re.IGNORECASE,
+        )
+        mp_matches = mp_pattern.findall(html)
+        # HTML entities decode (haftal&#x131;k → haftalık vb.)
+        mp_matches = [m.replace('&#x131;', 'i').replace('&amp;', '&') for m in mp_matches]
+        # Tekrarları çıkar, ilk eşleşmeyi al (en yeni listing'in başında)
+        seen = set()
+        unique_pdfs = [m for m in mp_matches if not (m in seen or seen.add(m))]
+        if unique_pdfs:
+            pdf_url = base + unique_pdfs[0]
+            print(f"  Portföy PDF: {unique_pdfs[0]}")
+            pr = requests.get(pdf_url, headers=HEADERS, timeout=30)
+            pr.raise_for_status()
+            text = extract_pdf_text(pr.content)
+            holdings = parse_portfolio_with_claude("KT Yatırım", text)
+            result["portfolio"] = holdings
+            print(f"  ✓ {len(holdings)} portföy hissesi")
+        else:
+            print("  ! Model portföy PDF bulunamadı")
+    except Exception as e:
+        print(f"  ✗ Portföy hata: {type(e).__name__}: {e}")
+
+    result["ok"] = len(result["recommendations"]) > 0 or len(result["portfolio"]) > 0
     return result
 
 

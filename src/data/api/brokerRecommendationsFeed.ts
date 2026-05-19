@@ -87,12 +87,21 @@ export async function fetchBrokerRecsFeed(): Promise<BrokerRecFeed | null> {
     try {
       const bust = `?_=${Date.now()}`;
       const r = await fetch(FEED_URL + bust, { cache: 'no-store' });
-      if (!r.ok) return null;
+      if (!r.ok) {
+        console.warn('[brokerRecs] feed fetch failed', r.status);
+        return null;
+      }
       const data = (await r.json()) as BrokerRecFeed;
-      if (!data.brokers) return null;
+      if (!data.brokers) {
+        console.warn('[brokerRecs] feed format invalid', data);
+        return null;
+      }
+      const dynamicBrokers = data.brokers.filter((b) => b.recommendations?.length > 0).length;
+      console.info(`[brokerRecs] feed loaded: ${data.brokers.length} broker, ${dynamicBrokers} dolu, fetchedAt: ${data.fetchedAt}`);
       writeCache(data);
       return data;
-    } catch {
+    } catch (e) {
+      console.error('[brokerRecs] feed error', e);
       return null;
     } finally {
       inflight = null;
@@ -111,19 +120,24 @@ export function mergeWithStatic(
   staticData: BrokerRecommendationSet[],
   dynamicFeed: BrokerRecFeed | null,
 ): BrokerRecommendationSet[] {
-  if (!dynamicFeed?.brokers) return staticData;
+  if (!dynamicFeed?.brokers) {
+    console.warn('[brokerRecs] no dynamic feed, fallback to static');
+    return staticData;
+  }
   const dynamicMap = new Map(dynamicFeed.brokers.map((b) => [b.brokerId, b]));
-  return staticData.map((s) => {
+  const result = staticData.map((s) => {
     const dyn = dynamicMap.get(s.brokerId);
     if (!dyn || !dyn.recommendations || dyn.recommendations.length === 0) {
       return { ...s, _dynamic: false };
     }
+    console.info(`[brokerRecs] ${s.brokerId} dynamic data applied: ${dyn.recommendations.length} öneri`);
     return {
       ...s,
       lastUpdate: dyn.lastUpdate,
       recommendations: dyn.recommendations as BrokerRecommendationSet['recommendations'],
-      note: dyn.error ? `Otomatik scrape hatası: ${dyn.error}` : 'Otomatik (Claude AI ile)',
+      note: dyn.error ? `Otomatik scrape hatası: ${dyn.error}` : 'Otomatik (broker resmi sayfasından scrape)',
       _dynamic: true,
     } as BrokerRecommendationSet & { _dynamic: boolean };
   });
+  return result;
 }

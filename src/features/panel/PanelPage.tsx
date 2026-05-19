@@ -11,6 +11,7 @@ import { TopMovers } from '@/components/domain/TopMovers';
 import { TopFundMovers } from '@/components/domain/TopFundMovers';
 import { Ticker } from '@/components/domain/Ticker';
 import { LiveBadge } from '@/components/domain/LiveBadge';
+import { SentimentAgentCard } from '@/components/domain/SentimentAgentCard';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
 } from '@/data/mock';
@@ -333,6 +334,11 @@ export function PanelPage() {
         </summary>
         <TopMovers stocks={stocksForTopMovers} limit={5} period={stocksPeriod} />
       </details>
+
+      {/* Sentiment Agent — Claude Haiku ile haber bazlı duyarlılık */}
+      <div className="mb-5">
+        <SentimentAgentCard />
+      </div>
 
       {/* Top movers — fonlar — sadece canlı feed bağlıyken göster */}
       {topFunds.length > 0 && (

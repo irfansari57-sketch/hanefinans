@@ -1,21 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Globe, RefreshCw, TrendingUp, TrendingDown, Flag, Gem, DollarSign, Activity, ExternalLink, Info, Lock, Sparkles,
+  Globe, RefreshCw, TrendingUp, TrendingDown, Flag, Gem, DollarSign, Activity, ExternalLink, Info, Lock, Sparkles, ChevronRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo } from '@/data/api/yahoo';
+import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
 import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
 interface IndexItem {
   symbol: string;
   label: string;
-  /** Birim — emtia için (örn $/varil, $/ons). Endeksler için yok. */
   unit?: string;
-  /** Bilgi notu — VIX/DXY/CDS gibi karmaşık göstergeler için kısa açıklama */
   note?: string;
 }
 
@@ -88,13 +87,6 @@ const GROUPS: IndexGroup[] = [
   },
 ];
 
-// Türkiye Risk Primi: Yahoo Finance free tier'da yok. Cloudflare Worker ile worldgovernmentbonds.com
-// scrape edilebilir (yapılacak). Şimdilik dış kaynak link.
-const TURKEY_RISK_LINKS = [
-  { label: 'Türkiye 10Y Tahvil', url: 'https://www.investing.com/rates-bonds/turkey-10-year-bond-yield' },
-  { label: 'TR Risk Primi (worldgovernmentbonds)', url: 'http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/' },
-];
-
 interface QuoteState {
   loading: boolean;
   value?: number;
@@ -109,6 +101,8 @@ export function GlobalPage() {
   const [quotes, setQuotes] = useState<Record<string, QuoteState>>({});
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [trCds, setTrCds] = useState<TrCdsData | null>(null);
+  const [trCdsLoading, setTrCdsLoading] = useState(true);
 
   const allSymbols = useMemo(
     () => GROUPS.flatMap((g) => g.items.map((i) => i.symbol)),
@@ -117,12 +111,11 @@ export function GlobalPage() {
 
   const refresh = async () => {
     setLoading(true);
-    // İlk paint: hepsini loading
     setQuotes(Object.fromEntries(allSymbols.map((s) => [s, { loading: true }])));
 
-    // Paralel fetch (Yahoo proxy ~20 sembol için kolaylıkla dayanır)
-    await Promise.all(
-      allSymbols.map(async (sym) => {
+    await Promise.all([
+      // Yahoo paralel fetch
+      ...allSymbols.map(async (sym) => {
         try {
           const r = await fetchIndexYahoo(sym);
           setQuotes((q) => ({
@@ -135,7 +128,14 @@ export function GlobalPage() {
           setQuotes((q) => ({ ...q, [sym]: { loading: false, error: true } }));
         }
       }),
-    );
+      // TR CDS paralel fetch
+      (async () => {
+        setTrCdsLoading(true);
+        const c = await fetchTrCds();
+        setTrCds(c);
+        setTrCdsLoading(false);
+      })(),
+    ]);
     setUpdatedAt(Date.now());
     setLoading(false);
   };
@@ -143,7 +143,7 @@ export function GlobalPage() {
   useEffect(() => {
     if (!proUser) return;
     refresh();
-    const id = setInterval(refresh, 3 * 60_000); // 3 dakikada bir
+    const id = setInterval(refresh, 3 * 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proUser]);
@@ -170,7 +170,7 @@ export function GlobalPage() {
             </span>
             <h2 className="mt-4 text-xl font-bold text-slate-100">Global Piyasalar PRO Üyelere Özel</h2>
             <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
-              ABD/Avrupa/Asya endeksleri, Brent, WTI, Altın, Gümüş, VIX, DXY ve ABD 10Y faiz — global piyasayı tek bakışta izle, makro yön sezgisi kazan.
+              ABD/Avrupa/Asya endeksleri, Brent, WTI, Altın, Gümüş, VIX, DXY, ABD 10Y faiz ve Türkiye 5Y CDS — global piyasayı tek bakışta izle.
             </p>
             <Link
               to="/uyelik"
@@ -228,37 +228,54 @@ export function GlobalPage() {
           </section>
         ))}
 
-        {/* Türkiye Risk Primleri — Yahoo'da CDS yok, dış kaynaklara link */}
+        {/* Türkiye Risk Primleri — canlı TR 5Y CDS kartı + dış kaynak */}
         <section className="glass-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <span className="grid h-7 w-7 place-items-center rounded-md bg-danger/15 text-danger">
               <DollarSign size={14} />
             </span>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-200">Türkiye Risk Primleri</h2>
-            <span className="text-[11px] text-slate-500">— tahvil getirisi (dış kaynaklar)</span>
+            <span className="text-[11px] text-slate-500">— 5Y CDS spread, ülke risk primi</span>
           </div>
-          <p className="mb-3 text-[11px] text-slate-400 leading-relaxed">
-            <Info size={11} className="inline -mt-0.5 text-accent" /> Türkiye 10Y tahvil getirisi ve 5Y CDS spread'i Yahoo Finance'ta bulunmuyor; gerçek zamanlı için aşağıdaki kaynaklara tıkla. Bu göstergeler TL bono getirileri ve yabancı sermaye akışıyla doğrudan ilişkilidir.
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {TURKEY_RISK_LINKS.map((l) => (
-              <a
-                key={l.url}
-                href={l.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent"
-              >
-                {l.label}
-                <ExternalLink size={11} />
-              </a>
-            ))}
+
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <TrCdsCard data={trCds} loading={trCdsLoading} />
+
+            <a
+              href="https://www.investing.com/rates-bonds/turkey-10-year-bond-yield"
+              target="_blank" rel="noreferrer"
+              className="flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-3 text-xs text-slate-300 hover:border-accent/40 hover:text-accent"
+            >
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">TR 10Y Tahvil</div>
+                <div className="mt-1 font-semibold text-slate-200">investing.com</div>
+              </div>
+              <ExternalLink size={12} />
+            </a>
+
+            <a
+              href="http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/"
+              target="_blank" rel="noreferrer"
+              className="flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-3 text-xs text-slate-300 hover:border-accent/40 hover:text-accent"
+            >
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">Veri Kaynağı</div>
+                <div className="mt-1 font-semibold text-slate-200">worldgovernmentbonds.com</div>
+              </div>
+              <ExternalLink size={12} />
+            </a>
           </div>
+
+          {trCds && !trCds.ok && (
+            <p className="mt-3 text-[11px] text-slate-400 leading-relaxed">
+              <Info size={11} className="inline -mt-0.5 text-warning" /> Canlı CDS verisi şu anda alınamadı ({trCds.error ?? 'kaynak yanıt vermiyor'}). worldgovernmentbonds.com sayfasını manuel kontrol edebilirsin.
+            </p>
+          )}
         </section>
       </div>
 
       <p className="mt-4 text-[10px] text-slate-500">
-        Veri kaynağı: Yahoo Finance (3 dakikada bir yenilenir). Bir karta tıkla → detay sayfasında canlı grafik + bilgi kartı görürsün.
+        Veri kaynağı: Yahoo Finance + worldgovernmentbonds.com (3 dakikada bir yenilenir). Bir karta tıkla → detay sayfasında canlı grafik + bilgi kartı.
       </p>
     </>
   );
@@ -307,6 +324,59 @@ function QuoteCard({ item, state }: { item: IndexItem; state?: QuoteState }) {
       {item.note && (
         <div className="mt-1 text-[9px] text-slate-500 leading-tight">{item.note}</div>
       )}
+    </Link>
+  );
+}
+
+/**
+ * Türkiye 5Y CDS canlı kart — Pages Function /api/tr-cds'den çeker.
+ * Tıklanınca /macro/TR-CDS-5Y detay sayfasına gider.
+ */
+function TrCdsCard({ data, loading }: { data: TrCdsData | null; loading: boolean }) {
+  if (loading) return <Skeleton variant="rect" height={86} />;
+
+  if (!data || !data.ok || data.value == null) {
+    return (
+      <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500">TR 5Y CDS</div>
+          <Info size={11} className="text-warning" />
+        </div>
+        <div className="mt-1 text-warning">veri alınamadı</div>
+        <div className="mt-1 text-[9px] text-slate-500 leading-tight">Dev sunucuda Pages Functions çalışmaz — production'da canlı gelir.</div>
+      </div>
+    );
+  }
+
+  const change = data.changePct ?? 0;
+  // CDS düşmesi olumlu (risk priminin düşmesi)
+  const isImprovement = change <= 0;
+  const Icon = isImprovement ? TrendingDown : TrendingUp;
+  const tone = isImprovement ? 'text-success' : 'text-danger';
+  const sign = change >= 0 ? '+' : '';
+
+  return (
+    <Link
+      to="/macro/TR-CDS-5Y"
+      className="block rounded-lg border border-border bg-bg-card p-3 transition hover:border-accent/40 hover:bg-bg-soft/60"
+      aria-label="Türkiye 5Y CDS detayı"
+    >
+      <div className="flex items-center justify-between gap-1">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">TR 5Y CDS</div>
+        <Icon size={11} className={tone} />
+      </div>
+      <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
+        {data.value.toFixed(2)}<span className="ml-1 text-[10px] font-medium text-slate-500">bps</span>
+      </div>
+      <div className="flex items-baseline justify-between gap-1">
+        <span className={cn('text-xs font-medium tabular-nums', tone)}>
+          {sign}{change.toFixed(2)}%
+        </span>
+        {data.asOfDate && <span className="text-[9px] text-slate-500">{data.asOfDate}</span>}
+      </div>
+      <div className="mt-1 flex items-center gap-1 text-[9px] text-slate-500 leading-tight">
+        Türkiye ülke risk primi <ChevronRight size={9} />
+      </div>
     </Link>
   );
 }

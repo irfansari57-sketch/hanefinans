@@ -16,6 +16,7 @@ interface SessionUser {
   tier: UserTier;
   tierExpiresAt?: number;
   avatarColor: string;
+  emailVerified: boolean;
 }
 
 interface AuthState {
@@ -27,6 +28,7 @@ interface AuthState {
   login: (input: { email: string; password: string }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   upgradeTier: (tier: UserTier, durationMonths?: number) => Promise<void>;
+  markEmailVerified: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -45,7 +47,11 @@ function randomColor(seed: string): string {
   return `hsl(${hue}, 65%, 55%)`;
 }
 
+const ADMIN_EMAILS_LC = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
+
 function toSession(u: UserAccount): SessionUser {
+  // Admin email'leri otomatik doğrulanmış sayılır
+  const isAdminEmail = ADMIN_EMAILS_LC.includes(u.email.toLowerCase());
   return {
     id: u.id!,
     email: u.email,
@@ -53,6 +59,7 @@ function toSession(u: UserAccount): SessionUser {
     tier: u.tier,
     tierExpiresAt: u.tierExpiresAt,
     avatarColor: u.avatarColor ?? randomColor(u.email),
+    emailVerified: isAdminEmail || u.emailVerified === 1,
   };
 }
 
@@ -85,6 +92,8 @@ export const useAuth = create<AuthState>()(
           }
           const passwordHash = await hash(`${normalizedEmail}::${password}::hane-finans`);
           const now = Date.now();
+          // Admin email'leri otomatik doğrulanmış; diğerleri email doğrulamasını bekler
+          const isAdminEmail = ADMIN_EMAILS_LC.includes(normalizedEmail);
           const id = await db.users.add({
             email: normalizedEmail,
             name: name?.trim() || undefined,
@@ -93,6 +102,8 @@ export const useAuth = create<AuthState>()(
             createdAt: now,
             lastLoginAt: now,
             avatarColor: randomColor(normalizedEmail),
+            emailVerified: isAdminEmail ? 1 : 0,
+            emailVerifiedAt: isAdminEmail ? now : undefined,
           });
           const account = await db.users.get(id);
           if (!account) throw new Error('Kayıt sonrası okuma başarısız');
@@ -140,15 +151,22 @@ export const useAuth = create<AuthState>()(
         const u = get().user;
         if (!u) return;
         // Ödeme altyapısı kurulana kadar admin dışındaki kullanıcılar PRO/ELITE'e geçemez
-        // (UI'da da kontrol var, bu store-level çift katman güvenlik)
-        const adminEmails = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
-        const isAdminUser = adminEmails.includes(u.email.toLowerCase());
+        const isAdminUser = ADMIN_EMAILS_LC.includes(u.email.toLowerCase());
         if (!isAdminUser && (tier === 'pro' || tier === 'elite')) {
           set({ lastError: 'Ödeme altyapısı çok yakında devreye giriyor. PRO/ELITE üyelik geçişi şu an devre dışı.' });
           return;
         }
         const expires = Date.now() + durationMonths * 30 * 24 * 3600 * 1000;
         await db.users.update(u.id, { tier, tierExpiresAt: tier === 'free' ? undefined : expires });
+        const updated = await db.users.get(u.id);
+        if (updated) set({ user: toSession(updated) });
+      },
+
+      markEmailVerified: async () => {
+        const u = get().user;
+        if (!u) return;
+        const now = Date.now();
+        await db.users.update(u.id, { emailVerified: 1, emailVerifiedAt: now });
         const updated = await db.users.get(u.id);
         if (updated) set({ user: toSession(updated) });
       },
@@ -182,9 +200,12 @@ export const isElite = (user: SessionUser | null): boolean => {
   return true;
 };
 
-const ADMIN_EMAILS = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
-
 export const isAdmin = (user: SessionUser | null): boolean => {
   if (!user) return false;
-  return ADMIN_EMAILS.includes(user.email.toLowerCase());
+  return ADMIN_EMAILS_LC.includes(user.email.toLowerCase());
+};
+
+export const isEmailVerified = (user: SessionUser | null): boolean => {
+  if (!user) return false;
+  return user.emailVerified === true;
 };

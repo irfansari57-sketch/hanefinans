@@ -87,6 +87,10 @@ export interface UserAccount {
   avatarColor?: string;  // kişisel renk
   /** Pro/Elite üyeliğin bittiği zaman (ms). undefined = sınırsız (free) */
   tierExpiresAt?: number;
+  /** Email bot doğrulaması — 1 = onaylı, 0/undefined = bekliyor */
+  emailVerified?: 0 | 1;
+  /** Email doğrulama zamanı (ms) */
+  emailVerifiedAt?: number;
 }
 
 export interface PortfolioPosition {

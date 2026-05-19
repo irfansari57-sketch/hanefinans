@@ -418,12 +418,17 @@ function UserAdminSection() {
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<number | null>(null);
 
+  const adminEmailsLc = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
+  const isVerified = (u: { email: string; emailVerified?: 0 | 1 }) =>
+    u.emailVerified === 1 || adminEmailsLc.includes(u.email.toLowerCase());
+
   const stats = {
     total: users.length,
     free: users.filter((u) => u.tier === 'free').length,
     pro: users.filter((u) => u.tier === 'pro' && (!u.tierExpiresAt || u.tierExpiresAt > Date.now())).length,
     elite: users.filter((u) => u.tier === 'elite' && (!u.tierExpiresAt || u.tierExpiresAt > Date.now())).length,
     expired: users.filter((u) => u.tier !== 'free' && u.tierExpiresAt != null && u.tierExpiresAt < Date.now()).length,
+    unverified: users.filter((u) => !isVerified(u)).length,
   };
 
   const filtered = users.filter((u) => {
@@ -455,6 +460,16 @@ function UserAdminSection() {
     }
   };
 
+  const manualVerify = async (userId: number) => {
+    setBusy(userId);
+    try {
+      await db.users.update(userId, { emailVerified: 1, emailVerifiedAt: Date.now() });
+      toast.success('Hesap manuel doğrulandı');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const remove = async (userId: number, email: string) => {
     if (!window.confirm(`${email} hesabını silmek istediğinden emin misin? Geri alınamaz.`)) return;
     setBusy(userId);
@@ -477,8 +492,9 @@ function UserAdminSection() {
       </p>
 
       {/* Stats */}
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
         <StatChip label="Toplam" value={stats.total} tone="slate" />
+        <StatChip label="Doğrulanmamış" value={stats.unverified} tone="danger" />
         <StatChip label="Free" value={stats.free} tone="slate" />
         <StatChip label="PRO Aktif" value={stats.pro} tone="warning" />
         <StatChip label="ELITE Aktif" value={stats.elite} tone="accent" />
@@ -521,9 +537,20 @@ function UserAdminSection() {
                   <td className="px-3 py-2.5">
                     <div className="font-medium text-slate-200">{u.name || u.email.split('@')[0]}</div>
                     <div className="text-[10px] text-slate-500">{u.email}</div>
-                    {isAdminUser && (
-                      <span className="mt-0.5 inline-block rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">Admin</span>
-                    )}
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                      {isAdminUser && (
+                        <span className="inline-block rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">Admin</span>
+                      )}
+                      {isVerified(u) ? (
+                        <span className="inline-block rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-success" title={u.emailVerifiedAt ? new Date(u.emailVerifiedAt).toLocaleString('tr-TR') : 'Admin otomatik'}>
+                          ✓ Doğrulandı
+                        </span>
+                      ) : (
+                        <span className="inline-block rounded bg-danger/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-danger">
+                          ⚠ Doğrulanmadı
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={cn(
@@ -575,6 +602,16 @@ function UserAdminSection() {
                       >
                         +1y
                       </button>
+                      {!isVerified(u) && (
+                        <button
+                          onClick={() => u.id != null && manualVerify(u.id)}
+                          disabled={busy === u.id}
+                          className="rounded-md border border-success/30 bg-success/10 px-1.5 py-1 text-[10px] text-success hover:bg-success/20 disabled:opacity-40"
+                          title="Email'i manuel doğrula"
+                        >
+                          ✓
+                        </button>
+                      )}
                       {!isAdminUser && (
                         <button
                           onClick={() => u.id != null && remove(u.id, u.email)}

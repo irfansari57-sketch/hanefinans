@@ -1,8 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Flame, Star, PiggyBank, ChevronRight, RefreshCw, ExternalLink, Zap,
+  Flame, Star, PiggyBank, ChevronRight, RefreshCw, ExternalLink, Zap, Briefcase,
 } from 'lucide-react';
+import { BrokerRecommendations } from '@/components/domain/BrokerRecommendations';
+import { BROKER_RECOMMENDATIONS } from '@/data/brokerRecommendations';
+
+const BROKER_COUNT = BROKER_RECOMMENDATIONS.length;
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { ChartButton } from '@/components/domain/ChartButton';
@@ -71,7 +75,7 @@ function detect5mLong(closes: number[]): { isLong: boolean; score: number } {
 }
 
 export function RecommendationsPage() {
-  const [tab, setTab] = useState<'scalp' | 'funds'>('scalp');
+  const [tab, setTab] = useState<'broker' | 'scalp' | 'funds'>('broker');
   const [recs, setRecs] = useState<ScalpRec[]>([]);
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [fundsConfigured, setFundsConfigured] = useState(true);
@@ -203,26 +207,28 @@ export function RecommendationsPage() {
     <>
       <PageHeader
         title="Öneriler"
-        subtitle="5 dakikalık long trendde olan vur-kaç hisseleri + multi-timeframe trend analizi."
+        subtitle="Aracı kurum hisse önerileri, trend fonlar ve algoritmik kısa vade sinyalleri."
         actions={
           <div className="flex items-center gap-2">
-            <LiveBadge updatedAt={updatedAt} refreshing={loading} />
-            <button className="btn-secondary" onClick={() => refresh(true)} disabled={loading}>
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
-            </button>
+            {tab !== 'broker' && <LiveBadge updatedAt={updatedAt} refreshing={loading} />}
+            {tab !== 'broker' && (
+              <button className="btn-secondary" onClick={() => refresh(true)} disabled={loading}>
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
+              </button>
+            )}
           </div>
         }
       />
 
-      <div className="mb-4 inline-flex rounded-lg border border-border bg-bg-soft p-1">
+      <div className="mb-4 inline-flex flex-wrap rounded-lg border border-border bg-bg-soft p-1">
         <button
           className={cn(
             'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'scalp' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+            tab === 'broker' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
           )}
-          onClick={() => setTab('scalp')}
+          onClick={() => setTab('broker')}
         >
-          <Zap size={14} /> Vur-Kaç Long ({recs.filter((r) => r.scalp5mLong).length}/{recs.length})
+          <Briefcase size={14} /> Aracı Kurum ({BROKER_COUNT})
         </button>
         <button
           className={cn(
@@ -233,7 +239,18 @@ export function RecommendationsPage() {
         >
           <PiggyBank size={14} /> Trend Fonlar ({topFunds.length})
         </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
+            tab === 'scalp' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setTab('scalp')}
+        >
+          <Zap size={14} /> Algoritmik ({recs.filter((r) => r.scalp5mLong).length}/{recs.length})
+        </button>
       </div>
+
+      {tab === 'broker' && <BrokerRecommendations />}
 
       {tab === 'scalp' && (
         <>

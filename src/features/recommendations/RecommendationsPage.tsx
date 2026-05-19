@@ -1,12 +1,15 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Flame, Star, PiggyBank, ChevronRight, RefreshCw, ExternalLink, Zap, Briefcase,
+  Flame, Star, PiggyBank, ChevronRight, RefreshCw, ExternalLink, Zap, Briefcase, PieChart,
 } from 'lucide-react';
 import { BrokerRecommendations } from '@/components/domain/BrokerRecommendations';
+import { BrokerPortfolios } from '@/components/domain/BrokerPortfolios';
 import { BROKER_RECOMMENDATIONS } from '@/data/brokerRecommendations';
+import { BROKER_PORTFOLIOS } from '@/data/brokerPortfolios';
 
 const BROKER_COUNT = BROKER_RECOMMENDATIONS.length;
+const PORTFOLIO_COUNT = BROKER_PORTFOLIOS.length;
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { ChartButton } from '@/components/domain/ChartButton';
@@ -75,7 +78,7 @@ function detect5mLong(closes: number[]): { isLong: boolean; score: number } {
 }
 
 export function RecommendationsPage() {
-  const [tab, setTab] = useState<'broker' | 'scalp' | 'funds'>('broker');
+  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds'>('broker');
   const [recs, setRecs] = useState<ScalpRec[]>([]);
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [fundsConfigured, setFundsConfigured] = useState(true);
@@ -233,6 +236,15 @@ export function RecommendationsPage() {
         <button
           className={cn(
             'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
+            tab === 'portfolio' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setTab('portfolio')}
+        >
+          <PieChart size={14} /> Model Portföyler ({PORTFOLIO_COUNT})
+        </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
             tab === 'funds' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
           )}
           onClick={() => setTab('funds')}
@@ -251,6 +263,7 @@ export function RecommendationsPage() {
       </div>
 
       {tab === 'broker' && <BrokerRecommendations />}
+      {tab === 'portfolio' && <BrokerPortfolios />}
 
       {tab === 'scalp' && (
         <>

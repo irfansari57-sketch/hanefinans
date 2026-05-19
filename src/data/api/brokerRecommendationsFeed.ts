@@ -97,7 +97,7 @@ export async function fetchBrokerRecsFeed(): Promise<BrokerRecFeed | null> {
         return null;
       }
       const dynamicBrokers = data.brokers.filter((b) => b.recommendations?.length > 0).length;
-      console.info(`[brokerRecs] feed loaded: ${data.brokers.length} broker, ${dynamicBrokers} dolu, fetchedAt: ${data.fetchedAt}`);
+      console.warn(`[brokerRecs] feed loaded: ${data.brokers.length} broker, ${dynamicBrokers} dolu, fetchedAt: ${data.fetchedAt}`);
       writeCache(data);
       return data;
     } catch (e) {
@@ -130,7 +130,7 @@ export function mergeWithStatic(
     if (!dyn || !dyn.recommendations || dyn.recommendations.length === 0) {
       return { ...s, _dynamic: false };
     }
-    console.info(`[brokerRecs] ${s.brokerId} dynamic data applied: ${dyn.recommendations.length} öneri`);
+    console.warn(`[brokerRecs] ${s.brokerId} dynamic data applied: ${dyn.recommendations.length} öneri`);
     return {
       ...s,
       lastUpdate: dyn.lastUpdate,

@@ -9,8 +9,18 @@
 import type { BrokerRecommendationSet } from '@/data/brokerRecommendations';
 
 const FEED_URL = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/broker-recommendations.json';
-const CACHE_KEY = 'fa.brokerRecs.feed.v1';
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 saat
+// v2 — İş Yatırım dinamik scrape sonrası eski v1 cache (statik demo veri)
+// invalidate. TTL 30 dk → günlük 2 cron + 12sa CDN ile uyumlu.
+const CACHE_KEY = 'fa.brokerRecs.feed.v2';
+const LEGACY_KEYS = ['fa.brokerRecs.feed.v1'];
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 dk
+
+// Modül yüklendiğinde eski cache key'lerini temizle
+try {
+  LEGACY_KEYS.forEach((k) => localStorage.removeItem(k));
+} catch {
+  /* ignore */
+}
 
 export interface BrokerRecFeed {
   fetchedAt: string;

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, User as UserIcon, ArrowRight, AlertTriangle, Sparkles, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Mail, User as UserIcon, ArrowRight, AlertTriangle, Sparkles, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useAuth } from '@/store/auth';
 import { FEATURES } from '@/lib/featureFlags';
 import { cn } from '@/lib/utils';
@@ -285,19 +286,14 @@ export function AuthPage({ mode }: Props) {
 
             <div>
               <label className="label">Şifre</label>
-              <div className="relative">
-                <Lock size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  className="input pl-9"
-                  placeholder="En az 6 karakter"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                />
-              </div>
+              <PasswordInput
+                required
+                minLength={6}
+                placeholder="En az 6 karakter"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              />
               {mode === 'signup' && FEATURES.emailVerification && (
                 <p className="mt-1 text-[11px] text-slate-500">
                   📧 Kayıt sonrası e-posta adresine 6 haneli kod gönderilir (bot kontrolü).

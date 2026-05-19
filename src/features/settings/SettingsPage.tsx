@@ -7,6 +7,7 @@ import {
 import { getTelegramChatId, setTelegramChatId, sendTelegram } from '@/lib/telegram';
 import { resetOnboarding } from '@/components/domain/OnboardingTour';
 import { toast } from '@/components/ui/Toast';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { useAgents } from '@/store/agents';
 import { useWatchlist } from '@/store/watchlist';
@@ -484,13 +485,12 @@ function DeleteAccountSection() {
       ) : (
         <div className="mt-3 space-y-2 rounded-lg border border-danger/30 bg-bg-card p-3">
           <p className="text-xs text-slate-300">Devam etmek için şifreni gir:</p>
-          <input
-            type="password"
+          <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Şifren"
-            className="input"
             autoFocus
+            showLockIcon={false}
           />
           {error && <div className="text-xs text-danger">⚠ {error}</div>}
           <div className="flex items-center gap-2 pt-1">

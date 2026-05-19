@@ -56,6 +56,7 @@ const CommodityDetailPage   = lazyWithRetry(() => import('@/features/commodityDe
 const StockDetailPage       = lazyWithRetry(() => import('@/features/stockDetail/StockDetailPage').then((m) => ({ default: m.StockDetailPage })));
 const FundDetailPage        = lazyWithRetry(() => import('@/features/fundDetail/FundDetailPage').then((m) => ({ default: m.FundDetailPage })));
 const CryptoDetailPage      = lazyWithRetry(() => import('@/features/cryptoDetail/CryptoDetailPage').then((m) => ({ default: m.CryptoDetailPage })));
+const MacroDetailPage       = lazyWithRetry(() => import('@/features/macroDetail/MacroDetailPage').then((m) => ({ default: m.MacroDetailPage })));
 const HistoryPage           = lazyWithRetry(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })));
 const MorningReportPage     = lazyWithRetry(() => import('@/features/morning/MorningReportPage').then((m) => ({ default: m.MorningReportPage })));
 const RecommendationsPage   = lazyWithRetry(() => import('@/features/recommendations/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
@@ -84,6 +85,7 @@ export const router = createBrowserRouter([
       { path: 'uyelik', element: withSuspense(<MembershipPage />) },
       { path: 'news', element: withSuspense(<NewsPage />) },
       { path: 'macro', element: <Navigate to="/morning" replace /> },
+      { path: 'macro/:symbol', element: withSuspense(<MacroDetailPage />) },
       { path: 'watchlist', element: withSuspense(<WatchlistPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },

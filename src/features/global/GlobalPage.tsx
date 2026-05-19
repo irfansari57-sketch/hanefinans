@@ -75,21 +75,22 @@ const GROUPS: IndexGroup[] = [
     ],
   },
   {
-    title: 'Risk & Volatilite',
-    subtitle: 'Korku endeksi, dolar gücü, Türkiye risk primi',
+    title: 'Risk & Volatilite & Faiz',
+    subtitle: 'Korku endeksi, dolar gücü, ABD tahvil faizleri',
     icon: Activity,
     tone: 'danger',
     items: [
       { symbol: '^VIX', label: 'VIX', note: 'Korku Endeksi — S&P 500 30 gün öngörü volatilite' },
       { symbol: 'DX-Y.NYB', label: 'DXY', note: 'Dolar Endeksi — USD\'nin 6 ana para birimine karşı gücü' },
       { symbol: '^MOVE', label: 'MOVE', note: 'Bond Vol. Index — ABD tahvil piyasası volatilitesi' },
+      { symbol: '^TNX', label: 'ABD 10Y Faiz', unit: '%', note: 'ABD 10 Yıllık Hazine Tahvili Faizi (Yıllık %)' },
     ],
   },
 ];
 
-// Türkiye CDS 5Y için Yahoo verisi yok. Investing.com referansı ile manuel kart gösteriyoruz.
+// Türkiye Risk Primi: Yahoo Finance free tier'da yok. Cloudflare Worker ile worldgovernmentbonds.com
+// scrape edilebilir (yapılacak). Şimdilik dış kaynak link.
 const TURKEY_RISK_LINKS = [
-  { label: 'Türkiye CDS 5Y', url: 'https://www.investing.com/rates-bonds/turkey-cds-5-yr-usd' },
   { label: 'Türkiye 10Y Tahvil', url: 'https://www.investing.com/rates-bonds/turkey-10-year-bond-yield' },
   { label: 'TR Risk Primi (worldgovernmentbonds)', url: 'http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/' },
 ];
@@ -169,7 +170,7 @@ export function GlobalPage() {
             </span>
             <h2 className="mt-4 text-xl font-bold text-slate-100">Global Piyasalar PRO Üyelere Özel</h2>
             <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
-              ABD/Avrupa/Asya endeksleri, Brent, WTI, Altın, Gümüş, VIX, DXY ve Türkiye CDS — global piyasayı tek bakışta izle, makro yön sezgisi kazan.
+              ABD/Avrupa/Asya endeksleri, Brent, WTI, Altın, Gümüş, VIX, DXY ve ABD 10Y faiz — global piyasayı tek bakışta izle, makro yön sezgisi kazan.
             </p>
             <Link
               to="/uyelik"
@@ -234,12 +235,12 @@ export function GlobalPage() {
               <DollarSign size={14} />
             </span>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-200">Türkiye Risk Primleri</h2>
-            <span className="text-[11px] text-slate-500">— CDS, tahvil getirisi (dış kaynaklar)</span>
+            <span className="text-[11px] text-slate-500">— tahvil getirisi (dış kaynaklar)</span>
           </div>
           <p className="mb-3 text-[11px] text-slate-400 leading-relaxed">
-            <Info size={11} className="inline -mt-0.5 text-accent" /> Türkiye 5Y CDS spread verisi Yahoo Finance'ta bulunmuyor; gerçek zamanlı için aşağıdaki kaynaklara tıkla. CDS değeri TL bono getirileri ve yabancı sermaye akışıyla doğrudan ilişkilidir.
+            <Info size={11} className="inline -mt-0.5 text-accent" /> Türkiye 10Y tahvil getirisi ve 5Y CDS spread'i Yahoo Finance'ta bulunmuyor; gerçek zamanlı için aşağıdaki kaynaklara tıkla. Bu göstergeler TL bono getirileri ve yabancı sermaye akışıyla doğrudan ilişkilidir.
           </p>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             {TURKEY_RISK_LINKS.map((l) => (
               <a
                 key={l.url}
@@ -257,7 +258,7 @@ export function GlobalPage() {
       </div>
 
       <p className="mt-4 text-[10px] text-slate-500">
-        Veri kaynağı: Yahoo Finance (3 dakikada bir yenilenir). Endeks fiyatları küçük gecikmeli; CDS ve özel göstergeler dış kaynak.
+        Veri kaynağı: Yahoo Finance (3 dakikada bir yenilenir). Bir karta tıkla → detay sayfasında canlı grafik + bilgi kartı görürsün.
       </p>
     </>
   );
@@ -285,23 +286,27 @@ function QuoteCard({ item, state }: { item: IndexItem; state?: QuoteState }) {
   });
 
   return (
-    <div className="rounded-lg border border-border bg-bg-card p-3 transition hover:border-accent/40">
+    <Link
+      to={`/macro/${encodeURIComponent(item.symbol)}`}
+      className="block rounded-lg border border-border bg-bg-card p-3 transition hover:border-accent/40 hover:bg-bg-soft/60"
+      aria-label={`${item.label} detayı`}
+    >
       <div className="flex items-center justify-between gap-1">
         <div className="text-[10px] uppercase tracking-wider text-slate-500 truncate" title={item.label}>{item.label}</div>
         <Icon size={11} className={tone} />
       </div>
       <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
-        {item.unit?.startsWith('$') ? '$' : ''}{formattedValue}
+        {item.unit?.startsWith('$') ? '$' : ''}{formattedValue}{item.unit === '%' ? '%' : ''}
       </div>
       <div className="flex items-baseline justify-between gap-1">
         <span className={cn('text-xs font-medium tabular-nums', tone)}>
           {sign}{change.toFixed(2)}%
         </span>
-        {item.unit && <span className="text-[9px] text-slate-500">{item.unit}</span>}
+        {item.unit && item.unit !== '%' && <span className="text-[9px] text-slate-500">{item.unit}</span>}
       </div>
       {item.note && (
         <div className="mt-1 text-[9px] text-slate-500 leading-tight">{item.note}</div>
       )}
-    </div>
+    </Link>
   );
 }

@@ -16,6 +16,7 @@ import {
 } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
+import { fetchHistoricalYahoo, computePeriodReturns } from '@/data/api/yahoo';
 import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches } from '@/data/services';
 import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
@@ -63,6 +64,9 @@ export function PanelPage() {
   const [sentimentSource, setSentimentSource] = useState<'live' | 'mock' | 'derived'>('mock');
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [stocksPeriod, setStocksPeriod] = useState<'day' | 'week' | 'month'>('week');
+  const [stocksReturns, setStocksReturns] = useState<Record<string, { '1h'?: number; '1a'?: number }>>({});
+  const [stocksReturnsLoading, setStocksReturnsLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -131,6 +135,45 @@ export function PanelPage() {
     () => stocks.filter((s) => s.price > 0).sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 24),
     [stocks],
   );
+
+  // Hisse top movers — week/month periodu için Yahoo historical batch fetch (lazy)
+  useEffect(() => {
+    if (stocksPeriod === 'day') return;
+    if (Object.keys(stocksReturns).length > 0) return; // bir kere yeterli
+    const symbols = stocks.filter((s) => s.price > 0).map((s) => s.symbol);
+    if (symbols.length === 0) return;
+    setStocksReturnsLoading(true);
+    const BATCH = 8;
+    (async () => {
+      const map: Record<string, { '1h'?: number; '1a'?: number }> = {};
+      for (let i = 0; i < symbols.length; i += BATCH) {
+        const slice = symbols.slice(i, i + BATCH);
+        const results = await Promise.all(slice.map(async (sym) => {
+          try {
+            const hist = await fetchHistoricalYahoo(sym, '6mo', '1d', { bistSuffix: true });
+            if (hist) {
+              const r = computePeriodReturns(hist.closes);
+              return [sym, { '1h': r['1h'], '1a': r['1a'] }] as const;
+            }
+          } catch { /* ignore */ }
+          return null;
+        }));
+        results.forEach((r) => { if (r) map[r[0]] = r[1]; });
+        setStocksReturns((prev) => ({ ...prev, ...map }));
+      }
+      setStocksReturnsLoading(false);
+    })();
+  }, [stocksPeriod, stocks, stocksReturns]);
+
+  // Period'a göre enriched stocks — TopMovers changePct ile sıralıyor, biz onu period değerine override
+  const stocksForTopMovers = useMemo(() => {
+    if (stocksPeriod === 'day') return stocks;
+    return stocks.map((s) => {
+      const ret = stocksReturns[s.symbol];
+      const val = stocksPeriod === 'week' ? ret?.['1h'] : ret?.['1a'];
+      return { ...s, changePct: val != null && Number.isFinite(val) ? val : NaN };
+    });
+  }, [stocks, stocksReturns, stocksPeriod]);
 
   return (
     <>
@@ -271,14 +314,33 @@ export function PanelPage() {
       <details className="group mb-5 lg:open:block lg:!block" open>
         <summary className="mb-2 flex cursor-pointer items-center justify-between px-1 lg:cursor-default lg:list-none">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Günün Hareketleri — Hisseler ({stocks.length})
+            {stocksPeriod === 'day' ? 'Günlük' : stocksPeriod === 'week' ? 'Haftalık' : 'Aylık'} Hareketler — Hisseler ({stocks.length})
           </h2>
           <div className="flex items-center gap-2">
+            {/* Period toggle */}
+            <div className="inline-flex rounded-md border border-border bg-bg-soft p-0.5" onClick={(e) => e.preventDefault()}>
+              {(['day', 'week', 'month'] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); setStocksPeriod(p); }}
+                  className={cn(
+                    'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
+                    stocksPeriod === p ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  )}
+                >
+                  {p === 'day' ? 'Gün' : p === 'week' ? 'Hafta' : 'Ay'}
+                </button>
+              ))}
+            </div>
+            {stocksReturnsLoading && stocksPeriod !== 'day' && (
+              <span className="text-[10px] text-slate-500">yükleniyor…</span>
+            )}
             <SourceBadge source={stocksSource} />
             <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>
           </div>
         </summary>
-        <TopMovers stocks={stocks} limit={5} />
+        <TopMovers stocks={stocksForTopMovers} limit={5} />
       </details>
 
       {/* Top movers — fonlar — sadece canlı feed bağlıyken göster */}

@@ -141,7 +141,7 @@ export function AuthPage({ mode }: Props) {
           <h1 className="bg-gradient-to-r from-slate-100 via-slate-300 to-slate-500 bg-clip-text text-2xl font-bold tracking-tight text-transparent">
             HANE FİNANS
           </h1>
-          <p className="text-xs uppercase tracking-[0.3em] text-accent/80">financial intelligence</p>
+          <p lang="en" className="text-xs tracking-[0.3em] text-accent/80">FINANCIAL INTELLIGENCE</p>
         </div>
 
         {step === 'verify' ? (

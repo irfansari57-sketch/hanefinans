@@ -1,25 +1,24 @@
 export type Sentiment = 'positive' | 'neutral' | 'negative';
 
 export interface Stock {
-  symbol: string; // ör. THYAO
-  name: string;   // ör. Türk Hava Yolları
+  symbol: string;
+  name: string;
   sector?: string;
-  price: number;   // TL
-  changePct: number; // %
-  updatedAt: string; // ISO
+  price: number;
+  changePct: number;
+  updatedAt: string;
 }
 
-/** Eski daraltılmış kaynak listesi (geriye uyum için). Yeni aggregate'de string. */
 export type NewsSource = string;
 
 export interface NewsItem {
   id: string;
   source: NewsSource;
   symbols: string[];
-  importance: number; // 0-10
+  importance: number;
   title: string;
   summary: string;
-  publishedAt: string; // ISO
+  publishedAt: string;
   url?: string;
 }
 
@@ -37,17 +36,18 @@ export type MacroKey =
   | 'Ons Gümüş'
   | 'Ons Platin'
   | 'VIX'
+  | 'ABD 10Y Faiz'
   | 'CDS 5Y';
 
 export interface MacroIndicator {
   key: MacroKey;
-  label: string; // gösterim adı
+  label: string;
   value: number;
-  changePct?: number; // değişim %
-  unit?: string; // ör. "$", "₺", "%"
+  changePct?: number;
+  unit?: string;
   source: 'live' | 'mock';
-  subLabel?: string; // ör. "TCMB"
-  updatedAt: string; // ISO
+  subLabel?: string;
+  updatedAt: string;
 }
 
 export type MarketEventType = 'cpi' | 'rate-decision' | 'fomc' | 'earnings' | 'data' | 'other';
@@ -57,15 +57,15 @@ export interface MarketEvent {
   title: string;
   type: MarketEventType;
   country: 'TR' | 'US' | 'EU' | 'GLOBAL';
-  date: string; // ISO yyyy-mm-dd
-  importance: number; // 1-3
+  date: string;
+  importance: number;
 }
 
 export interface SentimentMention {
   symbol: string;
   count: number;
   sentiment: Sentiment;
-  lastChange?: number; // son 1 saat değişim
+  lastChange?: number;
 }
 
 export type FundCategory =
@@ -83,13 +83,13 @@ export interface FundPerformance {
   name?: string;
   category: FundCategory;
   tefas: boolean;
-  day: number;       // %
-  week: number;      // %
-  month: number;     // %
-  threeMonth: number; // %
-  sixMonth: number;  // %
-  ytd: number;       // %
-  year: number;      // %
+  day: number;
+  week: number;
+  month: number;
+  threeMonth: number;
+  sixMonth: number;
+  ytd: number;
+  year: number;
   threeYear?: number;
   fiveYear?: number;
 }

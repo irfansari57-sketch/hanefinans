@@ -119,7 +119,7 @@ export const BROKER_PORTFOLIOS: BrokerPortfolio[] = [
     lastUpdate: '2026-05-19',
     riskProfile: 'Agresif',
     holdings: [
-      { symbol: 'KOZAL', weight: 15, thesis: 'Altın yüksek + üretim hedefleri' },
+      { symbol: 'TRALT', weight: 15, thesis: 'Altın yüksek + üretim hedefleri' },
       { symbol: 'AGHOL', weight: 13 },
       { symbol: 'PGSUS', weight: 12 },
       { symbol: 'THYAO', weight: 11 },

@@ -109,7 +109,7 @@ export const BROKER_RECOMMENDATIONS: BrokerRecommendationSet[] = [
     sourceUrl: 'https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep',
     lastUpdate: '2026-05-19',
     recommendations: [
-      { symbol: 'KOZAL', rating: 'AL',       targetPrice: 425, thesis: 'Altın fiyatı yüksek, üretim hedefleri yıl sonu için tutuyor.',          updatedAt: '2026-05-19' },
+      { symbol: 'TRALT', rating: 'AL',       targetPrice: 425, thesis: 'Altın fiyatı yüksek, üretim hedefleri yıl sonu için tutuyor.',          updatedAt: '2026-05-19' },
       { symbol: 'AGHOL', rating: 'AL',       targetPrice: 295, thesis: 'Migros + Mavi büyüme, holding NAV iskonto kapanmaya başlıyor.',          updatedAt: '2026-05-19' },
       { symbol: 'AEFES', rating: 'TUT',      targetPrice: 195, thesis: 'CCI temettü desteği + bira hacim toparlanma; orta vadeli pozitif.',     updatedAt: '2026-05-19' },
     ],

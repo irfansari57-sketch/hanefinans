@@ -232,7 +232,7 @@ export const BIST_ALL: BistStock[] = [
   { symbol: 'IPEKE', name: 'İpek Doğal Enerji', sector: 'Madencilik' },
   { symbol: 'KCAER', name: 'Kocaer Çelik', sector: 'Madencilik' },
   { symbol: 'KOZAA', name: 'Koza Madencilik', sector: 'Madencilik' },
-  { symbol: 'KOZAL', name: 'Koza Altın', sector: 'Madencilik' },
+  { symbol: 'TRALT', name: 'Koza Altın', sector: 'Madencilik' },
   { symbol: 'PARSN', name: 'Parsan Makina', sector: 'Madencilik' },
 
   // ===== İlaç & Sağlık =====

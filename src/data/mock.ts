@@ -65,7 +65,7 @@ export const MOCK_STOCKS: Stock[] = [
   { symbol: 'TCELL', name: 'Turkcell',              sector: 'Telekom',      price: 89.30,  changePct: 0,    updatedAt: minutesAgo(3) },
   { symbol: 'TTKOM', name: 'Türk Telekom',          sector: 'Telekom',      price: 48.20,  changePct: 0,    updatedAt: minutesAgo(4) },
   // Madencilik
-  { symbol: 'KOZAL', name: 'Koza Altın',            sector: 'Madencilik',   price: 28.50,  changePct: 0,    updatedAt: minutesAgo(3) },
+  { symbol: 'TRALT', name: 'Koza Altın',            sector: 'Madencilik',   price: 28.50,  changePct: 0,    updatedAt: minutesAgo(3) },
   { symbol: 'KOZAA', name: 'Koza Madencilik',       sector: 'Madencilik',   price: 17.25,  changePct: 0,    updatedAt: minutesAgo(4) },
   { symbol: 'IPEKE', name: 'İpek Doğal Enerji',     sector: 'Madencilik',   price: 32.80,  changePct: 0,    updatedAt: minutesAgo(5) },
   // İnşaat

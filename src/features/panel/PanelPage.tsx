@@ -62,7 +62,7 @@ export function PanelPage() {
   const [sentiment, setSentiment] = useState<SentimentMention[]>(MOCK_SENTIMENT);
   const [sentimentSource, setSentimentSource] = useState<'live' | 'mock' | 'derived'>('mock');
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
-  const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week'>('day');
+  const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('day');
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -286,31 +286,24 @@ export function PanelPage() {
         <details className="group mb-5" open>
           <summary className="mb-2 flex cursor-pointer items-center justify-between px-1 lg:cursor-default lg:list-none">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-              {fundsPeriod === 'day' ? 'Günlük' : 'Haftalık'} En İyi & En Kötü Fonlar
+              {fundsPeriod === 'day' ? 'Günlük' : fundsPeriod === 'week' ? 'Haftalık' : 'Aylık'} En İyi & En Kötü Fonlar
             </h2>
             <div className="flex items-center gap-2">
               {/* Period toggle */}
               <div className="inline-flex rounded-md border border-border bg-bg-soft p-0.5" onClick={(e) => e.preventDefault()}>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); setFundsPeriod('day'); }}
-                  className={cn(
-                    'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
-                    fundsPeriod === 'day' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                  )}
-                >
-                  Gün
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); setFundsPeriod('week'); }}
-                  className={cn(
-                    'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
-                    fundsPeriod === 'week' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                  )}
-                >
-                  Hafta
-                </button>
+                {(['day', 'week', 'month'] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setFundsPeriod(p); }}
+                    className={cn(
+                      'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
+                      fundsPeriod === p ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                    )}
+                  >
+                    {p === 'day' ? 'Gün' : p === 'week' ? 'Hafta' : 'Ay'}
+                  </button>
+                ))}
               </div>
               <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
               <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>

@@ -63,7 +63,7 @@ export function PanelPage() {
   const [sentiment, setSentiment] = useState<SentimentMention[]>(MOCK_SENTIMENT);
   const [sentimentSource, setSentimentSource] = useState<'live' | 'mock' | 'derived'>('mock');
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
-  const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('week');
   const [stocksPeriod, setStocksPeriod] = useState<'day' | 'week' | 'month'>('week');
   const [stocksReturns, setStocksReturns] = useState<Record<string, { '1h'?: number; '1a'?: number }>>({});
   const [stocksReturnsLoading, setStocksReturnsLoading] = useState(false);
@@ -340,7 +340,7 @@ export function PanelPage() {
             <span className="text-xs text-slate-500 group-open:rotate-180 transition-transform lg:hidden">▼</span>
           </div>
         </summary>
-        <TopMovers stocks={stocksForTopMovers} limit={5} />
+        <TopMovers stocks={stocksForTopMovers} limit={5} period={stocksPeriod} />
       </details>
 
       {/* Top movers — fonlar — sadece canlı feed bağlıyken göster */}

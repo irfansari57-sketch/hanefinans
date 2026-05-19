@@ -4,12 +4,21 @@ import type { Stock } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
+type Period = 'day' | 'week' | 'month';
+
 interface TopMoversProps {
   stocks: Stock[];
   limit?: number;
+  period?: Period;
 }
 
-export function TopMovers({ stocks, limit = 5 }: TopMoversProps) {
+const PERIOD_LABEL: Record<Period, string> = {
+  day: 'Bugün',
+  week: '1 Hafta',
+  month: '1 Ay',
+};
+
+export function TopMovers({ stocks, limit = 5, period = 'day' }: TopMoversProps) {
   // Yahoo veri dönmeyen hisseler (price=0 veya changePct=0 yani mock fallback) elensin —
   // sadece gerçekten hareket eden hisseleri göster
   const sorted = stocks
@@ -20,19 +29,21 @@ export function TopMovers({ stocks, limit = 5 }: TopMoversProps) {
 
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <MoverList title="En Çok Yükselenler" icon={TrendingUp} stocks={top} tone="success" />
-      <MoverList title="En Çok Düşenler" icon={TrendingDown} stocks={bottom} tone="danger" />
+      <MoverList title="En Çok Yükselenler" subtitle={PERIOD_LABEL[period]} icon={TrendingUp} stocks={top} tone="success" />
+      <MoverList title="En Çok Düşenler" subtitle={PERIOD_LABEL[period]} icon={TrendingDown} stocks={bottom} tone="danger" />
     </div>
   );
 }
 
 function MoverList({
   title,
+  subtitle,
   icon: Icon,
   stocks,
   tone,
 }: {
   title: string;
+  subtitle: string;
   icon: typeof TrendingUp;
   stocks: Stock[];
   tone: 'success' | 'danger';
@@ -50,7 +61,7 @@ function MoverList({
           </span>
           {title}
         </h3>
-        <span className="text-[10px] text-slate-500">{stocks.length} adet</span>
+        <span className="text-[10px] text-slate-500">{subtitle}</span>
       </div>
       <div className="divide-y divide-border">
         {stocks.map((s, i) => {

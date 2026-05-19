@@ -53,7 +53,7 @@ export const BROKER_RECOMMENDATIONS: BrokerRecommendationSet[] = [
     recommendations: [
       { symbol: 'THYAO', rating: 'AL',         targetPrice: 320, thesis: 'Trafik toparlanma + güçlü yaz sezonu, ücret marjı korunuyor.',          updatedAt: '2026-05-19' },
       { symbol: 'AKBNK', rating: 'AL',         targetPrice: 78,  thesis: 'Net faiz marjı genişliyor, swap düzeltmeleri sonrası kâr trendi pozitif.', updatedAt: '2026-05-19' },
-      { symbol: 'ASELS', rating: 'GÜÇLÜ AL',   targetPrice: 175, thesis: 'Yeni savunma ihaleleri + ihracat artışı 2026 boyunca güçlü gelir desteği.', updatedAt: '2026-05-19' },
+      { symbol: 'ASELS', rating: 'GÜÇLÜ AL',   targetPrice: 450, thesis: 'Yeni savunma ihaleleri + ihracat artışı 2026 boyunca güçlü gelir desteği.', updatedAt: '2026-05-19' },
       { symbol: 'EREGL', rating: 'BIRIKIM YAP', targetPrice: 65,  thesis: 'Çelik fiyatlarında dip arama; yıl sonuna doğru toparlanma bekleniyor.',     updatedAt: '2026-05-19' },
       { symbol: 'KCHOL', rating: 'AL',         targetPrice: 245, thesis: 'Çeşitli portföy + Tüpraş güçlü, holding iskontosu cazip seviyelerde.',     updatedAt: '2026-05-19' },
     ],

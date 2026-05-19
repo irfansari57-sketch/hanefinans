@@ -1,0 +1,58 @@
+name: Aracı Kurum Hisse Önerileri
+# Osmanlı + KT Yatırım PDF bültenlerini Claude Haiku ile parse eder,
+# çıkan hisse önerilerini data/broker-recommendations.json'a yazar.
+
+on:
+  schedule:
+    # Hafta içi sabah (09:45 TR) + akşam (16:30 TR) — bültenler genelde sabah,
+    # bazen gün ortası güncellenir.
+    - cron: '45 6 * * 1-5'
+    - cron: '30 13 * * 1-5'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/scrape_broker_recommendations.py'
+      - 'scripts/requirements.txt'
+      - '.github/workflows/scrape-broker-recommendations.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Scrape broker recommendations
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -u scripts/scrape_broker_recommendations.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/broker-recommendations.json
+          if git diff --staged --quiet; then
+            echo "Öneri verisinde değişiklik yok, commit atlanıyor"
+          else
+            git commit -m "data: aracı kurum önerileri otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
+            # Race condition koruması — paralel commit varsa rebase + retry
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && { echo "✅ Push (deneme $i)"; break; }
+              echo "⏳ Deneme $i başarısız, 5sn sonra tekrar"
+              sleep 5
+            done
+          fi

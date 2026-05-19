@@ -1,0 +1,11 @@
+{
+  "fetchedAt": "1970-01-01T00:00:00Z",
+  "model": "claude-haiku-4-5-20251001",
+  "brokers": [],
+  "summary": {
+    "total_brokers": 0,
+    "successful": 0,
+    "total_recommendations": 0
+  },
+  "note": "İlk scrape henüz çalışmadı. GitHub Actions her sabah 09:45 TR'de Osmanlı + KT Yatırım bültenlerini Claude AI ile parse edip dolduracak."
+}

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, FileText, Briefcase, ChevronRight } from 'lucide-react';
+import { ExternalLink, FileText, Briefcase, ChevronRight, Sparkles } from 'lucide-react';
 import { BROKER_RECOMMENDATIONS, ratingTone, type BrokerRecommendationSet } from '@/data/brokerRecommendations';
+import { fetchBrokerRecsFeed, mergeWithStatic } from '@/data/api/brokerRecommendationsFeed';
 import { cn } from '@/lib/utils';
 
 /**
@@ -12,10 +13,21 @@ import { cn } from '@/lib/utils';
 
 export function BrokerRecommendations() {
   const [activeBroker, setActiveBroker] = useState<string>('all');
+  const [merged, setMerged] = useState<BrokerRecommendationSet[]>(BROKER_RECOMMENDATIONS);
+  const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBrokerRecsFeed().then((feed) => {
+      if (feed) {
+        setMerged(mergeWithStatic(BROKER_RECOMMENDATIONS, feed));
+        setFeedUpdatedAt(feed.fetchedAt);
+      }
+    });
+  }, []);
 
   const filtered = activeBroker === 'all'
-    ? BROKER_RECOMMENDATIONS
-    : BROKER_RECOMMENDATIONS.filter((b) => b.brokerId === activeBroker);
+    ? merged
+    : merged.filter((b) => b.brokerId === activeBroker);
 
   return (
     <section className="mb-8">
@@ -23,9 +35,17 @@ export function BrokerRecommendations() {
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold text-slate-100">
             <Briefcase size={18} className="text-accent" /> Aracı Kurum Hisse Önerileri
+            {feedUpdatedAt && feedUpdatedAt !== '1970-01-01T00:00:00Z' && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                <Sparkles size={10} /> Claude AI · canlı
+              </span>
+            )}
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
             Türkiye'nin önde gelen aracı kurumlarının güncel hisse listesi. Sembole tıklayarak detay ve grafiğe ulaş.
+            {feedUpdatedAt && feedUpdatedAt !== '1970-01-01T00:00:00Z' && (
+              <> · <span className="text-accent">Son güncelleme: {new Date(feedUpdatedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></>
+            )}
           </p>
         </div>
       </div>

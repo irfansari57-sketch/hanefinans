@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
-import { useAuth, isPro } from '@/store/auth';
+import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { NewsCard } from '@/components/domain/NewsCard';
 import { MacroCard } from '@/components/domain/MacroCard';
 import { StockRow } from '@/components/domain/StockRow';
@@ -206,15 +206,6 @@ export function PanelPage() {
 
       {/* Reklam banner — PRO/ELITE'de gizli */}
       {!proUser && <AdBanner className="mb-5" />}
-
-      {/* Status banner */}
-      <div className="mb-5 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">
-        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warning" />
-        <p className="text-xs leading-relaxed text-slate-300">
-          <span className="font-semibold text-warning">Otomatik yenileme aktif:</span> Hisseler 60 saniyede bir Yahoo
-          Finance üzerinden taze çekilir; değişen fiyatlar yeşil/kırmızı parlar.
-        </p>
-      </div>
 
       {/* BIST endeksleri — birinci öncelik */}
       <section className="mb-5">

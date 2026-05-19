@@ -340,14 +340,6 @@ export function FundsPage() {
         </div>
       )}
 
-      <div className="mb-4 flex items-start gap-3 rounded-xl border border-border bg-bg-soft p-3 text-xs leading-relaxed text-slate-400">
-        <Info size={14} className="mt-0.5 shrink-0 text-accent" />
-        <span>
-          Performans verileri GitHub Actions üzerinden saatlik olarak TEFAS'tan çekilir. Canlı NAV/getiri için her fon kartında{' '}
-          <strong className="text-accent">TEFAS</strong> ve <strong className="text-accent">Fintables</strong> linkleri
-          ile resmi sayfaya tek tıkla ulaşabilirsin.
-        </span>
-      </div>
 
       {sorted.length === 0 ? (
         <EmptyState

@@ -344,21 +344,22 @@ export function SettingsPage() {
           </button>
         </div>
 
+        {/* Admin: sistem versiyonu + altyapı bilgisi (kullanıcı için gereksiz) */}
+        {admin && (
         <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
           <div className="flex items-start gap-3">
             <div className="grid h-8 w-8 place-items-center rounded-lg bg-bg-card text-accent">
               <Info size={14} />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Hane Finans</h3>
+              <h3 className="text-sm font-semibold">Hane Finans <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span></h3>
               <p className="mt-1 text-xs text-slate-500">
-                Sürüm 0.1 • Veriler yerel (IndexedDB). Dev proxy ile TCMB ve Telegram backendi olmadan çalışıyor.
-                Hafta 2'de gerçek backend (Supabase Edge Functions veya başka) takılınca, frontend kodu değişmeden
-                canlıya geçecek.
+                Sürüm 0.1 • Cloud auth (Cloudflare D1) + GitHub Actions TEFAS feed + Pages Functions backend.
               </p>
             </div>
           </div>
         </div>
+        )}
       </div>
 
       <ConfirmDialog

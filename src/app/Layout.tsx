@@ -40,6 +40,7 @@ import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
 import { BrandingBlock } from '@/components/domain/BrandingBlock';
+import { LiveDataBanner } from '@/components/domain/LiveDataBanner';
 import { CookieConsent } from '@/components/domain/CookieConsent';
 import { OnboardingTour } from '@/components/domain/OnboardingTour';
 import { PwaInstallBanner } from '@/components/domain/PwaInstallBanner';
@@ -200,6 +201,11 @@ export function Layout() {
               </div>
             </div>
           ))}
+
+          {/* Canlı veri kaynakları — sidebar'ın en başında, kullanıcı bir kez görsün */}
+          <div className="pt-3">
+            <LiveDataBanner />
+          </div>
 
           {/* Hane Mod Studio görseli + 3D parlama başlık + © — sidebar branding (YouTube'un ÜSTÜNDE) */}
           <div className="pt-3">
@@ -393,8 +399,11 @@ export function Layout() {
         </main>
 
         {/* Mobil branding + reklam + disclaimer — desktop sidebar ile aynı sıra:
-            BRANDING → YouTube → YTD/KVKK → Sponsor */}
+            CANLI VERİ → BRANDING → YouTube → YTD/KVKK → Sponsor */}
         <div className="md:hidden mx-auto w-full max-w-7xl border-t border-border px-3 pt-4 pb-2 space-y-3">
+          {/* 0. Canlı veri kaynakları */}
+          <LiveDataBanner />
+
           {/* 1. Branding (görsel + 3D parlama başlık) — herkese */}
           <BrandingBlock />
 

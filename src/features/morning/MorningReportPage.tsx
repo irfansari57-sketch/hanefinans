@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import { formatMoney, formatCompact } from '@/lib/format';
 import { SymbolBadge } from '@/components/domain/SymbolBadge';
 import { AnalystCommentary } from '@/components/domain/AnalystCommentary';
+import { Link } from 'react-router-dom';
+import { macroKeyToRoute } from '@/lib/macroRoutes';
 
 const STORAGE_LAST_SENT = 'fa.morning.lastSent';
 
@@ -527,11 +529,21 @@ function MultiTimeframeCard({ r }: { r: MultiTimeframeResult }) {
     : r.bigPlayerLean === 'satıcı' ? 'border-danger/40 bg-danger/10 text-danger'
     : 'border-slate-500/40 bg-slate-500/10 text-slate-300';
 
+  // VIOP 30 macroKey'i BIST 30 → /stock/XU030; diğerleri direkt eşleşir
+  const routeKey = r.symbol === 'VIOP 30' ? 'BIST 30' : r.symbol;
+  const route = macroKeyToRoute(routeKey);
+
   return (
-    <div className="rounded-lg border border-border bg-bg-card p-4">
-      {/* Üst — sembol + fiyat */}
+    <div className="group rounded-lg border border-border bg-bg-card p-4 transition hover:border-accent/40">
+      {/* Üst — sembol + fiyat (sembol tıklanabilir, varsa detay sayfasına gider) */}
       <div className="flex items-baseline justify-between gap-3">
-        <h4 className="text-base font-bold text-slate-100">{r.label}</h4>
+        {route ? (
+          <Link to={route} className="text-base font-bold text-slate-100 hover:text-accent">
+            {r.label} <span className="text-[10px] text-slate-500 group-hover:text-accent">↗</span>
+          </Link>
+        ) : (
+          <h4 className="text-base font-bold text-slate-100">{r.label}</h4>
+        )}
         <div className="text-right">
           <div className="text-xl font-bold tabular-nums text-slate-100">
             {r.price.toLocaleString('tr-TR', { maximumFractionDigits: r.price < 100 ? 2 : 0 })}

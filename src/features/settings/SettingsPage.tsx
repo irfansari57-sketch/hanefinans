@@ -118,10 +118,12 @@ export function SettingsPage() {
       <PageHeader title="Ayarlar" subtitle="API anahtarları, agent durumu, veritabanı ve uygulama bilgileri." />
 
       <div className="grid gap-3 lg:grid-cols-2">
-        {/* API connections */}
+        {/* API connections — admin only */}
+        {admin && (
         <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
             <KeyRound size={14} /> API Bağlantıları
+            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
           </h2>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {API_STATUS.filter((s) => !s.optional).map((s) => (
@@ -139,6 +141,7 @@ export function SettingsPage() {
             </details>
           )}
         </div>
+        )}
 
         {/* Telegram bildirimleri */}
         <TelegramSection />
@@ -206,10 +209,12 @@ export function SettingsPage() {
           </div>
         )}
 
-        {/* Politika Faizi manuel override */}
+        {/* Politika Faizi manuel override — admin only */}
+        {admin && (
         <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
             <Percent size={14} /> Politika Faizi (Manuel)
+            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
           </h2>
           <p className="text-xs text-slate-500">
             TCMB EVDS canlı çekemediğimiz için bu değeri elle giriyorsun. Politika faizi nadiren değişir,
@@ -234,14 +239,17 @@ export function SettingsPage() {
             )}
           </div>
         </div>
+        )}
 
-        {/* Telegram test */}
+        {/* Admin: Telegram Test (admin-bound, env chat_id) */}
+        {admin && (
         <div className="rounded-xl border border-border bg-bg-soft p-4">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Send size={14} /> Telegram Test
+            <Send size={14} /> Telegram Test (Admin Botu)
+            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
           </h2>
           <p className="text-xs text-slate-500">
-            Bot ile yapılandırma doğru mu? Aşağıya bas, sana mesaj atsın.
+            Admin bot bağlantısı doğru mu? Aşağıya bas, sana mesaj atsın.
           </p>
           <div className="mt-3 flex items-center gap-2">
             <button
@@ -266,11 +274,14 @@ export function SettingsPage() {
             <p className="mt-2 text-[11px] text-warning">VITE_TELEGRAM_CHAT_ID eksik.</p>
           )}
         </div>
+        )}
 
-        {/* Agents */}
+        {/* Agents — admin only */}
+        {admin && (
         <div className="rounded-xl border border-border bg-bg-soft p-4">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
             <Cpu size={14} /> Agent Durumu
+            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
           </h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {agents.map((a) => {
@@ -291,6 +302,7 @@ export function SettingsPage() {
             })}
           </div>
         </div>
+        )}
 
         {/* Database stats */}
         <div className="rounded-xl border border-border bg-bg-soft p-4">

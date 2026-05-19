@@ -61,8 +61,11 @@ export function ForexPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return quotes;
-    return quotes.filter((f) =>
+    // Yahoo bazı paritelere veri vermiyor (CNY/TRY, RUB/TRY, SAR/TRY, NOK/TRY, SEK/TRY, DKK/TRY).
+    // Loading sırasında hepsini göster; loading bittikten sonra sadece değer dönen kurları göster.
+    const withData = quotes.filter((f) => f.loading || (f.value != null && Number.isFinite(f.value)));
+    if (!q) return withData;
+    return withData.filter((f) =>
       `${f.symbol} ${f.label} ${f.name}`.toLowerCase().includes(q),
     );
   }, [quotes, search]);

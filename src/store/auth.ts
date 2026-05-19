@@ -1,15 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { db } from '@/data/db';
-import type { UserAccount, UserTier } from '@/data/db';
+import type { UserTier } from '@/data/db';
 
 /**
- * MOCK AUTH — sadece UI/UX iskeleti. Gerçek güvenlik için Supabase Auth / Firebase'e
- * geçilmelidir. Şu an şifre basit hash'le (SHA-256 over salted email+pw) saklanır;
- * client-side olduğu için brute-force'a açık ve plain-text trafik vardır.
+ * Cloud auth — Cloudflare D1 + Pages Functions + JWT HttpOnly cookie.
+ *
+ * Kullanıcı verisi server-side D1'de tutulur; tüm tarayıcılar/cihazlar
+ * aynı merkezi tabloyu görür. Admin paneli tüm kullanıcıları listeleyebilir.
+ *
+ * Session: JWT HttpOnly cookie (fa_session) — JS'ten okunamaz, XSS güvenli.
+ * Frontend sadece public user info'yu localStorage'a cache eder (snappy UI).
+ *
+ * Mount'ta `refresh()` çağrılır — cookie geçerli mi diye server'a sorar.
  */
 
-interface SessionUser {
+export interface SessionUser {
   id: number;
   email: string;
   name?: string;
@@ -17,50 +22,50 @@ interface SessionUser {
   tierExpiresAt?: number;
   avatarColor: string;
   emailVerified: boolean;
+  emailVerifiedAt?: number;
+  createdAt: number;
+  lastLoginAt?: number;
 }
 
 interface AuthState {
   user: SessionUser | null;
   loading: boolean;
-  /** Form ve hatalar için son durum mesajı */
   lastError: string | null;
   signup: (input: { email: string; password: string; name?: string }) => Promise<{ ok: boolean; error?: string }>;
   login: (input: { email: string; password: string }) => Promise<{ ok: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   upgradeTier: (tier: UserTier, durationMonths?: number) => Promise<void>;
   markEmailVerified: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
-async function hash(text: string): Promise<string> {
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function randomColor(seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
-  const hue = Math.abs(h) % 360;
-  return `hsl(${hue}, 65%, 55%)`;
-}
-
 const ADMIN_EMAILS_LC = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
 
-function toSession(u: UserAccount): SessionUser {
-  // Admin email'leri otomatik doğrulanmış sayılır
-  const isAdminEmail = ADMIN_EMAILS_LC.includes(u.email.toLowerCase());
-  return {
-    id: u.id!,
-    email: u.email,
-    name: u.name,
-    tier: u.tier,
-    tierExpiresAt: u.tierExpiresAt,
-    avatarColor: u.avatarColor ?? randomColor(u.email),
-    emailVerified: isAdminEmail || u.emailVerified === 1,
-  };
+async function apiPost<T>(path: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    const r = await fetch(path, {
+      method: 'POST',
+      credentials: 'same-origin', // cookie gönderilsin
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json() as T & { ok: boolean; error?: string };
+    if (!j.ok) return { ok: false, error: j.error ?? `HTTP ${r.status}` };
+    return { ok: true, data: j };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+async function apiGet<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    const r = await fetch(path, { credentials: 'same-origin' });
+    const j = await r.json() as T & { ok: boolean; error?: string };
+    if (!j.ok) return { ok: false, error: j.error ?? `HTTP ${r.status}` };
+    return { ok: true, data: j };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }
 
 export const useAuth = create<AuthState>()(
@@ -72,78 +77,30 @@ export const useAuth = create<AuthState>()(
 
       signup: async ({ email, password, name }) => {
         set({ loading: true, lastError: null });
-        try {
-          const normalizedEmail = email.trim().toLowerCase();
-          if (!normalizedEmail.includes('@')) {
-            const err = 'Geçerli bir e-posta gir';
-            set({ lastError: err, loading: false });
-            return { ok: false, error: err };
-          }
-          if (password.length < 6) {
-            const err = 'Şifre en az 6 karakter olmalı';
-            set({ lastError: err, loading: false });
-            return { ok: false, error: err };
-          }
-          const existing = await db.users.where('email').equals(normalizedEmail).first();
-          if (existing) {
-            const err = 'Bu e-posta zaten kayıtlı. Giriş yap.';
-            set({ lastError: err, loading: false });
-            return { ok: false, error: err };
-          }
-          const passwordHash = await hash(`${normalizedEmail}::${password}::hane-finans`);
-          const now = Date.now();
-          // Admin email'leri otomatik doğrulanmış; diğerleri email doğrulamasını bekler
-          const isAdminEmail = ADMIN_EMAILS_LC.includes(normalizedEmail);
-          const id = await db.users.add({
-            email: normalizedEmail,
-            name: name?.trim() || undefined,
-            passwordHash,
-            tier: 'free',
-            createdAt: now,
-            lastLoginAt: now,
-            avatarColor: randomColor(normalizedEmail),
-            emailVerified: isAdminEmail ? 1 : 0,
-            emailVerifiedAt: isAdminEmail ? now : undefined,
-          });
-          const account = await db.users.get(id);
-          if (!account) throw new Error('Kayıt sonrası okuma başarısız');
-          set({ user: toSession(account), loading: false });
-          return { ok: true };
-        } catch (e) {
-          const err = (e as Error).message;
-          set({ lastError: err, loading: false });
-          return { ok: false, error: err };
+        const r = await apiPost<{ user: SessionUser }>('/api/auth/signup', { email, password, name });
+        set({ loading: false });
+        if (!r.ok) {
+          set({ lastError: r.error });
+          return { ok: false, error: r.error };
         }
+        set({ user: r.data.user });
+        return { ok: true };
       },
 
       login: async ({ email, password }) => {
         set({ loading: true, lastError: null });
-        try {
-          const normalizedEmail = email.trim().toLowerCase();
-          const account = await db.users.where('email').equals(normalizedEmail).first();
-          if (!account) {
-            const err = 'Bu e-posta ile kayıt yok';
-            set({ lastError: err, loading: false });
-            return { ok: false, error: err };
-          }
-          const passwordHash = await hash(`${normalizedEmail}::${password}::hane-finans`);
-          if (passwordHash !== account.passwordHash) {
-            const err = 'Şifre yanlış';
-            set({ lastError: err, loading: false });
-            return { ok: false, error: err };
-          }
-          await db.users.update(account.id!, { lastLoginAt: Date.now() });
-          const refreshed = await db.users.get(account.id!);
-          set({ user: toSession(refreshed!), loading: false });
-          return { ok: true };
-        } catch (e) {
-          const err = (e as Error).message;
-          set({ lastError: err, loading: false });
-          return { ok: false, error: err };
+        const r = await apiPost<{ user: SessionUser }>('/api/auth/login', { email, password });
+        set({ loading: false });
+        if (!r.ok) {
+          set({ lastError: r.error });
+          return { ok: false, error: r.error };
         }
+        set({ user: r.data.user });
+        return { ok: true };
       },
 
-      logout: () => {
+      logout: async () => {
+        await apiPost('/api/auth/logout', {}).catch(() => null);
         set({ user: null, lastError: null });
       },
 
@@ -156,30 +113,37 @@ export const useAuth = create<AuthState>()(
           set({ lastError: 'Ödeme altyapısı çok yakında devreye giriyor. PRO/ELITE üyelik geçişi şu an devre dışı.' });
           return;
         }
-        const expires = Date.now() + durationMonths * 30 * 24 * 3600 * 1000;
-        await db.users.update(u.id, { tier, tierExpiresAt: tier === 'free' ? undefined : expires });
-        const updated = await db.users.get(u.id);
-        if (updated) set({ user: toSession(updated) });
+        const expires = tier === 'free' ? null : Date.now() + durationMonths * 30 * 24 * 3600 * 1000;
+        const r = await apiPost<{ user: SessionUser }>('/api/auth/update-user', {
+          userId: u.id,
+          tier,
+          tierExpiresAt: expires,
+        });
+        if (r.ok) set({ user: r.data.user });
+        else set({ lastError: r.error });
       },
 
       markEmailVerified: async () => {
         const u = get().user;
         if (!u) return;
-        const now = Date.now();
-        await db.users.update(u.id, { emailVerified: 1, emailVerifiedAt: now });
-        const updated = await db.users.get(u.id);
-        if (updated) set({ user: toSession(updated) });
+        const r = await apiPost<{ user: SessionUser }>('/api/auth/update-user', {
+          userId: u.id,
+          emailVerified: true,
+        });
+        if (r.ok) set({ user: r.data.user });
       },
 
       refresh: async () => {
-        const u = get().user;
-        if (!u) return;
-        const fresh = await db.users.get(u.id);
-        if (fresh) set({ user: toSession(fresh) });
+        const r = await apiGet<{ user: SessionUser | null }>('/api/auth/me');
+        if (r.ok) {
+          set({ user: r.data.user });
+        } else {
+          // Network hatası — mevcut cache'lenmiş user'a dokunma
+        }
       },
     }),
     {
-      name: 'fa.auth.session.v1',
+      name: 'fa.auth.session.v2', // v1 mock auth idi — temizleyen yeni key
       partialize: (s) => ({ user: s.user }),
     },
   ),

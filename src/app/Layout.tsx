@@ -124,12 +124,20 @@ export function Layout() {
 
   // Bir kerelik temizlik — email doğrulama feature'ı pasif edildi; eski
   // kullanıcıların localStorage'ında kalan banner/token anahtarlarını sil.
+  // Plus: eski v1 mock-auth localStorage temizlenir (cloud auth'a geçildi)
   useEffect(() => {
     try {
       localStorage.removeItem('fa.auth.verifyToken');
       localStorage.removeItem('fa.auth.emailVerifyBannerSnooze');
+      localStorage.removeItem('fa.auth.session.v1');
     } catch { /* ignore */ }
   }, []);
+
+  // Cloud auth: cookie geçerli mi? Sayfa açılışta server'a sor + state'i sync et
+  const authRefresh = useAuth((s) => s.refresh);
+  useEffect(() => {
+    authRefresh();
+  }, [authRefresh]);
 
   useEffect(() => {
     activityRepo.log({ type: 'page-view', detail: location.pathname }).catch(() => {});

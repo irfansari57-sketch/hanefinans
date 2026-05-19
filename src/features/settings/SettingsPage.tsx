@@ -422,17 +422,49 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
+interface AdminUser {
+  id: number;
+  email: string;
+  name?: string;
+  tier: 'free' | 'pro' | 'elite';
+  tierExpiresAt?: number;
+  emailVerified: boolean;
+  emailVerifiedAt?: number;
+  avatarColor: string;
+  createdAt: number;
+  lastLoginAt?: number;
+}
+
 function UserAdminSection() {
-  const users = useLiveQuery(
-    () => db.users.orderBy('createdAt').reverse().toArray(),
-    [],
-  ) ?? [];
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState<number | null>(null);
 
   const adminEmailsLc = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
-  const isVerified = (u: { email: string; emailVerified?: 0 | 1 }) =>
-    u.emailVerified === 1 || adminEmailsLc.includes(u.email.toLowerCase());
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const r = await fetch('/api/auth/users', { credentials: 'same-origin' });
+      const j = await r.json() as { ok: boolean; users?: AdminUser[]; error?: string };
+      if (!j.ok || !j.users) {
+        setFetchError(j.error ?? 'Kullanıcılar alınamadı (D1 binding yapılandırıldı mı?)');
+        return;
+      }
+      setUsers(j.users);
+    } catch (e) {
+      setFetchError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const stats = {
     total: users.length,
@@ -440,7 +472,7 @@ function UserAdminSection() {
     pro: users.filter((u) => u.tier === 'pro' && (!u.tierExpiresAt || u.tierExpiresAt > Date.now())).length,
     elite: users.filter((u) => u.tier === 'elite' && (!u.tierExpiresAt || u.tierExpiresAt > Date.now())).length,
     expired: users.filter((u) => u.tier !== 'free' && u.tierExpiresAt != null && u.tierExpiresAt < Date.now()).length,
-    unverified: users.filter((u) => !isVerified(u)).length,
+    unverified: users.filter((u) => !u.emailVerified).length,
   };
 
   const filtered = users.filter((u) => {
@@ -449,44 +481,57 @@ function UserAdminSection() {
     return u.email.toLowerCase().includes(q) || (u.name?.toLowerCase() ?? '').includes(q);
   });
 
-  const setTier = async (userId: number, tier: 'free' | 'pro' | 'elite', durationMonths = 1) => {
+  const updateUser = async (userId: number, patch: { tier?: string; tierExpiresAt?: number | null; emailVerified?: boolean }, successMsg: string) => {
     setBusy(userId);
     try {
-      const expires = tier === 'free' ? undefined : Date.now() + durationMonths * 30 * 24 * 3600 * 1000;
-      await db.users.update(userId, { tier, tierExpiresAt: expires });
-      toast.success(`Tier güncellendi → ${tier.toUpperCase()}`);
+      const r = await fetch('/api/auth/update-user', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...patch }),
+      });
+      const j = await r.json() as { ok: boolean; user?: AdminUser; error?: string };
+      if (!j.ok) {
+        toast.error('Güncelleme hatası', j.error);
+        return;
+      }
+      setUsers((prev) => prev.map((u) => u.id === userId && j.user ? j.user : u));
+      toast.success(successMsg);
     } finally {
       setBusy(null);
     }
   };
 
-  const extend = async (userId: number, currentExpiresAt: number | undefined, months: number) => {
-    setBusy(userId);
-    try {
-      const base = currentExpiresAt && currentExpiresAt > Date.now() ? currentExpiresAt : Date.now();
-      const newExpires = base + months * 30 * 24 * 3600 * 1000;
-      await db.users.update(userId, { tierExpiresAt: newExpires });
-      toast.success(`Süre ${months} ay uzatıldı`);
-    } finally {
-      setBusy(null);
-    }
+  const setTier = (userId: number, tier: 'free' | 'pro' | 'elite', durationMonths = 1) => {
+    const expires = tier === 'free' ? null : Date.now() + durationMonths * 30 * 24 * 3600 * 1000;
+    return updateUser(userId, { tier, tierExpiresAt: expires }, `Tier güncellendi → ${tier.toUpperCase()}`);
   };
 
-  const manualVerify = async (userId: number) => {
-    setBusy(userId);
-    try {
-      await db.users.update(userId, { emailVerified: 1, emailVerifiedAt: Date.now() });
-      toast.success('Hesap manuel doğrulandı');
-    } finally {
-      setBusy(null);
-    }
+  const extend = (userId: number, currentExpiresAt: number | undefined, months: number) => {
+    const base = currentExpiresAt && currentExpiresAt > Date.now() ? currentExpiresAt : Date.now();
+    const newExpires = base + months * 30 * 24 * 3600 * 1000;
+    return updateUser(userId, { tierExpiresAt: newExpires }, `Süre ${months} ay uzatıldı`);
   };
+
+  const manualVerify = (userId: number) =>
+    updateUser(userId, { emailVerified: true }, 'Hesap manuel doğrulandı');
 
   const remove = async (userId: number, email: string) => {
     if (!window.confirm(`${email} hesabını silmek istediğinden emin misin? Geri alınamaz.`)) return;
     setBusy(userId);
     try {
-      await db.users.delete(userId);
+      const r = await fetch('/api/auth/delete-user', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const j = await r.json() as { ok: boolean; error?: string };
+      if (!j.ok) {
+        toast.error('Silme hatası', j.error);
+        return;
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
       toast.success('Hesap silindi');
     } finally {
       setBusy(null);
@@ -498,10 +543,22 @@ function UserAdminSection() {
       <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
         <Crown size={14} /> Üye Yönetimi
         <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Admin</span>
+        <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-success">
+          <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> CLOUD
+        </span>
       </h2>
       <p className="text-xs text-slate-400">
-        Kayıtlı kullanıcıları gör, tier'larını yönet, süreyi uzat veya hesabı sil. Şu an mock auth (IndexedDB local).
+        Cloudflare D1 üzerinden tüm kullanıcılar — tüm cihazlardan kayıt olanlar burada görünür.
       </p>
+      {fetchError && (
+        <div className="mt-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+          ⚠ {fetchError}
+          <button onClick={fetchUsers} className="ml-2 underline">Tekrar dene</button>
+        </div>
+      )}
+      {loading && !fetchError && (
+        <div className="mt-2 text-xs text-slate-500">Yükleniyor…</div>
+      )}
 
       {/* Stats */}
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6">
@@ -553,7 +610,7 @@ function UserAdminSection() {
                       {isAdminUser && (
                         <span className="inline-block rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">Admin</span>
                       )}
-                      {isVerified(u) ? (
+                      {u.emailVerified ? (
                         <span className="inline-block rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-success" title={u.emailVerifiedAt ? new Date(u.emailVerifiedAt).toLocaleString('tr-TR') : 'Admin otomatik'}>
                           ✓ Doğrulandı
                         </span>
@@ -614,7 +671,7 @@ function UserAdminSection() {
                       >
                         +1y
                       </button>
-                      {!isVerified(u) && (
+                      {!u.emailVerified && (
                         <button
                           onClick={() => u.id != null && manualVerify(u.id)}
                           disabled={busy === u.id}

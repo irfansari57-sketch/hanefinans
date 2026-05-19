@@ -180,6 +180,121 @@ def fetch_osmanli() -> dict:
     return result
 
 
+def fetch_isyatirim() -> dict:
+    """
+    İş Yatırım — is-yatirimin-onerileri.aspx sayfasında 'encokoneri' tablosunu
+    server-rendered HTML'den parse eder. Tek sayfada hem öneriler hem model
+    portföy ağırlıkları geliyor.
+
+    Tablo kolonları:
+      0: Hisse (link içinde sembol)
+      1: Öneri Tarihi (DD.MM.YYYY)
+      2: Kapanış (TL)
+      3: Hedef Fiyat (TL)
+      4: Potansiyel (%)
+      5-7: Getiriler
+      8-9: Hacim
+      10: Ağırlık (%) → model portföy
+    """
+    url = "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx"
+    result = {
+        "brokerId": "is-yatirim",
+        "brokerName": "İş Yatırım",
+        "initials": "İY",
+        "colorSeed": "#0ea5e9",
+        "sourceUrl": url,
+        "lastUpdate": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "recommendations": [],
+        "portfolio": [],
+        "ok": False,
+    }
+    print(f"İş Yatırım scrape başlıyor...")
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        html = r.text
+
+        # encokoneri tablosunu bul + tbody içeriğini al
+        m = re.search(r'data-csvname="encokoneri"[^>]*>.*?<tbody>(.*?)</tbody>', html, re.DOTALL)
+        if not m:
+            result["error"] = "encokoneri tablosu bulunamadı"
+            print(f"  ✗ Tablo bulunamadı")
+            return result
+
+        tbody = m.group(1)
+        rows = re.findall(r'<tr>(.*?)</tr>', tbody, re.DOTALL)
+        print(f"  ✓ {len(rows)} satır bulundu")
+
+        for row in rows:
+            cells = re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL)
+            if len(cells) < 11:
+                continue
+            # Sembol kodu — <a>SYMBOL</a> içinden
+            sym_match = re.search(r'>\s*([A-Z]{3,6})\s*</a>', cells[0])
+            if not sym_match:
+                continue
+            symbol = sym_match.group(1).strip()
+
+            # Tarih
+            date_str = cells[1].strip()  # 14.04.2026
+            try:
+                d, mo, y = date_str.split('.')
+                iso_date = f"{y}-{mo}-{d}"
+            except Exception:
+                iso_date = result["lastUpdate"]
+
+            # Float parse helper (TR format: 1.234,56)
+            def parse_tr_float(s: str) -> float | None:
+                s = re.sub(r'<[^>]+>', '', s).strip()
+                if not s or s == '-':
+                    return None
+                s = s.replace('.', '').replace(',', '.')
+                try:
+                    return float(s)
+                except ValueError:
+                    return None
+
+            close_tl = parse_tr_float(cells[2])
+            target_tl = parse_tr_float(cells[3])
+            potential = parse_tr_float(cells[4])
+            weight = parse_tr_float(cells[10])
+
+            # Recommendation: AL (encokoneri tablosu zaten "en çok önerilen" demek)
+            rating = "AL"
+            if potential is not None and potential >= 30:
+                rating = "GÜÇLÜ AL"
+
+            thesis = ''
+            if target_tl and close_tl and potential:
+                thesis = f"Mevcut {close_tl:.2f}₺ → hedef {target_tl:.2f}₺ (%{potential:.0f} potansiyel)"
+
+            result["recommendations"].append({
+                "symbol": symbol,
+                "rating": rating,
+                "targetPrice": target_tl,
+                "stopLoss": None,
+                "thesis": thesis,
+                "updatedAt": iso_date,
+            })
+
+            if weight and weight > 0:
+                result["portfolio"].append({
+                    "symbol": symbol,
+                    "weight": weight,
+                })
+
+        # Önerileri potansiyel sırasına göre top 8
+        result["recommendations"].sort(key=lambda x: x.get("targetPrice") or 0, reverse=True)
+        result["recommendations"] = result["recommendations"][:8]
+
+        result["ok"] = len(result["recommendations"]) > 0
+        print(f"  ✓ {len(result['recommendations'])} öneri, {len(result['portfolio'])} portföy hissesi")
+    except Exception as e:
+        print(f"  ✗ Hata: {type(e).__name__}: {e}")
+        result["error"] = str(e)
+    return result
+
+
 def fetch_kt() -> dict:
     """KT Yatırım — listing'den en yeni gunluk-bulten PDF'i bul."""
     base = "https://kuveytturkyatirim.com.tr"
@@ -230,7 +345,7 @@ def main() -> int:
     print(f"Aracı Kurum Hisse Önerileri Scraper — {datetime.now(timezone.utc).isoformat()}")
     print("=" * 60)
 
-    brokers = [fetch_osmanli(), fetch_kt()]
+    brokers = [fetch_isyatirim(), fetch_osmanli(), fetch_kt()]
 
     success_count = sum(1 for b in brokers if b.get("ok"))
     total_recs = sum(len(b.get("recommendations", [])) for b in brokers)

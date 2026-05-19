@@ -30,6 +30,10 @@ export interface BrokerRecFeed {
       thesis: string;
       updatedAt: string;
     }>;
+    portfolio?: Array<{
+      symbol: string;
+      weight: number;
+    }>;
     ok?: boolean;
     error?: string;
   }>;

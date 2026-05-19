@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExternalLink, PieChart, ChevronRight, FileText } from 'lucide-react';
+import { ExternalLink, PieChart, ChevronRight, FileText, Sparkles } from 'lucide-react';
 import { BROKER_PORTFOLIOS, riskTone, type BrokerPortfolio } from '@/data/brokerPortfolios';
+import { fetchBrokerRecsFeed } from '@/data/api/brokerRecommendationsFeed';
 import { cn } from '@/lib/utils';
 
 /**
@@ -12,18 +13,52 @@ import { cn } from '@/lib/utils';
 
 export function BrokerPortfolios() {
   const [active, setActive] = useState<string>('all');
+  const [merged, setMerged] = useState<BrokerPortfolio[]>(BROKER_PORTFOLIOS);
+  const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBrokerRecsFeed().then((feed) => {
+      if (!feed?.brokers) return;
+      setFeedUpdatedAt(feed.fetchedAt);
+      // Static + dynamic merge — dynamic portföy varsa öncelikli
+      const dynamicMap = new Map(feed.brokers.map((b) => [b.brokerId, b]));
+      const result = BROKER_PORTFOLIOS.map((stat) => {
+        const dyn = dynamicMap.get(stat.brokerId);
+        if (!dyn?.portfolio || dyn.portfolio.length === 0) return stat;
+        return {
+          ...stat,
+          lastUpdate: dyn.lastUpdate,
+          holdings: dyn.portfolio.map((h) => ({
+            symbol: h.symbol,
+            weight: h.weight,
+          })),
+          note: 'Otomatik (İş Yatırım önerileri sayfasından scrape)',
+        };
+      });
+      setMerged(result);
+    });
+  }, []);
+
   const filtered = active === 'all'
-    ? BROKER_PORTFOLIOS
-    : BROKER_PORTFOLIOS.filter((p) => p.brokerId === active);
+    ? merged
+    : merged.filter((p) => p.brokerId === active);
 
   return (
     <section className="mb-8">
       <div className="mb-3">
         <h2 className="flex items-center gap-2 text-lg font-bold text-slate-100">
           <PieChart size={18} className="text-accent" /> Aracı Kurum Model Portföyleri
+          {feedUpdatedAt && feedUpdatedAt !== '1970-01-01T00:00:00Z' && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
+              <Sparkles size={10} /> CANLI
+            </span>
+          )}
         </h2>
         <p className="mt-0.5 text-xs text-slate-500">
           Aracı kurumların önerdiği ağırlıklı hisse dağılımları. Her bara tıklayarak ilgili hissenin detay sayfasına ulaşabilirsin.
+          {feedUpdatedAt && feedUpdatedAt !== '1970-01-01T00:00:00Z' && (
+            <> · <span className="text-success">Son güncelleme: {new Date(feedUpdatedAt).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span></>
+          )}
         </p>
       </div>
 

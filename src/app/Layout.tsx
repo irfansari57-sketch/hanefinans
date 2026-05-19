@@ -44,7 +44,8 @@ import { CookieConsent } from '@/components/domain/CookieConsent';
 import { OnboardingTour } from '@/components/domain/OnboardingTour';
 import { PwaInstallBanner } from '@/components/domain/PwaInstallBanner';
 import { AlertWatcher } from '@/components/domain/AlertWatcher';
-import { EmailVerifyBanner } from '@/components/domain/EmailVerifyBanner';
+// EmailVerifyBanner: feature flag kapalı (FEATURES.emailVerification = false)
+// — banner mount edilmez, eski kullanıcı cache'i de aşağıdaki effect ile temizlenir
 import { MobileBottomNav } from '@/components/ui/MobileBottomNav';
 import { ShieldAlert, ChevronDown } from 'lucide-react';
 
@@ -120,6 +121,15 @@ export function Layout() {
   useEffect(() => {
     setSearchOpen(query.trim().length > 0);
   }, [query]);
+
+  // Bir kerelik temizlik — email doğrulama feature'ı pasif edildi; eski
+  // kullanıcıların localStorage'ında kalan banner/token anahtarlarını sil.
+  useEffect(() => {
+    try {
+      localStorage.removeItem('fa.auth.verifyToken');
+      localStorage.removeItem('fa.auth.emailVerifyBannerSnooze');
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     activityRepo.log({ type: 'page-view', detail: location.pathname }).catch(() => {});
@@ -369,8 +379,6 @@ export function Layout() {
             </aside>
           </div>
         )}
-
-        <EmailVerifyBanner />
 
         <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 pb-20 sm:px-6 sm:py-6 sm:pb-20 md:pb-6 lg:px-8">
           <Outlet />

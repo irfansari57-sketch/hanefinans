@@ -25,15 +25,17 @@ type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMont
 
 const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string; hideOnMobile?: boolean }> = [
   { key: 'code',       label: 'Fon Kodu', short: '#' },
-  { key: 'week',       label: '1 Hafta',   short: '1H (%)', hideOnMobile: true },
-  { key: 'month',      label: '1 Ay',      short: '1A (%)' },
-  { key: 'threeMonth', label: '3 Ay',      short: '3A (%)', hideOnMobile: true },
-  { key: 'sixMonth',   label: '6 Ay',      short: '6A (%)' },
-  { key: 'ytd',        label: 'Yılbaşı',   short: 'YTD (%)', hideOnMobile: true },
-  { key: 'year',       label: '1 Yıl',     short: '1Y (%)' },
+  { key: 'day',        label: '1 Gün',    short: '1G (%)' },
+  { key: 'week',       label: '1 Hafta',  short: '1H (%)', hideOnMobile: true },
+  { key: 'month',      label: '1 Ay',     short: '1A (%)' },
+  { key: 'threeMonth', label: '3 Ay',     short: '3A (%)', hideOnMobile: true },
+  { key: 'sixMonth',   label: '6 Ay',     short: '6A (%)' },
+  { key: 'ytd',        label: 'Yılbaşı',  short: 'YTD (%)', hideOnMobile: true },
+  { key: 'year',       label: '1 Yıl',    short: '1Y (%)' },
 ];
 
 const PRESET_SORTS: Array<{ key: Exclude<SortKey, 'code'>; label: string }> = [
+  { key: 'day',        label: '1 Gün' },
   { key: 'week',       label: '1 Hafta' },
   { key: 'month',      label: '1 Ay' },
   { key: 'threeMonth', label: '3 Ay' },
@@ -435,6 +437,7 @@ export function FundsPage() {
                         </span>
                       )}
                     </td>
+                    <PerfCell value={f.day} />
                     <PerfCell value={f.week} hideOnMobile />
                     <PerfCell value={f.month} />
                     <PerfCell value={f.threeMonth} hideOnMobile />

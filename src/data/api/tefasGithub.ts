@@ -17,6 +17,7 @@ export interface TefasFundData {
   investorCount?: number;
   shareCount?: number;
   returns: {
+    '1d'?: number | null;
     '1w': number | null;
     '1m': number | null;
     '3m': number | null;
@@ -134,7 +135,7 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
     name: f.name,
     category: (f.category || 'Serbest') as FundCategory,
     tefas: true,
-    day: 0, // gün değişimi feed'de yok; history'den hesaplanabilir
+    day: f.returns['1d'] ?? 0,
     week: f.returns['1w'] ?? 0,
     month: f.returns['1m'] ?? 0,
     threeMonth: f.returns['3m'] ?? 0,

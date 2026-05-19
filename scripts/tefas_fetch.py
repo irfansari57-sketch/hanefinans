@@ -149,6 +149,7 @@ def main() -> int:
 
     anchors = {
         'last':  today - timedelta(days=1),
+        'prev':  today - timedelta(days=2),  # günlük getiri için önceki iş günü
         '1w':    today - timedelta(days=8),
         '1m':    today - timedelta(days=31),
         '3m':    today - timedelta(days=92),
@@ -194,7 +195,7 @@ def main() -> int:
         print(f"⚠️ Category sütunu bulunamadı — kategori boş gelecek", file=sys.stderr)
 
     # Diğer anchor'ları çek
-    for key in ['1w', '1m', '3m', '6m', '1y', 'ytd']:
+    for key in ['prev', '1w', '1m', '3m', '6m', '1y', 'ytd']:
         print(f"\n{key} anchor çekiliyor...", flush=True)
         t0 = time.time()
         df = fetch_snapshot(working_ftype, anchors[key])
@@ -236,6 +237,7 @@ def main() -> int:
             return nav_maps.get(key, {}).get(code)
 
         returns = {
+            "1d":  pct_change(latest_nav, get_past('prev')),
             "1w":  pct_change(latest_nav, get_past('1w')),
             "1m":  pct_change(latest_nav, get_past('1m')),
             "3m":  pct_change(latest_nav, get_past('3m')),

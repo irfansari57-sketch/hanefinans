@@ -293,6 +293,7 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
           <tr>
             <th className="px-3 py-2.5 text-left">Kod</th>
             <th className="px-3 py-2.5 text-right">NAV (TL)</th>
+            <th className="px-3 py-2.5 text-right">1 Gün</th>
             <th className="px-3 py-2.5 text-right hidden md:table-cell">1 Hafta</th>
             <th className="px-3 py-2.5 text-right">1 Ay</th>
             <th className="px-3 py-2.5 text-right hidden md:table-cell">3 Ay</th>
@@ -324,6 +325,9 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
               </td>
               <td className="px-3 py-2.5 text-right tabular-nums text-slate-100">
                 {tefas?.nav != null ? `₺${tefas.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}` : '—'}
+              </td>
+              <td className={cn('px-3 py-2.5 text-right tabular-nums', toneFor(tefas?.returns['1d']))}>
+                {fmtPct(tefas?.returns['1d'])}
               </td>
               <td className={cn('px-3 py-2.5 text-right tabular-nums hidden md:table-cell', toneFor(tefas?.returns['1w']))}>
                 {fmtPct(tefas?.returns['1w'])}

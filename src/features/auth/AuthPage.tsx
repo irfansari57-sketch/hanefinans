@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, User as UserIcon, ArrowRight, AlertTriangle, Sparkles, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { useAuth } from '@/store/auth';
+import { FEATURES } from '@/lib/featureFlags';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -82,13 +83,20 @@ export function AuthPage({ mode }: Props) {
       setError(r.error ?? 'Bilinmeyen hata');
       return;
     }
-    // Admin email'leri doğrulanmış sayılır → direkt panele
+
+    // Email doğrulama feature flag kapalıysa direkt panele
+    if (!FEATURES.emailVerification) {
+      const next = (location.state as { from?: string } | null)?.from ?? '/panel';
+      navigate(next, { replace: true });
+      return;
+    }
+
+    // Admin email'leri otomatik doğrulanmış sayılır
     const sent = await requestCode(email.trim().toLowerCase());
     if (sent) {
       setStep('verify');
     } else {
       // Backend yapılandırılmamışsa veya hata varsa, kullanıcıyı yine de panele al
-      // (kayıt başarılı, doğrulama sonra yapılabilir)
       const next = (location.state as { from?: string } | null)?.from ?? '/panel';
       navigate(next, { replace: true });
     }
@@ -290,7 +298,7 @@ export function AuthPage({ mode }: Props) {
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 />
               </div>
-              {mode === 'signup' && (
+              {mode === 'signup' && FEATURES.emailVerification && (
                 <p className="mt-1 text-[11px] text-slate-500">
                   📧 Kayıt sonrası e-posta adresine 6 haneli kod gönderilir (bot kontrolü).
                 </p>

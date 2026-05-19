@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ShieldAlert, X, RefreshCw, ArrowRight } from 'lucide-react';
 import { useAuth, isAdmin, isEmailVerified } from '@/store/auth';
+import { FEATURES } from '@/lib/featureFlags';
 import { cn } from '@/lib/utils';
 
 const VERIFY_TOKEN_KEY = 'fa.auth.verifyToken';
@@ -24,6 +25,10 @@ export function EmailVerifyBanner() {
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!FEATURES.emailVerification) {
+      setVisible(false);
+      return;
+    }
     if (!user) {
       setVisible(false);
       return;

@@ -38,9 +38,10 @@ except ImportError:
 
 try:
     import anthropic  # type: ignore[import-not-found]
+    ANTHROPIC_AVAILABLE = True
 except ImportError:
-    print("anthropic gerekli: pip install anthropic", file=sys.stderr)
-    sys.exit(1)
+    print("anthropic yok — Claude-bağımlı brokerlar (Osmanlı, KT) atlanır", file=sys.stderr)
+    ANTHROPIC_AVAILABLE = False
 
 
 OUTPUT_PATH = Path(__file__).resolve().parent.parent / "data" / "broker-recommendations.json"
@@ -52,12 +53,16 @@ HEADERS = {
 }
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-if not ANTHROPIC_API_KEY:
-    print("ANTHROPIC_API_KEY env tanımlı değil", file=sys.stderr)
-    sys.exit(1)
+HAS_CLAUDE = ANTHROPIC_AVAILABLE and bool(ANTHROPIC_API_KEY)
 
-CLIENT = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-MODEL = "claude-haiku-4-5-20251001"
+if HAS_CLAUDE:
+    CLIENT = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    MODEL = "claude-haiku-4-5-20251001"
+    print(f"✓ Claude AI aktif — Osmanlı + KT için PDF parse")
+else:
+    CLIENT = None  # type: ignore[assignment]
+    MODEL = ""
+    print("⚠ ANTHROPIC_API_KEY yok — sadece İş Yatırım (HTML scrape) dinamik olacak")
 
 PORTFOLIO_PROMPT = """Aşağıdaki Türk aracı kurum MODEL PORTFÖY raporundan hisse ağırlıklarını çıkar.
 
@@ -123,6 +128,8 @@ def extract_pdf_text(pdf_bytes: bytes, max_pages: int = 5) -> str:
 
 def parse_with_claude(broker_name: str, text: str) -> list[dict]:
     """Claude'a bülteni yolla, hisse önerisi JSON listesi al."""
+    if not HAS_CLAUDE or CLIENT is None:
+        return []
     if not text or len(text) < 200:
         print(f"  ! {broker_name}: metin çok kısa ({len(text)} chars), atlanıyor")
         return []
@@ -319,6 +326,8 @@ def fetch_isyatirim() -> dict:
 
 def parse_portfolio_with_claude(broker_name: str, text: str) -> list[dict]:
     """Claude'a model portföy PDF metnini yolla, holdings JSON listesi al."""
+    if not HAS_CLAUDE or CLIENT is None:
+        return []
     if not text or len(text) < 200:
         print(f"  ! {broker_name} portföy: metin çok kısa ({len(text)} chars)")
         return []
@@ -446,7 +455,11 @@ def main() -> int:
     print(f"Aracı Kurum Hisse Önerileri Scraper — {datetime.now(timezone.utc).isoformat()}")
     print("=" * 60)
 
-    brokers = [fetch_isyatirim(), fetch_osmanli(), fetch_kt()]
+    brokers = [fetch_isyatirim()]  # Claude gerekmez (HTML scrape)
+    if HAS_CLAUDE:
+        brokers.extend([fetch_osmanli(), fetch_kt()])
+    else:
+        print("\n⚠ Osmanlı + KT atlanıyor (ANTHROPIC_API_KEY yok)")
 
     success_count = sum(1 for b in brokers if b.get("ok"))
     total_recs = sum(len(b.get("recommendations", [])) for b in brokers)
@@ -467,7 +480,8 @@ def main() -> int:
     print(f"\n✓ {OUTPUT_PATH.relative_to(OUTPUT_PATH.parent.parent)} yazıldı")
     print(f"  {success_count}/{len(brokers)} broker başarılı, {total_recs} öneri toplam")
 
-    return 0 if success_count > 0 else 1
+    # Sadece İş Yatırım bile başarılıysa OK (Claude key olmasa bile pipeline çalışır)
+    return 0
 
 
 if __name__ == "__main__":

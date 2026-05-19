@@ -1,29 +1,31 @@
 /**
- * Cloudflare Pages Function — Türkiye 5Y CDS spread veri kaynağı.
+ * Cloudflare Pages Function — Türkiye 5Y CDS spread (v3).
  *
- * GET /api/tr-cds  → { ok, value, changePct?, updatedAt, history?: [{date,value}], source }
+ * v3 farkları:
+ *   • PRIMARY pattern: "value stands at NNN.NN basis points" — sayfadaki
+ *     otomatik açıklama paragrafının değişmez ifadesi. Çok güvenilir.
+ *   • SECONDARY: "TURKEY - 5 Years CDS" başlığından sonra ilk büyük
+ *     decimal sayı (ör. 243.63)
+ *   • Tablo parser ayrı, history için kullanılır
+ *   • Sanity: 50-1500 bps, 2000-2050 yıl reddi
  *
- * Kaynak: worldgovernmentbonds.com'un Turkey 5Y CDS sayfası HTML'i scrape edilir.
- * Cloudflare CDN cache: 30 dk. Yahoo'da bu veri yok, alternatif yok.
- *
- * Veri çekilemezse { ok: false, error } döner — frontend external link'e düşer.
+ * Doğrulama: 19 May 2026'da gerçek değer 243.63 idi, parser bunu yakalamalı.
  */
 
-interface CdsHistoryPoint {
-  date: string;       // ISO yyyy-mm-dd
-  value: number;      // bps
-}
+interface CdsHistoryPoint { date: string; value: number; }
 
 interface CdsResponse {
   ok: boolean;
-  value?: number;       // current spread in bps
-  changePct?: number;   // % vs previous close
-  changeAbs?: number;   // bps change
-  updatedAt: string;    // ISO timestamp of fetch
-  asOfDate?: string;    // source's "as of" date if parseable
+  value?: number;
+  changePct?: number;        // gün/ay/yıl bazlı page-derived (mümkünse)
+  changeAbs?: number;
+  changeWindow?: string;     // "1 day" | "1 month" gibi (page'den)
+  updatedAt: string;
+  asOfDate?: string;         // "19 May 2026 13:45 GMT+0" gibi
   history?: CdsHistoryPoint[];
   source: string;
   error?: string;
+  parser?: string;
 }
 
 const SOURCE_URL = 'http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
@@ -40,15 +42,39 @@ function jsonResponse(data: CdsResponse, status = 200, ttlSec = 1800): Response 
   });
 }
 
-/** "dd/mm/yyyy" → "yyyy-mm-dd" */
 function normalizeDate(s: string): string | null {
-  const m = s.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  const m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (!m) return null;
-  return `${m[3]}-${m[2]}-${m[1]}`;
+  return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+}
+
+function isPlausibleCdsValue(v: number): boolean {
+  if (!Number.isFinite(v)) return false;
+  if (v < 50 || v > 1500) return false;
+  if (v >= 2000 && v <= 2050) return false; // yıl
+  return true;
+}
+
+/** "▲ 2.82 %" → 2.82 ; "▼ 1.50 %" → -1.50  */
+function parseChangeIndicator(html: string): { pct: number; window?: string } | null {
+  // "▲ 2.82 %" veya benzeri + en yakın "1 month/day/year/week"
+  const re = /([▲▼])\s*(\d+(?:[.,]\d+)?)\s*%[\s\S]{0,80}?(\d+\s*(?:day|month|year|week)s?)/i;
+  const m = html.match(re);
+  if (m) {
+    const sign = m[1] === '▼' ? -1 : 1;
+    const val = parseFloat(m[2].replace(',', '.'));
+    return Number.isFinite(val) ? { pct: sign * val, window: m[3].toLowerCase() } : null;
+  }
+  return null;
+}
+
+function parseAsOfDate(html: string): string | undefined {
+  // "Last Update: 19 May 2026 13:45 GMT+0"
+  const m = html.match(/Last\s*Update:?\s*([0-9]{1,2}\s+[A-Za-zçşğüöıİ]+\s+\d{4}(?:\s+\d{1,2}:\d{2}(?:\s*GMT[+-]?\d*)?)?)/i);
+  return m ? m[1].trim() : undefined;
 }
 
 export const onRequest: PagesFunction = async ({ request }) => {
-  // Edge cache via Cloudflare's cache API
   const cache = caches.default;
   const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
   const cached = await cache.match(cacheKey);
@@ -64,85 +90,91 @@ export const onRequest: PagesFunction = async ({ request }) => {
       cf: { cacheTtl: 1800, cacheEverything: true },
     });
     if (!res.ok) {
-      const data: CdsResponse = {
+      return jsonResponse({
         ok: false,
         updatedAt: new Date().toISOString(),
         source: SOURCE_URL,
         error: `Source HTTP ${res.status}`,
-      };
-      return jsonResponse(data, 502, 60);
+      }, 502, 60);
     }
     const html = await res.text();
 
-    // --- Current value parse ---
-    // Sayfa başlığında veya tabloda "200.45" gibi bps değer var.
-    // Birden fazla pattern dene (sayfa zaman zaman güncellenir):
-    let value: number | null = null;
-    const patterns: RegExp[] = [
-      // "current_value">208.45</  veya  ">208.45 bps<"
-      /current[_-]?value[^>]*>\s*(\d+(?:[.,]\d+)?)/i,
-      // "Turkey 5 Years CDS ... <td>208.45"
-      /turkey\s*5\s*years?\s*cds[\s\S]{0,500}?<td[^>]*>\s*(\d+(?:[.,]\d+)?)/i,
-      // ">208.45 bp<"  or  ">208.45 bps<"
-      />(\d+(?:[.,]\d+)?)\s*bp[s]?\s*</i,
-      // generic large number near "CDS" keyword
-      /cds[\s\S]{0,200}?(\d{2,4}(?:[.,]\d+)?)/i,
-    ];
-    for (const re of patterns) {
-      const m = html.match(re);
-      if (m) {
-        const num = parseFloat(m[1].replace(',', '.'));
-        if (Number.isFinite(num) && num > 30 && num < 5000) {
-          value = num;
-          break;
+    let value: number | undefined;
+    let parser = 'unknown';
+
+    // --- PRIMARY: "value stands at NNN.NN basis points" ---
+    // Sayfanın otomatik açıklamasında her zaman var, değişmez.
+    const standsAt = html.match(/value\s+stands\s+at\s*<?[^>]*>?\s*([\d]+(?:[.,]\d+)?)\s*<?[^>]*>?\s*basis\s+points/i);
+    if (standsAt) {
+      const num = parseFloat(standsAt[1].replace(',', '.'));
+      if (isPlausibleCdsValue(num)) {
+        value = num;
+        parser = 'stands-at';
+      }
+    }
+
+    // --- SECONDARY: TURKEY 5 Years CDS başlığından sonra ilk büyük decimal ---
+    if (value == null) {
+      const headerIdx = html.search(/TURKEY[^<]*-?\s*5\s*Years?\s*CDS/i);
+      if (headerIdx >= 0) {
+        const window = html.slice(headerIdx, headerIdx + 1500);
+        // En az 1 ondalık olmalı (243.63 OK, 2023 değil — ama 2023.00 yine elenir sanity ile)
+        const m = window.match(/>\s*(\d{2,4}\.\d{1,4})\s*</);
+        if (m) {
+          const num = parseFloat(m[1]);
+          if (isPlausibleCdsValue(num)) {
+            value = num;
+            parser = 'header-window';
+          }
         }
       }
     }
 
+    // --- History tablosu ---
+    const history: CdsHistoryPoint[] = [];
+    const rowRe = /<tr[^>]*>\s*<td[^>]*>\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*<\/td>\s*<td[^>]*>\s*([\d]+(?:[.,]\d+)?)/g;
+    let rm: RegExpExecArray | null;
+    while ((rm = rowRe.exec(html)) !== null) {
+      const iso = normalizeDate(rm[1]);
+      const v = parseFloat(rm[2].replace(',', '.'));
+      if (iso && isPlausibleCdsValue(v)) {
+        history.push({ date: iso, value: v });
+      }
+      if (history.length > 1000) break;
+    }
+    history.sort((a, b) => a.date.localeCompare(b.date));
+
+    // History varsa ve PRIMARY parser çalışmadıysa son satırı al
+    if (value == null && history.length > 0) {
+      value = history[history.length - 1].value;
+      parser = 'history-last';
+    }
+
     if (value == null) {
-      const data: CdsResponse = {
+      return jsonResponse({
         ok: false,
         updatedAt: new Date().toISOString(),
         source: SOURCE_URL,
-        error: 'CDS değeri sayfa HTML\'inden çıkarılamadı (pattern eşleşmedi).',
-      };
-      return jsonResponse(data, 502, 60);
+        error: 'CDS değeri bulunamadı (stands-at + header-window + history hiçbiri eşleşmedi)',
+      }, 502, 60);
     }
 
-    // --- History parse ---
-    // Tablo: <tr><td>15/05/2026</td><td>208.45</td>...</tr>
-    const history: CdsHistoryPoint[] = [];
-    const rowRe = /<tr[^>]*>\s*<td[^>]*>\s*(\d{2}\/\d{2}\/\d{4})\s*<\/td>\s*<td[^>]*>\s*(\d+(?:[.,]\d+)?)/g;
-    let rm: RegExpExecArray | null;
-    while ((rm = rowRe.exec(html)) !== null) {
-      const isoDate = normalizeDate(rm[1]);
-      const v = parseFloat(rm[2].replace(',', '.'));
-      if (isoDate && Number.isFinite(v) && v > 30 && v < 5000) {
-        history.push({ date: isoDate, value: v });
-      }
-      if (history.length > 500) break;
-    }
-    // En eskiden en yeniye sırala
-    history.sort((a, b) => a.date.localeCompare(b.date));
+    // Page-derived change indicator (▲ 2.82 % 1 month)
+    const ind = parseChangeIndicator(html);
 
-    // --- Change vs previous day ---
+    // History'den gün bazlı change (varsa)
     let changeAbs: number | undefined;
     let changePct: number | undefined;
-    let asOfDate: string | undefined;
+    let changeWindow: string | undefined;
     if (history.length >= 2) {
       const last = history[history.length - 1];
       const prev = history[history.length - 2];
-      // Eğer son satırdaki değer current ile ~uyumlu değilse, value'yu son tablo satırına eşitle
-      if (Math.abs(last.value - value) / value > 0.5) {
-        // büyük sapma — current değer büyük olasılıkla bugünün spotu, tablo D-1
-        changeAbs = value - last.value;
-        changePct = (changeAbs / last.value) * 100;
-        asOfDate = last.date;
-      } else {
-        changeAbs = last.value - prev.value;
-        changePct = (changeAbs / prev.value) * 100;
-        asOfDate = last.date;
-      }
+      changeAbs = last.value - prev.value;
+      changePct = (changeAbs / prev.value) * 100;
+      changeWindow = '1 day';
+    } else if (ind) {
+      changePct = ind.pct;
+      changeWindow = ind.window;
     }
 
     const data: CdsResponse = {
@@ -150,23 +182,23 @@ export const onRequest: PagesFunction = async ({ request }) => {
       value,
       changeAbs,
       changePct,
-      asOfDate,
+      changeWindow,
+      asOfDate: parseAsOfDate(html),
       updatedAt: new Date().toISOString(),
-      history: history.length ? history.slice(-365) : undefined, // son 1 yıl
+      history: history.length ? history.slice(-365) : undefined,
       source: 'worldgovernmentbonds.com',
+      parser,
     };
 
     const response = jsonResponse(data, 200, 1800);
-    // Edge cache 30 dk
-    request.url && (await cache.put(cacheKey, response.clone()));
+    await cache.put(cacheKey, response.clone());
     return response;
   } catch (e) {
-    const data: CdsResponse = {
+    return jsonResponse({
       ok: false,
       updatedAt: new Date().toISOString(),
       source: SOURCE_URL,
       error: (e as Error).message,
-    };
-    return jsonResponse(data, 500, 30);
+    }, 500, 30);
   }
 };

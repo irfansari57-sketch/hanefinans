@@ -139,6 +139,14 @@ export const useAuth = create<AuthState>()(
       upgradeTier: async (tier, durationMonths = 1) => {
         const u = get().user;
         if (!u) return;
+        // Ödeme altyapısı kurulana kadar admin dışındaki kullanıcılar PRO/ELITE'e geçemez
+        // (UI'da da kontrol var, bu store-level çift katman güvenlik)
+        const adminEmails = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
+        const isAdminUser = adminEmails.includes(u.email.toLowerCase());
+        if (!isAdminUser && (tier === 'pro' || tier === 'elite')) {
+          set({ lastError: 'Ödeme altyapısı çok yakında devreye giriyor. PRO/ELITE üyelik geçişi şu an devre dışı.' });
+          return;
+        }
         const expires = Date.now() + durationMonths * 30 * 24 * 3600 * 1000;
         await db.users.update(u.id, { tier, tierExpiresAt: tier === 'free' ? undefined : expires });
         const updated = await db.users.get(u.id);

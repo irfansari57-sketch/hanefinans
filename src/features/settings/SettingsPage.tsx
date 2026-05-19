@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Info, RotateCcw, Cpu, Activity, Newspaper, MessageSquare, Globe, KeyRound,
   Check, X, ExternalLink, Database, Send, Percent, Crown, Shield, Bell,
@@ -154,6 +155,9 @@ export function SettingsPage() {
             <RotateCcw size={12} /> Tanıtım turunu tekrar başlat
           </button>
         </div>
+
+        {/* Admin: Üye Yönetimi */}
+        {admin && <UserAdminSection />}
 
         {/* Admin: Üyelik Ücretleri */}
         {admin && (
@@ -402,6 +406,212 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div className="rounded-lg border border-border bg-bg-card p-2.5">
       <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className="mt-0.5 text-lg font-semibold text-slate-100">{value}</div>
+    </div>
+  );
+}
+
+function UserAdminSection() {
+  const users = useLiveQuery(
+    () => db.users.orderBy('createdAt').reverse().toArray(),
+    [],
+  ) ?? [];
+  const [search, setSearch] = useState('');
+  const [busy, setBusy] = useState<number | null>(null);
+
+  const stats = {
+    total: users.length,
+    free: users.filter((u) => u.tier === 'free').length,
+    pro: users.filter((u) => u.tier === 'pro' && (!u.tierExpiresAt || u.tierExpiresAt > Date.now())).length,
+    elite: users.filter((u) => u.tier === 'elite' && (!u.tierExpiresAt || u.tierExpiresAt > Date.now())).length,
+    expired: users.filter((u) => u.tier !== 'free' && u.tierExpiresAt != null && u.tierExpiresAt < Date.now()).length,
+  };
+
+  const filtered = users.filter((u) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return u.email.toLowerCase().includes(q) || (u.name?.toLowerCase() ?? '').includes(q);
+  });
+
+  const setTier = async (userId: number, tier: 'free' | 'pro' | 'elite', durationMonths = 1) => {
+    setBusy(userId);
+    try {
+      const expires = tier === 'free' ? undefined : Date.now() + durationMonths * 30 * 24 * 3600 * 1000;
+      await db.users.update(userId, { tier, tierExpiresAt: expires });
+      toast.success(`Tier güncellendi → ${tier.toUpperCase()}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const extend = async (userId: number, currentExpiresAt: number | undefined, months: number) => {
+    setBusy(userId);
+    try {
+      const base = currentExpiresAt && currentExpiresAt > Date.now() ? currentExpiresAt : Date.now();
+      const newExpires = base + months * 30 * 24 * 3600 * 1000;
+      await db.users.update(userId, { tierExpiresAt: newExpires });
+      toast.success(`Süre ${months} ay uzatıldı`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const remove = async (userId: number, email: string) => {
+    if (!window.confirm(`${email} hesabını silmek istediğinden emin misin? Geri alınamaz.`)) return;
+    setBusy(userId);
+    try {
+      await db.users.delete(userId);
+      toast.success('Hesap silindi');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 lg:col-span-2">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
+        <Crown size={14} /> Üye Yönetimi
+        <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Admin</span>
+      </h2>
+      <p className="text-xs text-slate-400">
+        Kayıtlı kullanıcıları gör, tier'larını yönet, süreyi uzat veya hesabı sil. Şu an mock auth (IndexedDB local).
+      </p>
+
+      {/* Stats */}
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <StatChip label="Toplam" value={stats.total} tone="slate" />
+        <StatChip label="Free" value={stats.free} tone="slate" />
+        <StatChip label="PRO Aktif" value={stats.pro} tone="warning" />
+        <StatChip label="ELITE Aktif" value={stats.elite} tone="accent" />
+        <StatChip label="Süresi Geçmiş" value={stats.expired} tone="danger" />
+      </div>
+
+      {/* Search */}
+      <div className="mt-3">
+        <input
+          type="text"
+          placeholder="E-posta veya isimle ara…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input w-full text-xs sm:max-w-sm"
+        />
+      </div>
+
+      {/* User list */}
+      <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-bg-card">
+        <table className="min-w-full text-xs">
+          <thead className="bg-bg-soft text-[10px] uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-3 py-2 text-left">Kullanıcı</th>
+              <th className="px-3 py-2 text-left">Tier</th>
+              <th className="px-3 py-2 text-left hidden md:table-cell">Kayıt</th>
+              <th className="px-3 py-2 text-left hidden md:table-cell">Son Giriş</th>
+              <th className="px-3 py-2 text-left">Bitiş</th>
+              <th className="px-3 py-2 text-center w-72">Aksiyon</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {filtered.length === 0 ? (
+              <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-500">Kayıt bulunamadı</td></tr>
+            ) : filtered.map((u) => {
+              const isAdminUser = ['irfansari57@gmail.com', 'haneassistance@gmail.com'].includes(u.email);
+              const expired = u.tierExpiresAt != null && u.tierExpiresAt < Date.now();
+              const effectiveTier = expired ? 'free' : u.tier;
+              return (
+                <tr key={u.id} className="hover:bg-bg-soft/50">
+                  <td className="px-3 py-2.5">
+                    <div className="font-medium text-slate-200">{u.name || u.email.split('@')[0]}</div>
+                    <div className="text-[10px] text-slate-500">{u.email}</div>
+                    {isAdminUser && (
+                      <span className="mt-0.5 inline-block rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">Admin</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={cn(
+                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                      effectiveTier === 'free' ? 'bg-slate-500/15 text-slate-400' :
+                      effectiveTier === 'pro' ? 'bg-warning/15 text-warning' :
+                      'bg-accent/15 text-accent',
+                    )}>
+                      {effectiveTier}
+                    </span>
+                    {expired && (
+                      <span className="ml-1 text-[10px] text-danger">⚠ süresi doldu</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-400 hidden md:table-cell">
+                    {new Date(u.createdAt).toLocaleDateString('tr-TR')}
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-400 hidden md:table-cell">
+                    {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString('tr-TR') : '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-400">
+                    {u.tierExpiresAt ? new Date(u.tierExpiresAt).toLocaleDateString('tr-TR') : '—'}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      <select
+                        value={u.tier}
+                        onChange={(e) => u.id != null && setTier(u.id, e.target.value as 'free' | 'pro' | 'elite', 1)}
+                        disabled={busy === u.id}
+                        className="rounded-md border border-border bg-bg-soft px-1.5 py-1 text-[10px]"
+                      >
+                        <option value="free">free</option>
+                        <option value="pro">pro</option>
+                        <option value="elite">elite</option>
+                      </select>
+                      <button
+                        onClick={() => u.id != null && extend(u.id, u.tierExpiresAt, 1)}
+                        disabled={busy === u.id || u.tier === 'free'}
+                        className="rounded-md border border-success/30 bg-success/10 px-1.5 py-1 text-[10px] text-success hover:bg-success/20 disabled:opacity-40"
+                        title="1 ay uzat"
+                      >
+                        +1ay
+                      </button>
+                      <button
+                        onClick={() => u.id != null && extend(u.id, u.tierExpiresAt, 12)}
+                        disabled={busy === u.id || u.tier === 'free'}
+                        className="rounded-md border border-success/30 bg-success/10 px-1.5 py-1 text-[10px] text-success hover:bg-success/20 disabled:opacity-40"
+                        title="1 yıl uzat"
+                      >
+                        +1y
+                      </button>
+                      {!isAdminUser && (
+                        <button
+                          onClick={() => u.id != null && remove(u.id, u.email)}
+                          disabled={busy === u.id}
+                          className="rounded-md border border-danger/30 bg-danger/10 px-1.5 py-1 text-[10px] text-danger hover:bg-danger/20 disabled:opacity-40"
+                          title="Hesabı sil"
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-2 text-[10px] text-slate-500">
+        ℹ️ Veriler tarayıcı yerel veritabanında (IndexedDB). Server-side hesap senkronizasyonu için Supabase Auth / Firebase entegrasyonu gerekir.
+      </p>
+    </div>
+  );
+}
+
+function StatChip({ label, value, tone }: { label: string; value: number; tone: 'slate' | 'warning' | 'accent' | 'danger' }) {
+  const toneClass = {
+    slate: 'border-border bg-bg-card text-slate-300',
+    warning: 'border-warning/30 bg-warning/10 text-warning',
+    accent: 'border-accent/30 bg-accent/10 text-accent',
+    danger: 'border-danger/30 bg-danger/10 text-danger',
+  }[tone];
+  return (
+    <div className={cn('rounded-lg border px-2 py-1.5 text-center', toneClass)}>
+      <div className="text-base font-bold tabular-nums">{value}</div>
+      <div className="text-[9px] uppercase tracking-wider opacity-80">{label}</div>
     </div>
   );
 }

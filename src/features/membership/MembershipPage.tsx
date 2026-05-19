@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useAuth, isPro } from '@/store/auth';
+import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { usePricing } from '@/store/pricing';
 import { cn } from '@/lib/utils';
 
@@ -146,10 +146,18 @@ export function MembershipPage() {
 
   const tierIndex = TIER_ORDER.indexOf(currentTier);
 
+  const admin = isAdmin(user);
+
   const handleChange = (tier: 'free' | 'pro' | 'elite') => {
     if (tier === currentTier) return;
     const targetIdx = TIER_ORDER.indexOf(tier);
     const isUpgrade = targetIdx > tierIndex;
+    // Ödeme altyapısı kurulana kadar non-admin'ler PRO/ELITE'e geçemez
+    if (isUpgrade && (tier === 'pro' || tier === 'elite') && !admin) {
+      setMessage('⏳ Ödeme altyapımız çok yakında devreye giriyor. Şu an PRO/ELITE üyelik geçişi devre dışı.');
+      setTimeout(() => setMessage(null), 5000);
+      return;
+    }
     setConfirmAction({
       tier,
       label: isUpgrade ? 'yükselt' : 'düşür',
@@ -189,7 +197,14 @@ export function MembershipPage() {
       />
 
       {message && (
-        <div className="mb-4 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+        <div
+          className={cn(
+            'mb-4 rounded-lg border px-3 py-2 text-sm',
+            message.startsWith('⏳')
+              ? 'border-warning/40 bg-warning/10 text-warning'
+              : 'border-success/30 bg-success/10 text-success',
+          )}
+        >
           {message}
         </div>
       )}

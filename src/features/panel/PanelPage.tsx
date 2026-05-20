@@ -226,9 +226,7 @@ export function PanelPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
                     {m.source === 'live' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-medium text-success">
-                        <Radio size={8} /> CANLI
-                      </span>
+                      <></>
                     )}
                   </div>
                   <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
@@ -259,9 +257,7 @@ export function PanelPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
                     {m.source === 'live' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-medium text-success">
-                        <Radio size={8} /> CANLI
-                      </span>
+                      <></>
                     )}
                   </div>
                   <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
@@ -432,9 +428,7 @@ export function PanelPage() {
 function SourceBadge({ source }: { source: 'live' | 'mock' | 'mixed' | 'derived' }) {
   if (source === 'live') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
-        <Radio size={9} /> CANLI
-      </span>
+      <></>
     );
   }
   if (source === 'mixed') {

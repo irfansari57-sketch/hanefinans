@@ -52,9 +52,7 @@ export function RightNewsTicker() {
             <div className="text-[10px] text-slate-500">yukarıdan aşağı akış</div>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-medium text-success">
-          <Radio size={9} /> CANLI
-        </span>
+        <></>
       </div>
 
       {/* Akan içerik — overflow gizle, transform animasyon ile aşağıdan yukarı kaydır */}

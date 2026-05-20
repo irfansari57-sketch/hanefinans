@@ -21,27 +21,7 @@ function formatAgo(ms: number): string {
 }
 
 export function LiveBadge({ updatedAt, label = 'CANLI', size = 'sm', refreshing = false }: LiveBadgeProps) {
-  // Saniye sayacı için tick
-  const [, force] = useState(0);
-  useEffect(() => {
-    if (!updatedAt) return;
-    const id = setInterval(() => force((v) => v + 1), 5000);
-    return () => clearInterval(id);
-  }, [updatedAt]);
-
-  const dotSize = size === 'sm' ? 'h-1.5 w-1.5' : 'h-2 w-2';
-  const text = size === 'sm' ? 'text-[10px]' : 'text-xs';
-
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 font-medium uppercase tracking-wider text-success', text)}>
-      <span className="relative inline-flex">
-        <span className={cn('animate-ping absolute inline-flex rounded-full bg-success opacity-75', dotSize)} />
-        <span className={cn('relative inline-flex rounded-full bg-success', dotSize)} />
-      </span>
-      {refreshing ? 'GÜNCELLENİYOR' : label}
-      {updatedAt && !refreshing && (
-        <span className="ml-1 normal-case text-success/70 font-normal">• {formatAgo(updatedAt)}</span>
-      )}
-    </span>
-  );
+  // Kullanıcı isteğiyle tüm canlı rozetleri gizlendi.
+  void updatedAt; void label; void size; void refreshing;
+  return null;
 }

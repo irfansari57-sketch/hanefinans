@@ -49,9 +49,7 @@ export function BrokerPortfolios() {
         <h2 className="flex items-center gap-2 text-lg font-bold text-slate-100">
           <PieChart size={18} className="text-accent" /> Aracı Kurum Model Portföyleri
           {feedUpdatedAt && feedUpdatedAt !== '1970-01-01T00:00:00Z' && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
-              <Sparkles size={10} /> CANLI
-            </span>
+            <></>
           )}
         </h2>
         <p className="mt-0.5 text-xs text-slate-500">

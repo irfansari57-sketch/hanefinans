@@ -24,11 +24,7 @@ export function MacroCard({ item, compact = false }: MacroCardProps) {
     <>
       <div className="flex items-center justify-between">
         <div className="text-[10px] uppercase tracking-wider text-slate-500">{item.label}</div>
-        {item.source === 'live' ? (
-          <span title="Canlı veri" className="inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-medium text-success">
-            <Radio size={8} /> CANLI
-          </span>
-        ) : (
+        {item.source !== 'live' && (
           <span className="rounded-full bg-warning/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-warning">
             mock
           </span>

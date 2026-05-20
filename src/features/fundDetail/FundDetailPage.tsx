@@ -161,9 +161,7 @@ export function FundDetailPage() {
           <div className="card p-4">
             <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-wider text-slate-500">Birim Pay Değeri (NAV)</div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
-                <Radio size={9} /> CANLI
-              </span>
+              <></>
             </div>
             <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
               {githubData.nav.toLocaleString('tr-TR', { maximumFractionDigits: 6 })}₺
@@ -242,9 +240,7 @@ export function FundDetailPage() {
             <div className="card p-4">
               <div className="flex items-center justify-between">
                 <div className="text-[10px] uppercase tracking-wider text-slate-500">Birim Pay Değeri (NAV)</div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
-                  <Radio size={9} /> CANLI
-                </span>
+                <></>
               </div>
               <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
                 {liveData.nav.toLocaleString('tr-TR', { maximumFractionDigits: 6 })}₺

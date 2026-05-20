@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-05-20T17:56:57.079080+00:00",
+  "fetchedAt": "2026-05-20T18:49:29.378573+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -119,7 +119,15 @@
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
       "lastUpdate": "2026-05-20",
       "recommendations": [],
-      "ok": false
+      "ok": false,
+      "debugLog": [
+        "GET https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
+        "HTTP 200, 4433475 bytes, type=application/pdf",
+        "PDF text: 11493 chars",
+        "Claude: Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKcEBs5RZLJLT1HCLZf'}",
+        "Result: 0 recommendations"
+      ],
+      "error": "Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKcEBs5RZLJLT1HCLZf'}"
     },
     {
       "brokerId": "kt-yatirim",
@@ -130,7 +138,18 @@
       "lastUpdate": "2026-05-20",
       "recommendations": [],
       "portfolio": [],
-      "ok": false
+      "ok": false,
+      "debugLog": [
+        "GET listing: https://kuveytturkyatirim.com.tr/arastirma-raporlari/",
+        "Listing HTTP 200, html size=638744 chars",
+        "Found 6 'gunluk-bulten' PDF pattern matches in listing",
+        "Latest PDF: /media/cxln251u/gunluk-bulten_20052026.pdf",
+        "PDF HTTP 200, 3569907 bytes",
+        "PDF text: 1498 chars",
+        "Bülten Claude: Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKcp83MmnZ63t93adT7'}",
+        "Recommendations: 0"
+      ],
+      "error": "Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKcp83MmnZ63t93adT7'}"
     }
   ],
   "summary": {

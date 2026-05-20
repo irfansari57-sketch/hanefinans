@@ -14,6 +14,7 @@ import { LiveBadge } from '@/components/domain/LiveBadge';
 import { SentimentAgentCard } from '@/components/domain/SentimentAgentCard';
 import { NewsAgentCard } from '@/components/domain/NewsAgentCard';
 import { MacroAgentCard } from '@/components/domain/MacroAgentCard';
+import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
 } from '@/data/mock';
@@ -346,6 +347,11 @@ export function PanelPage() {
       {/* Macro Agent — Claude Haiku ile günlük makro risk briefingi */}
       <div className="mb-5">
         <MacroAgentCard />
+      </div>
+
+      {/* Indicator Agent — Watchlist teknik gosterge taramasi */}
+      <div className="mb-5">
+        <IndicatorAgentCard />
       </div>
 
       {/* Top movers — fonlar — sadece canlı feed bağlıyken göster */}

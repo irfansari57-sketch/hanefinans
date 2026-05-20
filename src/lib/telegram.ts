@@ -1,14 +1,37 @@
 /**
- * Kullanıcı Telegram entegrasyonu — chat_id localStorage'da tutulur.
- * Fiyat alarmı tetiklendiğinde, AI analiz hazır olduğunda vs.
- * Pages Function /api/telegram/send üzerinden bot token server-side kullanılır.
+ * Kullanıcı Telegram entegrasyonu — chat_id localStorage'da user.id ile namespace'lenir.
+ *
+ * GÜVENLIK NOTU (Mayıs 2026):
+ *   Eski sürümde chat_id global anahtarda saklanıyordu (`fa.telegram.chatId`).
+ *   Aynı tarayıcıda farklı kullanıcı login olunca önceki kullanıcının chat_id'si
+ *   yeni kullanıcıya görünüyordu (cross-user kontaminasyon). Tüm bildirimler
+ *   yanlış Telegram'a gidiyordu.
+ *
+ *   Fix: chat_id artık `fa.telegram.chatId.<userId>` formatında saklanır.
+ *   Anonim (login değil) kullanıcı chat_id okuyamaz ve yazamaz.
+ *   Modül yüklenince eski global anahtar otomatik temizlenir.
  */
 
-const STORAGE_KEY = 'fa.telegram.chatId';
+import { useAuth } from '@/store/auth';
+
+const LEGACY_GLOBAL_KEY = 'fa.telegram.chatId';
+const USER_PREFIX = 'fa.telegram.chatId.';
+
+// Modül yüklenir yüklenmez eski global anahtarı temizle (her sayfa açılışında)
+try { localStorage.removeItem(LEGACY_GLOBAL_KEY); } catch { /* ignore */ }
+
+/** Aktif kullanıcının user-specific localStorage anahtarını üret. */
+function userKey(): string | null {
+  const user = useAuth.getState().user;
+  if (!user || user.id == null) return null;
+  return `${USER_PREFIX}${user.id}`;
+}
 
 export function getTelegramChatId(): string | null {
   try {
-    const v = localStorage.getItem(STORAGE_KEY);
+    const uk = userKey();
+    if (!uk) return null; // Anonim → chat_id gösterme
+    const v = localStorage.getItem(uk);
     return v && v.trim() ? v.trim() : null;
   } catch {
     return null;
@@ -17,11 +40,15 @@ export function getTelegramChatId(): string | null {
 
 export function setTelegramChatId(chatId: string | null): void {
   try {
+    const uk = userKey();
+    if (!uk) return; // Anonim → kaydetme
     if (!chatId || !chatId.trim()) {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(uk);
     } else {
-      localStorage.setItem(STORAGE_KEY, chatId.trim());
+      localStorage.setItem(uk, chatId.trim());
     }
+    // Cross-user kontaminasyona karşı eski global anahtarı yine temizle
+    localStorage.removeItem(LEGACY_GLOBAL_KEY);
   } catch {
     /* ignore */
   }
@@ -34,11 +61,11 @@ export interface TelegramSendResult {
 
 /**
  * Kullanıcının kayıtlı Telegram chat_id'sine mesaj gönderir.
- * chat_id yoksa sessizce skip eder (ok: false).
+ * chat_id yoksa (anonim veya henüz ayarlanmamış) sessizce skip eder.
  */
 export async function sendTelegram(text: string, parseMode: 'HTML' | 'Markdown' = 'HTML'): Promise<TelegramSendResult> {
   const chatId = getTelegramChatId();
-  if (!chatId) return { ok: false, error: 'chat_id yapılandırılmamış' };
+  if (!chatId) return { ok: false, error: 'chat_id yapılandırılmamış (login gerekli)' };
 
   try {
     const r = await fetch('/api/telegram/send', {

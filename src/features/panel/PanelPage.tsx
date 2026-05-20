@@ -334,25 +334,54 @@ export function PanelPage() {
         <TopMovers stocks={stocksForTopMovers} limit={5} period={stocksPeriod} />
       </details>
 
-      {/* Sentiment Agent — Claude Haiku ile haber bazlı duyarlılık */}
-      <div className="mb-5">
-        <SentimentAgentCard />
-      </div>
-
-      {/* News Agent — Claude Haiku ile günün top 5 haber özeti */}
-      <div className="mb-5">
-        <NewsAgentCard />
-      </div>
-
-      {/* Macro Agent — Claude Haiku ile günlük makro risk briefingi */}
-      <div className="mb-5">
-        <MacroAgentCard />
-      </div>
-
-      {/* Indicator Agent — Watchlist teknik gosterge taramasi */}
-      <div className="mb-5">
-        <IndicatorAgentCard />
-      </div>
+      {/* AI Agent'lar — PRO/Elite üyelere özel */}
+      {proUser ? (
+        <>
+          <div className="mb-5">
+            <SentimentAgentCard />
+          </div>
+          <div className="mb-5">
+            <NewsAgentCard />
+          </div>
+          <div className="mb-5">
+            <MacroAgentCard />
+          </div>
+          <div className="mb-5">
+            <IndicatorAgentCard />
+          </div>
+        </>
+      ) : (
+        <Link
+          to="/uyelik"
+          className="mb-5 block rounded-xl border border-warning/30 bg-gradient-to-br from-warning/5 to-accent/5 p-5 transition hover:border-warning/60 hover:from-warning/10 hover:to-accent/10"
+        >
+          <div className="flex items-start gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
+              <Radio size={24} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-bold text-slate-100">AI Agent'lar</h2>
+                <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning">
+                  PRO Özel
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-300 leading-relaxed">
+                Claude Haiku tabanlı 4 yapay zeka asistanı — günlük piyasaya tam görünürlük.
+              </p>
+              <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2 text-xs text-slate-400">
+                <div className="flex items-start gap-1.5"><span className="text-accent">[S]</span><span><strong className="text-slate-300">Sentiment</strong> — hisse bazlı haber duyarlılığı</span></div>
+                <div className="flex items-start gap-1.5"><span className="text-accent">[N]</span><span><strong className="text-slate-300">News</strong> — günün top 5 etki haberi</span></div>
+                <div className="flex items-start gap-1.5"><span className="text-accent">[M]</span><span><strong className="text-slate-300">Macro</strong> — risk skoru + yorum</span></div>
+                <div className="flex items-start gap-1.5"><span className="text-accent">[I]</span><span><strong className="text-slate-300">Indicator</strong> — teknik sinyal tarayıcı</span></div>
+              </div>
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-warning px-3 py-1.5 text-xs font-bold text-bg shadow-lg shadow-warning/30">
+                PRO'ya Yükselt -&gt;
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Top movers — fonlar — sadece canlı feed bağlıyken göster */}
       {topFunds.length > 0 && (

@@ -88,6 +88,30 @@ function tfLabel(tf: ScalpTf): string {
   return { '5m': '5DK', '15m': '15DK', '1h': '1H', '4h': '4H', '1d': '1G' }[tf];
 }
 
+/** Sadece 5m/15m fresh golden cross destekler (1h/4h/1d trend analizinde yok). */
+function isFreshForTf(rec: ScalpRec, tf: ScalpTf): boolean {
+  if (tf === '5m') return rec.scalp5mFreshCross;
+  if (tf === '15m') return rec.scalp15mFreshCross;
+  return false;
+}
+
+/** TF-specific score — siralama icin. */
+function scoreForTf(rec: ScalpRec, tf: ScalpTf): number {
+  switch (tf) {
+    case '5m': return rec.scalp5mScore;
+    case '15m': return rec.scalp15mScore;
+    case '1h':
+    case '4h':
+    case '1d':
+      // Trend analizi 'long' ise 10 puan baz, neutral 0, short -10
+      const t = tf === '1h' ? rec.trend1h : tf === '4h' ? rec.trend4h : rec.trend1d;
+      if (!t) return 0;
+      if (t.trend === 'long') return 10;
+      if (t.trend === 'short') return -10;
+      return 0;
+  }
+}
+
 /**
  * Golden Cross dedektörü — guclu uzun trend sinyali.
  *  - Fiyat EMA 50 ustunde (kisa vade momentum)
@@ -140,6 +164,19 @@ export function RecommendationsPage() {
   const toggleWatch = useWatchlist((s) => s.toggle);
 
   const allSymbols = useMemo(() => MOCK_STOCKS.map((s) => s.symbol), []);
+
+  // Seçili TF'e göre dinamik sıralama: önce TAZE GC, sonra Long, sonra skor.
+  const sortedRecs = useMemo(() => {
+    return [...recs].sort((a, b) => {
+      const aFresh = isFreshForTf(a, selectedTf);
+      const bFresh = isFreshForTf(b, selectedTf);
+      if (aFresh !== bFresh) return aFresh ? -1 : 1;
+      const aLong = isLongForTf(a, selectedTf);
+      const bLong = isLongForTf(b, selectedTf);
+      if (aLong !== bLong) return aLong ? -1 : 1;
+      return scoreForTf(b, selectedTf) - scoreForTf(a, selectedTf);
+    });
+  }, [recs, selectedTf]);
 
   const refresh = async (force = false) => {
     if (force) clearServiceCaches();
@@ -238,11 +275,8 @@ export function RecommendationsPage() {
         }),
       );
 
-      // Sıralama: önce 5m long olanlar, sonra long score'a göre
-      computed.sort((a, b) => {
-        if (a.scalp5mLong !== b.scalp5mLong) return a.scalp5mLong ? -1 : 1;
-        return b.longScore - a.longScore;
-      });
+      // Sort: useMemo'da selectedTf-aware yapilir (refresh'te initial olarak longScore)
+      computed.sort((a, b) => b.longScore - a.longScore);
 
       setRecs(computed.slice(0, 15));
       setUpdatedAt(Date.now());
@@ -301,7 +335,7 @@ export function RecommendationsPage() {
           )}
           onClick={() => setTab('scalp')}
         >
-          <Zap size={14} /> Algoritmik ({recs.filter((r) => isLongForTf(r, selectedTf)).length}/{recs.length})
+          <Zap size={14} /> Algoritmik ({sortedRecs.filter((r) => isLongForTf(r, selectedTf)).length}/{sortedRecs.length})
         </button>
         <button
           className={cn(
@@ -345,9 +379,9 @@ export function RecommendationsPage() {
             </span>
           </div>
 
-          {recs.length > 0 && <ScalpPoolStats recs={recs} selectedTf={selectedTf} />}
+          {sortedRecs.length > 0 && <ScalpPoolStats recs={sortedRecs} selectedTf={selectedTf} />}
 
-          {recs.length > 0 && (
+          {sortedRecs.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
               {/* Timeframe selector */}
               <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
@@ -384,13 +418,13 @@ export function RecommendationsPage() {
             </div>
           )}
 
-          {loading && recs.length === 0 ? (
+          {loading && sortedRecs.length === 0 ? (
             <div className="space-y-2">
               {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="rect" height={56} />)}
             </div>
           ) : (
             <div className="space-y-1.5">
-              {recs
+              {sortedRecs
                 .filter((rec) => {
                   if (scalpFilter === 'longonly') return isLongForTf(rec, selectedTf);
                   if (scalpFilter === 'watchlist') return watchlistHas(rec.stock.symbol);

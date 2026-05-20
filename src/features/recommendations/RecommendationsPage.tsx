@@ -17,11 +17,12 @@ import { AlertButton } from '@/components/domain/AlertButton';
 import { NoteButton } from '@/components/domain/NoteButton';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { loadStocks, clearServiceCaches } from '@/data/services';
-import { fetchHistoricalYahoo } from '@/data/api/yahoo';
+import { fetchHistoricalYahoo, fetchIndexYahoo } from '@/data/api/yahoo';
 import { ema, type OHLC } from '@/lib/indicators';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type TimeframeAnalysis, type MultiTimeframeResult } from '@/lib/multiTimeframe';
 import { useAuth, isPro } from '@/store/auth';
-import { Lock } from 'lucide-react';
+import { Lock, Bell, BellOff } from 'lucide-react';
+import { sendTelegram, getTelegramChatId } from '@/lib/telegram';
 import { MOCK_STOCKS } from '@/data/mock';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import type { Stock, FundPerformance } from '@/data/types';
@@ -30,6 +31,21 @@ import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 
 const AUTO_REFRESH_MS = 120_000;
+
+/**
+ * BIST disindaki extra tarama sembolleri (emtia spot).
+ * Yahoo symbol: XAUUSD=X (Altin), XAGUSD=X (Gumus) — bistSuffix=false ile cekilir.
+ */
+interface CustomScanSymbol {
+  symbol: string;       // Yahoo ticker (XAUUSD=X)
+  displayName: string;
+  sector: string;
+}
+const CUSTOM_SCAN_SYMBOLS: CustomScanSymbol[] = [
+  { symbol: 'XAUUSD=X', displayName: 'Altin Spot (USD)', sector: 'Emtia' },
+  { symbol: 'XAGUSD=X', displayName: 'Gumus Spot (USD)', sector: 'Emtia' },
+];
+const isCustomSymbol = (sym: string) => CUSTOM_SCAN_SYMBOLS.some((c) => c.symbol === sym);
 
 type ScalpTf = '5m' | '15m' | '1h' | '4h' | '1d';
 
@@ -86,6 +102,50 @@ function isLongForTf(rec: ScalpRec, tf: ScalpTf): boolean {
 
 function tfLabel(tf: ScalpTf): string {
   return { '5m': '5DK', '15m': '15DK', '1h': '1H', '4h': '4H', '1d': '1G' }[tf];
+}
+
+/**
+ * Tarihsel snapshot — algoritmik onerilerin gecmis performansini takip eder.
+ * Her gun ilk basarili refresh'te bugunun toplam onerilerini kaydederiz.
+ * Sonradan mevcut fiyatlarla karsilastirip kazanci/kaybi hesaplariz.
+ */
+interface DailySnapshotEntry {
+  symbol: string;
+  name?: string;
+  entryPrice: number;
+  isLongAtEntry: boolean;
+  isFreshAtEntry: boolean;
+}
+interface DailySnapshot {
+  date: string;          // YYYY-MM-DD
+  ts: number;            // unix ms (ilk kayit)
+  selectedTf: ScalpTf;
+  entries: DailySnapshotEntry[];
+}
+
+const SNAPSHOT_KEY = 'fa.scalp.dailySnapshots.v1';
+const SNAPSHOT_MAX_DAYS = 14;
+
+function loadSnapshots(): DailySnapshot[] {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as DailySnapshot[];
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
+function saveSnapshots(snaps: DailySnapshot[]): void {
+  try { localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snaps)); } catch { /* */ }
+}
+
+function todayDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function daysAgo(dateStr: string): number {
+  const d = new Date(dateStr + 'T00:00:00');
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
 }
 
 /** Sadece 5m/15m fresh golden cross destekler (1h/4h/1d trend analizinde yok). */
@@ -154,6 +214,10 @@ export function RecommendationsPage() {
   const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds'>('scalp');
   const [scalpFilter, setScalpFilter] = useState<'all' | 'longonly' | 'watchlist'>('all');
   const [selectedTf, setSelectedTf] = useState<ScalpTf>('5m');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [tazeAlertsEnabled, setTazeAlertsEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem('fa.scalp.tazeAlertsEnabled') === '1'; } catch { return false; }
+  });
   const [recs, setRecs] = useState<ScalpRec[]>([]);
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [fundsConfigured, setFundsConfigured] = useState(true);
@@ -178,26 +242,113 @@ export function RecommendationsPage() {
     });
   }, [recs, selectedTf]);
 
+  // Persist toggle
+  useEffect(() => {
+    try { localStorage.setItem('fa.scalp.tazeAlertsEnabled', tazeAlertsEnabled ? '1' : '0'); } catch { /* */ }
+  }, [tazeAlertsEnabled]);
+
+  // TAZE GC diff + Telegram notify — her refresh sonrası 5m ve 15m'yi tarar
+  useEffect(() => {
+    if (recs.length === 0 || !tazeAlertsEnabled) return;
+    const chatId = getTelegramChatId();
+    if (!chatId) return;
+    for (const tf of ['5m', '15m'] as ScalpTf[]) {
+      const currentTaze = recs.filter((r) => isFreshForTf(r, tf)).map((r) => r.stock.symbol).sort();
+      const storageKey = `fa.scalp.lastTaze.${tf}`;
+      let prevTaze: string[] | null = null;
+      try {
+        const raw = localStorage.getItem(storageKey);
+        prevTaze = raw ? JSON.parse(raw) : null;
+      } catch { prevTaze = null; }
+      if (prevTaze === null) {
+        // First time — sadece kaydet, bildirimsiz (spam onleme)
+        try { localStorage.setItem(storageKey, JSON.stringify(currentTaze)); } catch { /* */ }
+        continue;
+      }
+      const newOnes = currentTaze.filter((s) => !prevTaze!.includes(s));
+      if (newOnes.length > 0) {
+        const lines = newOnes.map((sym) => {
+          const rec = recs.find((r) => r.stock.symbol === sym);
+          if (!rec) return `• ${sym}`;
+          const sign = rec.stock.changePct >= 0 ? '+' : '';
+          return `• <b>${sym}</b> — ₺${rec.stock.price.toFixed(2)} (${sign}${rec.stock.changePct.toFixed(2)}%)`;
+        });
+        const message = `🚨 <b>Yeni TAZE Golden Cross</b> (${tfLabel(tf)})\n\n` +
+          lines.join('\n') +
+          `\n\n🌐 hanefinans.net/recommendations`;
+        sendTelegram(message, 'HTML').catch(() => { /* sessizce gec */ });
+      }
+      try { localStorage.setItem(storageKey, JSON.stringify(currentTaze)); } catch { /* */ }
+    }
+  }, [recs, tazeAlertsEnabled]);
+
+  // Daily snapshot — her gunun ilk basarili refresh'inde bugunkulistesini kaydet
+  useEffect(() => {
+    if (recs.length === 0) return;
+    const today = todayDate();
+    const snaps = loadSnapshots();
+    const todaySnap = snaps.find((s) => s.date === today);
+    if (todaySnap) return; // bugun zaten kaydedildi
+
+    const entries: DailySnapshotEntry[] = recs.slice(0, 20).map((r) => ({
+      symbol: r.stock.symbol,
+      name: r.stock.name,
+      entryPrice: r.stock.price,
+      isLongAtEntry: isLongForTf(r, selectedTf),
+      isFreshAtEntry: isFreshForTf(r, selectedTf),
+    }));
+    const newSnap: DailySnapshot = {
+      date: today,
+      ts: Date.now(),
+      selectedTf,
+      entries,
+    };
+    const updated = [newSnap, ...snaps]
+      .filter((s) => daysAgo(s.date) <= SNAPSHOT_MAX_DAYS)
+      .slice(0, SNAPSHOT_MAX_DAYS);
+    saveSnapshots(updated);
+  }, [recs, selectedTf]);
+
   const refresh = async (force = false) => {
     if (force) clearServiceCaches();
     setLoading(true);
     try {
       const r = await loadStocks(allSymbols);
       // Önce filtre: bugün hareketli olanlar (mutlak değişim > 0.3)
-      const candidates = [...r.data]
+      const bistCandidates = [...r.data]
         .filter((s) => s.price > 0 && Number.isFinite(s.changePct) && Math.abs(s.changePct) > 0.1)
         .sort((a, b) => b.changePct - a.changePct)
-        .slice(0, 25); // Top 25 mum atan hisse
+        .slice(0, 23); // Top 23 BIST + 2 emtia = 25 total
+
+      // Emtia (XAUUSD, XAGUSD) spot çek
+      const customStocks = await Promise.all(
+        CUSTOM_SCAN_SYMBOLS.map(async (c) => {
+          const spot = await fetchIndexYahoo(c.symbol);
+          if (!spot) return null;
+          return {
+            symbol: c.symbol,
+            name: c.displayName,
+            sector: c.sector,
+            price: spot.value,
+            changePct: spot.changePct,
+            updatedAt: new Date().toISOString(),
+          } as Stock;
+        })
+      );
+      const customCandidates = customStocks.filter((s): s is Stock => s !== null);
+      const candidates = [...bistCandidates, ...customCandidates];
 
       // Her biri için 5m + 1h + 1d historical fetch + analiz
       const computed: ScalpRec[] = await Promise.all(
         candidates.map(async (stock) => {
+          // Emtia sembolleri için BIST suffix (.IS) eklenmemeli
+          const bistSuffix = !isCustomSymbol(stock.symbol);
           const [hist5m, hist1h, hist1d] = await Promise.all([
             // 1mo range: 5m'de ~5760 bar, 15m'e aggregate edince ~1920 bar
             // EMA 200 icin yeterli warm-up sunar
-            fetchHistoricalYahoo(stock.symbol, '1mo', '5m'),
-            fetchHistoricalYahoo(stock.symbol, '1mo', '60m'),
-            fetchHistoricalYahoo(stock.symbol, '6mo', '1d'),
+            fetchHistoricalYahoo(stock.symbol, '1mo', '5m', { bistSuffix }),
+            fetchHistoricalYahoo(stock.symbol, '1mo', '60m', { bistSuffix }),
+            fetchHistoricalYahoo(stock.symbol, '6mo', '1d', { bistSuffix }),
           ]);
 
           // 5m Golden Cross detect (EMA 50 > EMA 200 + fiyat > EMA 50)
@@ -278,7 +429,7 @@ export function RecommendationsPage() {
       // Sort: useMemo'da selectedTf-aware yapilir (refresh'te initial olarak longScore)
       computed.sort((a, b) => b.longScore - a.longScore);
 
-      setRecs(computed.slice(0, 15));
+      setRecs(computed.slice(0, 17));
       setUpdatedAt(Date.now());
     } finally {
       setLoading(false);
@@ -379,6 +530,8 @@ export function RecommendationsPage() {
             </span>
           </div>
 
+          {sortedRecs.length > 0 && <HistoricalPerformanceCard recs={sortedRecs} />}
+
           {sortedRecs.length > 0 && <ScalpPoolStats recs={sortedRecs} selectedTf={selectedTf} />}
 
           {sortedRecs.length > 0 && (
@@ -415,6 +568,33 @@ export function RecommendationsPage() {
                   </button>
                 ))}
               </div>
+
+              {/* Symbol search */}
+              <input
+                type="text"
+                placeholder="Hisse ara (THYAO, GARAN...)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input text-xs ml-auto w-full sm:w-56"
+              />
+
+              {/* TAZE alert toggle */}
+              <button
+                type="button"
+                onClick={() => setTazeAlertsEnabled((v) => !v)}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-medium transition',
+                  tazeAlertsEnabled
+                    ? 'border-success/40 bg-success/10 text-success'
+                    : 'border-border bg-bg-soft text-slate-400 hover:text-slate-200',
+                )}
+                title={tazeAlertsEnabled
+                  ? 'TAZE bildirimleri aktif — yeni Golden Cross olunca Telegram\'a push'
+                  : 'TAZE bildirimleri kapali — etkinlestir'}
+              >
+                {tazeAlertsEnabled ? <Bell size={11} /> : <BellOff size={11} />}
+                <span className="hidden sm:inline">TAZE Bildirim</span>
+              </button>
             </div>
           )}
 
@@ -426,8 +606,16 @@ export function RecommendationsPage() {
             <div className="space-y-1.5">
               {sortedRecs
                 .filter((rec) => {
-                  if (scalpFilter === 'longonly') return isLongForTf(rec, selectedTf);
-                  if (scalpFilter === 'watchlist') return watchlistHas(rec.stock.symbol);
+                  // Filter chip
+                  if (scalpFilter === 'longonly' && !isLongForTf(rec, selectedTf)) return false;
+                  if (scalpFilter === 'watchlist' && !watchlistHas(rec.stock.symbol)) return false;
+                  // Search query
+                  const q = searchQuery.trim().toUpperCase();
+                  if (q.length > 0) {
+                    const sym = rec.stock.symbol.toUpperCase();
+                    const name = (rec.stock.name ?? '').toUpperCase();
+                    if (!sym.includes(q) && !name.includes(q)) return false;
+                  }
                   return true;
                 })
                 .map((rec, i) => (
@@ -472,6 +660,126 @@ export function RecommendationsPage() {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Tarihsel Performans karti — gecmis daily snapshot'lardaki onerilerin
+ * MEVCUT (recs[]) fiyatlarla karsilastirildiginda performansi.
+ *
+ * recs[]: bugunkulistede su anda olan semboller (entry fiyatlari yok)
+ * snapshots[]: gecmis gunlerden donen onerilerin o gunku entry fiyatlari
+ *
+ * Mantik: her snapshot icin, snapshot'daki sembolleri recs[]'te bul.
+ * Mevcut fiyat ile snapshot.entryPrice arasindaki yuzde fark = getirisi.
+ */
+function HistoricalPerformanceCard({ recs }: { recs: ScalpRec[] }) {
+  const [snapshots, setSnapshots] = useState<DailySnapshot[]>([]);
+
+  useEffect(() => {
+    setSnapshots(loadSnapshots());
+  }, [recs]);
+
+  // Bugunun snapshot'ini atla, yalniz gecmis gunler
+  const today = todayDate();
+  const pastSnaps = snapshots.filter((s) => s.date !== today);
+
+  if (pastSnaps.length === 0) {
+    return (
+      <details className="card mb-3">
+        <summary className="cursor-pointer px-3 py-2 text-xs text-slate-400 [&::-webkit-details-marker]:hidden flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Gecmis Performans</span>
+          <ChevronRight size={11} className="transition-transform group-open:rotate-90" />
+          <span className="ml-auto text-[10px] text-slate-500">henuz kayit yok</span>
+        </summary>
+        <div className="border-t border-border px-3 py-3 text-xs text-slate-400">
+          Bu gunkulistesi bu seansta kaydedildi. Yarin ve sonraki gunlerde geri donen onerilerin
+          gercek performansini bu kartta gorebileceksin.
+        </div>
+      </details>
+    );
+  }
+
+  // Her snapshot icin getirisini hesapla
+  const recsBySymbol = new Map(recs.map((r) => [r.stock.symbol, r]));
+  const perfData = pastSnaps.map((snap) => {
+    const detailed = snap.entries.map((e) => {
+      const current = recsBySymbol.get(e.symbol);
+      if (!current) return null;
+      const returnPct = ((current.stock.price - e.entryPrice) / e.entryPrice) * 100;
+      return { ...e, currentPrice: current.stock.price, returnPct };
+    }).filter((x): x is NonNullable<typeof x> => x !== null);
+
+    if (detailed.length === 0) {
+      return { snap, hitRate: 0, avgReturn: 0, count: 0, top: null, bottom: null };
+    }
+    const positive = detailed.filter((d) => d.returnPct > 0).length;
+    const hitRate = (positive / detailed.length) * 100;
+    const avgReturn = detailed.reduce((s, d) => s + d.returnPct, 0) / detailed.length;
+    const sorted = [...detailed].sort((a, b) => b.returnPct - a.returnPct);
+    return {
+      snap,
+      hitRate,
+      avgReturn,
+      count: detailed.length,
+      top: sorted[0],
+      bottom: sorted[sorted.length - 1],
+    };
+  });
+
+  return (
+    <details className="card group mb-3">
+      <summary className="cursor-pointer px-3 py-2.5 text-xs [&::-webkit-details-marker]:hidden flex items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Gecmis Performans</span>
+        <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-accent">{pastSnaps.length} kayit</span>
+        <ChevronRight size={11} className="text-slate-500 transition-transform group-open:rotate-90" />
+      </summary>
+      <div className="border-t border-border px-3 py-3">
+        <div className="space-y-2">
+          {perfData.map(({ snap, hitRate, avgReturn, count, top, bottom }) => {
+            const ageDays = daysAgo(snap.date);
+            const ageLabel = ageDays === 0 ? 'bugun' : ageDays === 1 ? '1 gun once' : `${ageDays} gun once`;
+            const returnClass = avgReturn >= 0 ? 'text-success' : 'text-danger';
+            const sign = avgReturn >= 0 ? '+' : '';
+            return (
+              <div key={snap.date} className="rounded-lg border border-border bg-bg-soft p-2.5">
+                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="font-mono text-slate-300">{snap.date}</span>
+                  <span className="text-slate-500">{ageLabel}</span>
+                  <span className="rounded bg-slate-500/15 px-1.5 py-0.5 text-[9px] uppercase text-slate-400">
+                    {tfLabel(snap.selectedTf)} · {count} eslesme
+                  </span>
+                  <span className={cn('ml-auto font-semibold tabular-nums', returnClass)}>
+                    Ort: {sign}{avgReturn.toFixed(2)}%
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Isabet: %{hitRate.toFixed(0)}
+                  </span>
+                </div>
+                {(top || bottom) && (
+                  <div className="mt-1.5 flex gap-3 text-[10px]">
+                    {top && (
+                      <span className="text-success">
+                        En iyi: <span className="font-mono font-bold">{top.symbol}</span> +{top.returnPct.toFixed(2)}%
+                      </span>
+                    )}
+                    {bottom && bottom.returnPct < 0 && (
+                      <span className="text-danger">
+                        En kotu: <span className="font-mono font-bold">{bottom.symbol}</span> {bottom.returnPct.toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
+          ℹ Bu metrik bugun listede HALA olan sembolleri esleştirir. Listeden cikmis semboller hesapta yer almaz.
+          Snapshot her gun ilk refresh'te otomatik kaydedilir.
+        </p>
+      </div>
+    </details>
   );
 }
 

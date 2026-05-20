@@ -1,27 +1,36 @@
 import { useState } from 'react';
-import { Sparkles, Search, AlertCircle } from 'lucide-react';
+import { Sparkles, Search, AlertCircle, Info } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { NewsCard } from '@/components/domain/NewsCard';
-import { semanticSearch } from '@/data/api/voyage';
-import { isSupabaseConfigured } from '@/data/supabase';
-import type { NewsItem } from '@/data/types';
+import { smartSearch, type SmartSearchResult } from '@/data/api/smartSearchClient';
 
 export function SmartSearchPage() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<NewsItem[]>([]);
+  const [results, setResults] = useState<SmartSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-
-  const enabled = isSupabaseConfigured();
+  const [error, setError] = useState<string | null>(null);
+  const [meta, setMeta] = useState<{ totalSearched?: number; model?: string }>({});
 
   const onSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
     setSearched(true);
+    setError(null);
+    setResults([]);
     try {
-      const r = await semanticSearch(query.trim(), 10);
-      setResults(r);
+      const r = await smartSearch(query.trim(), 10);
+      if (!r) {
+        setError('Smart Search endpoint cevap vermedi (yerel dev sunucuda Pages Functions çalışmaz — production\'da görülür).');
+        return;
+      }
+      if (!r.ok) {
+        setError(r.error ?? 'Arama başarısız.');
+        return;
+      }
+      setResults(r.results ?? []);
+      setMeta({ totalSearched: r.totalSearched, model: r.model });
     } finally {
       setLoading(false);
     }
@@ -31,58 +40,70 @@ export function SmartSearchPage() {
     <>
       <PageHeader
         title="Akıllı Arama"
-        subtitle="Voyage AI embeddings + pgvector ile anlam tabanlı haber araması."
+        subtitle="Voyage AI embeddings + cosine similarity ile anlam tabanlı haber araması."
       />
-
-      {!enabled && (
-        <div className="mb-4 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">
-          <AlertCircle size={16} className="mt-0.5 shrink-0 text-warning" />
-          <p className="text-xs leading-relaxed text-slate-300">
-            <span className="font-semibold text-warning">Supabase bağlı değil.</span> Bu sayfanın çalışması için
-            <code className="mx-1 rounded bg-bg-card px-1 font-mono">VITE_SUPABASE_URL</code> ve
-            <code className="mx-1 rounded bg-bg-card px-1 font-mono">VITE_SUPABASE_ANON_KEY</code>'in
-            .env.local'a eklenmesi, ardından
-            <code className="mx-1 rounded bg-bg-card px-1 font-mono">voyage-embed</code> Edge Function'ının
-            deploy edilmesi gerekir.
-          </p>
-        </div>
-      )}
 
       <div className="mb-4 rounded-xl border border-border bg-bg-soft p-3">
         <div className="relative">
           <Sparkles size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-accent" />
           <input
             className="input pl-8"
-            placeholder="ör: havayolu sektörü satın alma anlaşması, banka yapılandırması…"
+            placeholder="ör: havayolu sektörü kâr açıklaması, bankacılık yapılandırması, Fed faiz kararı…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-            disabled={!enabled}
           />
         </div>
         <div className="mt-2 flex justify-end">
-          <button className="btn-primary" disabled={!enabled || !query.trim() || loading} onClick={onSearch}>
+          <button
+            className="btn-primary"
+            disabled={!query.trim() || loading}
+            onClick={onSearch}
+          >
             <Search size={14} /> {loading ? 'Aranıyor…' : 'Anlam tabanlı ara'}
           </button>
         </div>
-        <p className="mt-2 text-[11px] text-slate-500">
-          Sorgun Voyage AI ile embed edilir, pgvector cosine similarity ile en yakın haberleri buluruz.
-          Kelime eşleşmesinden çok anlam yakınlığı önemli.
+        <p className="mt-2 flex items-start gap-1 text-[11px] text-slate-500 leading-relaxed">
+          <Info size={11} className="mt-0.5 flex-shrink-0 text-accent" />
+          <span>
+            Sorgunuz Voyage AI ile embed edilir, son 50 haber başlığı ile cosine similarity karşılaştırılır.
+            Kelime eşleşmesinden çok anlam yakınlığı önemli.
+            {meta.model && <span className="ml-1 text-slate-600">· model: {meta.model}</span>}
+          </span>
         </p>
       </div>
 
-      {searched && results.length === 0 && !loading ? (
+      {error && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3">
+          <AlertCircle size={16} className="mt-0.5 shrink-0 text-warning" />
+          <p className="text-xs leading-relaxed text-slate-300">{error}</p>
+        </div>
+      )}
+
+      {searched && !loading && !error && results.length === 0 && (
         <EmptyState
           icon={<Search size={28} />}
           title="Eşleşme yok"
-          description="Henüz embed edilmiş haber bulunmuyor olabilir. Edge Function 'voyage-embed' tek seferlik index modunda çağrılmalı."
+          description="Bu sorguya yakın haber bulunamadı. Farklı bir ifadeyle dene."
         />
-      ) : (
-        <div className="grid gap-3">
-          {results.map((n) => (
-            <NewsCard key={n.id} item={n} />
-          ))}
-        </div>
+      )}
+
+      {results.length > 0 && (
+        <>
+          <div className="mb-2 text-[11px] text-slate-500">
+            {results.length} sonuç {meta.totalSearched ? `· ${meta.totalSearched} haber tarandı` : ''}
+          </div>
+          <div className="grid gap-3">
+            {results.map((r) => (
+              <div key={r.item.id} className="relative">
+                <NewsCard item={r.item} />
+                <div className="absolute right-3 top-3 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
+                  {(r.similarity * 100).toFixed(0)}% match
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </>
   );

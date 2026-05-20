@@ -43,9 +43,9 @@ export async function runIndicatorAgent(opts: {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ symbols: opts.symbols }),
     });
-    if (!r.ok) return null;
     const ct = r.headers.get('content-type') ?? '';
     if (!ct.includes('application/json')) return null;
+    // ok:false JSON cevabini da dondur, widget gercek hata mesajini gostersin
     const data = (await r.json()) as IndicatorAgentResponse;
     _cache = { key, data, t: Date.now() };
     return data;

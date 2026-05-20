@@ -43,9 +43,9 @@ export async function runMacroAgent(force = false): Promise<MacroAgentResponse |
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({}),
     });
-    if (!r.ok) return null;
     const ct = r.headers.get('content-type') ?? '';
     if (!ct.includes('application/json')) return null;
+    // ok:false JSON cevabini da dondur, widget gercek hata mesajini gostersin
     const data = (await r.json()) as MacroAgentResponse;
     _cache = { data, t: Date.now() };
     return data;

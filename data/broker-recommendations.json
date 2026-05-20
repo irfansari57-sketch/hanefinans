@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-05-20T18:51:59.642595+00:00",
+  "fetchedAt": "2026-05-20T19:03:47.796857+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -124,10 +124,10 @@
         "GET https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
         "HTTP 200, 4433475 bytes, type=application/pdf",
         "PDF text: 11493 chars",
-        "Claude: Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKoG9VmiJiMQGhxdCZS'}",
+        "Claude: Claude returned 0 items but all were filtered out (invalid symbol/format)",
         "Result: 0 recommendations"
       ],
-      "error": "Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKoG9VmiJiMQGhxdCZS'}"
+      "error": "Claude returned 0 items but all were filtered out (invalid symbol/format)"
     },
     {
       "brokerId": "kt-yatirim",
@@ -146,10 +146,10 @@
         "Latest PDF: /media/cxln251u/gunluk-bulten_20052026.pdf",
         "PDF HTTP 200, 3569907 bytes",
         "PDF text: 1498 chars",
-        "Bülten Claude: Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKouoQk5zj6rLp296k9'}",
+        "Bülten Claude: Claude returned 0 items but all were filtered out (invalid symbol/format)",
         "Recommendations: 0"
       ],
-      "error": "Claude exception: AuthenticationError: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'Invalid authentication credentials'}, 'request_id': 'req_011CbEKouoQk5zj6rLp296k9'}"
+      "error": "Claude returned 0 items but all were filtered out (invalid symbol/format)"
     }
   ],
   "summary": {

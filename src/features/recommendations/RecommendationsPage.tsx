@@ -78,7 +78,8 @@ function detect5mLong(closes: number[]): { isLong: boolean; score: number } {
 }
 
 export function RecommendationsPage() {
-  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds'>('broker');
+  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds'>('scalp');
+  const [scalpFilter, setScalpFilter] = useState<'all' | '5dklong' | 'watchlist'>('all');
   const [recs, setRecs] = useState<ScalpRec[]>([]);
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [fundsConfigured, setFundsConfigured] = useState(true);
@@ -227,6 +228,15 @@ export function RecommendationsPage() {
         <button
           className={cn(
             'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
+            tab === 'scalp' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setTab('scalp')}
+        >
+          <Zap size={14} /> Algoritmik ({recs.filter((r) => r.scalp5mLong).length}/{recs.length})
+        </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
             tab === 'broker' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
           )}
           onClick={() => setTab('broker')}
@@ -251,15 +261,6 @@ export function RecommendationsPage() {
         >
           <PiggyBank size={14} /> Trend Fonlar ({topFunds.length})
         </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'scalp' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('scalp')}
-        >
-          <Zap size={14} /> Algoritmik ({recs.filter((r) => r.scalp5mLong).length}/{recs.length})
-        </button>
       </div>
 
       {tab === 'broker' && <BrokerRecommendations />}
@@ -275,13 +276,46 @@ export function RecommendationsPage() {
             </span>
           </div>
 
+          {recs.length > 0 && <ScalpPoolStats recs={recs} />}
+
+          {recs.length > 0 && (
+            <div className="mb-3 inline-flex rounded-lg border border-border bg-bg-soft p-1">
+              {(['all', '5dklong', 'watchlist'] as const).map((f) => (
+                <button
+                  key={f}
+                  className={cn(
+                    'rounded-md px-2.5 py-1 text-xs transition',
+                    scalpFilter === f ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  )}
+                  onClick={() => setScalpFilter(f)}
+                >
+                  {f === 'all' ? 'Tumu' : f === '5dklong' ? 'Yalniz 5DK Long' : 'Yalniz watchlist'}
+                </button>
+              ))}
+            </div>
+          )}
+
           {loading && recs.length === 0 ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} variant="rect" height={200} />)}
+            <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="rect" height={56} />)}
             </div>
           ) : (
-            <div className="space-y-3">
-              {recs.map((rec, i) => <ScalpCard key={rec.stock.symbol} rec={rec} rank={i + 1} watched={watchlistHas(rec.stock.symbol)} onToggle={() => toggleWatch(rec.stock.symbol)} />)}
+            <div className="space-y-1.5">
+              {recs
+                .filter((rec) => {
+                  if (scalpFilter === '5dklong') return rec.scalp5mLong;
+                  if (scalpFilter === 'watchlist') return watchlistHas(rec.stock.symbol);
+                  return true;
+                })
+                .map((rec, i) => (
+                  <ScalpRowItem
+                    key={rec.stock.symbol}
+                    rec={rec}
+                    rank={i + 1}
+                    watched={watchlistHas(rec.stock.symbol)}
+                    onToggle={() => toggleWatch(rec.stock.symbol)}
+                  />
+                ))}
             </div>
           )}
           <p className="mt-3 text-[11px] text-slate-500">
@@ -314,6 +348,118 @@ export function RecommendationsPage() {
         </div>
       )}
     </>
+  );
+}
+
+function ScalpPoolStats({ recs }: { recs: ScalpRec[] }) {
+  const total = recs.length;
+  const scalpLong = recs.filter((r) => r.scalp5mLong).length;
+  const avgChange = total > 0 ? recs.reduce((s, r) => s + r.stock.changePct, 0) / total : 0;
+  const alici = recs.filter((r) => r.bigPlayerLean === 'alıcı').length;
+  const satici = recs.filter((r) => r.bigPlayerLean === 'satıcı').length;
+  const kararsiz = total - alici - satici;
+  const positiveCount = recs.filter((r) => r.stock.changePct > 0).length;
+  const hitRate = total > 0 ? (positiveCount / total) * 100 : 0;
+  const topSymbol = recs[0]?.stock.symbol;
+  const topChange = recs[0]?.stock.changePct ?? 0;
+
+  return (
+    <div className="card mb-3 p-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <PoolStatBox label="Toplam" value={`${total}`} tone="slate" />
+        <PoolStatBox label="5DK Long" value={`${scalpLong}/${total}`} tone="success" />
+        <PoolStatBox label="Ort. Degisim" value={`${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%`} tone={avgChange >= 0 ? 'success' : 'danger'} />
+        <PoolStatBox label="Pozitif Oran" value={`%${hitRate.toFixed(0)}`} tone="accent" />
+        <PoolStatBox label="Alici/Satici" value={`${alici} / ${satici}`} sub={`${kararsiz} kararsiz`} tone="warning" />
+        <PoolStatBox label="Lider" value={topSymbol ?? '-'} sub={topChange ? `${topChange >= 0 ? '+' : ''}${topChange.toFixed(2)}%` : undefined} tone={topChange >= 0 ? 'success' : 'danger'} />
+      </div>
+    </div>
+  );
+}
+
+function PoolStatBox({ label, value, sub, tone }: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone: 'slate' | 'success' | 'danger' | 'accent' | 'warning';
+}) {
+  const colorClass = tone === 'success' ? 'text-success'
+    : tone === 'danger' ? 'text-danger'
+    : tone === 'accent' ? 'text-accent'
+    : tone === 'warning' ? 'text-warning'
+    : 'text-slate-100';
+  return (
+    <div className="rounded-lg border border-border bg-bg-soft px-2.5 py-2">
+      <div className="text-[9px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={cn('mt-0.5 text-base font-bold tabular-nums leading-tight', colorClass)}>{value}</div>
+      {sub && <div className="text-[9px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+function ScalpRowItem({ rec, rank, watched, onToggle }: {
+  rec: ScalpRec;
+  rank: number;
+  watched: boolean;
+  onToggle: () => void;
+}) {
+  const { stock } = rec;
+  const tone = stock.changePct >= 0 ? 'text-success' : 'text-danger';
+  const sign = stock.changePct >= 0 ? '+' : '';
+  const leanColor = rec.bigPlayerLean === 'alıcı' ? 'text-success'
+    : rec.bigPlayerLean === 'satıcı' ? 'text-danger'
+    : 'text-slate-400';
+  const leanLabel = rec.bigPlayerLean === 'alıcı' ? 'Alici'
+    : rec.bigPlayerLean === 'satıcı' ? 'Satici'
+    : 'Kararsiz';
+
+  return (
+    <details className={cn(
+      'group rounded-lg border transition',
+      rec.scalp5mLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
+    )}>
+      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
+        <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs', rec.scalp5mLong ? 'border-success/40 bg-success/10 text-success' : 'border-accent/30 bg-accent/10 text-accent')}>
+          {rank}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link to={`/stock/${stock.symbol}`} className="font-mono font-bold text-slate-100 hover:text-accent" onClick={(e) => e.stopPropagation()}>
+              {stock.symbol}
+            </Link>
+            {stock.sector && (
+              <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{stock.sector}</span>
+            )}
+            {rec.scalp5mLong && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+                <Zap size={8} />5DK
+              </span>
+            )}
+            {watched && <Star size={10} className="text-warning" fill="currentColor" />}
+          </div>
+          <div className="truncate text-[10px] text-slate-500">{stock.name}</div>
+        </div>
+        <div className="hidden lg:flex items-center gap-1 text-[9px]">
+          {([rec.trend1h, rec.trend4h, rec.trend1d] as const).map((t, i) => {
+            const label = ['1H', '4H', '1D'][i];
+            if (!t) return <span key={i} className="rounded bg-slate-500/15 px-1 py-0.5 text-slate-500">{label}</span>;
+            const cls = t.trend === 'long' ? 'bg-success/15 text-success' : t.trend === 'short' ? 'bg-danger/15 text-danger' : 'bg-slate-500/15 text-slate-400';
+            return <span key={i} className={cn('rounded px-1 py-0.5 font-mono', cls)}>{label}</span>;
+          })}
+        </div>
+        <span className={cn('hidden md:inline-block w-16 text-right text-[10px] font-semibold', leanColor)}>
+          {leanLabel}
+        </span>
+        <div className="w-20 text-right">
+          <div className="text-sm font-bold tabular-nums text-slate-100">{formatMoney(stock.price)}</div>
+          <div className={cn('text-[10px] font-semibold tabular-nums', tone)}>{sign}{stock.changePct.toFixed(2)}%</div>
+        </div>
+        <ChevronRight size={14} className="shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
+      </summary>
+      <div className="border-t border-border">
+        <ScalpCard rec={rec} rank={rank} watched={watched} onToggle={onToggle} />
+      </div>
+    </details>
   );
 }
 

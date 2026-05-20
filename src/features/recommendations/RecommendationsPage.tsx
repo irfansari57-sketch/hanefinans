@@ -35,12 +35,14 @@ type ScalpTf = '5m' | '15m' | '1h' | '4h' | '1d';
 
 interface ScalpRec {
   stock: Stock;
-  // 5dk timeframe — vur kaç sinyali
-  scalp5mLong: boolean;     // 5m EMA dizilim long
-  scalp5mScore: number;     // ek momentum
+  // 5dk timeframe — Golden Cross (EMA 50/200) sinyali
+  scalp5mLong: boolean;
+  scalp5mScore: number;
+  scalp5mFreshCross: boolean;
   // 15dk timeframe — 5m bar 3'erli aggregate
   scalp15mLong: boolean;
   scalp15mScore: number;
+  scalp15mFreshCross: boolean;
   // Multi-timeframe
   trend1h: TimeframeAnalysis | null;
   trend4h: TimeframeAnalysis | null;
@@ -87,31 +89,41 @@ function tfLabel(tf: ScalpTf): string {
 }
 
 /**
- * IRFANrfv3-tarzı 5m long trend dedektörü:
- *  - Son fiyat EMA 8 ve EMA 21 üstünde
- *  - EMA 8 > EMA 21 (ascending)
- *  - Son 3 bar pozitif close (momentum)
+ * Golden Cross dedektörü — guclu uzun trend sinyali.
+ *  - Fiyat EMA 50 ustunde (kisa vade momentum)
+ *  - EMA 50 > EMA 200 (golden cross aktif)
+ *  - Taze cross: son 10 bar oncesinde 50 < 200 idi → simdi yukari kesti = bonus
+ *
+ * EMA 50/200 5m'de cok daha gec ve guvenli sinyal verir.
+ * En az 200 bar veri gerek (yetersizse false doner).
  */
-function detect5mLong(closes: number[]): { isLong: boolean; score: number } {
-  if (closes.length < 21) return { isLong: false, score: 0 };
+function detectGoldenCross(closes: number[]): { isLong: boolean; score: number; freshCross: boolean } {
+  if (closes.length < 200) return { isLong: false, score: 0, freshCross: false };
   const last = closes[closes.length - 1];
-  const ema8 = ema(closes, 8).at(-1) ?? NaN;
-  const ema21 = ema(closes, 21).at(-1) ?? NaN;
-  if (!Number.isFinite(ema8) || !Number.isFinite(ema21)) return { isLong: false, score: 0 };
-  const aboveEma8 = last > ema8;
-  const ema8AboveEma21 = ema8 > ema21;
-  const momentum = (() => {
-    let up = 0;
-    for (let i = closes.length - 3; i < closes.length - 1; i++) {
-      if (i >= 0 && closes[i + 1] > closes[i]) up++;
-    }
-    return up;
-  })();
-  const isLong = aboveEma8 && ema8AboveEma21;
-  // Skor: temel sinyal + momentum + mesafe
-  const distance = ((last - ema21) / ema21) * 100;
-  const score = (isLong ? 5 : 0) + momentum * 1.5 + Math.min(distance, 3);
-  return { isLong, score };
+  const ema50Arr = ema(closes, 50);
+  const ema200Arr = ema(closes, 200);
+  const ema50 = ema50Arr.at(-1) ?? NaN;
+  const ema200 = ema200Arr.at(-1) ?? NaN;
+  if (!Number.isFinite(ema50) || !Number.isFinite(ema200)) {
+    return { isLong: false, score: 0, freshCross: false };
+  }
+
+  const goldenCross = ema50 > ema200;
+  const aboveEma50 = last > ema50;
+  const isLong = goldenCross && aboveEma50;
+
+  // Taze cross: 10 bar once EMA 50 <= EMA 200 idi, simdi ustunde
+  const lookback = Math.min(10, ema50Arr.length - 1);
+  const ema50Past = ema50Arr[ema50Arr.length - 1 - lookback];
+  const ema200Past = ema200Arr[ema200Arr.length - 1 - lookback];
+  const freshCross = Number.isFinite(ema50Past) && Number.isFinite(ema200Past)
+    ? ema50Past <= ema200Past && goldenCross
+    : false;
+
+  // Skor: golden cross + aboveEma50 + freshness + above-distance
+  const distancePct = ((last - ema200) / ema200) * 100;
+  const score = (isLong ? 10 : 0) + (freshCross ? 5 : 0) + Math.min(distancePct, 5);
+  return { isLong, score, freshCross };
 }
 
 export function RecommendationsPage() {
@@ -144,27 +156,33 @@ export function RecommendationsPage() {
       const computed: ScalpRec[] = await Promise.all(
         candidates.map(async (stock) => {
           const [hist5m, hist1h, hist1d] = await Promise.all([
-            fetchHistoricalYahoo(stock.symbol, '5d', '5m'),
+            // 1mo range: 5m'de ~5760 bar, 15m'e aggregate edince ~1920 bar
+            // EMA 200 icin yeterli warm-up sunar
+            fetchHistoricalYahoo(stock.symbol, '1mo', '5m'),
             fetchHistoricalYahoo(stock.symbol, '1mo', '60m'),
             fetchHistoricalYahoo(stock.symbol, '6mo', '1d'),
           ]);
 
-          // 5m detect
+          // 5m Golden Cross detect (EMA 50 > EMA 200 + fiyat > EMA 50)
           let scalp5mLong = false;
           let scalp5mScore = 0;
+          let scalp5mFreshCross = false;
           let scalp15mLong = false;
           let scalp15mScore = 0;
-          if (hist5m && hist5m.bars.length >= 21) {
+          let scalp15mFreshCross = false;
+          if (hist5m && hist5m.bars.length >= 200) {
             const closes5m = hist5m.bars.map((b) => b.close);
-            const r5 = detect5mLong(closes5m);
+            const r5 = detectGoldenCross(closes5m);
             scalp5mLong = r5.isLong;
             scalp5mScore = r5.score;
+            scalp5mFreshCross = r5.freshCross;
             // 15m: 5m'leri 3'erli aggregate et
             const closes15m = aggregateTo15m(closes5m);
-            if (closes15m.length >= 21) {
-              const r15 = detect5mLong(closes15m);
+            if (closes15m.length >= 200) {
+              const r15 = detectGoldenCross(closes15m);
               scalp15mLong = r15.isLong;
               scalp15mScore = r15.score;
+              scalp15mFreshCross = r15.freshCross;
             }
           }
 
@@ -205,8 +223,10 @@ export function RecommendationsPage() {
             stock,
             scalp5mLong,
             scalp5mScore,
+            scalp5mFreshCross,
             scalp15mLong,
             scalp15mScore,
+            scalp15mFreshCross,
             trend1h,
             trend4h,
             trend1d,
@@ -320,8 +340,8 @@ export function RecommendationsPage() {
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-slate-300">
             <Zap size={12} className="mt-0.5 shrink-0 text-accent" />
             <span>
-              <strong className="text-accent">Vur-Kaç stratejisi:</strong> 5 dakikalık grafikte EMA 8 ve EMA 21 üstüne çıkmış,
-              EMA dizilim ascending ve son barlar yükselen hisseler. Kısa vadeli long pozisyon için filtrelenmiştir.
+              <strong className="text-accent">Golden Cross stratejisi:</strong> Seçili zaman diliminde EMA 50 üstüne çıkmış ve
+              EMA 50 &gt; EMA 200 (golden cross aktif) hisseler. <strong>TAZE</strong> rozeti son 10 bar içinde gerçekleşen yeni golden cross'u işaretler.
             </span>
           </div>
 
@@ -504,7 +524,12 @@ function ScalpRowItem({ rec, rank, selectedTf, watched, onToggle }: {
             )}
             {isLong && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
-                <Zap size={8} />{tfLabel(selectedTf)}
+                <Zap size={8} />{tfLabel(selectedTf)} GC
+              </span>
+            )}
+            {((selectedTf === '5m' && rec.scalp5mFreshCross) || (selectedTf === '15m' && rec.scalp15mFreshCross)) && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
+                TAZE
               </span>
             )}
             {watched && <Star size={10} className="text-warning" fill="currentColor" />}

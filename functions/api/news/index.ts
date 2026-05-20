@@ -57,9 +57,105 @@ const BIST_SYMBOLS = [
   'TCELL','TTKOM','TURGG','ARCLK','VESTL','BJKAS','GSDHO','FENER','TRGYO','HEKTS','ENKAI',
 ];
 
+// Şirket adı → ticker mapping. RSS başlıkları genelde ticker yerine şirket
+// adı kullanır ("Türk Hava Yolları rekor kâr"). Bu mapping ile sembolü
+// yakalayabiliyoruz. Anahtarlar normalize (Türkçe karakter → ASCII, küçük harf).
+const COMPANY_TO_SYMBOL: Record<string, string[]> = {
+  'turk hava yollari': ['THYAO'],
+  'thy ': ['THYAO'],
+  'garanti bbva': ['GARAN'],
+  'garanti bankasi': ['GARAN'],
+  'akbank': ['AKBNK'],
+  'yapi kredi': ['YKBNK'],
+  'yapi ve kredi': ['YKBNK'],
+  'halkbank': ['HALKB'],
+  'vakifbank': ['VAKBN'],
+  'is bankasi': ['ISCTR'],
+  'isbank': ['ISCTR'],
+  'turkiye is bankasi': ['ISCTR'],
+  'koc holding': ['KCHOL'],
+  'sabanci': ['SAHOL'],
+  'tupras': ['TUPRS'],
+  'eregli demir': ['EREGL'],
+  'eregli celik': ['EREGL'],
+  'bim ': ['BIMAS'],
+  'bim a.s': ['BIMAS'],
+  'migros': ['MGROS'],
+  'aselsan': ['ASELS'],
+  'turkcell': ['TCELL'],
+  'turk telekom': ['TTKOM'],
+  'arcelik': ['ARCLK'],
+  'ford otosan': ['FROTO'],
+  'tofas': ['TOASO'],
+  'pegasus': ['PGSUS'],
+  'petkim': ['PETKM'],
+  'sise cam': ['SISE'],
+  'sisecam': ['SISE'],
+  'cimsa': ['CIMSA'],
+  'akcansa': ['AKCNS'],
+  'enerjisa': ['ENJSA'],
+  'enjisa': ['ENJSA'],
+  'alarko': ['ALARK'],
+  'aksa enerji': ['AKSEN'],
+  'dogan holding': ['DOHOL'],
+  'kardemir': ['KRDMD'],
+  'otokar': ['OTKAR'],
+  'karsan': ['KARSN'],
+  'dogus otomotiv': ['DOAS'],
+  'sok marketler': ['SOKM'],
+  'sokm market': ['SOKM'],
+  'ulker': ['ULKER'],
+  'mavi giyim': ['MAVI'],
+  'tekfen': ['TKFEN'],
+  'besiktas': ['BJKAS'],
+  'fenerbahce': ['FENER'],
+  'galatasaray': ['GSRAY'],
+  'torunlar gyo': ['TRGYO'],
+  'hektas': ['HEKTS'],
+  'enka insaat': ['ENKAI'],
+  'tav havalimanlari': ['TAVHL'],
+  'turk hava': ['THYAO'],
+  'merkez bankasi': ['XU100'], // TCMB → BIST 100'ü etkiler
+  'tcmb': ['XU100'],
+  // Sektörel — genel kullanım
+  'bist 100': ['XU100'],
+  'bist100': ['XU100'],
+  'borsa istanbul': ['XU100'],
+};
+
+/** Türkçe karakterleri ASCII'ye normalize et + küçük harfe çevir. */
+function normalizeTr(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ş/g, 's')
+    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ı/g, 'i')
+    .replace(/İ/g, 'i')
+    .replace(/Ş/g, 's')
+    .replace(/Ç/g, 'c')
+    .replace(/Ğ/g, 'g')
+    .replace(/Ü/g, 'u')
+    .replace(/Ö/g, 'o');
+}
+
 function detectSymbols(text: string): string[] {
   const upper = text.toUpperCase();
-  return BIST_SYMBOLS.filter((s) => new RegExp(`\\b${s}\\b`).test(upper));
+  const normalized = normalizeTr(text);
+  const found = new Set<string>();
+  // 1) Ticker eşleşmesi (TÜRK HAVA YOLLARI gibi tam kelime)
+  for (const s of BIST_SYMBOLS) {
+    if (new RegExp(`\\b${s}\\b`).test(upper)) found.add(s);
+  }
+  // 2) Şirket adı eşleşmesi (substring match — normalize edilmiş üzerinde)
+  for (const [companyName, symbols] of Object.entries(COMPANY_TO_SYMBOL)) {
+    if (normalized.includes(companyName)) {
+      for (const sym of symbols) found.add(sym);
+    }
+  }
+  return Array.from(found);
 }
 
 function scoreImportance(title: string, summary: string): number {

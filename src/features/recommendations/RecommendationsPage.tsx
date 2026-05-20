@@ -31,11 +31,16 @@ import { cn } from '@/lib/utils';
 
 const AUTO_REFRESH_MS = 120_000;
 
+type ScalpTf = '5m' | '15m' | '1h' | '4h' | '1d';
+
 interface ScalpRec {
   stock: Stock;
   // 5dk timeframe — vur kaç sinyali
   scalp5mLong: boolean;     // 5m EMA dizilim long
   scalp5mScore: number;     // ek momentum
+  // 15dk timeframe — 5m bar 3'erli aggregate
+  scalp15mLong: boolean;
+  scalp15mScore: number;
   // Multi-timeframe
   trend1h: TimeframeAnalysis | null;
   trend4h: TimeframeAnalysis | null;
@@ -47,6 +52,38 @@ interface ScalpRec {
   verdict?: string;
   // Toplam long skoru
   longScore: number;
+}
+
+/**
+ * 5m bar'ları 3'erli birleştirip 15m bar'a çevir.
+ */
+function aggregateTo15m(closes5m: number[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < closes5m.length; i += 3) {
+    const chunk = closes5m.slice(i, Math.min(i + 3, closes5m.length));
+    if (chunk.length === 0) continue;
+    // close = son bar'in close'u (3 5m → 1 15m)
+    out.push(chunk[chunk.length - 1]);
+  }
+  return out;
+}
+
+/**
+ * Selected timeframe icin long sinyalini cikar.
+ * 5m/15m: scalp detect5mLong (EMA 8 vs 21), 1h/4h/1d: trend analizi.
+ */
+function isLongForTf(rec: ScalpRec, tf: ScalpTf): boolean {
+  switch (tf) {
+    case '5m': return rec.scalp5mLong;
+    case '15m': return rec.scalp15mLong;
+    case '1h': return rec.trend1h?.trend === 'long';
+    case '4h': return rec.trend4h?.trend === 'long';
+    case '1d': return rec.trend1d?.trend === 'long';
+  }
+}
+
+function tfLabel(tf: ScalpTf): string {
+  return { '5m': '5DK', '15m': '15DK', '1h': '1H', '4h': '4H', '1d': '1G' }[tf];
 }
 
 /**
@@ -79,7 +116,8 @@ function detect5mLong(closes: number[]): { isLong: boolean; score: number } {
 
 export function RecommendationsPage() {
   const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds'>('scalp');
-  const [scalpFilter, setScalpFilter] = useState<'all' | '5dklong' | 'watchlist'>('all');
+  const [scalpFilter, setScalpFilter] = useState<'all' | 'longonly' | 'watchlist'>('all');
+  const [selectedTf, setSelectedTf] = useState<ScalpTf>('5m');
   const [recs, setRecs] = useState<ScalpRec[]>([]);
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [fundsConfigured, setFundsConfigured] = useState(true);
@@ -114,11 +152,20 @@ export function RecommendationsPage() {
           // 5m detect
           let scalp5mLong = false;
           let scalp5mScore = 0;
+          let scalp15mLong = false;
+          let scalp15mScore = 0;
           if (hist5m && hist5m.bars.length >= 21) {
             const closes5m = hist5m.bars.map((b) => b.close);
             const r5 = detect5mLong(closes5m);
             scalp5mLong = r5.isLong;
             scalp5mScore = r5.score;
+            // 15m: 5m'leri 3'erli aggregate et
+            const closes15m = aggregateTo15m(closes5m);
+            if (closes15m.length >= 21) {
+              const r15 = detect5mLong(closes15m);
+              scalp15mLong = r15.isLong;
+              scalp15mScore = r15.score;
+            }
           }
 
           // Multi-timeframe
@@ -158,6 +205,8 @@ export function RecommendationsPage() {
             stock,
             scalp5mLong,
             scalp5mScore,
+            scalp15mLong,
+            scalp15mScore,
             trend1h,
             trend4h,
             trend1d,
@@ -232,7 +281,7 @@ export function RecommendationsPage() {
           )}
           onClick={() => setTab('scalp')}
         >
-          <Zap size={14} /> Algoritmik ({recs.filter((r) => r.scalp5mLong).length}/{recs.length})
+          <Zap size={14} /> Algoritmik ({recs.filter((r) => isLongForTf(r, selectedTf)).length}/{recs.length})
         </button>
         <button
           className={cn(
@@ -276,22 +325,42 @@ export function RecommendationsPage() {
             </span>
           </div>
 
-          {recs.length > 0 && <ScalpPoolStats recs={recs} />}
+          {recs.length > 0 && <ScalpPoolStats recs={recs} selectedTf={selectedTf} />}
 
           {recs.length > 0 && (
-            <div className="mb-3 inline-flex rounded-lg border border-border bg-bg-soft p-1">
-              {(['all', '5dklong', 'watchlist'] as const).map((f) => (
-                <button
-                  key={f}
-                  className={cn(
-                    'rounded-md px-2.5 py-1 text-xs transition',
-                    scalpFilter === f ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                  )}
-                  onClick={() => setScalpFilter(f)}
-                >
-                  {f === 'all' ? 'Tumu' : f === '5dklong' ? 'Yalniz 5DK Long' : 'Yalniz watchlist'}
-                </button>
-              ))}
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {/* Timeframe selector */}
+              <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
+                <span className="px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500">Zaman</span>
+                {(['5m', '15m', '1h', '4h', '1d'] as const).map((tf) => (
+                  <button
+                    key={tf}
+                    className={cn(
+                      'rounded-md px-2 py-1 text-xs font-mono transition',
+                      selectedTf === tf ? 'bg-accent/20 text-accent' : 'text-slate-400 hover:text-slate-200',
+                    )}
+                    onClick={() => setSelectedTf(tf)}
+                  >
+                    {tfLabel(tf)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Filter selector */}
+              <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
+                {(['all', 'longonly', 'watchlist'] as const).map((f) => (
+                  <button
+                    key={f}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 text-xs transition',
+                      scalpFilter === f ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                    )}
+                    onClick={() => setScalpFilter(f)}
+                  >
+                    {f === 'all' ? 'Tumu' : f === 'longonly' ? `Yalniz ${tfLabel(selectedTf)} Long` : 'Yalniz watchlist'}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -303,7 +372,7 @@ export function RecommendationsPage() {
             <div className="space-y-1.5">
               {recs
                 .filter((rec) => {
-                  if (scalpFilter === '5dklong') return rec.scalp5mLong;
+                  if (scalpFilter === 'longonly') return isLongForTf(rec, selectedTf);
                   if (scalpFilter === 'watchlist') return watchlistHas(rec.stock.symbol);
                   return true;
                 })
@@ -312,6 +381,7 @@ export function RecommendationsPage() {
                     key={rec.stock.symbol}
                     rec={rec}
                     rank={i + 1}
+                    selectedTf={selectedTf}
                     watched={watchlistHas(rec.stock.symbol)}
                     onToggle={() => toggleWatch(rec.stock.symbol)}
                   />
@@ -351,9 +421,9 @@ export function RecommendationsPage() {
   );
 }
 
-function ScalpPoolStats({ recs }: { recs: ScalpRec[] }) {
+function ScalpPoolStats({ recs, selectedTf }: { recs: ScalpRec[]; selectedTf: ScalpTf }) {
   const total = recs.length;
-  const scalpLong = recs.filter((r) => r.scalp5mLong).length;
+  const scalpLong = recs.filter((r) => isLongForTf(r, selectedTf)).length;
   const avgChange = total > 0 ? recs.reduce((s, r) => s + r.stock.changePct, 0) / total : 0;
   const alici = recs.filter((r) => r.bigPlayerLean === 'alıcı').length;
   const satici = recs.filter((r) => r.bigPlayerLean === 'satıcı').length;
@@ -367,7 +437,7 @@ function ScalpPoolStats({ recs }: { recs: ScalpRec[] }) {
     <div className="card mb-3 p-3">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <PoolStatBox label="Toplam" value={`${total}`} tone="slate" />
-        <PoolStatBox label="5DK Long" value={`${scalpLong}/${total}`} tone="success" />
+        <PoolStatBox label={`${tfLabel(selectedTf)} Long`} value={`${scalpLong}/${total}`} tone="success" />
         <PoolStatBox label="Ort. Degisim" value={`${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%`} tone={avgChange >= 0 ? 'success' : 'danger'} />
         <PoolStatBox label="Pozitif Oran" value={`%${hitRate.toFixed(0)}`} tone="accent" />
         <PoolStatBox label="Alici/Satici" value={`${alici} / ${satici}`} sub={`${kararsiz} kararsiz`} tone="warning" />
@@ -397,13 +467,15 @@ function PoolStatBox({ label, value, sub, tone }: {
   );
 }
 
-function ScalpRowItem({ rec, rank, watched, onToggle }: {
+function ScalpRowItem({ rec, rank, selectedTf, watched, onToggle }: {
   rec: ScalpRec;
   rank: number;
+  selectedTf: ScalpTf;
   watched: boolean;
   onToggle: () => void;
 }) {
   const { stock } = rec;
+  const isLong = isLongForTf(rec, selectedTf);
   const tone = stock.changePct >= 0 ? 'text-success' : 'text-danger';
   const sign = stock.changePct >= 0 ? '+' : '';
   const leanColor = rec.bigPlayerLean === 'alıcı' ? 'text-success'
@@ -416,10 +488,10 @@ function ScalpRowItem({ rec, rank, watched, onToggle }: {
   return (
     <details className={cn(
       'group rounded-lg border transition',
-      rec.scalp5mLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
+      isLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
     )}>
       <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
-        <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs', rec.scalp5mLong ? 'border-success/40 bg-success/10 text-success' : 'border-accent/30 bg-accent/10 text-accent')}>
+        <span className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs', isLong ? 'border-success/40 bg-success/10 text-success' : 'border-accent/30 bg-accent/10 text-accent')}>
           {rank}
         </span>
         <div className="min-w-0 flex-1">
@@ -430,9 +502,9 @@ function ScalpRowItem({ rec, rank, watched, onToggle }: {
             {stock.sector && (
               <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{stock.sector}</span>
             )}
-            {rec.scalp5mLong && (
+            {isLong && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
-                <Zap size={8} />5DK
+                <Zap size={8} />{tfLabel(selectedTf)}
               </span>
             )}
             {watched && <Star size={10} className="text-warning" fill="currentColor" />}
@@ -440,11 +512,13 @@ function ScalpRowItem({ rec, rank, watched, onToggle }: {
           <div className="truncate text-[10px] text-slate-500">{stock.name}</div>
         </div>
         <div className="hidden lg:flex items-center gap-1 text-[9px]">
-          {([rec.trend1h, rec.trend4h, rec.trend1d] as const).map((t, i) => {
-            const label = ['1H', '4H', '1D'][i];
-            if (!t) return <span key={i} className="rounded bg-slate-500/15 px-1 py-0.5 text-slate-500">{label}</span>;
+          {(['1h', '4h', '1d'] as const).map((tfKey) => {
+            const t = tfKey === '1h' ? rec.trend1h : tfKey === '4h' ? rec.trend4h : rec.trend1d;
+            const label = tfKey === '1h' ? '1H' : tfKey === '4h' ? '4H' : '1G';
+            const selected = selectedTf === tfKey;
+            if (!t) return <span key={tfKey} className={cn('rounded px-1 py-0.5 text-slate-500', selected ? 'ring-1 ring-accent' : 'bg-slate-500/15')}>{label}</span>;
             const cls = t.trend === 'long' ? 'bg-success/15 text-success' : t.trend === 'short' ? 'bg-danger/15 text-danger' : 'bg-slate-500/15 text-slate-400';
-            return <span key={i} className={cn('rounded px-1 py-0.5 font-mono', cls)}>{label}</span>;
+            return <span key={tfKey} className={cn('rounded px-1 py-0.5 font-mono', cls, selected && 'ring-1 ring-accent')}>{label}</span>;
           })}
         </div>
         <span className={cn('hidden md:inline-block w-16 text-right text-[10px] font-semibold', leanColor)}>

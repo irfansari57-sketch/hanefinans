@@ -126,13 +126,17 @@ def extract_pdf_text(pdf_bytes: bytes, max_pages: int = 5) -> str:
         return "\n".join(texts)
 
 
-def parse_with_claude(broker_name: str, text: str) -> list[dict]:
-    """Claude'a bülteni yolla, hisse önerisi JSON listesi al."""
+def parse_with_claude(broker_name: str, text: str) -> tuple[list[dict], str | None]:
+    """Claude'a bülteni yolla, hisse önerisi JSON listesi al.
+
+    Returns (recommendations, error_msg). error_msg is None on success.
+    """
     if not HAS_CLAUDE or CLIENT is None:
-        return []
+        return [], "Claude API not available (ANTHROPIC_API_KEY yok)"
     if not text or len(text) < 200:
-        print(f"  ! {broker_name}: metin çok kısa ({len(text)} chars), atlanıyor")
-        return []
+        msg = f"PDF text too short ({len(text)} chars)"
+        print(f"  ! {broker_name}: {msg}")
+        return [], msg
 
     truncated = text[:12000]  # token sınırı için
     try:
@@ -145,16 +149,20 @@ def parse_with_claude(broker_name: str, text: str) -> list[dict]:
             }],
         )
         content = response.content[0].text  # type: ignore[union-attr]
-        # JSON bloku bul
         match = re.search(r"\{[\s\S]*\}", content)
         if not match:
-            print(f"  ! {broker_name}: JSON bulunamadı in Claude yanıtı")
-            return []
-        data = json.loads(match.group(0))
+            msg = f"JSON not found in Claude response (first 200 chars: {content[:200]!r})"
+            print(f"  ! {broker_name}: {msg}")
+            return [], msg
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError as je:
+            msg = f"Claude JSON parse failed: {je}"
+            print(f"  ! {broker_name}: {msg}")
+            return [], msg
         recs = data.get("recommendations", [])
         if not isinstance(recs, list):
-            return []
-        # Validate her bir öneri
+            return [], f"Claude returned 'recommendations' as {type(recs).__name__}, not list"
         cleaned = []
         for r in recs:
             sym = str(r.get("symbol", "")).strip().upper()
@@ -174,10 +182,13 @@ def parse_with_claude(broker_name: str, text: str) -> list[dict]:
                 "thesis": thesis,
                 "updatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             })
-        return cleaned[:8]
+        if not cleaned:
+            return [], f"Claude returned {len(recs)} items but all were filtered out (invalid symbol/format)"
+        return cleaned[:8], None
     except Exception as e:
-        print(f"  ! {broker_name}: Claude hatası: {type(e).__name__}: {e}")
-        return []
+        msg = f"Claude exception: {type(e).__name__}: {e}"
+        print(f"  ! {broker_name}: {msg}")
+        return [], msg
 
 
 def fetch_osmanli() -> dict:
@@ -193,19 +204,33 @@ def fetch_osmanli() -> dict:
         "recommendations": [],
         "ok": False,
     }
+    result["debugLog"] = []
+    log = result["debugLog"]
     print(f"Osmanlı Yatırım scrape başlıyor...")
     try:
+        log.append(f"GET {pdf_url}")
         r = requests.get(pdf_url, headers=HEADERS, timeout=30)
+        log.append(f"HTTP {r.status_code}, {len(r.content)} bytes, type={r.headers.get('Content-Type','?')}")
+        print(f"  PDF: HTTP {r.status_code}, {len(r.content)} bytes")
         r.raise_for_status()
         text = extract_pdf_text(r.content)
+        log.append(f"PDF text: {len(text)} chars")
         print(f"  PDF: {len(text)} karakter çıkarıldı")
-        recs = parse_with_claude("Osmanlı Yatırım", text)
+        if len(text) < 200:
+            log.append(f"Text too short. First 200 chars: {text[:200]!r}")
+        recs, err = parse_with_claude("Osmanlı Yatırım", text)
         result["recommendations"] = recs
         result["ok"] = len(recs) > 0
-        print(f"  ✓ {len(recs)} öneri")
+        if err:
+            log.append(f"Claude: {err}")
+            result["error"] = err
+        log.append(f"Result: {len(recs)} recommendations")
+        print(f"  {'✓' if recs else '✗'} {len(recs)} öneri")
     except Exception as e:
-        print(f"  ✗ Hata: {type(e).__name__}: {e}")
-        result["error"] = str(e)
+        msg = f"{type(e).__name__}: {e}"
+        log.append(f"Exception: {msg}")
+        result["error"] = msg
+        print(f"  ✗ Hata: {msg}")
     return result
 
 
@@ -387,12 +412,17 @@ def fetch_kt() -> dict:
         "recommendations": [],
         "portfolio": [],
         "ok": False,
+        "debugLog": [],
     }
+    log = result["debugLog"]
     print("KT Yatırım scrape başlıyor...")
 
     # 1) Günlük Bülten — recommendations
     try:
-        r = requests.get(f"{base}/arastirma-raporlari/", headers=HEADERS, timeout=20)
+        listing_url = f"{base}/arastirma-raporlari/"
+        log.append(f"GET listing: {listing_url}")
+        r = requests.get(listing_url, headers=HEADERS, timeout=20)
+        log.append(f"Listing HTTP {r.status_code}, html size={len(r.text)} chars")
         r.raise_for_status()
         html = r.text
         pdf_pattern = re.compile(
@@ -400,20 +430,34 @@ def fetch_kt() -> dict:
             re.IGNORECASE,
         )
         matches = pdf_pattern.findall(html)
+        log.append(f"Found {len(matches)} 'gunluk-bulten' PDF pattern matches in listing")
         if matches:
             latest = max(matches, key=lambda m: (m[3], m[2], m[1]))
             pdf_url = base + latest[0]
+            log.append(f"Latest PDF: {latest[0]}")
             print(f"  Bülten PDF: {latest[0]}")
             pr = requests.get(pdf_url, headers=HEADERS, timeout=30)
+            log.append(f"PDF HTTP {pr.status_code}, {len(pr.content)} bytes")
             pr.raise_for_status()
             text = extract_pdf_text(pr.content)
-            recs = parse_with_claude("KT Yatırım", text)
+            log.append(f"PDF text: {len(text)} chars")
+            recs, err = parse_with_claude("KT Yatırım", text)
             result["recommendations"] = recs
-            print(f"  ✓ {len(recs)} öneri")
+            if err:
+                log.append(f"Bülten Claude: {err}")
+                result["error"] = err
+            log.append(f"Recommendations: {len(recs)}")
+            print(f"  {'✓' if recs else '!'} {len(recs)} öneri")
         else:
-            print("  ! Günlük bülten PDF bulunamadı")
+            msg = "Günlük bülten PDF pattern matched none — listing layout may have changed"
+            log.append(msg)
+            result["error"] = msg
+            print(f"  ! {msg}")
     except Exception as e:
-        print(f"  ✗ Bülten hata: {type(e).__name__}: {e}")
+        msg = f"Bülten exception: {type(e).__name__}: {e}"
+        log.append(msg)
+        result["error"] = (result.get("error", "") + f"; {msg}").strip("; ")
+        print(f"  ✗ {msg}")
 
     # 2) Model Portföy Güncelleme — portfolio
     try:

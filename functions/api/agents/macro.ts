@@ -48,6 +48,7 @@ const SYMBOLS: Array<{ sym: string; label: string; unit?: string }> = [
   { sym: '^TNX',      label: 'ABD 10Y Faiz', unit: '%' },
   { sym: 'BZ=F',      label: 'Brent', unit: '$/varil' },
   { sym: 'GC=F',      label: 'Altın', unit: '$/ons' },
+  { sym: 'SI=F',      label: 'Gümüş', unit: '$/ons' },
   { sym: 'USDTRY=X',  label: 'USD/TRY' },
   { sym: 'EURTRY=X',  label: 'EUR/TRY' },
 ];

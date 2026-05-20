@@ -129,13 +129,58 @@ function buildBriefingText(parts: {
     }
     if (m.snapshot && m.snapshot.length > 0) {
       lines.push('');
-      for (const s of m.snapshot.slice(0, 5)) {
+      // Ana makro göstergeler (precious metals + döviz HARIÇ — alt bölümde)
+      const excludeLabels = new Set(['Altın', 'Gümüş', 'USD/TRY', 'EUR/TRY']);
+      const mainIndicators = m.snapshot.filter((s) => !excludeLabels.has(s.label)).slice(0, 5);
+      for (const s of mainIndicators) {
         const sign = s.changePct >= 0 ? '+' : '';
         const unit = s.unit ? ` ${s.unit}` : '';
         lines.push(`${arrow(s.changePct)} ${s.label}: ${fmt(s.value)}${unit} (${sign}${fmt(s.changePct)}%)`);
       }
     }
     lines.push('');
+
+    // --- DÖVİZ ---
+    const usdTryEntry = m.snapshot?.find((s) => s.label === 'USD/TRY');
+    const eurTryEntry = m.snapshot?.find((s) => s.label === 'EUR/TRY');
+    if (usdTryEntry || eurTryEntry) {
+      lines.push('💱 *DÖVİZ*');
+      if (usdTryEntry) {
+        const sign = usdTryEntry.changePct >= 0 ? '+' : '';
+        lines.push(`${arrow(usdTryEntry.changePct)} USD/TRY: ${fmt(usdTryEntry.value)}₺ (${sign}${fmt(usdTryEntry.changePct)}%)`);
+      }
+      if (eurTryEntry) {
+        const sign = eurTryEntry.changePct >= 0 ? '+' : '';
+        lines.push(`${arrow(eurTryEntry.changePct)} EUR/TRY: ${fmt(eurTryEntry.value)}₺ (${sign}${fmt(eurTryEntry.changePct)}%)`);
+      }
+      lines.push('');
+    }
+
+    // --- KIYMETLİ MADENLER (Ons + Gram TL) ---
+    const onsAltin = m.snapshot?.find((s) => s.label === 'Altın');
+    const onsGumus = m.snapshot?.find((s) => s.label === 'Gümüş');
+    const usdTry = usdTryEntry?.value;
+    if (onsAltin || onsGumus) {
+      lines.push('🥇 *KIYMETLİ MADENLER*');
+      const OUNCE_TO_GRAM = 31.1034768;
+      if (onsAltin) {
+        const sign = onsAltin.changePct >= 0 ? '+' : '';
+        lines.push(`${arrow(onsAltin.changePct)} Ons Altın: ${fmt(onsAltin.value)} \$/oz (${sign}${fmt(onsAltin.changePct)}%)`);
+        if (usdTry) {
+          const gramAltinTl = (onsAltin.value / OUNCE_TO_GRAM) * usdTry;
+          lines.push(`   ↳ Gram Altın: ${fmt(gramAltinTl, 0)}₺`);
+        }
+      }
+      if (onsGumus) {
+        const sign = onsGumus.changePct >= 0 ? '+' : '';
+        lines.push(`${arrow(onsGumus.changePct)} Ons Gümüş: ${fmt(onsGumus.value)} \$/oz (${sign}${fmt(onsGumus.changePct)}%)`);
+        if (usdTry) {
+          const gramGumusTl = (onsGumus.value / OUNCE_TO_GRAM) * usdTry;
+          lines.push(`   ↳ Gram Gümüş: ${fmt(gramGumusTl, 2)}₺`);
+        }
+      }
+      lines.push('');
+    }
   }
 
   // INDICATOR

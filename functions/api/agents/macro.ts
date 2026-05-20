@@ -46,6 +46,7 @@ const SYMBOLS: Array<{ sym: string; label: string; unit?: string }> = [
   { sym: '^VIX',      label: 'VIX' },
   { sym: 'DX-Y.NYB',  label: 'DXY' },
   { sym: '^TNX',      label: 'ABD 10Y Faiz', unit: '%' },
+  { sym: 'XU100.IS',  label: 'BIST 100' },
   { sym: 'BZ=F',      label: 'Brent', unit: '$/varil' },
   { sym: 'GC=F',      label: 'Altın', unit: '$/ons' },
   { sym: 'SI=F',      label: 'Gümüş', unit: '$/ons' },

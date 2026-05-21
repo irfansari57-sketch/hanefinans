@@ -15,6 +15,8 @@ import { SentimentAgentCard } from '@/components/domain/SentimentAgentCard';
 import { NewsAgentCard } from '@/components/domain/NewsAgentCard';
 import { MacroAgentCard } from '@/components/domain/MacroAgentCard';
 import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
+import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
+import { Newspaper, Sparkles, Activity, BarChart3 } from 'lucide-react';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
 } from '@/data/mock';
@@ -334,22 +336,52 @@ export function PanelPage() {
         <TopMovers stocks={stocksForTopMovers} limit={5} period={stocksPeriod} />
       </details>
 
-      {/* AI Agent'lar — PRO/Elite üyelere özel */}
+      {/* AI Agent'lar — PRO/Elite üyelere özel, akordeon + pin */}
       {proUser ? (
-        <>
-          <div className="mb-5">
+        <section className="mb-5">
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-warning flex items-center gap-1.5">
+              <Sparkles size={14} /> AI Agent'lar
+            </h2>
+            <span className="text-[11px] text-slate-500">— başlığa tıkla aç/kapa, pinlersen her açılışta açık gelir</span>
+          </div>
+          <PinnableAccordion
+            id="agent-sentiment"
+            title="Sentiment Agent"
+            description="Hisse bazlı haber duyarlılığı (Claude Haiku)"
+            icon={<Activity size={16} />}
+            iconColorClass="bg-success/15 text-success"
+          >
             <SentimentAgentCard />
-          </div>
-          <div className="mb-5">
+          </PinnableAccordion>
+          <PinnableAccordion
+            id="agent-news"
+            title="News Agent"
+            description="Günün top 5 etki haberi + AI özet"
+            icon={<Newspaper size={16} />}
+            iconColorClass="bg-accent/15 text-accent"
+          >
             <NewsAgentCard />
-          </div>
-          <div className="mb-5">
+          </PinnableAccordion>
+          <PinnableAccordion
+            id="agent-macro"
+            title="Macro Agent"
+            description="Risk skoru + makro yorum"
+            icon={<BarChart3 size={16} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
             <MacroAgentCard />
-          </div>
-          <div className="mb-5">
+          </PinnableAccordion>
+          <PinnableAccordion
+            id="agent-indicator"
+            title="Indicator Agent"
+            description="Teknik sinyal tarayıcı"
+            icon={<Sparkles size={16} />}
+            iconColorClass="bg-accent/15 text-accent"
+          >
             <IndicatorAgentCard />
-          </div>
-        </>
+          </PinnableAccordion>
+        </section>
       ) : (
         <Link
           to="/uyelik"

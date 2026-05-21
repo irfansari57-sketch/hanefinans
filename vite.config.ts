@@ -38,6 +38,8 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+          // Push notification handler — SW içine importScripts ile enjekte
+          importScripts: ['/push-handler.js'],
           // Yeni SW indiğinde hemen aktif olsun + tüm açık sekmeleri yönetsin
           skipWaiting: true,
           clientsClaim: true,

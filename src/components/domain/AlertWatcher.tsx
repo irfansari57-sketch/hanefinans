@@ -5,6 +5,7 @@ import { loadStocks } from '@/data/services';
 import { fetchTefasFeed } from '@/data/api/tefasGithub';
 import { toast } from '@/components/ui/Toast';
 import { notifyPriceAlert, getTelegramChatId } from '@/lib/telegram';
+import { showSwNotification } from '@/lib/pushNotifications';
 
 /**
  * Arka planda fiyat alarmlarını izleyen görünmez bileşen.
@@ -91,22 +92,15 @@ export function AlertWatcher() {
           // 1) In-app toast
           toast.success(title, body);
 
-          // 2) Browser Notification (izin verildiyse, sekme arka plandayken faydalı)
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            try {
-              const n = new Notification(title, {
-                body,
-                icon: '/icon.svg',
-                tag: `alert-${alert.id}`,
-                requireInteraction: false,
-              });
-              n.onclick = () => {
-                window.focus();
-                window.location.href = `/stock/${alert.symbol}`;
-                n.close();
-              };
-            } catch { /* permission revoked vs. */ }
-          }
+          // 2) SW push notification (sekme arka plandayken bile çalışır)
+          //    Notification API'ye göre daha güvenilir; SW.postMessage ile push-handler.js
+          //    showNotification çağırır, click'te otomatik olarak ilgili sayfaya yönlendirir.
+          showSwNotification({
+            title,
+            body,
+            url: alert.assetType === 'fund' ? `/fund/${alert.symbol}` : `/stock/${alert.symbol}`,
+            tag: `alert-${alert.id}`,
+          }).catch(() => { /* sessiz fail — toast zaten gösterildi */ });
 
           // 3) Telegram (chat_id ayarlıysa)
           if (getTelegramChatId()) {

@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Info, RotateCcw, Cpu, Activity, Newspaper, MessageSquare, Globe, KeyRound,
   Check, X, ExternalLink, Database, Send, Percent, Crown, Shield, Bell,
 } from 'lucide-react';
 import { getTelegramChatId, setTelegramChatId, sendTelegram } from '@/lib/telegram';
+import { checkSupport, askPermission, getPermission, showSwNotification } from '@/lib/pushNotifications';
 import { resetOnboarding } from '@/components/domain/OnboardingTour';
 import { toast } from '@/components/ui/Toast';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -146,6 +147,9 @@ export function SettingsPage() {
 
         {/* Telegram bildirimleri */}
         <TelegramSection />
+
+        {/* Push bildirimleri (SW tabanlı, sekme arka plandayken de çalışır) */}
+        <PushNotificationSection />
 
         {/* Onboarding turunu tekrar göster */}
         <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
@@ -1064,3 +1068,122 @@ function PriceField({
   );
 }
 
+
+function PushNotificationSection() {
+  const [support, setSupport] = useState(checkSupport());
+  const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(getPermission());
+  const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  // Sayfa açıldığında izin durumunu kontrol et
+  useEffect(() => {
+    setSupport(checkSupport());
+    setPerm(getPermission());
+  }, []);
+
+  const supported = support === 'supported';
+  const granted = perm === 'granted';
+
+  const enable = async () => {
+    setBusy(true);
+    try {
+      const next = await askPermission();
+      setPerm(next);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const testNotification = async () => {
+    setTesting(true);
+    try {
+      const ok = await showSwNotification({
+        title: 'Hane Finans bildirimi',
+        body: 'Bildirimler çalışıyor! Alarmların burada görünecek.',
+        url: '/panel',
+        tag: 'test-' + Date.now(),
+      });
+      if (!ok) {
+        toast.error('Bildirim gösterilemedi', 'Service worker hazır değil olabilir, sayfayı yenile ve tekrar dene.');
+      }
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  let statusBadge: ReactNode;
+  if (!supported) {
+    statusBadge = (
+      <span className="rounded-full bg-slate-500/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-300">
+        desteklenmiyor
+      </span>
+    );
+  } else if (granted) {
+    statusBadge = (
+      <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">
+        aktif
+      </span>
+    );
+  } else if (perm === 'denied') {
+    statusBadge = (
+      <span className="rounded-full bg-danger/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-danger">
+        engellendi
+      </span>
+    );
+  } else {
+    statusBadge = (
+      <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">
+        kapalı
+      </span>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-bg-soft p-4">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
+        <Bell size={14} className="text-accent" /> Push Bildirimleri
+        {statusBadge}
+      </h2>
+      <p className="text-xs leading-relaxed text-slate-400">
+        Tarayıcı bildirim sisteminin üstünde Service Worker tabanlı push.
+        Sekme arka plandayken bile fiyat alarmlarının görünür.
+        İzin verirsen alarm tetiklendiğinde bildirim alırsın.
+      </p>
+
+      {!supported && (
+        <p className="mt-3 rounded-md bg-warning/10 px-3 py-2 text-[11px] text-warning">
+          Tarayıcın push bildirimini desteklemiyor. iOS Safari'de bunun çalışması için
+          siteyi "Ana Ekrana Ekle" ile yüklemen gerekir.
+        </p>
+      )}
+
+      {supported && perm === 'denied' && (
+        <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-[11px] text-danger">
+          Bildirim iznini reddetmişsin. Tarayıcı ayarlarından izni elle açman gerek
+          (adres çubuğundaki kilit ikonu → site izinleri).
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {supported && !granted && perm !== 'denied' && (
+          <button
+            onClick={enable}
+            disabled={busy}
+            className="btn-primary text-xs"
+          >
+            <Bell size={12} /> Bildirimleri Aç
+          </button>
+        )}
+        {supported && granted && (
+          <button
+            onClick={testNotification}
+            disabled={testing}
+            className="btn-secondary text-xs"
+          >
+            <Bell size={12} /> Test Bildirimi Gönder
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}

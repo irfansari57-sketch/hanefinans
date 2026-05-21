@@ -18,6 +18,8 @@ export interface TimeframeAnalysis {
   emasAbove: number[];
   /** Hangi periyotlar fiyat altında */
   emasBelow: number[];
+  /** Her EMA periyodunun son fiyat değeri (period -> value). */
+  emaValues: Record<number, number>;
 }
 
 export interface MultiTimeframeResult {
@@ -82,7 +84,9 @@ export function analyzeTimeframe(
   if (score >= 0.8) trend = 'long';
   else if (score <= 0.2) trend = 'short';
 
-  return { trend, emaScore: emasAbove.length, emasAbove, emasBelow };
+  const valuesMap: Record<number, number> = {};
+  for (const e of validEmas) valuesMap[e.period] = e.value;
+  return { trend, emaScore: emasAbove.length, emasAbove, emasBelow, emaValues: valuesMap };
 }
 
 /**
@@ -144,6 +148,21 @@ function trendCoherenceLine(
 }
 
 /**
+ * Fiyat formatı — büyüklüğe göre otomatik (binlik ayraç, ondalık basamak).
+ * BIST endeksleri için tam sayı, kurlar için 2 ondalık vb.
+ */
+function fmtPrice(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  const abs = Math.abs(n);
+  let digits = 2;
+  if (abs >= 1000) digits = 0;
+  else if (abs >= 100) digits = 1;
+  else if (abs >= 1) digits = 2;
+  else digits = 4;
+  return n.toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+/**
  * EMA dizilimi okuması: hangi periyotlar üstte/altta + bunun anlamı.
  */
 function emaStructureLine(ta: TimeframeAnalysis, tfLabel: string): string {
@@ -152,21 +171,28 @@ function emaStructureLine(ta: TimeframeAnalysis, tfLabel: string): string {
   const aboveStr = ta.emasAbove.length > 0 ? ta.emasAbove.join('/') : '—';
   const belowStr = ta.emasBelow.length > 0 ? ta.emasBelow.join('/') : '—';
 
+  // Kritik seviyeleri (EMA 55, EMA 200) parantez içinde fiyatla göster
+  const critical = [55, 200]
+    .filter((p) => Number.isFinite(ta.emaValues[p]))
+    .map((p) => `EMA ${p}: ${fmtPrice(ta.emaValues[p])}`)
+    .join('; ');
+  const seviye = critical ? ` Kritik seviyeler — ${critical}.` : '';
+
   if (ta.trend === 'long') {
     if (ta.emasBelow.length === 0) {
-      return `${tfLabel} EMA dizilimi: fiyat tüm EMA'ların (${aboveStr}) üzerinde — destek katmanları sağlam, dip kademesi geniş.`;
+      return `${tfLabel} EMA dizilimi: fiyat tüm EMA'ların (${aboveStr}) üzerinde — destek katmanları sağlam, dip kademesi geniş.${seviye}`;
     }
-    return `${tfLabel} EMA dizilimi: fiyat ${ta.emasAbove.length}/${total} EMA'nın üstünde (üstte: ${aboveStr}; altta: ${belowStr}) — yukarı yönlü baskın ama tam dizilim henüz oturmamış.`;
+    return `${tfLabel} EMA dizilimi: fiyat ${ta.emasAbove.length}/${total} EMA'nın üstünde (üstte: ${aboveStr}; altta: ${belowStr}) — yukarı yönlü baskın ama tam dizilim henüz oturmamış.${seviye}`;
   }
 
   if (ta.trend === 'short') {
     if (ta.emasAbove.length === 0) {
-      return `${tfLabel} EMA dizilimi: fiyat tüm EMA'ların (${belowStr}) altında — direnç katmanları üst üste, toparlanmaya geçilemiyor.`;
+      return `${tfLabel} EMA dizilimi: fiyat tüm EMA'ların (${belowStr}) altında — direnç katmanları üst üste, toparlanmaya geçilemiyor.${seviye}`;
     }
-    return `${tfLabel} EMA dizilimi: fiyat ${ta.emasBelow.length}/${total} EMA'nın altında (altta: ${belowStr}; üstte: ${aboveStr}) — aşağı yönlü baskı; sadece kısa EMA'lar üstte kaldığı için kalıcı dönüş için daha güç gerek.`;
+    return `${tfLabel} EMA dizilimi: fiyat ${ta.emasBelow.length}/${total} EMA'nın altında (altta: ${belowStr}; üstte: ${aboveStr}) — aşağı yönlü baskı; sadece kısa EMA'lar üstte kaldığı için kalıcı dönüş için daha güç gerek.${seviye}`;
   }
 
-  return `${tfLabel} EMA dizilimi karışık (üstte EMA ${aboveStr}, altta ${belowStr}) — kümeleşme yok, net trend yok.`;
+  return `${tfLabel} EMA dizilimi karışık (üstte EMA ${aboveStr}, altta ${belowStr}) — kümeleşme yok, net trend yok.${seviye}`;
 }
 
 /** Günün hareket büyüklüğüne göre karakter notu. */
@@ -195,7 +221,12 @@ function actionHintLine(
   t4h: Trend | undefined,
   t1d: Trend | undefined,
   lean: 'alıcı' | 'satıcı' | 'kararsız',
+  emaDailyValues?: Record<number, number>,
 ): string {
+  const ema21 = emaDailyValues?.[21];
+  const ema55 = emaDailyValues?.[55];
+  const ema21Str = Number.isFinite(ema21) ? ` (${fmtPrice(ema21 as number)})` : '';
+  const ema55Str = Number.isFinite(ema55) ? ` (${fmtPrice(ema55 as number)})` : '';
   if (t1h === 'long' && t4h === 'long' && t1d === 'long') {
     if (lean === 'alıcı') return 'Aksiyon önerisi: Long pozisyon momentum yönünde — kâr al hedefleri trailing stop ile yönetilebilir; geri çekilmeler alım fırsatı.';
     return 'Aksiyon önerisi: Long trend güçlü ama kurumsal teyit zayıf — riski sıkı stop ile yönet, hızlı kâr realizasyonu mantıklı.';
@@ -205,10 +236,10 @@ function actionHintLine(
     return 'Aksiyon önerisi: Aşağı yönlü baskı sürüyor ama kurumsal satıcı görünmüyor — kenarda durmak ya da çok küçük long denemeleri tercih edilebilir, agresif short riskli.';
   }
   if (t1d === 'long' && (t1h === 'short' || t4h === 'short')) {
-    return 'Aksiyon önerisi: Ana trend yukarı, kısa vadeli geri çekilmede long fırsatı aranabilir — günlük EMA 21 destek bölgesi olarak takip; altına sarkma risk işareti.';
+    return `Aksiyon önerisi: Ana trend yukarı, kısa vadeli geri çekilmede long fırsatı aranabilir — günlük EMA 21${ema21Str} destek bölgesi olarak takip; altına sarkma risk işareti.`;
   }
   if (t1d === 'short' && (t1h === 'long' || t4h === 'long')) {
-    return 'Aksiyon önerisi: Ana trend aşağı, kısa vadeli sıçramalar satış fırsatı; günlük EMA 55 üstüne çıkmadan kalıcı trend dönüşü beklenmez.';
+    return `Aksiyon önerisi: Ana trend aşağı, kısa vadeli sıçramalar satış fırsatı; günlük EMA 55${ema55Str} üstüne çıkmadan kalıcı trend dönüşü beklenmez.`;
   }
   if (lean === 'alıcı') return 'Aksiyon önerisi: Yön karışık ama kurumsal alıcı eğilimi var — sabırlı ol, net teyit (4H/Günlük long) gelince pozisyon büyüt.';
   if (lean === 'satıcı') return 'Aksiyon önerisi: Yön karışık ve kurumsal satıcı tarafta — alımdan kaçın, kenarda dur ya da çok küçük taktik shortlar dene.';
@@ -238,7 +269,7 @@ export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   if (move) parts.push(move);
 
   parts.push(bigPlayerLine(r.bigPlayerLean));
-  parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean));
+  parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
 
   return parts.join(' ');
 }

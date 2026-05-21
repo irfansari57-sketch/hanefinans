@@ -1,7 +1,7 @@
-name: TR CDS Fetch
-# worldgovernmentbonds.com TR 5Y CDS spread + history (JS-rendered)
-# Playwright headless Chromium ile render edip data/tr-cds.json'a yazar.
-# Static scrape başarısız çünkü site SPA-tarzı JS render kullanıyor.
+name: TR Bonds Fetch
+# worldgovernmentbonds.com'dan TR 5Y CDS spread + TR 10Y bond yield çeker.
+# Sayfa JS-rendered olduğu için Playwright headless Chromium şart.
+# Aynı Chromium kurulumuyla iki scraper sırayla çalışır → CI minute tasarrufu.
 
 on:
   schedule:
@@ -11,6 +11,7 @@ on:
   push:
     paths:
       - 'scripts/scrape_tr_cds.py'
+      - 'scripts/scrape_tr_10y.py'
       - 'scripts/requirements.txt'
       - '.github/workflows/tr-cds-fetch.yml'
 
@@ -35,31 +36,45 @@ jobs:
           pip install playwright>=1.40.0
           playwright install --with-deps chromium
 
-      - name: Run TR CDS scraper
+      - name: Run TR 5Y CDS scraper
+        id: cds
+        continue-on-error: true
         run: python -u scripts/scrape_tr_cds.py
+
+      - name: Run TR 10Y bond yield scraper
+        id: bond10y
+        continue-on-error: true
+        run: python -u scripts/scrape_tr_10y.py
 
       - name: Commit if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/tr-cds.json
-          # Debug HTML varsa onu da artifact olarak ekle
-          if [ -f data/tr-cds-debug.html ]; then
-            git add data/tr-cds-debug.html
-          fi
+          git add data/tr-cds.json data/tr-10y.json 2>/dev/null || true
+          if [ -f data/tr-cds-debug.html ]; then git add data/tr-cds-debug.html; fi
+          if [ -f data/tr-10y-debug.html ]; then git add data/tr-10y-debug.html; fi
           if git diff --staged --quiet; then
-            echo "TR CDS verisinde değişiklik yok, commit atlanıyor"
+            echo "TR bond verisinde değişiklik yok, commit atlanıyor"
           else
             # [skip ci] → Cloudflare Pages rebuild tetiklemesin (jsDelivr CDN'den okunuyor)
-            git commit -m "data: TR CDS otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
+            git commit -m "data: TR bonds otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
             git push
-            echo "✅ data/tr-cds.json commit'lendi ve push edildi"
+            echo "✅ data/tr-{cds,10y}.json commit'lendi"
           fi
 
-      - name: Upload debug HTML on failure
-        if: failure()
+      - name: Fail if both scrapers failed
+        if: steps.cds.outcome == 'failure' && steps.bond10y.outcome == 'failure'
+        run: |
+          echo "İki scraper de başarısız oldu — debug artifact'leri kontrol et"
+          exit 1
+
+      - name: Upload debug HTML artifacts
+        if: always() && (steps.cds.outcome == 'failure' || steps.bond10y.outcome == 'failure')
         uses: actions/upload-artifact@v4
         with:
-          name: tr-cds-debug-html
-          path: data/tr-cds-debug.html
+          name: tr-bonds-debug-html
+          path: |
+            data/tr-cds-debug.html
+            data/tr-10y-debug.html
           retention-days: 7
+          if-no-files-found: ignore

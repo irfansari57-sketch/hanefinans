@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Globe, RefreshCw, TrendingUp, TrendingDown, Flag, Gem, DollarSign, Activity, ExternalLink, Info, Lock, Sparkles, ChevronRight,
+  Globe, RefreshCw, TrendingUp, TrendingDown, Flag, Gem, DollarSign, Activity, Info, Lock, Sparkles, ChevronRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo } from '@/data/api/yahoo';
 import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
+import { fetchTr10y, type Tr10yData } from '@/data/api/tr10y';
 import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
@@ -103,6 +104,8 @@ export function GlobalPage() {
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [trCds, setTrCds] = useState<TrCdsData | null>(null);
   const [trCdsLoading, setTrCdsLoading] = useState(true);
+  const [tr10y, setTr10y] = useState<Tr10yData | null>(null);
+  const [tr10yLoading, setTr10yLoading] = useState(true);
 
   const allSymbols = useMemo(
     () => GROUPS.flatMap((g) => g.items.map((i) => i.symbol)),
@@ -134,6 +137,13 @@ export function GlobalPage() {
         const c = await fetchTrCds();
         setTrCds(c);
         setTrCdsLoading(false);
+      })(),
+      // TR 10Y bond yield paralel fetch
+      (async () => {
+        setTr10yLoading(true);
+        const t = await fetchTr10y();
+        setTr10y(t);
+        setTr10yLoading(false);
       })(),
     ]);
     setUpdatedAt(Date.now());
@@ -238,44 +248,21 @@ export function GlobalPage() {
             <span className="text-[11px] text-slate-500">— 5Y CDS spread, ülke risk primi</span>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             <TrCdsCard data={trCds} loading={trCdsLoading} />
-
-            <a
-              href="https://www.investing.com/rates-bonds/turkey-10-year-bond-yield"
-              target="_blank" rel="noreferrer"
-              className="flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-3 text-xs text-slate-300 hover:border-accent/40 hover:text-accent"
-            >
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">TR 10Y Tahvil</div>
-                <div className="mt-1 font-semibold text-slate-200">investing.com</div>
-              </div>
-              <ExternalLink size={12} />
-            </a>
-
-            <a
-              href="http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/"
-              target="_blank" rel="noreferrer"
-              className="flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-3 text-xs text-slate-300 hover:border-accent/40 hover:text-accent"
-            >
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">Veri Kaynağı</div>
-                <div className="mt-1 font-semibold text-slate-200">worldgovernmentbonds.com</div>
-              </div>
-              <ExternalLink size={12} />
-            </a>
+            <Tr10yCard data={tr10y} loading={tr10yLoading} />
           </div>
 
-          {trCds && !trCds.ok && (
+          {((trCds && !trCds.ok) || (tr10y && !tr10y.ok)) && (
             <p className="mt-3 text-[11px] text-slate-400 leading-relaxed">
-              <Info size={11} className="inline -mt-0.5 text-warning" /> Canlı CDS verisi şu anda alınamadı ({trCds.error ?? 'kaynak yanıt vermiyor'}). worldgovernmentbonds.com sayfasını manuel kontrol edebilirsin.
+              <Info size={11} className="inline -mt-0.5 text-warning" /> Bazı veriler şu anda alınamadı — birkaç dakika sonra otomatik yenilenecek.
             </p>
           )}
         </section>
       </div>
 
       <p className="mt-4 text-[10px] text-slate-500">
-        Veri kaynağı: Yahoo Finance + worldgovernmentbonds.com (3 dakikada bir yenilenir). Bir karta tıkla → detay sayfasında canlı grafik + bilgi kartı.
+        Yahoo Finance verileri 3 dakikada bir yenilenir; TR 5Y CDS + TR 10Y günde 2 kez güncellenir. Bir karta tıkla → detay sayfasında canlı grafik + bilgi kartı.
       </p>
     </>
   );
@@ -388,5 +375,61 @@ function TrCdsCard({ data, loading }: { data: TrCdsData | null; loading: boolean
         Türkiye ülke risk primi <ChevronRight size={9} />
       </div>
     </Link>
+  );
+}
+
+/**
+ * TR 10Y Tahvil canlı kart — Pages Function /api/tr-10y'den çeker (jsDelivr proxy).
+ */
+function Tr10yCard({ data, loading }: { data: Tr10yData | null; loading: boolean }) {
+  if (loading) return <Skeleton variant="rect" height={86} />;
+
+  if (!data || !data.ok || data.value == null) {
+    let detailMsg: string;
+    if (data === null) {
+      detailMsg = "Dev sunucuda Pages Functions çalışmaz — production'da canlı gelir.";
+    } else if (data?.error) {
+      detailMsg = `Kaynak hatası: ${data.error.slice(0, 80)}`;
+    } else {
+      detailMsg = 'Kaynak şu anda yanıt vermiyor — birkaç dakika sonra tekrar dene.';
+    }
+    return (
+      <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500">TR 10Y Tahvil</div>
+          <Info size={11} className="text-warning" />
+        </div>
+        <div className="mt-1 text-warning">veri alınamadı</div>
+        <div className="mt-1 text-[9px] text-slate-500 leading-tight">{detailMsg}</div>
+      </div>
+    );
+  }
+
+  const change = data.changePct ?? 0;
+  // Tahvil getirisi: yükselmek genel olarak risk artışı; düşüş düzelme.
+  const isImprovement = change <= 0;
+  const Icon = isImprovement ? TrendingDown : TrendingUp;
+  const tone = isImprovement ? 'text-success' : 'text-danger';
+  const sign = change >= 0 ? '+' : '';
+
+  return (
+    <div className="rounded-lg border border-border bg-bg-card p-3">
+      <div className="flex items-center justify-between gap-1">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">TR 10Y Tahvil</div>
+        <Icon size={11} className={tone} />
+      </div>
+      <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
+        {data.value.toFixed(2)}<span className="ml-1 text-[10px] font-medium text-slate-500">%</span>
+      </div>
+      <div className="flex items-baseline justify-between gap-1">
+        <span className={cn('text-xs font-medium tabular-nums', tone)}>
+          {sign}{change.toFixed(2)}%
+        </span>
+        {data.asOfDate && <span className="text-[9px] text-slate-500">{data.asOfDate}</span>}
+      </div>
+      <div className="mt-1 text-[9px] text-slate-500 leading-tight">
+        10 yıllık devlet tahvili getirisi
+      </div>
+    </div>
   );
 }

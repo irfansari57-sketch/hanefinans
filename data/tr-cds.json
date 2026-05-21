@@ -1,0 +1,13 @@
+{
+  "ok": false,
+  "value": null,
+  "changeAbs": null,
+  "changePct": null,
+  "changeWindow": null,
+  "asOfDate": null,
+  "history": null,
+  "source": "worldgovernmentbonds.com",
+  "parser": "placeholder",
+  "updatedAt": "2026-05-21T00:00:00.000Z",
+  "error": "GitHub Actions cron henüz çalışmadı — workflow tetiklendikten sonra gerçek değer dolacak"
+}

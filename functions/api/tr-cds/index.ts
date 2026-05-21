@@ -1,59 +1,42 @@
 /**
- * Cloudflare Pages Function — Türkiye 5Y CDS spread (v5 — bulletproof).
+ * Cloudflare Pages Function — Türkiye 5Y CDS spread (v7 — jsDelivr proxy).
  *
- * v5 farkları:
- *   • caches.default kaldırıldı (Pages Functions'da bazen exception fırlatıyor)
- *   • Promise.race ile sağlam timeout (AbortController fetch'i durdurmasa bile)
- *   • Master try/catch herhangi bir uncaught exception'a karşı 200 + JSON döner
- *     (502 ASLA üretmeyiz; client her zaman parse edilebilir yanıt alır)
- *   • Cloudflare edge cache: Cache-Control header üzerinden yönetilir
- *   • ?debug=1 → tam diagnostik (HTML head + match raporu)
+ * Mimari değişikliği:
+ *   v1-v6: worldgovernmentbonds.com'u doğrudan scrape ederdi.
+ *   v7:    site JS-rendered olduğu için (Mayıs 2026) statik scrape imkansız.
+ *          GitHub Actions cron (2x/gün) Playwright ile render edip
+ *          data/tr-cds.json üretir → jsDelivr CDN'den buradan okunur.
  *
- * Doğrulama: 19 May 2026'da gerçek değer 243.63 idi.
+ * Frontend kontratı (CdsData) aynı kalır. Bu Function sadece:
+ *   1) jsDelivr'den JSON çek
+ *   2) Browser cache header'ları ekle
+ *   3) Hata durumunda 200 + ok:false JSON dön (502 imkansız)
+ *
+ * Avantajlar:
+ *   • Cloudflare egress bağımlılığı yok
+ *   • Site HTML değişikliğine dayanıklı (scraper Playwright kullanır)
+ *   • Edge cache + browser cache ile hızlı
+ *   • Free tier limitlerini aşmaz
  */
+
+const JSDELIVR_URL = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/tr-cds.json';
 
 interface CdsHistoryPoint { date: string; value: number; }
 
 interface CdsResponse {
   ok: boolean;
   value?: number;
-  changePct?: number;
-  changeAbs?: number;
-  changeWindow?: string;
+  changePct?: number | null;
+  changeAbs?: number | null;
+  changeWindow?: string | null;
   updatedAt: string;
-  asOfDate?: string;
-  history?: CdsHistoryPoint[];
+  asOfDate?: string | null;
+  history?: CdsHistoryPoint[] | null;
   source: string;
   error?: string;
   parser?: string;
-  debug?: DebugReport;
 }
 
-interface DebugReport {
-  fetchedUrl?: string;
-  httpStatus?: number;
-  htmlLength?: number;
-  htmlHead?: string;
-  containsTurkey?: boolean;
-  containsCds?: boolean;
-  standsAtMatch?: string | null;
-  headerWindowMatch?: string | null;
-  rowMatches?: number;
-  attempts: Array<{ url: string; ok: boolean; status?: number; error?: string; ms?: number }>;
-  fatalError?: string;
-  /** v6: body içindeki tüm decimal kandidatları + 80 char çevre context. */
-  valueCandidates?: Array<{ value: number; context: string }>;
-  /** v6: body'deki tüm 4 haneli decimal'leri tarayıp basis points yakınlığı kontrolü. */
-  bpsNearbyMatches?: Array<{ value: number; context: string }>;
-  /** v6: <td> tag'lerinden gelen tüm decimal'ler (history table). */
-  allTdDecimals?: Array<{ value: number; rowContext: string }>;
-}
-
-const SOURCE_URL_HTTPS = 'https://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
-const SOURCE_URL_HTTP  = 'http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
-
-/** Her zaman 200 + JSON döner — Cloudflare 502 üretmesin diye. */
 function safeJsonResponse(data: CdsResponse, ttlSec = 1800): Response {
   return new Response(JSON.stringify(data), {
     status: 200,
@@ -65,276 +48,37 @@ function safeJsonResponse(data: CdsResponse, ttlSec = 1800): Response {
   });
 }
 
-function normalizeDate(s: string): string | null {
-  const m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (!m) return null;
-  return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-}
+export const onRequest: PagesFunction = async ({ request }) => {
+  const url = new URL(request.url);
+  const noCache = url.searchParams.get('refresh') === '1';
 
-function isPlausibleCdsValue(v: number): boolean {
-  if (!Number.isFinite(v)) return false;
-  if (v < 50 || v > 1500) return false;
-  if (v >= 2000 && v <= 2050) return false;
-  return true;
-}
-
-function parseChangeIndicator(html: string): { pct: number; window?: string } | null {
-  const re = /([▲▼])\s*(\d+(?:[.,]\d+)?)\s*%[\s\S]{0,80}?(\d+\s*(?:day|month|year|week)s?)/i;
-  const m = html.match(re);
-  if (m) {
-    const sign = m[1] === '▼' ? -1 : 1;
-    const val = parseFloat(m[2].replace(',', '.'));
-    return Number.isFinite(val) ? { pct: sign * val, window: m[3].toLowerCase() } : null;
-  }
-  return null;
-}
-
-function parseAsOfDate(html: string): string | undefined {
-  const m = html.match(/Last\s*Update:?\s*([0-9]{1,2}\s+[A-Za-zçşğüöıİ]+\s+\d{4}(?:\s+\d{1,2}:\d{2}(?:\s*GMT[+-]?\d*)?)?)/i);
-  return m ? m[1].trim() : undefined;
-}
-
-/** Promise.race ile zorlanmış timeout — AbortController fetch'i durdurmasa bile zaman aşımı çalışır. */
-async function tryFetch(url: string, timeoutMs: number): Promise<{ ok: true; html: string; status: number; ms: number } | { ok: false; status?: number; error: string; ms: number }> {
-  const startedAt = Date.now();
-  const ctrl = new AbortController();
-  let timer: number | undefined;
-  const timeoutPromise = new Promise<{ ok: false; error: string; ms: number }>((resolve) => {
-    timer = setTimeout(() => {
-      try { ctrl.abort(); } catch { /* */ }
-      resolve({ ok: false, error: `timeout ${timeoutMs}ms`, ms: Date.now() - startedAt });
-    }, timeoutMs) as unknown as number;
-  });
-
-  const fetchPromise: Promise<{ ok: true; html: string; status: number; ms: number } | { ok: false; status?: number; error: string; ms: number }> = (async () => {
-    try {
-      const r = await fetch(url, {
-        signal: ctrl.signal,
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
-        redirect: 'follow',
-      });
-      if (!r.ok) return { ok: false, status: r.status, error: `HTTP ${r.status}`, ms: Date.now() - startedAt };
-      const html = await r.text();
-      return { ok: true, html, status: r.status, ms: Date.now() - startedAt };
-    } catch (e) {
-      return { ok: false, error: (e as Error).message || 'fetch error', ms: Date.now() - startedAt };
-    }
-  })();
-
-  const result = await Promise.race([fetchPromise, timeoutPromise]);
-  if (timer !== undefined) clearTimeout(timer);
-  return result;
-}
-
-async function fetchSource(): Promise<{ html: string; url: string; status: number; attempts: DebugReport['attempts'] }> {
-  const attempts: DebugReport['attempts'] = [];
-  for (const url of [SOURCE_URL_HTTPS, SOURCE_URL_HTTP]) {
-    const r = await tryFetch(url, 6000);
-    if (r.ok) {
-      attempts.push({ url, ok: true, status: r.status, ms: r.ms });
-      return { html: r.html, url, status: r.status, attempts };
-    }
-    attempts.push({ url, ok: false, status: r.status, error: r.error, ms: r.ms });
-  }
-  throw new Error('Both attempts failed: ' + attempts.map((a) => `${a.url.replace(/^https?:\/\//,'').slice(0,40)}=${a.error || a.status}(${a.ms}ms)`).join(' | '));
-}
-
-async function scrape(debugMode: boolean): Promise<CdsResponse> {
-  const debug: DebugReport = { attempts: [] };
   try {
-    const { html, url: fetchedUrl, status, attempts } = await fetchSource();
-    debug.fetchedUrl = fetchedUrl;
-    debug.httpStatus = status;
-    debug.htmlLength = html.length;
-    debug.htmlHead = html.slice(0, 800);
-    debug.containsTurkey = /TURKEY/i.test(html);
-    debug.containsCds = /CDS|Credit\s*Default\s*Swap/i.test(html);
-    debug.attempts = attempts;
+    const r = await fetch(JSDELIVR_URL, {
+      headers: {
+        'User-Agent': 'hanefinans-tr-cds-proxy/1.0',
+        'Accept': 'application/json',
+      },
+      // jsDelivr CDN'i Cloudflare edge'inde 10 dk cache (cron 2x/gün, yeterli)
+      cf: noCache ? { cacheTtl: 0 } : { cacheTtl: 600, cacheEverything: true },
+    });
 
-    let value: number | undefined;
-    let parser = 'unknown';
-
-    // --- PATTERN 1: "stands at" (eski sayfa formatı, hâlâ varsa) ---
-    const standsAt = html.match(/value\s+stands\s+at[\s\S]{0,80}?(\d+(?:[.,]\d+)?)[\s\S]{0,40}?basis\s+points/i);
-    debug.standsAtMatch = standsAt ? standsAt[0].slice(0, 200) : null;
-    if (standsAt) {
-      const num = parseFloat(standsAt[1].replace(',', '.'));
-      if (isPlausibleCdsValue(num)) { value = num; parser = 'stands-at'; }
-    }
-
-    // --- PATTERN 2: "basis points" yakınında decimal (esnek; body'nin herhangi yerinde) ---
-    if (value == null) {
-      const bpsCandidates: Array<{ value: number; context: string }> = [];
-      const bpsRe = /(\d{2,4}(?:[.,]\d{1,4})?)[\s\S]{0,40}?basis\s+points/gi;
-      let bm: RegExpExecArray | null;
-      while ((bm = bpsRe.exec(html)) !== null) {
-        const num = parseFloat(bm[1].replace(',', '.'));
-        if (isPlausibleCdsValue(num)) {
-          const start = Math.max(0, bm.index - 60);
-          const end = Math.min(html.length, bm.index + bm[0].length + 40);
-          bpsCandidates.push({ value: num, context: html.slice(start, end).replace(/\s+/g, ' ').slice(0, 200) });
-        }
-        if (bpsCandidates.length > 10) break;
-      }
-      debug.bpsNearbyMatches = bpsCandidates;
-      if (bpsCandidates.length > 0) {
-        value = bpsCandidates[0].value;
-        parser = 'bps-nearby';
-      }
-    }
-
-    // --- PATTERN 3: Header anchored window (sadece title değil, body'deki 2nci/3ncü match'lerde de dene) ---
-    if (value == null) {
-      const headerWindows: string[] = [];
-      const headerRe = /TURKEY[^<]{0,40}5\s*Years?\s*CDS/gi;
-      let hm: RegExpExecArray | null;
-      while ((hm = headerRe.exec(html)) !== null) {
-        const w = html.slice(hm.index, hm.index + 2500);
-        headerWindows.push(w);
-        if (headerWindows.length > 5) break;
-      }
-      debug.headerWindowMatch = headerWindows.map((w) => w.slice(0, 200)).join(' ||| ');
-      // Title match'i atla (genelde ilk match), sonrakilerde decimal ara
-      for (let i = 0; i < headerWindows.length; i++) {
-        const w = headerWindows[i];
-        const decimalRe = />\s*(\d{2,4}\.\d{1,4})\s*</g;
-        let dm: RegExpExecArray | null;
-        while ((dm = decimalRe.exec(w)) !== null) {
-          const num = parseFloat(dm[1]);
-          if (isPlausibleCdsValue(num)) {
-            value = num;
-            parser = `header-window-${i}`;
-            break;
-          }
-        }
-        if (value != null) break;
-      }
-    }
-
-    // --- HISTORY TABLE: tarih + decimal satırları ---
-    const history: CdsHistoryPoint[] = [];
-    const rowRe = /<tr[^>]*>\s*<td[^>]*>\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*<\/td>\s*<td[^>]*>\s*([\d]+(?:[.,]\d+)?)/g;
-    let rm: RegExpExecArray | null;
-    while ((rm = rowRe.exec(html)) !== null) {
-      const iso = normalizeDate(rm[1]);
-      const v = parseFloat(rm[2].replace(',', '.'));
-      if (iso && isPlausibleCdsValue(v)) history.push({ date: iso, value: v });
-      if (history.length > 1000) break;
-    }
-    history.sort((a, b) => a.date.localeCompare(b.date));
-    debug.rowMatches = history.length;
-
-    if (value == null && history.length > 0) {
-      value = history[history.length - 1].value;
-      parser = 'history-last';
-    }
-
-    // --- PATTERN 4: TÜM <td> içindeki decimal'leri topla (history table farklı yapıdaysa) ---
-    if (value == null) {
-      const tdRe = /<td[^>]*>\s*(\d{2,4}\.\d{1,4})\s*<\/td>/g;
-      const tdCandidates: Array<{ value: number; rowContext: string }> = [];
-      let tm: RegExpExecArray | null;
-      while ((tm = tdRe.exec(html)) !== null) {
-        const num = parseFloat(tm[1]);
-        if (isPlausibleCdsValue(num)) {
-          const start = Math.max(0, tm.index - 150);
-          const end = Math.min(html.length, tm.index + tm[0].length + 80);
-          tdCandidates.push({ value: num, rowContext: html.slice(start, end).replace(/\s+/g, ' ').slice(0, 240) });
-        }
-        if (tdCandidates.length > 8) break;
-      }
-      debug.allTdDecimals = tdCandidates;
-      if (tdCandidates.length > 0) {
-        value = tdCandidates[0].value;
-        parser = 'first-td-decimal';
-      }
-    }
-
-    // --- PATTERN 5 (en gevşek): body'de TÜM decimal'leri tara + context dön ---
-    if (value == null || debugMode) {
-      const generalRe = /(?<![.\d])(\d{2,4}\.\d{1,4})(?![.\d])/g;
-      const generalCandidates: Array<{ value: number; context: string }> = [];
-      let gm: RegExpExecArray | null;
-      while ((gm = generalRe.exec(html)) !== null) {
-        const num = parseFloat(gm[1]);
-        if (isPlausibleCdsValue(num)) {
-          const start = Math.max(0, gm.index - 60);
-          const end = Math.min(html.length, gm.index + gm[0].length + 30);
-          generalCandidates.push({ value: num, context: html.slice(start, end).replace(/\s+/g, ' ').slice(0, 200) });
-        }
-        if (generalCandidates.length > 12) break;
-      }
-      debug.valueCandidates = generalCandidates;
-      // Eğer hâlâ value yoksa ilk plausible decimal'i son şans olarak al
-      if (value == null && generalCandidates.length > 0) {
-        value = generalCandidates[0].value;
-        parser = 'general-decimal';
-      }
-    }
-
-    if (value == null) {
-      return {
+    if (!r.ok) {
+      return safeJsonResponse({
         ok: false,
         updatedAt: new Date().toISOString(),
-        source: fetchedUrl,
-        error: 'CDS değeri bulunamadı (4 pattern de eşleşmedi)',
-        ...(debugMode ? { debug } : {}),
-      };
+        source: 'worldgovernmentbonds.com (via jsDelivr CDN)',
+        error: `jsDelivr HTTP ${r.status}. data/tr-cds.json henüz GitHub Actions tarafından üretilmemiş olabilir.`,
+      });
     }
 
-    const ind = parseChangeIndicator(html);
-    let changeAbs: number | undefined;
-    let changePct: number | undefined;
-    let changeWindow: string | undefined;
-    if (history.length >= 2) {
-      const last = history[history.length - 1];
-      const prev = history[history.length - 2];
-      changeAbs = last.value - prev.value;
-      changePct = (changeAbs / prev.value) * 100;
-      changeWindow = '1 day';
-    } else if (ind) {
-      changePct = ind.pct;
-      changeWindow = ind.window;
-    }
+    const data = (await r.json()) as CdsResponse;
 
-    return {
-      ok: true,
-      value,
-      changeAbs,
-      changePct,
-      changeWindow,
-      asOfDate: parseAsOfDate(html),
-      updatedAt: new Date().toISOString(),
-      history: history.length ? history.slice(-365) : undefined,
-      source: 'worldgovernmentbonds.com',
-      parser,
-      ...(debugMode ? { debug } : {}),
-    };
+    // jsDelivr'den gelen JSON doğrudan client kontratıyla uyumlu, sadece source ekle
+    return safeJsonResponse({
+      ...data,
+      source: data.source ?? 'worldgovernmentbonds.com',
+    }, 1800);
   } catch (e) {
-    debug.fatalError = (e as Error).message;
-    return {
-      ok: false,
-      updatedAt: new Date().toISOString(),
-      source: 'worldgovernmentbonds.com',
-      error: (e as Error).message,
-      ...(debugMode ? { debug } : {}),
-    };
-  }
-}
-
-export const onRequest: PagesFunction = async ({ request }) => {
-  // MASTER TRY/CATCH — Cloudflare bu Function'dan ASLA 502 görmesin.
-  try {
-    const url = new URL(request.url);
-    const debugMode = url.searchParams.get('debug') === '1';
-    const data = await scrape(debugMode);
-    return safeJsonResponse(data, 1800);
-  } catch (e) {
-    // En son güvenlik ağı — herhangi bir uncaught exception bile JSON döner
     return safeJsonResponse({
       ok: false,
       updatedAt: new Date().toISOString(),

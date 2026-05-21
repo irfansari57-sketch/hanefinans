@@ -34,6 +34,7 @@ import { findBistStock } from '@/data/bistAll';
 import { formatMoney, formatNumber, formatCompact } from '@/lib/format';
 import { formatRelative, formatDateTR } from '@/lib/date';
 import { cn } from '@/lib/utils';
+import { kapDetailUrl } from '@/data/kapSlugs';
 
 export function StockDetailPage() {
   const { symbol = '' } = useParams<{ symbol: string }>();
@@ -700,13 +701,13 @@ export function StockDetailPage() {
                     <ExternalLink size={11} />
                   </a>
                   <a
-                    href="https://www.kap.org.tr/tr/bist-sirketler"
+                    href={kapDetailUrl(sym)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-                    title={`KAP — BIST Şirketler listesinden ${sym} ara`}
+                    title={`KAP — ${sym} şirket detay sayfası`}
                   >
-                    <span>KAP — BIST Şirketler</span>
+                    <span>KAP Şirket Bilgileri</span>
                     <ExternalLink size={11} />
                   </a>
                   <a

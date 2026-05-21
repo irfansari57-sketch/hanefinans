@@ -85,30 +85,43 @@ function parseAsOfDate(html: string): string | undefined {
   return m ? m[1].trim() : undefined;
 }
 
-/** HTTPS → HTTP fallback ile kaynağı çek. */
+/** Tek fetch deneme — explicit timeout ile. */
+async function tryFetch(url: string, timeoutMs: number): Promise<{ ok: true; html: string; status: number } | { ok: false; status?: number; error: string }> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      },
+      redirect: 'follow',
+    });
+    if (!r.ok) return { ok: false, status: r.status, error: `HTTP ${r.status}` };
+    const html = await r.text();
+    return { ok: true, html, status: r.status };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message || 'fetch error' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** HTTPS → HTTP fallback, her biri 8 saniye timeout. Toplam max ~16s (Pages limit 30s). */
 async function fetchSource(): Promise<{ html: string; url: string; status: number; attempts: DebugReport['attempts'] }> {
   const attempts: DebugReport['attempts'] = [];
   for (const url of [SOURCE_URL_HTTPS, SOURCE_URL_HTTP]) {
-    try {
-      const r = await fetch(url, {
-        headers: {
-          'User-Agent': USER_AGENT,
-          'Accept': 'text/html,application/xhtml+xml',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Cache-Control': 'no-cache',
-        },
-        redirect: 'follow',
-      });
-      attempts.push({ url, ok: r.ok, status: r.status });
-      if (r.ok) {
-        const html = await r.text();
-        return { html, url, status: r.status, attempts };
-      }
-    } catch (e) {
-      attempts.push({ url, ok: false, error: (e as Error).message });
+    const r = await tryFetch(url, 8000);
+    if (r.ok) {
+      attempts.push({ url, ok: true, status: r.status });
+      return { html: r.html, url, status: r.status, attempts };
     }
+    attempts.push({ url, ok: false, status: r.status, error: r.error });
   }
-  throw new Error(`All fetch attempts failed: ${JSON.stringify(attempts)}`);
+  throw new Error(`All fetch attempts failed: ${attempts.map((a) => `${a.url}=${a.error || a.status}`).join(' | ')}`);
 }
 
 export const onRequest: PagesFunction = async ({ request }) => {

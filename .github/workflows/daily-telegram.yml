@@ -1,11 +1,27 @@
 name: Daily Telegram Report
-# Sabah 08:00 Türkiye saati (05:00 UTC), Pazartesi-Cuma
-# Cloudflare Pages Function /api/cron/daily-report endpoint'ini tetikler
+# Hane Finans sabah brifingi — Pazartesi-Cuma
+# 3 ayrı saatte tetiklenir (GitHub free tier cron gecikmesi/atlamasına karşı yedek):
+#   05:00 UTC (08:00 TR) — birincil
+#   06:00 UTC (09:00 TR) — yedek 1
+#   07:00 UTC (10:00 TR) — yedek 2
+# daily-report endpoint'i KV idempotency yapar — sadece günün ilk başarılı çağrısı
+# gerçekten gönderir, sonrakiler 'skipped: already sent today' döner.
 
 on:
   schedule:
-    - cron: '0 5 * * 1-5'  # UTC bazında, Mon-Fri 05:00 → TR 08:00
-  workflow_dispatch:        # Manuel tetikleme (test için)
+    - cron: '0 5 * * 1-5'  # 08:00 TR
+    - cron: '0 6 * * 1-5'  # 09:00 TR (yedek 1)
+    - cron: '0 7 * * 1-5'  # 10:00 TR (yedek 2)
+  workflow_dispatch:        # Manuel tetikleme (test için, ?force=1 destekli değil — script aşağıda)
+    inputs:
+      force:
+        description: 'KV idempotency bypass (force=1)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
   trigger:
@@ -14,13 +30,22 @@ jobs:
       - name: Call daily report endpoint
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE: ${{ github.event.inputs.force }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
             echo "::error::CRON_SECRET GitHub secret tanımlı değil. Settings → Secrets and variables → Actions → New repository secret"
             exit 1
           fi
+
+          # ?force=1 query — sadece manuel workflow_dispatch'te ve "force" input true ise
+          QUERY=""
+          if [ "$FORCE" = "true" ]; then
+            QUERY="?force=1"
+            echo "⚠ Force mode: KV idempotency bypass"
+          fi
+
           response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
-            -X POST "https://hanefinans.net/api/cron/daily-report" \
+            -X POST "https://hanefinans.net/api/cron/daily-report${QUERY}" \
             -H "X-Cron-Secret: $CRON_SECRET")
           echo "HTTP: $response"
           cat /tmp/body.json
@@ -28,4 +53,13 @@ jobs:
           if [ "$response" != "200" ]; then
             echo "::error::Cron çağrısı başarısız (HTTP $response)"
             exit 1
+          fi
+
+          # Skipped (idempotency) → başarı, gönderildi (sent>0) → başarı, total=0 → hata
+          if grep -q '"skipped":true' /tmp/body.json; then
+            echo "✓ Bugün zaten gönderilmiş (KV idempotency) — skip"
+          elif grep -q '"sent":0' /tmp/body.json; then
+            echo "::warning::Endpoint 200 döndü ama hiçbir mesaj iletilmedi (sent: 0). Bot token / chat_id kontrolü."
+          else
+            echo "✅ Brifing başarıyla gönderildi"
           fi

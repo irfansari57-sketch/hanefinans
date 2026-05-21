@@ -700,21 +700,13 @@ export function StockDetailPage() {
                     <ExternalLink size={11} />
                   </a>
                   <a
-                    href={`https://www.kap.org.tr/tr/sirket-bilgileri/ozet/${sym}`}
+                    href="https://www.kap.org.tr/tr/bist-sirketler"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
+                    title={`KAP — BIST Şirketler listesinden ${sym} ara`}
                   >
-                    <span>KAP Şirket Bilgileri</span>
-                    <ExternalLink size={11} />
-                  </a>
-                  <a
-                    href={`https://finans.mynet.com/borsa/hisseler/${sym.toLowerCase()}/`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-                  >
-                    <span>Mynet Finans</span>
+                    <span>KAP — BIST Şirketler</span>
                     <ExternalLink size={11} />
                   </a>
                   <a
@@ -724,15 +716,6 @@ export function StockDetailPage() {
                     className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
                   >
                     <span>Fintables (Detay)</span>
-                    <ExternalLink size={11} />
-                  </a>
-                  <a
-                    href={`https://bigpara.hurriyet.com.tr/borsa/hisse-detayi/${sym}/`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between rounded-md bg-bg-soft px-2.5 py-1.5 text-xs text-slate-300 hover:bg-bg-card"
-                  >
-                    <span>BigPara</span>
                     <ExternalLink size={11} />
                   </a>
                 </>

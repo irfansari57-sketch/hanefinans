@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { getTelegramChatId, setTelegramChatId, sendTelegram } from '@/lib/telegram';
 import { checkSupport, askPermission, getPermission, showSwNotification } from '@/lib/pushNotifications';
+import { getPushPref, setPushPref } from '@/lib/notificationPrefs';
 import { resetOnboarding } from '@/components/domain/OnboardingTour';
 import { toast } from '@/components/ui/Toast';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -1070,16 +1071,33 @@ function PriceField({
 
 
 function PushNotificationSection() {
+  const user = useAuth((s) => s.user);
+  const userId = user?.id ?? 'anon';
   const [support, setSupport] = useState(checkSupport());
   const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(getPermission());
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [prefAlerts, setPrefAlerts] = useState<boolean>(true);
+  const [prefNews, setPrefNews] = useState<boolean>(false);
 
-  // Sayfa açıldığında izin durumunu kontrol et
+  // Sayfa açıldığında izin durumunu + tercihleri yükle
   useEffect(() => {
     setSupport(checkSupport());
     setPerm(getPermission());
-  }, []);
+    setPrefAlerts(getPushPref('alerts', userId));
+    setPrefNews(getPushPref('news', userId));
+  }, [userId]);
+
+  const toggleAlerts = () => {
+    const next = !prefAlerts;
+    setPrefAlerts(next);
+    setPushPref('alerts', userId, next);
+  };
+  const toggleNews = () => {
+    const next = !prefNews;
+    setPrefNews(next);
+    setPushPref('news', userId, next);
+  };
 
   const supported = support === 'supported';
   const granted = perm === 'granted';
@@ -1184,6 +1202,61 @@ function PushNotificationSection() {
           </button>
         )}
       </div>
+
+      {/* Tercihler — sadece izin verildiyse aktif */}
+      {supported && granted && (
+        <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Hangi olaylar için bildirim?
+          </p>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md bg-bg-card/40 px-3 py-2 transition hover:bg-bg-card/70">
+            <div>
+              <div className="text-xs font-medium text-slate-200">Fiyat alarmları</div>
+              <div className="text-[10px] text-slate-500">Eklediğin hisse/fon alarmı tetiklendiğinde</div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={prefAlerts}
+              onClick={toggleAlerts}
+              className={cn(
+                'relative inline-flex h-5 w-9 shrink-0 rounded-full transition',
+                prefAlerts ? 'bg-success/70' : 'bg-slate-600',
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all',
+                  prefAlerts ? 'left-4' : 'left-0.5',
+                )}
+              />
+            </button>
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md bg-bg-card/40 px-3 py-2 transition hover:bg-bg-card/70">
+            <div>
+              <div className="text-xs font-medium text-slate-200">Son dakika haberleri</div>
+              <div className="text-[10px] text-slate-500">Önemi yüksek (≥7) breaking news geldikçe</div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={prefNews}
+              onClick={toggleNews}
+              className={cn(
+                'relative inline-flex h-5 w-9 shrink-0 rounded-full transition',
+                prefNews ? 'bg-success/70' : 'bg-slate-600',
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all',
+                  prefNews ? 'left-4' : 'left-0.5',
+                )}
+              />
+            </button>
+          </label>
+        </div>
+      )}
     </div>
   );
 }

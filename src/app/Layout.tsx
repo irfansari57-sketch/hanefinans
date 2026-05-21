@@ -45,6 +45,7 @@ import { CookieConsent } from '@/components/domain/CookieConsent';
 import { OnboardingTour } from '@/components/domain/OnboardingTour';
 import { PwaInstallBanner } from '@/components/domain/PwaInstallBanner';
 import { AlertWatcher } from '@/components/domain/AlertWatcher';
+import { NewsWatcher } from '@/components/domain/NewsWatcher';
 // EmailVerifyBanner: feature flag kapalı (FEATURES.emailVerification = false)
 // — banner mount edilmez, eski kullanıcı cache'i de aşağıdaki effect ile temizlenir
 import { MobileBottomNav } from '@/components/ui/MobileBottomNav';
@@ -485,6 +486,8 @@ export function Layout() {
 
       {/* Arka planda fiyat alarmı izleyici — Telegram + browser bildirimi tetikler */}
       <AlertWatcher />
+      {/* Arka planda son dakika haber izleyici — push bildirimi tetikler (kullanıcı izniyle) */}
+      <NewsWatcher />
     </div>
   );
 }

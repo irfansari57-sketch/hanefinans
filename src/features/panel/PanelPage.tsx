@@ -10,6 +10,7 @@ import { StockRow } from '@/components/domain/StockRow';
 import { TopMovers } from '@/components/domain/TopMovers';
 import { TopFundMovers } from '@/components/domain/TopFundMovers';
 import { Ticker } from '@/components/domain/Ticker';
+import { BreakingNewsTicker } from '@/components/domain/BreakingNewsTicker';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { SentimentAgentCard } from '@/components/domain/SentimentAgentCard';
 import { NewsAgentCard } from '@/components/domain/NewsAgentCard';
@@ -184,8 +185,20 @@ export function PanelPage() {
   return (
     <>
       {/* Live ticker — sayfanın en üstünde */}
-      <div className="mb-4">
+      <div className="mb-3">
         <Ticker stocks={tickerStocks} speed={50} />
+      </div>
+
+      {/* Son Dakika haber bandı — önem >= 5 ve son 48 saatteki haberler.
+          Filtreyi gevşek tutuyoruz ki band her zaman görünür olsun;
+          gerçek "son dakika" geldiğinde önem rozeti (●8, ●9) ile öne çıkar. */}
+      <div className="mb-4">
+        <BreakingNewsTicker
+          minImportance={5}
+          maxAgeHours={48}
+          fallback={news}
+          speed={60}
+        />
       </div>
 
       <PageHeader

@@ -176,10 +176,10 @@ export function MorningReportPage() {
       }
       setCryptoTA(taList);
 
-      // BIST 100 ve VIOP 30 (XU030 dayanağı) için tam teknik analiz
+      // BIST 100 ve BIST 30 için tam teknik analiz
       const indexConfigs = [
         { ySym: 'XU100.IS', symbol: 'BIST 100', label: 'BIST 100', macroKey: 'BIST 100' },
-        { ySym: 'XU030.IS', symbol: 'VIOP 30',  label: 'VIOP 30',  macroKey: 'BIST 30' },
+        { ySym: 'XU030.IS', symbol: 'BIST 30',  label: 'BIST 30',  macroKey: 'BIST 30' },
       ];
       const indexResults: IndexTA[] = await Promise.all(
         indexConfigs.map(async ({ ySym, symbol, label, macroKey }) => {
@@ -273,7 +273,7 @@ export function MorningReportPage() {
       // ============= Multi-Timeframe Analizi (1h, 4h, 1d) =============
       const mtSymbols = [
         { ySym: 'XU100.IS', label: 'BIST 100', macroKey: 'BIST 100' },
-        { ySym: 'XU030.IS', label: 'VIOP 30', macroKey: 'BIST 30' },
+        { ySym: 'XU030.IS', label: 'BIST 30', macroKey: 'BIST 30' },
         { ySym: 'SI=F',     label: 'Ons Gümüş', macroKey: 'Ons Gümüş' },
         { ySym: 'GC=F',     label: 'Ons Altın', macroKey: 'Ons Altın' },
       ];
@@ -454,7 +454,7 @@ export function MorningReportPage() {
       <section className="glass-card mb-5 p-5">
         <SectionHeader icon={Zap} title="Kısa Piyasa Analizi" tone="accent" />
         <p className="mt-1 ml-13 text-xs text-slate-400">
-          BIST 100, VIOP 30, USD/TRY ve Altın için <strong>1 saatlik, 4 saatlik ve günlük</strong> trend yönü + büyük oyuncu eğilimi.
+          BIST 100, BIST 30, USD/TRY ve Altın için <strong>1 saatlik, 4 saatlik ve günlük</strong> trend yönü + büyük oyuncu eğilimi.
         </p>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
@@ -529,8 +529,8 @@ function MultiTimeframeCard({ r }: { r: MultiTimeframeResult }) {
     : r.bigPlayerLean === 'satıcı' ? 'border-danger/40 bg-danger/10 text-danger'
     : 'border-slate-500/40 bg-slate-500/10 text-slate-300';
 
-  // VIOP 30 macroKey'i BIST 30 → /stock/XU030; diğerleri direkt eşleşir
-  const routeKey = r.symbol === 'VIOP 30' ? 'BIST 30' : r.symbol;
+  // Sembol etiketi zaten macroKey ile aynı (BIST 30 doğrudan eşleşir)
+  const routeKey = r.symbol;
   const route = macroKeyToRoute(routeKey);
 
   return (

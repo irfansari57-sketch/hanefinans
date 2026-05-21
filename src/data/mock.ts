@@ -178,7 +178,7 @@ export const MOCK_SENTIMENT: SentimentMention[] = [
 export const MOCK_MACRO_FALLBACK: MacroIndicator[] = [
   // BIST endeksleri — birinci öncelik
   { key: 'BIST 100',        label: 'BIST 100',       value: 15133,    changePct: 0.47,  source: 'mock', updatedAt: minutesAgo(1) },
-  { key: 'BIST 30',         label: 'BIST 30 (VIOP30 dayanağı)', value: 16420, changePct: 0.52, source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'BIST 30',         label: 'BIST 30',                   value: 16420, changePct: 0.52, source: 'mock', updatedAt: minutesAgo(1) },
   // Döviz
   { key: 'USD/TRY',         label: 'USD/TRY',        value: 45.40,    changePct: 0.20,  source: 'mock', updatedAt: minutesAgo(1) },
   { key: 'EUR/TRY',         label: 'EUR/TRY',        value: 53.29,    changePct: 0.30,  source: 'mock', updatedAt: minutesAgo(1) },

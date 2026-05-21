@@ -76,13 +76,13 @@ export interface YahooBenchmarkMeta {
 
 export const YAHOO_BENCHMARKS: YahooBenchmarkMeta[] = [
   {
-    yahooSymbol: '^XU100',
+    yahooSymbol: 'XU100.IS',
     label: 'BIST 100',
     description: 'BIST 100 Endeksi',
     color: '#93c5fd', // light blue
   },
   {
-    yahooSymbol: '^XU030',
+    yahooSymbol: 'XU030.IS',
     label: 'BIST 30',
     description: 'BIST 30 Endeksi',
     color: '#a78bfa', // soft purple

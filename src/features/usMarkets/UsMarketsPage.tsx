@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Flag, RefreshCw, ChevronRight, Lock, Sparkles } from 'lucide-react';
+import { Flag, RefreshCw, ChevronRight, Lock, Sparkles, Star, Zap, ArrowUpDown } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -9,7 +9,12 @@ import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, ty
 import { ema, type OHLC } from '@/lib/indicators';
 import { US_STOCKS } from '@/data/usStocks';
 import { useAuth, isPro } from '@/store/auth';
+import { useWatchlist } from '@/store/watchlist';
+import { RecPoolStats, type PoolStatBoxData } from '@/components/domain/RecPoolStats';
 import { cn } from '@/lib/utils';
+
+type UsSortBy = 'score' | 'change' | 'alpha';
+type UsFilter = 'all' | 'longonly' | 'nyse' | 'nasdaq';
 
 const INDICES: { ySym: string; label: string }[] = [
   { ySym: '^GSPC', label: 'S&P 500' },
@@ -40,6 +45,33 @@ export function UsMarketsPage() {
   const [stockRecs, setStockRecs] = useState<UsStockRec[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+
+  // Sıralama + filtre + arama state
+  const [sortBy, setSortBy] = useState<UsSortBy>('score');
+  const [filter, setFilter] = useState<UsFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const watchlistHas = useWatchlist((s) => s.has);
+  const toggleWatch = useWatchlist((s) => s.toggle);
+
+  // Sıralanmış + filtrelenmiş liste
+  const visibleStocks = useMemo(() => {
+    let list = [...stockRecs];
+    // Filter
+    if (filter === 'longonly') list = list.filter((s) => (s.trend1h?.trend === 'long' || s.trend4h?.trend === 'long' || s.trend1d?.trend === 'long'));
+    else if (filter === 'nyse') list = list.filter((s) => s.exchange === 'NYSE');
+    else if (filter === 'nasdaq') list = list.filter((s) => s.exchange === 'NASDAQ');
+    // Search
+    const q = searchQuery.trim().toUpperCase();
+    if (q.length > 0) {
+      list = list.filter((s) => s.sym.toUpperCase().includes(q) || s.name.toUpperCase().includes(q));
+    }
+    // Sort
+    if (sortBy === 'score') list.sort((a, b) => b.longScore - a.longScore);
+    else if (sortBy === 'change') list.sort((a, b) => b.changePct - a.changePct);
+    else if (sortBy === 'alpha') list.sort((a, b) => a.sym.localeCompare(b.sym));
+    return list;
+  }, [stockRecs, sortBy, filter, searchQuery]);
 
   const refresh = async () => {
     setLoading(true);
@@ -196,21 +228,89 @@ export function UsMarketsPage() {
         </div>
       </section>
 
-      {/* Top US Stocks */}
+      {/* Top US Stocks — Akordeon + Pool Stats + Sıralama */}
       <section className="glass-card p-5">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-warning">
           🚀 Top 20 Gelecek Vaad Eden ABD Hisseleri
         </h2>
-        <p className="mb-3 text-[11px] text-slate-500">
-          Multi-timeframe (1h / 4h / 1d) long sinyalleri ve günlük momentum'a göre sıralanmıştır.
-        </p>
+
+        {stockRecs.length > 0 && <RecPoolStats boxes={computeUsStockPoolStats(stockRecs)} />}
+        {stockRecs.length > 0 && <UsStockConsensusStrip stocks={stockRecs} />}
+
+        {/* Sort + Filter + Search */}
+        {stockRecs.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {/* Sort */}
+            <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
+              <span className="px-2 py-1 text-[10px] uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                <ArrowUpDown size={10} /> Sıralama
+              </span>
+              {([
+                { v: 'score', l: 'Skor' },
+                { v: 'change', l: 'Değişim' },
+                { v: 'alpha', l: 'A-Z' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.v}
+                  className={cn(
+                    'rounded-md px-2 py-1 text-xs transition',
+                    sortBy === opt.v ? 'bg-accent/20 text-accent' : 'text-slate-400 hover:text-slate-200',
+                  )}
+                  onClick={() => setSortBy(opt.v)}
+                >{opt.l}</button>
+              ))}
+            </div>
+
+            {/* Filter */}
+            <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
+              {([
+                { v: 'all', l: 'Tümü' },
+                { v: 'longonly', l: 'Long' },
+                { v: 'nyse', l: 'NYSE' },
+                { v: 'nasdaq', l: 'NASDAQ' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.v}
+                  className={cn(
+                    'rounded-md px-2.5 py-1 text-xs transition',
+                    filter === opt.v ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  )}
+                  onClick={() => setFilter(opt.v)}
+                >{opt.l}</button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Sembol/şirket ara (NVDA, Apple...)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input text-xs ml-auto w-full sm:w-56"
+            />
+          </div>
+        )}
+
         {loading && stockRecs.length === 0 ? (
           <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} variant="rect" height={120} />)}
+            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="rect" height={56} />)}
           </div>
         ) : (
-          <div className="space-y-3">
-            {stockRecs.map((s, i) => <UsStockCard key={s.sym} rec={s} rank={i + 1} />)}
+          <div className="space-y-1.5">
+            {visibleStocks.map((s, i) => (
+              <UsStockRowItem
+                key={s.sym}
+                rec={s}
+                rank={i + 1}
+                watched={watchlistHas(s.sym)}
+                onToggle={() => toggleWatch(s.sym)}
+              />
+            ))}
+            {visibleStocks.length === 0 && (
+              <div className="rounded-lg border border-border bg-bg-soft py-6 text-center text-xs text-slate-500">
+                Filtreyle eşleşen hisse yok.
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -340,6 +440,150 @@ function TimeframeBoxSmall({ label, ta }: { label: string; ta: TimeframeAnalysis
     <div className={cn('rounded border p-2 text-center', bg)}>
       <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className={cn('mt-1 text-sm font-bold', color)}>{txt}</div>
+    </div>
+  );
+}
+
+/**
+ * ABD hisseleri için kompakt akordeon satır. Summary'de özet + expanded UsStockCard.
+ */
+function UsStockRowItem({ rec, rank, watched, onToggle }: {
+  rec: UsStockRec;
+  rank: number;
+  watched: boolean;
+  onToggle: () => void;
+}) {
+  const tone = rec.changePct >= 0 ? 'text-success' : 'text-danger';
+  const sign = rec.changePct >= 0 ? '+' : '';
+  const longCount = [rec.trend1h, rec.trend4h, rec.trend1d].filter((t) => t?.trend === 'long').length;
+  const isLong = longCount >= 2;
+
+  return (
+    <details className={cn(
+      'group rounded-lg border transition',
+      isLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
+    )}>
+      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
+        <span className={cn(
+          'grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs',
+          isLong ? 'border-success/40 bg-success/10 text-success' : 'border-accent/30 bg-accent/10 text-accent',
+        )}>
+          {rank}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link
+              to={`/stock/${rec.sym}`}
+              className="font-mono font-bold text-slate-100 hover:text-accent"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {rec.sym}
+            </Link>
+            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{rec.sector}</span>
+            <span className="rounded bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{rec.exchange}</span>
+            {isLong && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+                <Zap size={8} />{longCount}/3 Long
+              </span>
+            )}
+            {watched && <Star size={10} className="text-warning" fill="currentColor" />}
+          </div>
+          <div className="truncate text-[10px] text-slate-500">{rec.name}</div>
+        </div>
+        <div className="hidden lg:flex items-center gap-1 text-[9px]">
+          {(['1h', '4h', '1d'] as const).map((tfKey) => {
+            const t = tfKey === '1h' ? rec.trend1h : tfKey === '4h' ? rec.trend4h : rec.trend1d;
+            const label = tfKey === '1h' ? '1H' : tfKey === '4h' ? '4H' : '1G';
+            if (!t) return <span key={tfKey} className="rounded bg-slate-500/15 px-1 py-0.5 text-slate-500">{label}</span>;
+            const cls = t.trend === 'long' ? 'bg-success/15 text-success' : t.trend === 'short' ? 'bg-danger/15 text-danger' : 'bg-slate-500/15 text-slate-400';
+            return <span key={tfKey} className={cn('rounded px-1 py-0.5 font-mono', cls)}>{label}</span>;
+          })}
+        </div>
+        <div className="w-24 text-right">
+          <div className="text-sm font-bold tabular-nums text-slate-100">${rec.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+          <div className={cn('text-[10px] font-semibold tabular-nums', tone)}>{sign}{rec.changePct.toFixed(2)}%</div>
+        </div>
+        <ChevronRight size={14} className="shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
+      </summary>
+
+      <div className="border-t border-border bg-bg-card">
+        <UsStockCard rec={rec} rank={rank} />
+        {/* Watchlist toggle */}
+        <div className="border-t border-border px-4 py-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition',
+              watched
+                ? 'border-warning/40 bg-warning/10 text-warning'
+                : 'border-border bg-bg-soft text-slate-400 hover:border-warning/30 hover:text-warning',
+            )}
+          >
+            <Star size={11} fill={watched ? 'currentColor' : 'none'} />
+            {watched ? 'Watchlist\'ten çıkar' : 'Watchlist\'e ekle'}
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+/** ABD hisseleri pool stats — toplam, ort değişim, Long/Short, NYSE/NASDAQ, lider. */
+function computeUsStockPoolStats(stocks: UsStockRec[]): PoolStatBoxData[] {
+  const total = stocks.length;
+  if (total === 0) return [];
+  const avgChange = stocks.reduce((s, x) => s + x.changePct, 0) / total;
+  const longCount = stocks.filter((s) => {
+    const c = [s.trend1h, s.trend4h, s.trend1d].filter((t) => t?.trend === 'long').length;
+    return c >= 2;
+  }).length;
+  const positives = stocks.filter((s) => s.changePct > 0).length;
+  const positiveRatio = (positives / total) * 100;
+  const nyse = stocks.filter((s) => s.exchange === 'NYSE').length;
+  const nasdaq = stocks.filter((s) => s.exchange === 'NASDAQ').length;
+  const sorted = [...stocks].sort((a, b) => b.changePct - a.changePct);
+  const leader = sorted[0];
+
+  return [
+    { label: 'Toplam', value: `${total}`, sub: `${nyse} NYSE / ${nasdaq} NASDAQ`, tone: 'slate' },
+    { label: 'Multi-TF Long', value: `${longCount}/${total}`, sub: '2+ TF\'de long', tone: 'success' },
+    { label: 'Ort. Değişim', value: `${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%`, tone: avgChange >= 0 ? 'success' : 'danger' },
+    { label: 'Pozitif Oran', value: `%${positiveRatio.toFixed(0)}`, sub: `${positives}/${total}`, tone: 'accent' },
+    { label: 'Lider', value: leader?.sym ?? '-', sub: leader ? `${leader.changePct >= 0 ? '+' : ''}${leader.changePct.toFixed(2)}%` : undefined, tone: 'success' },
+    { label: 'Borsa Dağılımı', value: nyse > nasdaq ? 'NYSE' : 'NASDAQ', sub: `${Math.max(nyse, nasdaq)} hisse`, tone: 'warning' },
+  ];
+}
+
+/** En çok yükselen + en çok düşen 3 hisse. */
+function UsStockConsensusStrip({ stocks }: { stocks: UsStockRec[] }) {
+  if (stocks.length === 0) return null;
+  const sorted = [...stocks].sort((a, b) => b.changePct - a.changePct);
+  const top3 = sorted.slice(0, 3);
+  const bottom3 = sorted.slice(-3).reverse();
+
+  return (
+    <div className="mb-3 grid gap-2 sm:grid-cols-2">
+      <div className="rounded-lg border border-success/30 bg-success/5 px-3 py-2">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-success">Top 3 Yükselen</div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {top3.map((s) => (
+            <Link key={s.sym} to={`/stock/${s.sym}`} className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-0.5 font-mono font-semibold text-success hover:bg-success/20">
+              {s.sym}<span className="text-[10px] opacity-70">{s.changePct >= 0 ? '+' : ''}{s.changePct.toFixed(2)}%</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-danger">Top 3 Düşen</div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {bottom3.map((s) => (
+            <Link key={s.sym} to={`/stock/${s.sym}`} className="inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-2 py-0.5 font-mono font-semibold text-danger hover:bg-danger/20">
+              {s.sym}<span className="text-[10px] opacity-70">{s.changePct >= 0 ? '+' : ''}{s.changePct.toFixed(2)}%</span>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

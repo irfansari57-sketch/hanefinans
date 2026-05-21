@@ -1,13 +1,12 @@
 /**
- * Cloudflare Pages Function — Türkiye 5Y CDS spread (v3).
+ * Cloudflare Pages Function — Türkiye 5Y CDS spread (v4).
  *
- * v3 farkları:
- *   • PRIMARY pattern: "value stands at NNN.NN basis points" — sayfadaki
- *     otomatik açıklama paragrafının değişmez ifadesi. Çok güvenilir.
- *   • SECONDARY: "TURKEY - 5 Years CDS" başlığından sonra ilk büyük
- *     decimal sayı (ör. 243.63)
- *   • Tablo parser ayrı, history için kullanılır
- *   • Sanity: 50-1500 bps, 2000-2050 yıl reddi
+ * v4 farkları:
+ *   • HTTPS önce denenir, başarısızsa HTTP fallback
+ *   • ?debug=1 query parametresi → HTML snippet + pattern match raporu
+ *   • Daha esnek "stands at" regex (boşluk/satır sonu toleranslı)
+ *   • Üçüncü fallback: tablodaki ilk satırın direkt değeri (history boş bile olsa)
+ *   • cf cache YOK (fetch'te) — Edge cache'i de v4 prefix'le ayır
  *
  * Doğrulama: 19 May 2026'da gerçek değer 243.63 idi, parser bunu yakalamalı.
  */
@@ -17,18 +16,33 @@ interface CdsHistoryPoint { date: string; value: number; }
 interface CdsResponse {
   ok: boolean;
   value?: number;
-  changePct?: number;        // gün/ay/yıl bazlı page-derived (mümkünse)
+  changePct?: number;
   changeAbs?: number;
-  changeWindow?: string;     // "1 day" | "1 month" gibi (page'den)
+  changeWindow?: string;
   updatedAt: string;
-  asOfDate?: string;         // "19 May 2026 13:45 GMT+0" gibi
+  asOfDate?: string;
   history?: CdsHistoryPoint[];
   source: string;
   error?: string;
   parser?: string;
+  debug?: DebugReport;
 }
 
-const SOURCE_URL = 'http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
+interface DebugReport {
+  fetchedUrl?: string;
+  httpStatus?: number;
+  htmlLength?: number;
+  htmlHead?: string;       // ilk 800 char
+  containsTurkey?: boolean;
+  containsCds?: boolean;
+  standsAtMatch?: string | null;
+  headerWindowMatch?: string | null;
+  rowMatches?: number;
+  attempts: Array<{ url: string; ok: boolean; status?: number; error?: string }>;
+}
+
+const SOURCE_URL_HTTPS = 'https://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
+const SOURCE_URL_HTTP  = 'http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
 function jsonResponse(data: CdsResponse, status = 200, ttlSec = 1800): Response {
@@ -55,9 +69,7 @@ function isPlausibleCdsValue(v: number): boolean {
   return true;
 }
 
-/** "▲ 2.82 %" → 2.82 ; "▼ 1.50 %" → -1.50  */
 function parseChangeIndicator(html: string): { pct: number; window?: string } | null {
-  // "▲ 2.82 %" veya benzeri + en yakın "1 month/day/year/week"
   const re = /([▲▼])\s*(\d+(?:[.,]\d+)?)\s*%[\s\S]{0,80}?(\d+\s*(?:day|month|year|week)s?)/i;
   const m = html.match(re);
   if (m) {
@@ -69,42 +81,67 @@ function parseChangeIndicator(html: string): { pct: number; window?: string } | 
 }
 
 function parseAsOfDate(html: string): string | undefined {
-  // "Last Update: 19 May 2026 13:45 GMT+0"
   const m = html.match(/Last\s*Update:?\s*([0-9]{1,2}\s+[A-Za-zçşğüöıİ]+\s+\d{4}(?:\s+\d{1,2}:\d{2}(?:\s*GMT[+-]?\d*)?)?)/i);
   return m ? m[1].trim() : undefined;
 }
 
+/** HTTPS → HTTP fallback ile kaynağı çek. */
+async function fetchSource(): Promise<{ html: string; url: string; status: number; attempts: DebugReport['attempts'] }> {
+  const attempts: DebugReport['attempts'] = [];
+  for (const url of [SOURCE_URL_HTTPS, SOURCE_URL_HTTP]) {
+    try {
+      const r = await fetch(url, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+        },
+        redirect: 'follow',
+      });
+      attempts.push({ url, ok: r.ok, status: r.status });
+      if (r.ok) {
+        const html = await r.text();
+        return { html, url, status: r.status, attempts };
+      }
+    } catch (e) {
+      attempts.push({ url, ok: false, error: (e as Error).message });
+    }
+  }
+  throw new Error(`All fetch attempts failed: ${JSON.stringify(attempts)}`);
+}
+
 export const onRequest: PagesFunction = async ({ request }) => {
+  const url = new URL(request.url);
+  const debugMode = url.searchParams.get('debug') === '1';
+  const noCache = debugMode || url.searchParams.get('refresh') === '1';
+
   const cache = caches.default;
-  const cacheKey = new Request(new URL(request.url).toString(), { method: 'GET' });
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached;
+  const cacheKey = new Request(url.toString().replace(/[?&]debug=\d+/, '').replace(/[?&]refresh=\d+/, ''), { method: 'GET' });
+  if (!noCache) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
+
+  const debug: DebugReport = { attempts: [] };
 
   try {
-    const res = await fetch(SOURCE_URL, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      cf: { cacheTtl: 1800, cacheEverything: true },
-    });
-    if (!res.ok) {
-      return jsonResponse({
-        ok: false,
-        updatedAt: new Date().toISOString(),
-        source: SOURCE_URL,
-        error: `Source HTTP ${res.status}`,
-      }, 502, 60);
-    }
-    const html = await res.text();
+    const { html, url: fetchedUrl, status, attempts } = await fetchSource();
+    debug.fetchedUrl = fetchedUrl;
+    debug.httpStatus = status;
+    debug.htmlLength = html.length;
+    debug.htmlHead = html.slice(0, 800);
+    debug.containsTurkey = /TURKEY/i.test(html);
+    debug.containsCds = /CDS|Credit\s*Default\s*Swap/i.test(html);
+    debug.attempts = attempts;
 
     let value: number | undefined;
     let parser = 'unknown';
 
     // --- PRIMARY: "value stands at NNN.NN basis points" ---
-    // Sayfanın otomatik açıklamasında her zaman var, değişmez.
-    const standsAt = html.match(/value\s+stands\s+at\s*<?[^>]*>?\s*([\d]+(?:[.,]\d+)?)\s*<?[^>]*>?\s*basis\s+points/i);
+    // Daha esnek: HTML tag'leri arasında olabilir, virgül/nokta toleranslı
+    const standsAt = html.match(/value\s+stands\s+at[\s\S]{0,80}?(\d+(?:[.,]\d+)?)[\s\S]{0,40}?basis\s+points/i);
+    debug.standsAtMatch = standsAt ? standsAt[0].slice(0, 200) : null;
     if (standsAt) {
       const num = parseFloat(standsAt[1].replace(',', '.'));
       if (isPlausibleCdsValue(num)) {
@@ -113,12 +150,12 @@ export const onRequest: PagesFunction = async ({ request }) => {
       }
     }
 
-    // --- SECONDARY: TURKEY 5 Years CDS başlığından sonra ilk büyük decimal ---
+    // --- SECONDARY: TURKEY 5 Years CDS başlığından sonra ilk decimal ---
     if (value == null) {
-      const headerIdx = html.search(/TURKEY[^<]*-?\s*5\s*Years?\s*CDS/i);
+      const headerIdx = html.search(/TURKEY[^<]{0,40}5\s*Years?\s*CDS/i);
       if (headerIdx >= 0) {
-        const window = html.slice(headerIdx, headerIdx + 1500);
-        // En az 1 ondalık olmalı (243.63 OK, 2023 değil — ama 2023.00 yine elenir sanity ile)
+        const window = html.slice(headerIdx, headerIdx + 2000);
+        debug.headerWindowMatch = window.slice(0, 300);
         const m = window.match(/>\s*(\d{2,4}\.\d{1,4})\s*</);
         if (m) {
           const num = parseFloat(m[1]);
@@ -143,6 +180,7 @@ export const onRequest: PagesFunction = async ({ request }) => {
       if (history.length > 1000) break;
     }
     history.sort((a, b) => a.date.localeCompare(b.date));
+    debug.rowMatches = history.length;
 
     // History varsa ve PRIMARY parser çalışmadıysa son satırı al
     if (value == null && history.length > 0) {
@@ -150,19 +188,31 @@ export const onRequest: PagesFunction = async ({ request }) => {
       parser = 'history-last';
     }
 
+    // --- TERTIARY: tablodaki herhangi bir td'de geçen ilk büyük decimal ---
     if (value == null) {
-      return jsonResponse({
-        ok: false,
-        updatedAt: new Date().toISOString(),
-        source: SOURCE_URL,
-        error: 'CDS değeri bulunamadı (stands-at + header-window + history hiçbiri eşleşmedi)',
-      }, 502, 60);
+      const anyDecimal = html.match(/<td[^>]*>\s*(\d{2,4}\.\d{1,4})\s*</);
+      if (anyDecimal) {
+        const num = parseFloat(anyDecimal[1]);
+        if (isPlausibleCdsValue(num)) {
+          value = num;
+          parser = 'any-td-decimal';
+        }
+      }
     }
 
-    // Page-derived change indicator (▲ 2.82 % 1 month)
+    if (value == null) {
+      const errResponse: CdsResponse = {
+        ok: false,
+        updatedAt: new Date().toISOString(),
+        source: fetchedUrl,
+        error: 'CDS değeri bulunamadı (stands-at + header-window + history + any-td hiçbiri eşleşmedi)',
+      };
+      if (debugMode) errResponse.debug = debug;
+      return jsonResponse(errResponse, 502, 60);
+    }
+
     const ind = parseChangeIndicator(html);
 
-    // History'den gün bazlı change (varsa)
     let changeAbs: number | undefined;
     let changePct: number | undefined;
     let changeWindow: string | undefined;
@@ -189,16 +239,19 @@ export const onRequest: PagesFunction = async ({ request }) => {
       source: 'worldgovernmentbonds.com',
       parser,
     };
+    if (debugMode) data.debug = debug;
 
     const response = jsonResponse(data, 200, 1800);
-    await cache.put(cacheKey, response.clone());
+    if (!debugMode) await cache.put(cacheKey, response.clone());
     return response;
   } catch (e) {
-    return jsonResponse({
+    const errResponse: CdsResponse = {
       ok: false,
       updatedAt: new Date().toISOString(),
-      source: SOURCE_URL,
+      source: SOURCE_URL_HTTPS,
       error: (e as Error).message,
-    }, 500, 30);
+    };
+    if (debugMode) errResponse.debug = debug;
+    return jsonResponse(errResponse, 500, 30);
   }
 };

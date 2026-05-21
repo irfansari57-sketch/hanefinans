@@ -336,6 +336,16 @@ function TrCdsCard({ data, loading }: { data: TrCdsData | null; loading: boolean
   if (loading) return <Skeleton variant="rect" height={86} />;
 
   if (!data || !data.ok || data.value == null) {
+    // data === null → fetch hiç dönmedi (dev'de Pages Functions yok veya net hatası)
+    // data?.ok === false → server scraper hatası (production'da debug edilebilir)
+    let detailMsg: string;
+    if (data === null) {
+      detailMsg = "Dev sunucuda Pages Functions çalışmaz — production'da canlı gelir.";
+    } else if (data?.error) {
+      detailMsg = `Kaynak hatası: ${data.error.slice(0, 80)}`;
+    } else {
+      detailMsg = 'Kaynak şu anda yanıt vermiyor — birkaç dakika sonra tekrar dene.';
+    }
     return (
       <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs">
         <div className="flex items-center justify-between">
@@ -343,7 +353,7 @@ function TrCdsCard({ data, loading }: { data: TrCdsData | null; loading: boolean
           <Info size={11} className="text-warning" />
         </div>
         <div className="mt-1 text-warning">veri alınamadı</div>
-        <div className="mt-1 text-[9px] text-slate-500 leading-tight">Dev sunucuda Pages Functions çalışmaz — production'da canlı gelir.</div>
+        <div className="mt-1 text-[9px] text-slate-500 leading-tight">{detailMsg}</div>
       </div>
     );
   }

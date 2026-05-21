@@ -1,37 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Youtube, ExternalLink, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
  * Hane Mod Studio YouTube reklam banner'ı.
  *
- * Yapı: YouTube'un public thumbnail CDN'i (i.ytimg.com) kullanılır — API key gerekmez.
- * Her video için 11 karakterlik video ID'sini FEATURED_VIDEOS dizisine ekle.
- * Video ID'si: youtube.com/watch?v=XXXXXXXXXXX URL'indeki v= parametresi.
+ * Rotation: 2+ video varsa YouTube IFrame Player API kullanılır → her video
+ * doğal süresi (sonuna kadar) oynar, ENDED event'inde sıradaki videoya geçer.
+ * Tek video varsa loop=1 ile sonsuz tekrar.
  *
- * Thumbnail URL formatı:
- *   https://i.ytimg.com/vi/{VIDEO_ID}/hqdefault.jpg     (480x360)
- *   https://i.ytimg.com/vi/{VIDEO_ID}/maxresdefault.jpg (1280x720, varsa)
+ * Yapı: i.ytimg.com kullanılmıyor, embed iframe doğrudan kullanılıyor.
+ * Her video için 11 karakterlik video ID'sini FEATURED_VIDEOS dizisine ekle.
  */
 
 const CHANNEL_URL = 'https://www.youtube.com/@hanemodstudio';
 const CHANNEL_NAME = 'Hane Mod Studio';
 
 interface FeaturedVideo {
-  id: string;         // 11 karakter YouTube video ID
+  id: string;
   title: string;
-  /** Kısa açıklama — banner üstünde 1 satır olarak çıkar */
   hook?: string;
 }
 
 /**
- * Öne çıkan videolar — gerçek video ID'lerini buraya yapıştır.
- * Boş bırakılırsa banner kanal logosu + jenerik mesaj gösterir.
- * 2+ video varsa 30sn'de bir döner; 1 video varsa statik gösterilir.
- *
- * Sıra önemli — listede yukarıdan aşağıya sırayla rotate eder.
- * Title (iframe accessibility) ve hook (banner alt metni) düzeltmek istersen
- * her video için ayrı string verebilirsin.
+ * Öne çıkan videolar — sıra önemli, listede yukarıdan aşağıya rotate eder.
+ * Çoklu video → her biri kendi süresi kadar oynar (YT API ENDED event'i).
+ * Tek video → loop=1 ile sürekli döner.
  */
 export const FEATURED_VIDEOS: FeaturedVideo[] = [
   { id: '3oE3b4Oz148', title: 'FiveM Map | Auto Shop',     hook: 'YENİ: FiveM Auto Shop haritası' },
@@ -47,13 +41,46 @@ interface Props {
   className?: string;
 }
 
-/** YouTube iframe embed URL — autoplay + mute + loop. mute=1 zorunlu (Chrome/Safari autoplay policy). */
-function embedUrl(videoId: string, muted: boolean) {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare global {
+  interface Window {
+    YT?: any;
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+let ytApiPromise: Promise<void> | null = null;
+
+/** YouTube IFrame Player API'sini lazy load et. Bir kez yüklenir. */
+function loadYouTubeApi(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.reject(new Error('SSR'));
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise<void>((resolve) => {
+    const existing = document.querySelector('script[data-yt-iframe-api]');
+    if (!existing) {
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      script.async = true;
+      script.dataset.ytIframeApi = '1';
+      document.head.appendChild(script);
+    }
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve();
+    };
+    // API daha önce yüklenmişse direkt resolve
+    if (window.YT && window.YT.Player) resolve();
+  });
+  return ytApiPromise;
+}
+
+/** YouTube iframe embed URL — multi-video modunda loop kaldırılır, API enable edilir. */
+function embedUrl(videoId: string, muted: boolean, singleLoop: boolean) {
   const params = new URLSearchParams({
     autoplay: '1',
     mute: muted ? '1' : '0',
-    loop: '1',
-    playlist: videoId, // tek video loop için zorunlu
     controls: '0',
     modestbranding: '1',
     rel: '0',
@@ -61,24 +88,72 @@ function embedUrl(videoId: string, muted: boolean) {
     disablekb: '1',
     iv_load_policy: '3',
   });
+  if (singleLoop) {
+    params.set('loop', '1');
+    params.set('playlist', videoId);
+  } else {
+    params.set('enablejsapi', '1');
+  }
   return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+}
+
+/**
+ * Player'ı iframe'e bağla, ENDED event'inde onEnded callback'ini çağır.
+ * useEffect içinden çağrılır, return ettiği cleanup destroy yapar.
+ */
+function attachYouTubePlayer(
+  iframe: HTMLIFrameElement,
+  onEnded: () => void,
+): () => void {
+  let player: any = null;
+  let cancelled = false;
+
+  loadYouTubeApi().then(() => {
+    if (cancelled) return;
+    try {
+      player = new window.YT.Player(iframe, {
+        events: {
+          onStateChange: (e: any) => {
+            // YT.PlayerState.ENDED === 0
+            if (e?.data === 0) onEnded();
+          },
+        },
+      });
+    } catch {
+      // API hata verirse sessizce devam (rotation o video için skip edilebilir)
+    }
+  });
+
+  return () => {
+    cancelled = true;
+    try {
+      player?.destroy?.();
+    } catch {
+      /* ignore */
+    }
+  };
 }
 
 export function HaneModAdBanner({ variant = 'compact', className }: Props) {
   const [idx, setIdx] = useState(0);
   // Muted başla — tarayıcı autoplay policy'si sesli otomatik oynatmayı bloklar.
-  // Kullanıcı sağ alt 🔊 ikonu ile sesi açabilir.
   const [muted, setMuted] = useState(true);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   const hasVideos = FEATURED_VIDEOS.length > 0;
   const video = hasVideos ? FEATURED_VIDEOS[idx] : null;
+  const isMulti = FEATURED_VIDEOS.length > 1;
 
+  // Çoklu video → YT API onStateChange ENDED → sıradaki video
   useEffect(() => {
-    if (FEATURED_VIDEOS.length < 2) return;
-    const id = setInterval(() => setIdx((i) => (i + 1) % FEATURED_VIDEOS.length), 30000);
-    return () => clearInterval(id);
-  }, []);
+    if (!isMulti || !iframeRef.current) return;
+    const cleanup = attachYouTubePlayer(iframeRef.current, () => {
+      setIdx((i) => (i + 1) % FEATURED_VIDEOS.length);
+    });
+    return cleanup;
+  }, [idx, isMulti]);
 
-  // Tıklama her zaman kanal sayfasına (spesifik video URL'i yerine)
+  // Tıklama her zaman kanal sayfasına
   const targetUrl = CHANNEL_URL;
 
   if (variant === 'compact') {
@@ -89,12 +164,12 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           className,
         )}
       >
-        {/* Video — autoplay + mute + loop */}
         {video && (
           <div className="relative aspect-video w-full overflow-hidden bg-black">
             <iframe
+              ref={iframeRef}
               key={video.id}
-              src={embedUrl(video.id, muted)}
+              src={embedUrl(video.id, muted, !isMulti)}
               title={video.title}
               loading="lazy"
               allow="autoplay; encrypted-media; picture-in-picture"
@@ -102,7 +177,6 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
               className="absolute inset-0 h-full w-full"
               frameBorder={0}
             />
-            {/* Tıklama yakalayıcı — iframe üstüne şeffaf katman, video tıklanınca YouTube'a açar */}
             <a
               href={targetUrl}
               target="_blank"
@@ -111,14 +185,12 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
               className="absolute inset-0 z-10"
               style={{ pointerEvents: 'auto' }}
             />
-            {/* YouTube + Sponsor rozetleri */}
             <span className="pointer-events-none absolute left-1.5 top-1.5 z-20 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-md">
               <Youtube size={9} /> YouTube
             </span>
             <span className="pointer-events-none absolute right-1.5 top-1.5 z-20 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
               Sponsor
             </span>
-            {/* Mute toggle — sağ alt köşe */}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
@@ -130,7 +202,6 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           </div>
         )}
 
-        {/* Alt metin */}
         <a
           href={targetUrl}
           target="_blank"
@@ -159,7 +230,6 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           </div>
         </a>
 
-        {/* Indicator dots */}
         {FEATURED_VIDEOS.length > 1 && (
           <div className="flex justify-center gap-1 pb-1.5">
             {FEATURED_VIDEOS.map((_, i) => (
@@ -188,8 +258,9 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
       {video && (
         <div className="relative aspect-video w-40 shrink-0 overflow-hidden bg-black sm:w-56">
           <iframe
+            ref={iframeRef}
             key={video.id}
-            src={embedUrl(video.id, muted)}
+            src={embedUrl(video.id, muted, !isMulti)}
             title={video.title}
             loading="lazy"
             allow="autoplay; encrypted-media; picture-in-picture"

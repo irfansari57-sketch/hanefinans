@@ -61,9 +61,24 @@ async function sendTelegram(token: string, chatId: string, text: string): Promis
   }
 }
 
-/** Bugünün UTC tarihinden idempotency anahtarı üret. */
-function todayKey(): string {
-  return `briefing-sent:${new Date().toISOString().slice(0, 10)}`;
+type Session = 'morning' | 'midday' | 'evening';
+
+/** Bugünün UTC tarihinden idempotency anahtarı üret. Session bazlı (her oturum ayrı). */
+function todayKey(session: Session): string {
+  return `briefing-sent:${new Date().toISOString().slice(0, 10)}:${session}`;
+}
+
+/** Session ID'sini normalize et — geçersizse 'morning' (geriye dönük uyumluluk). */
+function normalizeSession(raw: string | null): Session {
+  if (raw === 'midday' || raw === 'evening') return raw;
+  return 'morning';
+}
+
+/** Session etiketi → Türkçe başlık prefix'i. */
+function sessionTitle(session: Session): string {
+  if (session === 'midday') return '🕛 *Öğle Güncellemesi*';
+  if (session === 'evening') return '🌆 *Kapanış Raporu*';
+  return '🌅 *Sabah Raporu*';
 }
 
 export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
@@ -86,7 +101,8 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
 
   const url = new URL(request.url);
   const force = url.searchParams.get('force') === '1';
-  const key = todayKey();
+  const session = normalizeSession(url.searchParams.get('session'));
+  const key = todayKey(session);
 
   // --- IDEMPOTENCY CHECK ---
   // Multi-cron workflow (05/06/07 UTC) tetiklendiğinde, ilk başarılı çalışma
@@ -129,10 +145,15 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 
+  // Session başlığını brifing metninin EN ÜSTÜNE ekle.
+  // Brifing kendi başlığını (📊 *Hane Finans Brifingi*) içeriyor — onun üstüne session etiketi eklenir.
+  const sessionHeader = sessionTitle(session);
+  const fullText = `${sessionHeader}\n${text}`;
+
   const results = await Promise.all(
     Array.from(recipients).map(async (chatId) => ({
       chatId,
-      ok: await sendTelegram(env.TELEGRAM_BOT_TOKEN!, chatId, text),
+      ok: await sendTelegram(env.TELEGRAM_BOT_TOKEN!, chatId, fullText),
     })),
   );
 
@@ -156,7 +177,8 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     sent: okCount,
     total: results.length,
     results,
-    reportPreview: text.slice(0, 200),
+    session,
+    reportPreview: fullText.slice(0, 200),
     key,
     forced: force,
   }), {

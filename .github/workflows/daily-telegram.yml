@@ -1,19 +1,35 @@
 name: Daily Telegram Report
-# Hane Finans sabah brifingi — Pazartesi-Cuma
-# 3 ayrı saatte tetiklenir (GitHub free tier cron gecikmesi/atlamasına karşı yedek):
-#   05:00 UTC (08:00 TR) — birincil
-#   06:00 UTC (09:00 TR) — yedek 1
-#   07:00 UTC (10:00 TR) — yedek 2
-# daily-report endpoint'i KV idempotency yapar — sadece günün ilk başarılı çağrısı
-# gerçekten gönderir, sonrakiler 'skipped: already sent today' döner.
+# Hane Finans Telegram raporları — Pazartesi-Cuma 3 oturum:
+#   🌅 Sabah   (gün başı)  — 05:00 UTC + 06:00 UTC yedek  → 08:00/09:00 TR
+#   🕛 Öğle    (gün ortası) — 10:00 UTC + 11:00 UTC yedek  → 13:00/14:00 TR
+#   🌆 Akşam   (gün sonu)  — 15:00 UTC + 16:00 UTC yedek  → 18:00/19:00 TR
+#
+# daily-report endpoint'i ?session=morning|midday|evening query'sini KV anahtarına
+# ekler — her oturum kendi idempotency anahtarına sahip. Yedek cron sadece
+# birincil atlanırsa devreye girer (sessiz skip).
 
 on:
   schedule:
-    - cron: '0 5 * * 1-5'  # 08:00 TR
-    - cron: '0 6 * * 1-5'  # 09:00 TR (yedek 1)
-    - cron: '0 7 * * 1-5'  # 10:00 TR (yedek 2)
-  workflow_dispatch:        # Manuel tetikleme (test için, ?force=1 destekli değil — script aşağıda)
+    # Sabah oturumu
+    - cron: '0 5 * * 1-5'  # 08:00 TR — birincil
+    - cron: '0 6 * * 1-5'  # 09:00 TR — yedek
+    # Öğle oturumu
+    - cron: '0 10 * * 1-5' # 13:00 TR — birincil
+    - cron: '0 11 * * 1-5' # 14:00 TR — yedek
+    # Akşam oturumu (kapanış)
+    - cron: '0 15 * * 1-5' # 18:00 TR — birincil
+    - cron: '0 16 * * 1-5' # 19:00 TR — yedek
+  workflow_dispatch:
     inputs:
+      session:
+        description: 'Hangi oturum gönderilsin'
+        required: true
+        default: 'morning'
+        type: choice
+        options:
+          - morning
+          - midday
+          - evening
       force:
         description: 'KV idempotency bypass (force=1)'
         required: false
@@ -27,9 +43,31 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
+      - name: Determine session from cron schedule
+        id: which
+        env:
+          CRON_SCHEDULE: ${{ github.event.schedule }}
+          INPUT_SESSION: ${{ github.event.inputs.session }}
+        run: |
+          # Manuel tetikleme → workflow input
+          if [ -n "$INPUT_SESSION" ]; then
+            echo "session=$INPUT_SESSION" >> "$GITHUB_OUTPUT"
+            echo "Manual trigger, session=$INPUT_SESSION"
+            exit 0
+          fi
+          # Cron tetiklemesi → saate göre belirle
+          case "$CRON_SCHEDULE" in
+            "0 5 * * 1-5"|"0 6 * * 1-5")   echo "session=morning"  >> "$GITHUB_OUTPUT" ;;
+            "0 10 * * 1-5"|"0 11 * * 1-5") echo "session=midday"   >> "$GITHUB_OUTPUT" ;;
+            "0 15 * * 1-5"|"0 16 * * 1-5") echo "session=evening"  >> "$GITHUB_OUTPUT" ;;
+            *)                              echo "session=morning"  >> "$GITHUB_OUTPUT" ;;
+          esac
+          echo "Cron schedule=$CRON_SCHEDULE"
+
       - name: Call daily report endpoint
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SESSION: ${{ steps.which.outputs.session }}
           FORCE: ${{ github.event.inputs.force }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
@@ -37,13 +75,13 @@ jobs:
             exit 1
           fi
 
-          # ?force=1 query — sadece manuel workflow_dispatch'te ve "force" input true ise
-          QUERY=""
+          QUERY="?session=${SESSION}"
           if [ "$FORCE" = "true" ]; then
-            QUERY="?force=1"
+            QUERY="${QUERY}&force=1"
             echo "⚠ Force mode: KV idempotency bypass"
           fi
 
+          echo "📡 POST /api/cron/daily-report${QUERY}"
           response=$(curl -sS -o /tmp/body.json -w "%{http_code}" \
             -X POST "https://hanefinans.net/api/cron/daily-report${QUERY}" \
             -H "X-Cron-Secret: $CRON_SECRET")
@@ -55,11 +93,10 @@ jobs:
             exit 1
           fi
 
-          # Skipped (idempotency) → başarı, gönderildi (sent>0) → başarı, total=0 → hata
           if grep -q '"skipped":true' /tmp/body.json; then
-            echo "✓ Bugün zaten gönderilmiş (KV idempotency) — skip"
+            echo "✓ ${SESSION} oturumu bugün zaten gönderilmiş (KV idempotency) — skip"
           elif grep -q '"sent":0' /tmp/body.json; then
             echo "::warning::Endpoint 200 döndü ama hiçbir mesaj iletilmedi (sent: 0). Bot token / chat_id kontrolü."
           else
-            echo "✅ Brifing başarıyla gönderildi"
+            echo "✅ ${SESSION} oturumu brifingi başarıyla gönderildi"
           fi

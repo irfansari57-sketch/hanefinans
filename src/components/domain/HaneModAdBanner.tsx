@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Youtube, ExternalLink, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
  * Hane Mod Studio YouTube reklam banner'ı.
  *
- * Rotation: 2+ video varsa YouTube IFrame Player API kullanılır → her video
- * doğal süresi (sonuna kadar) oynar, ENDED event'inde sıradaki videoya geçer.
- * Tek video varsa loop=1 ile sonsuz tekrar.
- *
- * Yapı: i.ytimg.com kullanılmıyor, embed iframe doğrudan kullanılıyor.
- * Her video için 11 karakterlik video ID'sini FEATURED_VIDEOS dizisine ekle.
+ * Rotation stratejisi (yeniden yazıldı):
+ *  - Mount edildiğinde YT IFrame API yüklenir, **boş bir <div>** üzerine
+ *    new YT.Player({ videoId, ... }) ile player oluşturulur.
+ *  - ENDED event'inde player.loadVideoById(next) ile sıradaki video aynı player
+ *    içinde oynatılır. İframe remount edilmediği için event handler kaybolmaz.
+ *  - State (idx, muted) progress noktaları ve ses ikonu için tutulur.
+ *  - Tek video varsa yine de player API ile loop=1 davranışı kurulur.
  */
 
 const CHANNEL_URL = 'https://www.youtube.com/@hanemodstudio';
@@ -24,8 +25,7 @@ interface FeaturedVideo {
 
 /**
  * Öne çıkan videolar — sıra önemli, listede yukarıdan aşağıya rotate eder.
- * Çoklu video → her biri kendi süresi kadar oynar (YT API ENDED event'i).
- * Tek video → loop=1 ile sürekli döner.
+ * ENDED event'inde sıradaki ID loadVideoById ile aynı player'da oynatılır.
  */
 export const FEATURED_VIDEOS: FeaturedVideo[] = [
   { id: '3oE3b4Oz148', title: 'FiveM Map | Auto Shop',     hook: 'YENİ: FiveM Auto Shop haritası' },
@@ -70,90 +70,94 @@ function loadYouTubeApi(): Promise<void> {
       prev?.();
       resolve();
     };
-    // API daha önce yüklenmişse direkt resolve
+    // Already loaded
     if (window.YT && window.YT.Player) resolve();
   });
   return ytApiPromise;
 }
 
-/** YouTube iframe embed URL — multi-video modunda loop kaldırılır, API enable edilir. */
-function embedUrl(videoId: string, muted: boolean, singleLoop: boolean) {
-  const params = new URLSearchParams({
-    autoplay: '1',
-    mute: muted ? '1' : '0',
-    controls: '0',
-    modestbranding: '1',
-    rel: '0',
-    playsinline: '1',
-    disablekb: '1',
-    iv_load_policy: '3',
-  });
-  if (singleLoop) {
-    params.set('loop', '1');
-    params.set('playlist', videoId);
-  } else {
-    params.set('enablejsapi', '1');
-  }
-  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
-}
-
-/**
- * Player'ı iframe'e bağla, ENDED event'inde onEnded callback'ini çağır.
- * useEffect içinden çağrılır, return ettiği cleanup destroy yapar.
- */
-function attachYouTubePlayer(
-  iframe: HTMLIFrameElement,
-  onEnded: () => void,
-): () => void {
-  let player: any = null;
-  let cancelled = false;
-
-  loadYouTubeApi().then(() => {
-    if (cancelled) return;
-    try {
-      player = new window.YT.Player(iframe, {
-        events: {
-          onStateChange: (e: any) => {
-            // YT.PlayerState.ENDED === 0
-            if (e?.data === 0) onEnded();
-          },
-        },
-      });
-    } catch {
-      // API hata verirse sessizce devam (rotation o video için skip edilebilir)
-    }
-  });
-
-  return () => {
-    cancelled = true;
-    try {
-      player?.destroy?.();
-    } catch {
-      /* ignore */
-    }
-  };
-}
-
 export function HaneModAdBanner({ variant = 'compact', className }: Props) {
   const [idx, setIdx] = useState(0);
-  // Muted başla — tarayıcı autoplay policy'si sesli otomatik oynatmayı bloklar.
   const [muted, setMuted] = useState(true);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<any>(null);
+  const idxRef = useRef(0);
 
   const hasVideos = FEATURED_VIDEOS.length > 0;
   const video = hasVideos ? FEATURED_VIDEOS[idx] : null;
-  const isMulti = FEATURED_VIDEOS.length > 1;
 
-  // Çoklu video → YT API onStateChange ENDED → sıradaki video
+  // idx değişimini ref ile takip et — closure dependency kirletmeden
+  useEffect(() => { idxRef.current = idx; }, [idx]);
+
+  // Player'ı tek seferde mount et
   useEffect(() => {
-    if (!isMulti || !iframeRef.current) return;
-    const cleanup = attachYouTubePlayer(iframeRef.current, () => {
-      setIdx((i) => (i + 1) % FEATURED_VIDEOS.length);
-    });
-    return cleanup;
-  }, [idx, isMulti]);
+    if (!hasVideos || !containerRef.current) return;
+    let cancelled = false;
 
-  // Tıklama her zaman kanal sayfasına
+    loadYouTubeApi().then(() => {
+      if (cancelled || !containerRef.current) return;
+      try {
+        playerRef.current = new window.YT.Player(containerRef.current, {
+          videoId: FEATURED_VIDEOS[0].id,
+          playerVars: {
+            autoplay: 1,
+            mute: 1,           // ilk video sessiz başlasın (autoplay policy)
+            controls: 0,
+            modestbranding: 1,
+            rel: 0,
+            playsinline: 1,
+            disablekb: 1,
+            iv_load_policy: 3,
+            enablejsapi: 1,
+            origin: window.location.origin,
+          },
+          events: {
+            onReady: (e: any) => {
+              try {
+                if (muted) e.target.mute(); else e.target.unMute();
+                e.target.playVideo?.();
+              } catch { /* ignore */ }
+            },
+            onStateChange: (e: any) => {
+              // YT.PlayerState.ENDED === 0
+              if (e?.data === 0) {
+                const cur = idxRef.current;
+                const next = (cur + 1) % FEATURED_VIDEOS.length;
+                setIdx(next);
+                try {
+                  e.target.loadVideoById(FEATURED_VIDEOS[next].id);
+                } catch { /* ignore */ }
+              }
+            },
+          },
+        });
+      } catch {
+        /* ignore */
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      try { playerRef.current?.destroy?.(); } catch { /* ignore */ }
+      playerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasVideos]);
+
+  // Mute toggle — player API
+  const toggleMute = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setMuted((m) => {
+      const next = !m;
+      try {
+        if (next) playerRef.current?.mute?.();
+        else playerRef.current?.unMute?.();
+      } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   const targetUrl = CHANNEL_URL;
 
   if (variant === 'compact') {
@@ -164,24 +168,15 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           className,
         )}
       >
-        {video && (
+        {hasVideos && (
           <div className="relative aspect-video w-full overflow-hidden bg-black">
-            <iframe
-              ref={iframeRef}
-              key={video.id}
-              src={embedUrl(video.id, muted, !isMulti)}
-              title={video.title}
-              loading="lazy"
-              allow="autoplay; encrypted-media; picture-in-picture"
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="absolute inset-0 h-full w-full"
-              frameBorder={0}
-            />
+            {/* YT player buraya iframe enjekte eder */}
+            <div ref={containerRef} className="absolute inset-0 h-full w-full" />
             <a
               href={targetUrl}
               target="_blank"
               rel="noopener sponsored"
-              aria-label={`${video.title} — YouTube'da aç`}
+              aria-label={`${video?.title ?? CHANNEL_NAME} — YouTube'da aç`}
               className="absolute inset-0 z-10"
               style={{ pointerEvents: 'auto' }}
             />
@@ -193,7 +188,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
             </span>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+              onClick={toggleMute}
               aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
               className="absolute bottom-1.5 right-1.5 z-20 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white/90 backdrop-blur-sm transition hover:bg-black/90 hover:text-white"
             >
@@ -208,7 +203,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           rel="noopener sponsored"
           className="block p-2.5"
         >
-          {!video && (
+          {!hasVideos && (
             <div className="mb-1.5 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
               <Youtube size={9} /> YouTube
             </div>
@@ -219,7 +214,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
               {video?.hook && (
                 <div className="mt-0.5 truncate text-[10px] text-red-200/90">{video.hook}</div>
               )}
-              {!video && (
+              {!hasVideos && (
                 <div className="mt-0.5 text-[10px] text-red-200/90">Hane Finans'ın resmi YouTube kanalı</div>
               )}
             </div>
@@ -247,7 +242,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
     );
   }
 
-  // Wide variant — yatay
+  // Wide variant
   return (
     <div
       className={cn(
@@ -255,29 +250,19 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
         className,
       )}
     >
-      {video && (
+      {hasVideos && (
         <div className="relative aspect-video w-40 shrink-0 overflow-hidden bg-black sm:w-56">
-          <iframe
-            ref={iframeRef}
-            key={video.id}
-            src={embedUrl(video.id, muted, !isMulti)}
-            title={video.title}
-            loading="lazy"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            referrerPolicy="strict-origin-when-cross-origin"
-            className="absolute inset-0 h-full w-full"
-            frameBorder={0}
-          />
+          <div ref={containerRef} className="absolute inset-0 h-full w-full" />
           <a
             href={targetUrl}
             target="_blank"
             rel="noopener sponsored"
-            aria-label={`${video.title} — YouTube'da aç`}
+            aria-label={`${video?.title ?? CHANNEL_NAME} — YouTube'da aç`}
             className="absolute inset-0 z-10"
           />
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+            onClick={toggleMute}
             aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
             className="absolute bottom-2 right-2 z-20 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-white/90 backdrop-blur-sm transition hover:bg-black/90 hover:text-white"
           >

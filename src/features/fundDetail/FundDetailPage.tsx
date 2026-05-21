@@ -15,6 +15,7 @@ import { fetchTefasFund, isTefasWorkerConfigured, type TefasFundDetail } from '@
 import { fetchTefasFundByCode, isTefasGithubConfigured, type TefasFundData } from '@/data/api/tefasGithub';
 import { cn } from '@/lib/utils';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
+import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
 
 export function FundDetailPage() {
   const { code = '' } = useParams<{ code: string }>();
@@ -228,6 +229,22 @@ export function FundDetailPage() {
           {/* Performans grafiği — anchor noktalardan reconstruct */}
           <div className="card sm:col-span-3 p-4">
             <FundPerformanceChart fund={githubData} />
+          </div>
+
+          {/* Fon Getiri Karşılaştırma — BIST, döviz, altın, TÜFE, mevduat */}
+          <div className="sm:col-span-3">
+            <FundComparisonChart
+              fundCode={githubData.code}
+              fundName={githubData.name}
+              fundReturns={{
+                '1w': githubData.returns['1w'] ?? null,
+                '1m': githubData.returns['1m'] ?? null,
+                '3m': githubData.returns['3m'] ?? null,
+                '6m': githubData.returns['6m'] ?? null,
+                ytd: githubData.returns.ytd ?? null,
+                '1y': githubData.returns['1y'] ?? null,
+              }}
+            />
           </div>
         </div>
       ) : isTefasWorkerConfigured() ? (

@@ -41,6 +41,12 @@ interface DebugReport {
   rowMatches?: number;
   attempts: Array<{ url: string; ok: boolean; status?: number; error?: string; ms?: number }>;
   fatalError?: string;
+  /** v6: body içindeki tüm decimal kandidatları + 80 char çevre context. */
+  valueCandidates?: Array<{ value: number; context: string }>;
+  /** v6: body'deki tüm 4 haneli decimal'leri tarayıp basis points yakınlığı kontrolü. */
+  bpsNearbyMatches?: Array<{ value: number; context: string }>;
+  /** v6: <td> tag'lerinden gelen tüm decimal'ler (history table). */
+  allTdDecimals?: Array<{ value: number; rowContext: string }>;
 }
 
 const SOURCE_URL_HTTPS = 'https://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
@@ -152,6 +158,7 @@ async function scrape(debugMode: boolean): Promise<CdsResponse> {
     let value: number | undefined;
     let parser = 'unknown';
 
+    // --- PATTERN 1: "stands at" (eski sayfa formatı, hâlâ varsa) ---
     const standsAt = html.match(/value\s+stands\s+at[\s\S]{0,80}?(\d+(?:[.,]\d+)?)[\s\S]{0,40}?basis\s+points/i);
     debug.standsAtMatch = standsAt ? standsAt[0].slice(0, 200) : null;
     if (standsAt) {
@@ -159,19 +166,56 @@ async function scrape(debugMode: boolean): Promise<CdsResponse> {
       if (isPlausibleCdsValue(num)) { value = num; parser = 'stands-at'; }
     }
 
+    // --- PATTERN 2: "basis points" yakınında decimal (esnek; body'nin herhangi yerinde) ---
     if (value == null) {
-      const headerIdx = html.search(/TURKEY[^<]{0,40}5\s*Years?\s*CDS/i);
-      if (headerIdx >= 0) {
-        const window = html.slice(headerIdx, headerIdx + 2000);
-        debug.headerWindowMatch = window.slice(0, 300);
-        const m = window.match(/>\s*(\d{2,4}\.\d{1,4})\s*</);
-        if (m) {
-          const num = parseFloat(m[1]);
-          if (isPlausibleCdsValue(num)) { value = num; parser = 'header-window'; }
+      const bpsCandidates: Array<{ value: number; context: string }> = [];
+      const bpsRe = /(\d{2,4}(?:[.,]\d{1,4})?)[\s\S]{0,40}?basis\s+points/gi;
+      let bm: RegExpExecArray | null;
+      while ((bm = bpsRe.exec(html)) !== null) {
+        const num = parseFloat(bm[1].replace(',', '.'));
+        if (isPlausibleCdsValue(num)) {
+          const start = Math.max(0, bm.index - 60);
+          const end = Math.min(html.length, bm.index + bm[0].length + 40);
+          bpsCandidates.push({ value: num, context: html.slice(start, end).replace(/\s+/g, ' ').slice(0, 200) });
         }
+        if (bpsCandidates.length > 10) break;
+      }
+      debug.bpsNearbyMatches = bpsCandidates;
+      if (bpsCandidates.length > 0) {
+        value = bpsCandidates[0].value;
+        parser = 'bps-nearby';
       }
     }
 
+    // --- PATTERN 3: Header anchored window (sadece title değil, body'deki 2nci/3ncü match'lerde de dene) ---
+    if (value == null) {
+      const headerWindows: string[] = [];
+      const headerRe = /TURKEY[^<]{0,40}5\s*Years?\s*CDS/gi;
+      let hm: RegExpExecArray | null;
+      while ((hm = headerRe.exec(html)) !== null) {
+        const w = html.slice(hm.index, hm.index + 2500);
+        headerWindows.push(w);
+        if (headerWindows.length > 5) break;
+      }
+      debug.headerWindowMatch = headerWindows.map((w) => w.slice(0, 200)).join(' ||| ');
+      // Title match'i atla (genelde ilk match), sonrakilerde decimal ara
+      for (let i = 0; i < headerWindows.length; i++) {
+        const w = headerWindows[i];
+        const decimalRe = />\s*(\d{2,4}\.\d{1,4})\s*</g;
+        let dm: RegExpExecArray | null;
+        while ((dm = decimalRe.exec(w)) !== null) {
+          const num = parseFloat(dm[1]);
+          if (isPlausibleCdsValue(num)) {
+            value = num;
+            parser = `header-window-${i}`;
+            break;
+          }
+        }
+        if (value != null) break;
+      }
+    }
+
+    // --- HISTORY TABLE: tarih + decimal satırları ---
     const history: CdsHistoryPoint[] = [];
     const rowRe = /<tr[^>]*>\s*<td[^>]*>\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*<\/td>\s*<td[^>]*>\s*([\d]+(?:[.,]\d+)?)/g;
     let rm: RegExpExecArray | null;
@@ -189,11 +233,46 @@ async function scrape(debugMode: boolean): Promise<CdsResponse> {
       parser = 'history-last';
     }
 
+    // --- PATTERN 4: TÜM <td> içindeki decimal'leri topla (history table farklı yapıdaysa) ---
     if (value == null) {
-      const anyDecimal = html.match(/<td[^>]*>\s*(\d{2,4}\.\d{1,4})\s*</);
-      if (anyDecimal) {
-        const num = parseFloat(anyDecimal[1]);
-        if (isPlausibleCdsValue(num)) { value = num; parser = 'any-td-decimal'; }
+      const tdRe = /<td[^>]*>\s*(\d{2,4}\.\d{1,4})\s*<\/td>/g;
+      const tdCandidates: Array<{ value: number; rowContext: string }> = [];
+      let tm: RegExpExecArray | null;
+      while ((tm = tdRe.exec(html)) !== null) {
+        const num = parseFloat(tm[1]);
+        if (isPlausibleCdsValue(num)) {
+          const start = Math.max(0, tm.index - 150);
+          const end = Math.min(html.length, tm.index + tm[0].length + 80);
+          tdCandidates.push({ value: num, rowContext: html.slice(start, end).replace(/\s+/g, ' ').slice(0, 240) });
+        }
+        if (tdCandidates.length > 8) break;
+      }
+      debug.allTdDecimals = tdCandidates;
+      if (tdCandidates.length > 0) {
+        value = tdCandidates[0].value;
+        parser = 'first-td-decimal';
+      }
+    }
+
+    // --- PATTERN 5 (en gevşek): body'de TÜM decimal'leri tara + context dön ---
+    if (value == null || debugMode) {
+      const generalRe = /(?<![.\d])(\d{2,4}\.\d{1,4})(?![.\d])/g;
+      const generalCandidates: Array<{ value: number; context: string }> = [];
+      let gm: RegExpExecArray | null;
+      while ((gm = generalRe.exec(html)) !== null) {
+        const num = parseFloat(gm[1]);
+        if (isPlausibleCdsValue(num)) {
+          const start = Math.max(0, gm.index - 60);
+          const end = Math.min(html.length, gm.index + gm[0].length + 30);
+          generalCandidates.push({ value: num, context: html.slice(start, end).replace(/\s+/g, ' ').slice(0, 200) });
+        }
+        if (generalCandidates.length > 12) break;
+      }
+      debug.valueCandidates = generalCandidates;
+      // Eğer hâlâ value yoksa ilk plausible decimal'i son şans olarak al
+      if (value == null && generalCandidates.length > 0) {
+        value = generalCandidates[0].value;
+        parser = 'general-decimal';
       }
     }
 

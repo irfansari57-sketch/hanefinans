@@ -154,10 +154,12 @@ function buildBriefingText(parts: {
   const snap = parts.macro?.snapshot ?? [];
   const find = (label: string) => snap.find((s) => s.label === label);
 
-  // === 1) TÜRKİYE (BIST 100 + USD/TRY) ===
+  // === 1) TÜRKİYE (BIST 100 + USD/TRY + TR Risk Primleri) ===
   const bist100 = find('BIST 100');
   const usdTryE = find('USD/TRY');
-  if (bist100 || usdTryE) {
+  const trCds   = find('TR 5Y CDS');
+  const tr10y   = find('TR 10Y Tahvil');
+  if (bist100 || usdTryE || trCds || tr10y) {
     lines.push('🇹🇷 *TÜRKİYE*');
     if (bist100) {
       const sign = bist100.changePct >= 0 ? '+' : '';
@@ -166,6 +168,14 @@ function buildBriefingText(parts: {
     if (usdTryE) {
       const sign = usdTryE.changePct >= 0 ? '+' : '';
       lines.push(`${arrow(usdTryE.changePct)} USD/TRY: ${fmt(usdTryE.value)}₺ (${sign}${fmt(usdTryE.changePct)}%)`);
+    }
+    if (trCds) {
+      const sign = trCds.changePct >= 0 ? '+' : '';
+      lines.push(`${arrow(trCds.changePct)} TR 5Y CDS: ${fmt(trCds.value)} bps (${sign}${fmt(trCds.changePct)}%)`);
+    }
+    if (tr10y) {
+      const sign = tr10y.changePct >= 0 ? '+' : '';
+      lines.push(`${arrow(tr10y.changePct)} TR 10Y Tahvil: ${fmt(tr10y.value)}% (${sign}${fmt(tr10y.changePct)}%)`);
     }
     lines.push('');
   }

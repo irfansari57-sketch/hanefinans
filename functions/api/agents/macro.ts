@@ -95,6 +95,18 @@ async function fetchTrCds(origin: string): Promise<{ value: number; changePct?: 
   }
 }
 
+async function fetchTr10y(origin: string): Promise<{ value: number; changePct?: number } | null> {
+  try {
+    const r = await fetch(`${origin}/api/tr-10y`);
+    if (!r.ok) return null;
+    const j = await r.json() as { ok: boolean; value?: number; changePct?: number };
+    if (!j.ok || j.value == null) return null;
+    return { value: j.value, changePct: j.changePct };
+  } catch {
+    return null;
+  }
+}
+
 function parseClaudeJson<T>(raw: string): T | null {
   try { return JSON.parse(raw) as T; } catch { /* */ }
   const m = raw.match(/```(?:json)?\s*([\s\S]+?)```/);
@@ -123,12 +135,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const origin = new URL(request.url).origin;
 
   // Makro verileri paralel çek
-  const [yahooResults, trCds] = await Promise.all([
+  const [yahooResults, trCds, tr10y] = await Promise.all([
     Promise.all(SYMBOLS.map(async (s) => {
       const r = await fetchYahoo(origin, s.sym);
       return r ? { symbol: s.sym, label: s.label, unit: s.unit, value: r.value, changePct: r.changePct } : null;
     })),
     fetchTrCds(origin),
+    fetchTr10y(origin),
   ]);
 
   const snapshot: MacroSnapshot[] = yahooResults.filter((x): x is MacroSnapshot => x !== null);
@@ -139,6 +152,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       value: trCds.value,
       changePct: trCds.changePct ?? 0,
       unit: 'bps',
+    });
+  }
+  if (tr10y) {
+    snapshot.push({
+      symbol: 'TR-10Y-BOND',
+      label: 'TR 10Y Tahvil',
+      value: tr10y.value,
+      changePct: tr10y.changePct ?? 0,
+      unit: '%',
     });
   }
 

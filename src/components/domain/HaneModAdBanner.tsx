@@ -27,10 +27,19 @@ interface FeaturedVideo {
 /**
  * Öne çıkan videolar — gerçek video ID'lerini buraya yapıştır.
  * Boş bırakılırsa banner kanal logosu + jenerik mesaj gösterir.
- * 2+ video varsa 7sn'de bir döner; 1 video varsa statik gösterilir.
+ * 2+ video varsa 30sn'de bir döner; 1 video varsa statik gösterilir.
+ *
+ * Sıra önemli — listede yukarıdan aşağıya sırayla rotate eder.
+ * Title (iframe accessibility) ve hook (banner alt metni) düzeltmek istersen
+ * her video için ayrı string verebilirsin.
  */
 export const FEATURED_VIDEOS: FeaturedVideo[] = [
-  { id: '3oE3b4Oz148', title: 'FiveM Map | Auto Shop', hook: 'YENİ: FiveM Auto Shop haritası' },
+  { id: '3oE3b4Oz148', title: 'FiveM Map | Auto Shop',     hook: 'YENİ: FiveM Auto Shop haritası' },
+  { id: 'fmtish7HUzI', title: 'Hane Mod Studio — Showcase', hook: 'Yeni içerik: FiveM showcase' },
+  { id: 'rgKf-Nkv5zQ', title: 'Hane Mod Studio — Showcase', hook: 'Yeni içerik: FiveM önizleme' },
+  { id: '6qKlk5L-VII', title: 'Hane Mod Studio — Showcase', hook: 'Yeni içerik: FiveM tanıtım' },
+  { id: 'ANqnwDKNI_s', title: 'Hane Mod Studio — Showcase', hook: 'Yeni içerik: FiveM güncel' },
+  { id: 'E5l7_WwDtdc', title: 'Hane Mod Studio — Showcase', hook: 'Yeni içerik: FiveM içerik' },
 ];
 
 interface Props {

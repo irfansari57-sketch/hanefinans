@@ -1,14 +1,15 @@
 /**
- * Cloudflare Pages Function — Türkiye 5Y CDS spread (v4).
+ * Cloudflare Pages Function — Türkiye 5Y CDS spread (v5 — bulletproof).
  *
- * v4 farkları:
- *   • HTTPS önce denenir, başarısızsa HTTP fallback
- *   • ?debug=1 query parametresi → HTML snippet + pattern match raporu
- *   • Daha esnek "stands at" regex (boşluk/satır sonu toleranslı)
- *   • Üçüncü fallback: tablodaki ilk satırın direkt değeri (history boş bile olsa)
- *   • cf cache YOK (fetch'te) — Edge cache'i de v4 prefix'le ayır
+ * v5 farkları:
+ *   • caches.default kaldırıldı (Pages Functions'da bazen exception fırlatıyor)
+ *   • Promise.race ile sağlam timeout (AbortController fetch'i durdurmasa bile)
+ *   • Master try/catch herhangi bir uncaught exception'a karşı 200 + JSON döner
+ *     (502 ASLA üretmeyiz; client her zaman parse edilebilir yanıt alır)
+ *   • Cloudflare edge cache: Cache-Control header üzerinden yönetilir
+ *   • ?debug=1 → tam diagnostik (HTML head + match raporu)
  *
- * Doğrulama: 19 May 2026'da gerçek değer 243.63 idi, parser bunu yakalamalı.
+ * Doğrulama: 19 May 2026'da gerçek değer 243.63 idi.
  */
 
 interface CdsHistoryPoint { date: string; value: number; }
@@ -32,26 +33,28 @@ interface DebugReport {
   fetchedUrl?: string;
   httpStatus?: number;
   htmlLength?: number;
-  htmlHead?: string;       // ilk 800 char
+  htmlHead?: string;
   containsTurkey?: boolean;
   containsCds?: boolean;
   standsAtMatch?: string | null;
   headerWindowMatch?: string | null;
   rowMatches?: number;
-  attempts: Array<{ url: string; ok: boolean; status?: number; error?: string }>;
+  attempts: Array<{ url: string; ok: boolean; status?: number; error?: string; ms?: number }>;
+  fatalError?: string;
 }
 
 const SOURCE_URL_HTTPS = 'https://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
 const SOURCE_URL_HTTP  = 'http://www.worldgovernmentbonds.com/cds-historical-data/turkey/5-years/';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
-function jsonResponse(data: CdsResponse, status = 200, ttlSec = 1800): Response {
+/** Her zaman 200 + JSON döner — Cloudflare 502 üretmesin diye. */
+function safeJsonResponse(data: CdsResponse, ttlSec = 1800): Response {
   return new Response(JSON.stringify(data), {
-    status,
+    status: 200,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
-      'Cache-Control': `public, max-age=${ttlSec}`,
+      'Cache-Control': data.ok ? `public, max-age=${ttlSec}` : 'no-store',
     },
   });
 }
@@ -65,7 +68,7 @@ function normalizeDate(s: string): string | null {
 function isPlausibleCdsValue(v: number): boolean {
   if (!Number.isFinite(v)) return false;
   if (v < 50 || v > 1500) return false;
-  if (v >= 2000 && v <= 2050) return false; // yıl
+  if (v >= 2000 && v <= 2050) return false;
   return true;
 }
 
@@ -85,59 +88,57 @@ function parseAsOfDate(html: string): string | undefined {
   return m ? m[1].trim() : undefined;
 }
 
-/** Tek fetch deneme — explicit timeout ile. */
-async function tryFetch(url: string, timeoutMs: number): Promise<{ ok: true; html: string; status: number } | { ok: false; status?: number; error: string }> {
+/** Promise.race ile zorlanmış timeout — AbortController fetch'i durdurmasa bile zaman aşımı çalışır. */
+async function tryFetch(url: string, timeoutMs: number): Promise<{ ok: true; html: string; status: number; ms: number } | { ok: false; status?: number; error: string; ms: number }> {
+  const startedAt = Date.now();
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const r = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Cache-Control': 'no-cache',
-      },
-      redirect: 'follow',
-    });
-    if (!r.ok) return { ok: false, status: r.status, error: `HTTP ${r.status}` };
-    const html = await r.text();
-    return { ok: true, html, status: r.status };
-  } catch (e) {
-    return { ok: false, error: (e as Error).message || 'fetch error' };
-  } finally {
-    clearTimeout(timer);
-  }
+  let timer: number | undefined;
+  const timeoutPromise = new Promise<{ ok: false; error: string; ms: number }>((resolve) => {
+    timer = setTimeout(() => {
+      try { ctrl.abort(); } catch { /* */ }
+      resolve({ ok: false, error: `timeout ${timeoutMs}ms`, ms: Date.now() - startedAt });
+    }, timeoutMs) as unknown as number;
+  });
+
+  const fetchPromise: Promise<{ ok: true; html: string; status: number; ms: number } | { ok: false; status?: number; error: string; ms: number }> = (async () => {
+    try {
+      const r = await fetch(url, {
+        signal: ctrl.signal,
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        redirect: 'follow',
+      });
+      if (!r.ok) return { ok: false, status: r.status, error: `HTTP ${r.status}`, ms: Date.now() - startedAt };
+      const html = await r.text();
+      return { ok: true, html, status: r.status, ms: Date.now() - startedAt };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message || 'fetch error', ms: Date.now() - startedAt };
+    }
+  })();
+
+  const result = await Promise.race([fetchPromise, timeoutPromise]);
+  if (timer !== undefined) clearTimeout(timer);
+  return result;
 }
 
-/** HTTPS → HTTP fallback, her biri 8 saniye timeout. Toplam max ~16s (Pages limit 30s). */
 async function fetchSource(): Promise<{ html: string; url: string; status: number; attempts: DebugReport['attempts'] }> {
   const attempts: DebugReport['attempts'] = [];
   for (const url of [SOURCE_URL_HTTPS, SOURCE_URL_HTTP]) {
-    const r = await tryFetch(url, 8000);
+    const r = await tryFetch(url, 6000);
     if (r.ok) {
-      attempts.push({ url, ok: true, status: r.status });
+      attempts.push({ url, ok: true, status: r.status, ms: r.ms });
       return { html: r.html, url, status: r.status, attempts };
     }
-    attempts.push({ url, ok: false, status: r.status, error: r.error });
+    attempts.push({ url, ok: false, status: r.status, error: r.error, ms: r.ms });
   }
-  throw new Error(`All fetch attempts failed: ${attempts.map((a) => `${a.url}=${a.error || a.status}`).join(' | ')}`);
+  throw new Error('Both attempts failed: ' + attempts.map((a) => `${a.url.replace(/^https?:\/\//,'').slice(0,40)}=${a.error || a.status}(${a.ms}ms)`).join(' | '));
 }
 
-export const onRequest: PagesFunction = async ({ request }) => {
-  const url = new URL(request.url);
-  const debugMode = url.searchParams.get('debug') === '1';
-  const noCache = debugMode || url.searchParams.get('refresh') === '1';
-
-  const cache = caches.default;
-  const cacheKey = new Request(url.toString().replace(/[?&]debug=\d+/, '').replace(/[?&]refresh=\d+/, ''), { method: 'GET' });
-  if (!noCache) {
-    const cached = await cache.match(cacheKey);
-    if (cached) return cached;
-  }
-
+async function scrape(debugMode: boolean): Promise<CdsResponse> {
   const debug: DebugReport = { attempts: [] };
-
   try {
     const { html, url: fetchedUrl, status, attempts } = await fetchSource();
     debug.fetchedUrl = fetchedUrl;
@@ -151,19 +152,13 @@ export const onRequest: PagesFunction = async ({ request }) => {
     let value: number | undefined;
     let parser = 'unknown';
 
-    // --- PRIMARY: "value stands at NNN.NN basis points" ---
-    // Daha esnek: HTML tag'leri arasında olabilir, virgül/nokta toleranslı
     const standsAt = html.match(/value\s+stands\s+at[\s\S]{0,80}?(\d+(?:[.,]\d+)?)[\s\S]{0,40}?basis\s+points/i);
     debug.standsAtMatch = standsAt ? standsAt[0].slice(0, 200) : null;
     if (standsAt) {
       const num = parseFloat(standsAt[1].replace(',', '.'));
-      if (isPlausibleCdsValue(num)) {
-        value = num;
-        parser = 'stands-at';
-      }
+      if (isPlausibleCdsValue(num)) { value = num; parser = 'stands-at'; }
     }
 
-    // --- SECONDARY: TURKEY 5 Years CDS başlığından sonra ilk decimal ---
     if (value == null) {
       const headerIdx = html.search(/TURKEY[^<]{0,40}5\s*Years?\s*CDS/i);
       if (headerIdx >= 0) {
@@ -172,60 +167,47 @@ export const onRequest: PagesFunction = async ({ request }) => {
         const m = window.match(/>\s*(\d{2,4}\.\d{1,4})\s*</);
         if (m) {
           const num = parseFloat(m[1]);
-          if (isPlausibleCdsValue(num)) {
-            value = num;
-            parser = 'header-window';
-          }
+          if (isPlausibleCdsValue(num)) { value = num; parser = 'header-window'; }
         }
       }
     }
 
-    // --- History tablosu ---
     const history: CdsHistoryPoint[] = [];
     const rowRe = /<tr[^>]*>\s*<td[^>]*>\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*<\/td>\s*<td[^>]*>\s*([\d]+(?:[.,]\d+)?)/g;
     let rm: RegExpExecArray | null;
     while ((rm = rowRe.exec(html)) !== null) {
       const iso = normalizeDate(rm[1]);
       const v = parseFloat(rm[2].replace(',', '.'));
-      if (iso && isPlausibleCdsValue(v)) {
-        history.push({ date: iso, value: v });
-      }
+      if (iso && isPlausibleCdsValue(v)) history.push({ date: iso, value: v });
       if (history.length > 1000) break;
     }
     history.sort((a, b) => a.date.localeCompare(b.date));
     debug.rowMatches = history.length;
 
-    // History varsa ve PRIMARY parser çalışmadıysa son satırı al
     if (value == null && history.length > 0) {
       value = history[history.length - 1].value;
       parser = 'history-last';
     }
 
-    // --- TERTIARY: tablodaki herhangi bir td'de geçen ilk büyük decimal ---
     if (value == null) {
       const anyDecimal = html.match(/<td[^>]*>\s*(\d{2,4}\.\d{1,4})\s*</);
       if (anyDecimal) {
         const num = parseFloat(anyDecimal[1]);
-        if (isPlausibleCdsValue(num)) {
-          value = num;
-          parser = 'any-td-decimal';
-        }
+        if (isPlausibleCdsValue(num)) { value = num; parser = 'any-td-decimal'; }
       }
     }
 
     if (value == null) {
-      const errResponse: CdsResponse = {
+      return {
         ok: false,
         updatedAt: new Date().toISOString(),
         source: fetchedUrl,
-        error: 'CDS değeri bulunamadı (stands-at + header-window + history + any-td hiçbiri eşleşmedi)',
+        error: 'CDS değeri bulunamadı (4 pattern de eşleşmedi)',
+        ...(debugMode ? { debug } : {}),
       };
-      if (debugMode) errResponse.debug = debug;
-      return jsonResponse(errResponse, 502, 60);
     }
 
     const ind = parseChangeIndicator(html);
-
     let changeAbs: number | undefined;
     let changePct: number | undefined;
     let changeWindow: string | undefined;
@@ -240,7 +222,7 @@ export const onRequest: PagesFunction = async ({ request }) => {
       changeWindow = ind.window;
     }
 
-    const data: CdsResponse = {
+    return {
       ok: true,
       value,
       changeAbs,
@@ -251,20 +233,34 @@ export const onRequest: PagesFunction = async ({ request }) => {
       history: history.length ? history.slice(-365) : undefined,
       source: 'worldgovernmentbonds.com',
       parser,
+      ...(debugMode ? { debug } : {}),
     };
-    if (debugMode) data.debug = debug;
-
-    const response = jsonResponse(data, 200, 1800);
-    if (!debugMode) await cache.put(cacheKey, response.clone());
-    return response;
   } catch (e) {
-    const errResponse: CdsResponse = {
+    debug.fatalError = (e as Error).message;
+    return {
       ok: false,
       updatedAt: new Date().toISOString(),
-      source: SOURCE_URL_HTTPS,
+      source: 'worldgovernmentbonds.com',
       error: (e as Error).message,
+      ...(debugMode ? { debug } : {}),
     };
-    if (debugMode) errResponse.debug = debug;
-    return jsonResponse(errResponse, 500, 30);
+  }
+}
+
+export const onRequest: PagesFunction = async ({ request }) => {
+  // MASTER TRY/CATCH — Cloudflare bu Function'dan ASLA 502 görmesin.
+  try {
+    const url = new URL(request.url);
+    const debugMode = url.searchParams.get('debug') === '1';
+    const data = await scrape(debugMode);
+    return safeJsonResponse(data, 1800);
+  } catch (e) {
+    // En son güvenlik ağı — herhangi bir uncaught exception bile JSON döner
+    return safeJsonResponse({
+      ok: false,
+      updatedAt: new Date().toISOString(),
+      source: 'tr-cds-function',
+      error: 'fatal: ' + ((e as Error).message || String(e)),
+    });
   }
 };

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { BrokerRecommendations } from '@/components/domain/BrokerRecommendations';
 import { BrokerPortfolios } from '@/components/domain/BrokerPortfolios';
+import { RecPoolStats, type PoolStatBoxData } from '@/components/domain/RecPoolStats';
 import { BROKER_RECOMMENDATIONS } from '@/data/brokerRecommendations';
 import { BROKER_PORTFOLIOS } from '@/data/brokerPortfolios';
 
@@ -650,11 +651,21 @@ export function RecommendationsPage() {
           ) : (
             <>
               <p className="text-xs text-slate-500">
-                Yıllık getirisi en yüksek 10 fon (canlı TEFAS). Detay için TEFAS/Fintables linklerini kullan.
+                Yıllık getirisi en yüksek 10 fon (canlı TEFAS). Satıra tıklayıp açın, detay için TEFAS/Fintables linklerini kullan.
               </p>
-              {topFunds.map((fund, i) => (
-                <FundRecCard key={fund.code} fund={fund} rank={i + 1} />
-              ))}
+
+              {/* Havuz istatistikleri */}
+              <RecPoolStats boxes={computeFundPoolStats(topFunds)} />
+
+              {/* Top/Bottom strip */}
+              <FundConsensusStrip funds={topFunds} />
+
+              {/* Akordeon liste */}
+              <div className="space-y-1.5">
+                {topFunds.map((fund, i) => (
+                  <FundAccordionItem key={fund.code} fund={fund} rank={i + 1} />
+                ))}
+              </div>
             </>
           )}
         </div>
@@ -1113,66 +1124,168 @@ function TfBox({ label, ta }: { label: string; ta: TimeframeAnalysis | null }) {
   );
 }
 
-function FundRecCard({ fund, rank }: { fund: FundPerformance; rank: number }) {
-  const tone = fund.year >= 0 ? 'text-success' : 'text-danger';
+/**
+ * TEFAS fonları için pool stats (toplam fon, ortalama YTD, pozitif oran,
+ * en yüksek/en düşük 1Y, dominant kategori).
+ */
+function computeFundPoolStats(funds: FundPerformance[]): PoolStatBoxData[] {
+  const total = funds.length;
+  if (total === 0) return [];
+  const validYear = funds.filter((f) => Number.isFinite(f.year));
+  const validYtd = funds.filter((f) => Number.isFinite(f.ytd));
+  const avgYear = validYear.length > 0
+    ? validYear.reduce((s, f) => s + f.year, 0) / validYear.length
+    : 0;
+  const avgYtd = validYtd.length > 0
+    ? validYtd.reduce((s, f) => s + f.ytd, 0) / validYtd.length
+    : 0;
+  const positives = validYear.filter((f) => f.year >= 0).length;
+  const positiveRatio = validYear.length > 0 ? (positives / validYear.length) * 100 : 0;
+  const sortedYear = [...validYear].sort((a, b) => b.year - a.year);
+  const best = sortedYear[0];
+  const worst = sortedYear[sortedYear.length - 1];
+
+  // Dominant kategori
+  const catCounts = new Map<string, number>();
+  funds.forEach((f) => catCounts.set(f.category, (catCounts.get(f.category) ?? 0) + 1));
+  const dominantCat = [...catCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+
+  return [
+    { label: 'Toplam Fon',  value: `${total}`, sub: `${catCounts.size} kategori`, tone: 'slate' },
+    { label: 'Ort. 1Y',     value: `${avgYear >= 0 ? '+' : ''}${avgYear.toFixed(1)}%`, tone: avgYear >= 0 ? 'success' : 'danger' },
+    { label: 'Ort. YTD',    value: `${avgYtd >= 0 ? '+' : ''}${avgYtd.toFixed(1)}%`, tone: avgYtd >= 0 ? 'success' : 'danger' },
+    { label: 'Pozitif Oran', value: `%${positiveRatio.toFixed(0)}`, sub: `${positives}/${validYear.length}`, tone: 'accent' },
+    { label: 'En Yüksek',   value: best ? best.code : '-', sub: best ? `+${best.year.toFixed(1)}%` : undefined, tone: 'success' },
+    { label: 'Dominant',    value: dominantCat ? dominantCat[0] : '-', sub: dominantCat ? `${dominantCat[1]} fon` : undefined, tone: 'warning' },
+  ];
+}
+
+/** Top 3 / Bottom 3 fon (1Y getiri bazlı). */
+function FundConsensusStrip({ funds }: { funds: FundPerformance[] }) {
+  const valid = funds.filter((f) => Number.isFinite(f.year));
+  if (valid.length === 0) return null;
+  const sorted = [...valid].sort((a, b) => b.year - a.year);
+  const top3 = sorted.slice(0, 3);
+  const bottom3 = sorted.slice(-3).reverse();
+
   return (
-    <div className="glass-card p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-warning/30 bg-warning/10 font-bold text-warning">
-            #{rank}
-          </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Link to={`/fund/${fund.code}`} className="font-mono text-xl font-bold text-accent hover:underline">
-                {fund.code}
-              </Link>
-              <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[10px] text-slate-400">
-                {fund.category}
-              </span>
-            </div>
-            {fund.name && <p className="mt-0.5 text-sm text-slate-300">{fund.name}</p>}
-          </div>
+    <div className="mb-3 grid gap-2 sm:grid-cols-2">
+      <div className="rounded-lg border border-success/30 bg-success/5 px-3 py-2">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-success">Top 3 (1Y)</div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {top3.map((f) => (
+            <Link key={f.code} to={`/fund/${f.code}`} className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2 py-0.5 font-mono font-semibold text-success hover:bg-success/20">
+              {f.code}<span className="text-[10px] opacity-70">+{f.year.toFixed(1)}%</span>
+            </Link>
+          ))}
         </div>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500">1 Yıl Getiri</div>
-          <div className={cn('text-2xl font-bold tabular-nums', tone)}>
+      </div>
+      <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2">
+        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-danger">Bottom 3 (1Y)</div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          {bottom3.map((f) => (
+            <Link key={f.code} to={`/fund/${f.code}`} className="inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-2 py-0.5 font-mono font-semibold text-danger hover:bg-danger/20">
+              {f.code}<span className="text-[10px] opacity-70">{f.year >= 0 ? '+' : ''}{f.year.toFixed(1)}%</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * TEFAS fonu akordeon satırı. Summary'de kod + kategori + 1Y getiri,
+ * açılınca tüm dönem performansları + detay linkleri.
+ */
+function FundAccordionItem({ fund, rank }: { fund: FundPerformance; rank: number }) {
+  const yearTone = fund.year >= 0 ? 'text-success' : 'text-danger';
+  const isLong = fund.year > 0;
+
+  return (
+    <details className={cn(
+      'group rounded-lg border transition',
+      isLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
+    )}>
+      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
+        <span className={cn(
+          'grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs',
+          isLong ? 'border-success/40 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning',
+        )}>
+          {rank}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link to={`/fund/${fund.code}`} className="font-mono font-bold text-slate-100 hover:text-accent" onClick={(e) => e.stopPropagation()}>
+              {fund.code}
+            </Link>
+            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{fund.category}</span>
+            {fund.tefas && (
+              <span className="rounded bg-success/15 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">TEFAS</span>
+            )}
+          </div>
+          {fund.name && <div className="truncate text-[10px] text-slate-500">{fund.name}</div>}
+        </div>
+        <div className="hidden md:flex items-center gap-1 text-[9px]">
+          <PerfMicro label="1A" value={fund.month} />
+          <PerfMicro label="3A" value={fund.threeMonth} />
+          <PerfMicro label="YTD" value={fund.ytd} />
+        </div>
+        <div className="w-20 text-right">
+          <div className="text-[9px] uppercase tracking-wider text-slate-500">1 Yıl</div>
+          <div className={cn('text-sm font-bold tabular-nums', yearTone)}>
             {fund.year >= 0 ? '+' : ''}{fund.year.toFixed(2)}%
           </div>
         </div>
-      </div>
+        <ChevronRight size={14} className="shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
+      </summary>
 
-      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-        <PerfMini label="Gün" value={fund.day} />
-        <PerfMini label="1 Hafta" value={fund.week} />
-        <PerfMini label="1 Ay" value={fund.month} />
-        <PerfMini label="3 Ay" value={fund.threeMonth} />
-        <PerfMini label="6 Ay" value={fund.sixMonth} />
-        <PerfMini label="YTD" value={fund.ytd} />
-      </div>
+      <div className="border-t border-border bg-bg-card p-4">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <PerfMini label="Gün" value={fund.day} />
+          <PerfMini label="1 Hafta" value={fund.week} />
+          <PerfMini label="1 Ay" value={fund.month} />
+          <PerfMini label="3 Ay" value={fund.threeMonth} />
+          <PerfMini label="6 Ay" value={fund.sixMonth} />
+          <PerfMini label="YTD" value={fund.ytd} />
+        </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Link to={`/fund/${fund.code}`} className="btn-primary">
-          Detay <ChevronRight size={14} />
-        </Link>
-        <a
-          href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fund.code}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20"
-        >
-          TEFAS <ExternalLink size={11} />
-        </a>
-        <a
-          href={`https://fintables.com/fonlar/${fund.code}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20"
-        >
-          Fintables <ExternalLink size={11} />
-        </a>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to={`/fund/${fund.code}`} className="btn-primary">
+            Detay <ChevronRight size={14} />
+          </Link>
+          <a
+            href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fund.code}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20"
+          >
+            TEFAS <ExternalLink size={11} />
+          </a>
+          <a
+            href={`https://fintables.com/fonlar/${fund.code}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20"
+          >
+            Fintables <ExternalLink size={11} />
+          </a>
+        </div>
       </div>
-    </div>
+    </details>
+  );
+}
+
+/** Summary'de compact mini perf chip (1A/3A/YTD için). */
+function PerfMicro({ label, value }: { label: string; value: number }) {
+  if (!Number.isFinite(value)) {
+    return <span className="rounded bg-bg-card px-1 py-0.5 text-slate-500">{label} —</span>;
+  }
+  const tone = value >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger';
+  return (
+    <span className={cn('rounded px-1 py-0.5 font-mono tabular-nums', tone)}>
+      {label} {value >= 0 ? '+' : ''}{value.toFixed(1)}
+    </span>
   );
 }
 

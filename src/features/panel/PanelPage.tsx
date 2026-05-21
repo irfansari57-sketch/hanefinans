@@ -383,6 +383,67 @@ export function PanelPage() {
         </div>
       </details>
 
+      {/* Top movers — fonlar — pin'lenebilir, sadece canlı feed bağlıyken göster */}
+      {topFunds.length > 0 && (
+        <details
+          className={cn(
+            'group mb-5 overflow-hidden rounded-xl border bg-bg-soft/30 transition',
+            fundsPin.pinned ? 'border-warning/30' : 'border-border',
+          )}
+          open={fundsPin.open}
+          onToggle={fundsPin.onToggle}
+        >
+          <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              {fundsPeriod === 'day' ? 'Günlük' : fundsPeriod === 'week' ? 'Haftalık' : 'Aylık'} En İyi & En Kötü Fonlar
+              {fundsPin.pinned && (
+                <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
+                  Pinli
+                </span>
+              )}
+            </h2>
+            <div className="flex items-center gap-2">
+              {/* Period toggle */}
+              <div className="inline-flex rounded-md border border-border bg-bg-soft p-0.5" onClick={(e) => e.preventDefault()}>
+                {(['day', 'week', 'month'] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setFundsPeriod(p); }}
+                    className={cn(
+                      'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
+                      fundsPeriod === p ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                    )}
+                  >
+                    {p === 'day' ? 'Gün' : p === 'week' ? 'Hafta' : 'Ay'}
+                  </button>
+                ))}
+              </div>
+              <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
+              <button
+                type="button"
+                onClick={fundsPin.togglePin}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition',
+                  fundsPin.pinned
+                    ? 'border-warning/40 bg-warning/10 text-warning'
+                    : 'border-border bg-bg-card text-slate-400 hover:border-warning/30 hover:text-warning',
+                )}
+                title={fundsPin.pinned ? 'Pin\'i kaldır' : 'Pinle (sonraki açılışta açık gelir)'}
+                aria-label={fundsPin.pinned ? 'Pin\'i kaldır' : 'Pinle'}
+              >
+                {fundsPin.pinned ? <Pin size={11} fill="currentColor" /> : <PinOff size={11} />}
+                <span className="hidden sm:inline">{fundsPin.pinned ? 'Pinli' : 'Pin'}</span>
+              </button>
+              <span className="text-xs text-slate-500 transition-transform group-open:rotate-180">▼</span>
+            </div>
+          </summary>
+          <div className="border-t border-border bg-bg-card/40 p-3">
+            <TopFundMovers funds={topFunds} limit={5} period={fundsPeriod} />
+          </div>
+        </details>
+      )}
+
       {/* AI Agent'lar — PRO/Elite üyelere özel, akordeon + pin */}
       {proUser ? (
         <section className="mb-5">
@@ -460,67 +521,6 @@ export function PanelPage() {
             </div>
           </div>
         </Link>
-      )}
-
-      {/* Top movers — fonlar — pin'lenebilir, sadece canlı feed bağlıyken göster */}
-      {topFunds.length > 0 && (
-        <details
-          className={cn(
-            'group mb-5 overflow-hidden rounded-xl border bg-bg-soft/30 transition',
-            fundsPin.pinned ? 'border-warning/30' : 'border-border',
-          )}
-          open={fundsPin.open}
-          onToggle={fundsPin.onToggle}
-        >
-          <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              {fundsPeriod === 'day' ? 'Günlük' : fundsPeriod === 'week' ? 'Haftalık' : 'Aylık'} En İyi & En Kötü Fonlar
-              {fundsPin.pinned && (
-                <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
-                  Pinli
-                </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-2">
-              {/* Period toggle */}
-              <div className="inline-flex rounded-md border border-border bg-bg-soft p-0.5" onClick={(e) => e.preventDefault()}>
-                {(['day', 'week', 'month'] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); setFundsPeriod(p); }}
-                    className={cn(
-                      'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
-                      fundsPeriod === p ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                    )}
-                  >
-                    {p === 'day' ? 'Gün' : p === 'week' ? 'Hafta' : 'Ay'}
-                  </button>
-                ))}
-              </div>
-              <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
-              <button
-                type="button"
-                onClick={fundsPin.togglePin}
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition',
-                  fundsPin.pinned
-                    ? 'border-warning/40 bg-warning/10 text-warning'
-                    : 'border-border bg-bg-card text-slate-400 hover:border-warning/30 hover:text-warning',
-                )}
-                title={fundsPin.pinned ? 'Pin\'i kaldır' : 'Pinle (sonraki açılışta açık gelir)'}
-                aria-label={fundsPin.pinned ? 'Pin\'i kaldır' : 'Pinle'}
-              >
-                {fundsPin.pinned ? <Pin size={11} fill="currentColor" /> : <PinOff size={11} />}
-                <span className="hidden sm:inline">{fundsPin.pinned ? 'Pinli' : 'Pin'}</span>
-              </button>
-              <span className="text-xs text-slate-500 transition-transform group-open:rotate-180">▼</span>
-            </div>
-          </summary>
-          <div className="border-t border-border bg-bg-card/40 p-3">
-            <TopFundMovers funds={topFunds} limit={5} period={fundsPeriod} />
-          </div>
-        </details>
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">

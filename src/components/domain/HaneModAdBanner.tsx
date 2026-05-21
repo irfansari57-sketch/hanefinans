@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Youtube, ExternalLink, Volume2, VolumeX } from 'lucide-react';
+import { Youtube, ExternalLink, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -158,6 +158,22 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
     });
   }, []);
 
+  // Belirli bir videoya atla — tıklanabilir noktalar ve oklar için
+  const jumpTo = useCallback((nextIdx: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    if (!hasVideos) return;
+    const wrapped = ((nextIdx % FEATURED_VIDEOS.length) + FEATURED_VIDEOS.length) % FEATURED_VIDEOS.length;
+    if (wrapped === idxRef.current) return;
+    setIdx(wrapped);
+    try {
+      playerRef.current?.loadVideoById?.(FEATURED_VIDEOS[wrapped].id);
+    } catch { /* ignore */ }
+  }, [hasVideos]);
+
+  const goPrev = useCallback((e: React.MouseEvent) => jumpTo(idxRef.current - 1, e), [jumpTo]);
+  const goNext = useCallback((e: React.MouseEvent) => jumpTo(idxRef.current + 1, e), [jumpTo]);
+
   const targetUrl = CHANNEL_URL;
 
   if (variant === 'compact') {
@@ -194,6 +210,26 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
             >
               {muted ? <VolumeX size={11} /> : <Volume2 size={11} />}
             </button>
+            {FEATURED_VIDEOS.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  aria-label="Önceki video"
+                  className="absolute left-1.5 top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-white/90 backdrop-blur-sm opacity-0 transition group-hover:opacity-100 hover:bg-black/85 hover:text-white"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  aria-label="Sonraki video"
+                  className="absolute right-1.5 top-1/2 z-20 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-white/90 backdrop-blur-sm opacity-0 transition group-hover:opacity-100 hover:bg-black/85 hover:text-white"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -226,13 +262,17 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
         </a>
 
         {FEATURED_VIDEOS.length > 1 && (
-          <div className="flex justify-center gap-1 pb-1.5">
-            {FEATURED_VIDEOS.map((_, i) => (
-              <span
-                key={i}
+          <div className="flex justify-center gap-1.5 pb-2">
+            {FEATURED_VIDEOS.map((v, i) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={(e) => jumpTo(i, e)}
+                aria-label={`${i + 1}. video: ${v.title}`}
+                title={v.title}
                 className={cn(
-                  'h-1 rounded-full transition-all',
-                  i === idx ? 'w-4 bg-red-400' : 'w-1 bg-red-900',
+                  'h-1.5 rounded-full transition-all hover:bg-red-300',
+                  i === idx ? 'w-5 bg-red-400' : 'w-1.5 bg-red-900',
                 )}
               />
             ))}
@@ -268,6 +308,26 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           >
             {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
+          {FEATURED_VIDEOS.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={goPrev}
+                aria-label="Önceki video"
+                className="absolute left-2 top-1/2 z-20 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-white/90 backdrop-blur-sm opacity-0 transition group-hover:opacity-100 hover:bg-black/85 hover:text-white"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={goNext}
+                aria-label="Sonraki video"
+                className="absolute right-2 top-1/2 z-20 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-white/90 backdrop-blur-sm opacity-0 transition group-hover:opacity-100 hover:bg-black/85 hover:text-white"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </>
+          )}
         </div>
       )}
 

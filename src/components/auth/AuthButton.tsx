@@ -21,7 +21,10 @@ export function AuthButton() {
   if (!user) {
     return (
       <div className="flex items-center gap-2">
-        <Link to="/auth/login" className="hidden sm:inline-flex btn-ghost text-xs">
+        <Link
+          to="/auth/login"
+          className="inline-flex items-center rounded-md border border-border bg-bg-card px-2 py-1.5 text-xs font-medium text-slate-200 transition hover:border-accent/40 hover:text-accent sm:px-3"
+        >
           Giriş
         </Link>
         <Link

@@ -27,25 +27,41 @@ export interface PinnedSectionState {
   togglePin: (e: MouseEvent<HTMLButtonElement>) => void;
 }
 
-export function usePinnedSection(id: string, defaultOpen: boolean = true): PinnedSectionState {
+/**
+ * @param defaultOpen Desktop'ta varsayılan açıklık (md ve üzeri).
+ * @param mobileDefaultOpen Mobilde varsayılan açıklık (md altı). Belirtilmezse
+ *   defaultOpen kullanılır. Mobilde kompakt görünüm için çoğunlukla `false`.
+ */
+export function usePinnedSection(
+  id: string,
+  defaultOpen: boolean = true,
+  mobileDefaultOpen?: boolean,
+): PinnedSectionState {
   const user = useAuth((s) => s.user);
   const userId = user?.id ?? 'anon';
   const key = pinKey(id, userId);
 
+  // Tek seferlik mobil tespiti — SSR güvenli, sonradan değişimi dinlemiyoruz
+  // çünkü kullanıcı pencereyi resize ederse zaten state'i yönetir.
+  const isMobile = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(max-width: 767px)').matches;
+  const initialDefault = isMobile && mobileDefaultOpen !== undefined ? mobileDefaultOpen : defaultOpen;
+
   const [pinned, setPinned] = useState<boolean>(false);
-  const [open, setOpen] = useState<boolean>(defaultOpen);
+  const [open, setOpen] = useState<boolean>(initialDefault);
 
   useEffect(() => {
     try {
       const v = localStorage.getItem(key);
       const isPinned = v === '1';
       setPinned(isPinned);
-      // Pin'liyse aç; değilse defaultOpen'a göre davran.
-      setOpen(isPinned || defaultOpen);
+      // Pin'liyse aç; değilse initialDefault'a göre davran.
+      setOpen(isPinned || initialDefault);
     } catch {
       /* localStorage erişiminde sorun varsa default'a düş */
     }
-  }, [key, defaultOpen]);
+  }, [key, initialDefault]);
 
   const onToggle = useCallback((e: React.SyntheticEvent<HTMLDetailsElement>) => {
     setOpen((e.currentTarget as HTMLDetailsElement).open);

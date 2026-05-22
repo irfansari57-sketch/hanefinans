@@ -52,7 +52,10 @@ export function FeedbackWidget() {
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          'fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg shadow-lg shadow-accent/40 transition hover:brightness-110 hover:shadow-xl hover:shadow-accent/50',
+          // Mobilde MobileBottomNav (~56px) üstünde dursun; md+'da normal sağ alt
+          'fixed right-3 z-40 inline-flex items-center gap-2 rounded-full bg-accent px-3.5 py-2 text-xs font-semibold text-accent-fg shadow-lg shadow-accent/40 transition hover:brightness-110 hover:shadow-xl hover:shadow-accent/50',
+          'bottom-[calc(env(safe-area-inset-bottom,0px)+72px)]',
+          'md:bottom-4 md:right-4 md:px-4 md:py-2.5 md:text-sm',
           'lg:bottom-6 lg:right-6',
           open && 'hidden',
         )}

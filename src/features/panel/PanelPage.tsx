@@ -81,8 +81,9 @@ export function PanelPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Pin'lenebilir bölümler — kullanıcı isterse açık/kapalı durumunu kaydeder.
-  const stocksPin = usePinnedSection('panel-top-movers-stocks', true);
-  const fundsPin = usePinnedSection('panel-top-movers-funds', true);
+  // Mobilde default kapalı (kompakt görünüm); desktop'ta default açık.
+  const stocksPin = usePinnedSection('panel-top-movers-stocks', true, false);
+  const fundsPin = usePinnedSection('panel-top-movers-funds', true, false);
 
   const refresh = useCallback(async (force = false) => {
     if (force) clearServiceCaches();
@@ -233,7 +234,7 @@ export function PanelPage() {
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
-      {/* BIST endeksleri — birinci öncelik */}
+      {/* BIST endeksleri — birinci öncelik. Mobilde 2 sütun (kompakt), sm+ 2, lg 4. */}
       <section className="mb-5">
         <div className="mb-2 flex items-center justify-between px-1">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-accent">
@@ -241,7 +242,7 @@ export function PanelPage() {
           </h2>
           <span className="text-[10px] text-slate-500">öncelikli</span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {macro
             .filter((m) => m.key === 'BIST 100' || m.key === 'BIST 30')
             .map((m) => {
@@ -250,26 +251,23 @@ export function PanelPage() {
                 <>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
-                    {m.source === 'live' && (
-                      <></>
-                    )}
                   </div>
-                  <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
+                  <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                   </div>
                   {m.changePct != null && (
-                    <div className={cn('text-sm tabular-nums', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
                       {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                     </div>
                   )}
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-4 transition hover:border-accent/40">
+                <Link key={m.key} to={route} className="glass-card block p-3 transition hover:border-accent/40 sm:p-4">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-4">{card}</div>
+                <div key={m.key} className="glass-card p-3 sm:p-4">{card}</div>
               );
             })}
           {/* USD/TRY ve EUR/TRY de BIST'le birlikte göster */}
@@ -281,32 +279,29 @@ export function PanelPage() {
                 <>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
-                    {m.source === 'live' && (
-                      <></>
-                    )}
                   </div>
-                  <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
+                  <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
                     {m.value.toFixed(2)}
                   </div>
                   {m.changePct != null && (
-                    <div className={cn('text-sm tabular-nums', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
                       {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                     </div>
                   )}
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-4 transition hover:border-accent/40">
+                <Link key={m.key} to={route} className="glass-card block p-3 transition hover:border-accent/40 sm:p-4">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-4">{card}</div>
+                <div key={m.key} className="glass-card p-3 sm:p-4">{card}</div>
               );
             })}
         </div>
       </section>
 
-      {/* Emtia ikinci plan */}
+      {/* Emtia ikinci plan — mobilde 3 sütun, lg 6 sütun. */}
       <section className="mb-5">
         <div className="mb-2 flex items-center justify-between px-1">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
@@ -314,7 +309,7 @@ export function PanelPage() {
           </h2>
           <span className="text-[10px] text-slate-500">ikincil</span>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 lg:grid-cols-6">
           {macro
             .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Gram Platin', 'Ons Altın', 'Ons Gümüş', 'Ons Platin'].includes(m.key))
             .map((m) => (

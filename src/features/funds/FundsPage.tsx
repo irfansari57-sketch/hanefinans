@@ -379,11 +379,12 @@ export function FundsPage() {
           />
         </div>
         {tab === 'watched' ? (
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {paginated.map((f) => (
-              <WatchedFundCard
+          <div className="space-y-1.5">
+            {paginated.map((f, i) => (
+              <WatchedFundRow
                 key={f.code}
                 fund={f}
+                rank={(safePage - 1) * PAGE_SIZE + i + 1}
                 sortKey={sortKey}
                 onToggle={() => toggleWatch(f)}
               />
@@ -543,88 +544,166 @@ function PerfCell({ value, hideOnMobile }: { value?: number; hideOnMobile?: bool
   );
 }
 
-interface WatchedFundCardProps {
+interface WatchedFundRowProps {
   fund: FundPerformance;
+  rank: number;
   sortKey: SortKey;
   onToggle: () => void;
 }
 
 /**
- * Takipteki fon performans kartı — Watchlist'teki hisse kartlarıyla aynı stil.
- * Sortkey'e göre büyük getiri vurgusu; altta diğer dönemler kompakt etiket.
+ * Takipteki fon akordeon satırı — Öneriler sayfasındaki Trend Fonlar tarzı.
+ * Summary: sıra rozeti, kod + kategori + TEFAS rozeti, ad, 3 mini chip (active hariç),
+ * seçili döneme göre büyük getiri.
+ * Açılınca: 7 dönem mini grid + Detay/TEFAS/Fintables butonları + Takipten çıkar.
  */
-function WatchedFundCard({ fund, sortKey, onToggle }: WatchedFundCardProps) {
+function WatchedFundRow({ fund, rank, sortKey, onToggle }: WatchedFundRowProps) {
   const activeKey: Exclude<SortKey, 'code'> = sortKey === 'code' ? 'year' : sortKey;
   const activeLabel = PERIOD_LABEL[activeKey];
   const activeValue = fund[activeKey] as number | undefined;
-  const activeTone = activeValue == null || !Number.isFinite(activeValue)
-    ? 'text-slate-500'
-    : activeValue >= 0 ? 'text-success' : 'text-danger';
-  const sign = (v: number) => (v >= 0 ? '+' : '');
+  const activeValid = activeValue != null && Number.isFinite(activeValue);
+  const activeTone = !activeValid ? 'text-slate-500' : (activeValue as number) >= 0 ? 'text-success' : 'text-danger';
+  const isLong = activeValid && (activeValue as number) > 0;
 
-  // Diğer dönemler — kompakt 4 etiket (active hariç)
-  const otherKeys: Array<Exclude<SortKey, 'code'>> = (['day', 'month', 'sixMonth', 'year'] as const)
+  // Summary mini chip'leri — 3 yaygın dönem (active hariç)
+  const microKeys: Array<Exclude<SortKey, 'code'>> = (['month', 'threeMonth', 'ytd', 'year'] as const)
     .filter((k) => k !== activeKey)
-    .slice(0, 4);
+    .slice(0, 3);
 
   return (
-    <div className="group glass-card relative overflow-hidden p-3 transition hover:border-accent/40">
-      {/* Sağ üst yıldız — takipten çıkar */}
-      <button
-        type="button"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-        title="Takipten çıkar"
-        className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-bg-soft/80 text-warning transition hover:bg-danger/15 hover:text-danger"
-      >
-        <Star size={12} fill="currentColor" />
-      </button>
-
-      <Link to={`/fund/${fund.code}`} className="block">
-        <div className="pr-7">
+    <details className={cn(
+      'group rounded-lg border transition',
+      isLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
+    )}>
+      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
+        <span className={cn(
+          'grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs',
+          isLong ? 'border-success/40 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning',
+        )}>
+          {rank}
+        </span>
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-mono text-base font-bold text-accent">{fund.code}</span>
+            <Link to={`/fund/${fund.code}`} className="font-mono font-bold text-slate-100 hover:text-accent" onClick={(e) => e.stopPropagation()}>
+              {fund.code}
+            </Link>
             {fund.category && (
-              <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[9px] text-slate-400">
-                {fund.category}
-              </span>
+              <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{fund.category}</span>
+            )}
+            {fund.tefas && (
+              <span className="rounded bg-success/15 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">TEFAS</span>
             )}
           </div>
           {fund.name && fund.name !== fund.code && (
-            <div className="mt-0.5 truncate text-[11px] text-slate-400">{fund.name}</div>
+            <div className="truncate text-[10px] text-slate-500">{fund.name}</div>
           )}
         </div>
+        <div className="hidden md:flex items-center gap-1 text-[9px]">
+          {microKeys.map((k) => (
+            <PerfMicro key={k} label={shortLabel(k)} value={fund[k] as number} />
+          ))}
+        </div>
+        <div className="w-24 text-right">
+          <div className="text-[9px] uppercase tracking-wider text-slate-500">{activeLabel}</div>
+          {activeValid ? (
+            <div className={cn('text-sm font-bold tabular-nums', activeTone)}>
+              {(activeValue as number) >= 0 ? '+' : ''}{(activeValue as number).toFixed(2)}%
+            </div>
+          ) : (
+            <div className="text-sm font-bold tabular-nums text-slate-600">—</div>
+          )}
+        </div>
+        <ChevronRight size={14} className="shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
+      </summary>
 
-        {/* Seçili dönem büyük getirisi */}
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">{activeLabel}</div>
-            {activeValue == null || !Number.isFinite(activeValue) ? (
-              <div className="text-2xl font-bold tabular-nums text-slate-600">—</div>
-            ) : (
-              <div className={cn('text-2xl font-bold tabular-nums', activeTone)}>
-                {sign(activeValue)}{activeValue.toFixed(2)}%
-              </div>
-            )}
-          </div>
+      <div className="border-t border-border bg-bg-card p-4">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-7">
+          <PerfMini label="1 Gün"   value={fund.day} />
+          <PerfMini label="1 Hafta" value={fund.week} />
+          <PerfMini label="1 Ay"    value={fund.month} />
+          <PerfMini label="3 Ay"    value={fund.threeMonth} />
+          <PerfMini label="6 Ay"    value={fund.sixMonth} />
+          <PerfMini label="YTD"     value={fund.ytd} />
+          <PerfMini label="1 Yıl"   value={fund.year} />
         </div>
 
-        {/* Diğer dönemler — kompakt */}
-        <div className="mt-3 grid grid-cols-4 gap-1.5 border-t border-border pt-2">
-          {otherKeys.map((k) => {
-            const v = fund[k] as number | undefined;
-            const validV = v != null && Number.isFinite(v);
-            const tone = !validV ? 'text-slate-600' : (v as number) >= 0 ? 'text-success' : 'text-danger';
-            return (
-              <div key={k} className="text-center">
-                <div className="text-[9px] uppercase tracking-wider text-slate-500">{PERIOD_LABEL[k]}</div>
-                <div className={cn('text-[11px] font-bold tabular-nums', tone)}>
-                  {validV ? `${sign(v as number)}${(v as number).toFixed(2)}%` : '—'}
-                </div>
-              </div>
-            );
-          })}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to={`/fund/${fund.code}`} className="btn-primary">
+            Detay <ChevronRight size={14} />
+          </Link>
+          <a
+            href={tefasUrl(fund.code)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20"
+          >
+            TEFAS <ExternalLink size={11} />
+          </a>
+          <a
+            href={`https://fintables.com/fonlar/${fund.code}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20"
+          >
+            Fintables <ExternalLink size={11} />
+          </a>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20"
+            title="Takipten çıkar"
+          >
+            <Star size={11} fill="currentColor" /> Takipten çıkar
+          </button>
         </div>
-      </Link>
+      </div>
+    </details>
+  );
+}
+
+function shortLabel(k: Exclude<SortKey, 'code'>): string {
+  switch (k) {
+    case 'day': return '1G';
+    case 'week': return '1H';
+    case 'month': return '1A';
+    case 'threeMonth': return '3A';
+    case 'sixMonth': return '6A';
+    case 'ytd': return 'YTD';
+    case 'year': return '1Y';
+    case 'threeYear': return '3Y';
+    case 'fiveYear': return '5Y';
+  }
+}
+
+/** Summary'de compact mini perf chip — Trend Fonlar'daki PerfMicro ile aynı. */
+function PerfMicro({ label, value }: { label: string; value: number | undefined }) {
+  if (value == null || !Number.isFinite(value)) {
+    return <span className="rounded bg-bg-card px-1 py-0.5 text-slate-500">{label} —</span>;
+  }
+  const tone = value >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger';
+  return (
+    <span className={cn('rounded px-1 py-0.5 font-mono tabular-nums', tone)}>
+      {label} {value >= 0 ? '+' : ''}{value.toFixed(1)}
+    </span>
+  );
+}
+
+function PerfMini({ label, value }: { label: string; value: number | undefined }) {
+  if (value == null || !Number.isFinite(value)) {
+    return (
+      <div className="rounded bg-bg-card px-2 py-1.5">
+        <div className="text-[10px] text-slate-500">{label}</div>
+        <div className="tabular-nums text-slate-600">—</div>
+      </div>
+    );
+  }
+  const tone = value >= 0 ? 'text-success' : 'text-danger';
+  return (
+    <div className="rounded bg-bg-card px-2 py-1.5">
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className={cn('text-sm font-medium tabular-nums', tone)}>
+        {value >= 0 ? '+' : ''}{value.toFixed(2)}%
+      </div>
     </div>
   );
 }

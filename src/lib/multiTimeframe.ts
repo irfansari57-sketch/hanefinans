@@ -249,8 +249,8 @@ function actionHintLine(
 /**
  * Multi-timeframe sonucundan zengin Türkçe verdict üret.
  *
- * 5 cümle: (1) trend coherence (2) günlük EMA dizilimi detayı
- * (3) gün hareketi karakteri (4) büyük oyuncu yorumu (5) net aksiyon ipucu.
+ * 5 cümle: (1) trend coherence (2) gün hareketi karakteri
+ * (3) büyük oyuncu yorumu (4) net aksiyon ipucu (5) günlük EMA dizilimi detayı (sonda).
  */
 export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   const parts: string[] = [];
@@ -258,18 +258,18 @@ export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   const coherence = trendCoherenceLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend);
   if (coherence) parts.push(coherence);
 
+  const move = dailyMoveLine(r.changePct);
+  if (move) parts.push(move);
+
+  parts.push(bigPlayerLine(r.bigPlayerLean));
+  parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
+
   const focusTf = r.tf1d ?? r.tf4h ?? r.tf1h;
   const focusLabel = r.tf1d ? 'Günlük' : r.tf4h ? '4 saatlik' : '1 saatlik';
   if (focusTf) {
     const ema = emaStructureLine(focusTf, focusLabel);
     if (ema) parts.push(ema);
   }
-
-  const move = dailyMoveLine(r.changePct);
-  if (move) parts.push(move);
-
-  parts.push(bigPlayerLine(r.bigPlayerLean));
-  parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
 
   return parts.join(' ');
 }

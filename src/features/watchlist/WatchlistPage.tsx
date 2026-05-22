@@ -9,7 +9,8 @@ import { MOCK_STOCKS } from '@/data/mock';
 import { loadStocks, clearServiceCaches } from '@/data/services';
 import { fundsRepo } from '@/data/repositories';
 import { fetchTefasFeed, type TefasFundData } from '@/data/api/tefasGithub';
-import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
+import { computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
+import { useYahooHistoricals } from '@/data/api/yahooQueries';
 import type { Stock } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
 import { formatMoney } from '@/lib/format';
@@ -45,8 +46,33 @@ export function WatchlistPage() {
   const [kind, setKind] = useState<'stocks' | 'funds'>('stocks');
   const [tefasFunds, setTefasFunds] = useState<TefasFundData[] | null>(null);
   const [stockPeriod, setStockPeriod] = useState<StockPeriod>('1g');
-  const [stockReturns, setStockReturns] = useState<Record<string, PeriodReturns>>({});
-  const [returnsLoading, setReturnsLoading] = useState(false);
+
+  // ----- Watchlist hisse dönem getirileri (TanStack Query) -----
+  // 22 farklı yerde tekrarlanan Yahoo batch fetch artık tek hook.
+  // Aynı sembol başka sayfada açıksa cache paylaşılır → çift istek yok.
+  const stockSymbols = kind === 'stocks' ? symbols : [];
+  const historicalQueries = useYahooHistoricals(stockSymbols, {
+    range: '1y',
+    interval: '1d',
+    bistSuffix: true,
+    staleTime: 5 * 60_000,
+  });
+  const returnsLoading = historicalQueries.some((q) => q.isLoading);
+  const stockReturns = useMemo<Record<string, PeriodReturns>>(() => {
+    const map: Record<string, PeriodReturns> = {};
+    stockSymbols.forEach((sym, i) => {
+      const hist = historicalQueries[i]?.data;
+      if (!hist || hist.bars.length === 0) return;
+      const closes = hist.bars.map((b) => ({ date: b.time * 1000, close: b.close }));
+      map[sym] = computePeriodReturns(closes);
+    });
+    return map;
+    // historicalQueries her render yeni referans → length + status ile invalidate
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    stockSymbols.join(','),
+    historicalQueries.map((q) => q.dataUpdatedAt).join(','),
+  ]);
 
   // Takipteki fonlar (Dexie)
   const watchedFunds = useLiveQuery(() => fundsRepo.active(), []) ?? [];
@@ -79,33 +105,7 @@ export function WatchlistPage() {
     return () => clearInterval(id);
   }, [fetchData]);
 
-  // Watchlist sembollerinin dönem getirilerini Yahoo'dan çek (1y historical → 1g/1h/1a/3a/6a/1y)
-  useEffect(() => {
-    if (kind !== 'stocks' || symbols.length === 0) return;
-    let cancelled = false;
-    setReturnsLoading(true);
-    (async () => {
-      const updates: Record<string, PeriodReturns> = {};
-      const BATCH = 6;
-      for (let i = 0; i < symbols.length; i += BATCH) {
-        if (cancelled) return;
-        const slice = symbols.slice(i, i + BATCH);
-        await Promise.all(slice.map(async (sym) => {
-          try {
-            const hist = await fetchHistoricalYahoo(sym, '1y', '1d', { bistSuffix: true });
-            if (!hist || hist.bars.length === 0) return;
-            const closes = hist.bars.map((b) => ({ date: b.time * 1000, close: b.close }));
-            updates[sym] = computePeriodReturns(closes);
-          } catch {
-            /* sembol başarısız → atla */
-          }
-        }));
-        if (!cancelled) setStockReturns((prev) => ({ ...prev, ...updates }));
-      }
-      if (!cancelled) setReturnsLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [symbols, kind]);
+  // Dönem getirileri artık useYahooHistoricals ile (yukarıda) — manuel batch kaldırıldı.
 
   useEffect(() => {
     if (focusSymbol) {

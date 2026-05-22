@@ -61,47 +61,17 @@ async function sendTelegram(token: string, chatId: string, text: string): Promis
   }
 }
 
-type Session = 'morning' | 'midday' | 'evening';
+// Saf helper'lar src/lib/briefingWindow.ts'de paylaşılıyor (testler de aynı kaynağı kullanır).
+import {
+  type BriefingSession as Session,
+  normalizeSession,
+  isSessionInWindow,
+  injectSessionSubtitle,
+} from '../../../src/lib/briefingWindow';
 
 /** Bugünün UTC tarihinden idempotency anahtarı üret. Session bazlı (her oturum ayrı). */
 function todayKey(session: Session): string {
   return `briefing-sent:${new Date().toISOString().slice(0, 10)}:${session}`;
-}
-
-/** Session ID'sini normalize et — geçersizse 'morning' (geriye dönük uyumluluk). */
-function normalizeSession(raw: string | null): Session {
-  if (raw === 'midday' || raw === 'evening') return raw;
-  return 'morning';
-}
-
-/** Session etiketi → Türkçe alt başlık (Brifingi'nin altına gelir). */
-function sessionSubtitle(session: Session): string {
-  if (session === 'midday') return '🕛 _Öğle Güncellemesi_';
-  if (session === 'evening') return '🌆 _Kapanış Raporu_';
-  return '🌅 _Sabah Raporu_';
-}
-
-/**
- * TR saatine göre o anda hangi session beklenir?
- * Pencereler — geç gelen cron'ları sessiz skip etmek için kullanılır.
- *   07:00–11:59 TR → morning
- *   12:00–15:59 TR → midday
- *   16:00–21:59 TR → evening
- *   diğer saatler → null (gönderme)
- */
-function expectedSessionForTrTime(d: Date = new Date()): Session | null {
-  // UTC saatini TR saatine (+3) çevir
-  const trHour = (d.getUTCHours() + 3) % 24;
-  if (trHour >= 7 && trHour < 12) return 'morning';
-  if (trHour >= 12 && trHour < 16) return 'midday';
-  if (trHour >= 16 && trHour < 22) return 'evening';
-  return null;
-}
-
-/** Cron'un session ile gerçek saatin uyuşması — sapma varsa pencere dışı sayılır. */
-function isSessionInWindow(session: Session, d: Date = new Date()): boolean {
-  const expected = expectedSessionForTrTime(d);
-  return expected !== null && expected === session;
 }
 
 export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
@@ -187,19 +157,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   // Brifing kendi başlığını (📊 *Hane Finans Brifingi*) içeriyor — onun ALTINA session
   // alt başlığını yerleştir. Böylece Telegram bildirim önizlemesinde önce "Hane Finans
   // Brifingi" görünür, kullanıcı bildirimi hangi proje gönderdi anında anlar.
-  const subtitle = sessionSubtitle(session);
-  // İlk satır brifing başlığı, ikinci satır tarih → tarihten sonra session subtitle ekle.
-  const lines = text.split('\n');
-  if (lines.length >= 2 && lines[0].includes('Hane Finans Brifingi')) {
-    // [0] = "📊 *Hane Finans Brifingi*"
-    // [1] = "_22 Mayıs 2026 Cuma_"
-    // session subtitle'ı [1]'in altına sokuştur
-    lines.splice(2, 0, subtitle);
-  } else {
-    // Fallback: brifing format değiştiyse en üste prepend et
-    lines.unshift(subtitle);
-  }
-  const fullText = lines.join('\n');
+  const fullText = injectSessionSubtitle(text, session);
 
   const results = await Promise.all(
     Array.from(recipients).map(async (chatId) => ({

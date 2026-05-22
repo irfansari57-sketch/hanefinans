@@ -1,0 +1,47 @@
+name: CI
+
+# PR ve main push'larda typecheck + lint + test + build çalıştırır.
+# Cloudflare Pages kendi deploy'unu yapar — bu workflow sadece gate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Typecheck • Lint • Test • Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        # İlk faz — uyarıları crash'e dönüştürme. Hata olursa görünür ama PR'ı bloklamasın.
+        # Codebase tamamen temizlendikten sonra --max-warnings 0 zaten script'te var.
+        run: npm run lint || echo "::warning::lint warnings present"
+
+      - name: Format check
+        run: npm run format:check || echo "::warning::format drift present"
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

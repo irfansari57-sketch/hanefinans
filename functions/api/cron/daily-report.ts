@@ -74,11 +74,34 @@ function normalizeSession(raw: string | null): Session {
   return 'morning';
 }
 
-/** Session etiketi → Türkçe başlık prefix'i. */
-function sessionTitle(session: Session): string {
-  if (session === 'midday') return '🕛 *Öğle Güncellemesi*';
-  if (session === 'evening') return '🌆 *Kapanış Raporu*';
-  return '🌅 *Sabah Raporu*';
+/** Session etiketi → Türkçe alt başlık (Brifingi'nin altına gelir). */
+function sessionSubtitle(session: Session): string {
+  if (session === 'midday') return '🕛 _Öğle Güncellemesi_';
+  if (session === 'evening') return '🌆 _Kapanış Raporu_';
+  return '🌅 _Sabah Raporu_';
+}
+
+/**
+ * TR saatine göre o anda hangi session beklenir?
+ * Pencereler — geç gelen cron'ları sessiz skip etmek için kullanılır.
+ *   07:00–11:59 TR → morning
+ *   12:00–15:59 TR → midday
+ *   16:00–21:59 TR → evening
+ *   diğer saatler → null (gönderme)
+ */
+function expectedSessionForTrTime(d: Date = new Date()): Session | null {
+  // UTC saatini TR saatine (+3) çevir
+  const trHour = (d.getUTCHours() + 3) % 24;
+  if (trHour >= 7 && trHour < 12) return 'morning';
+  if (trHour >= 12 && trHour < 16) return 'midday';
+  if (trHour >= 16 && trHour < 22) return 'evening';
+  return null;
+}
+
+/** Cron'un session ile gerçek saatin uyuşması — sapma varsa pencere dışı sayılır. */
+function isSessionInWindow(session: Session, d: Date = new Date()): boolean {
+  const expected = expectedSessionForTrTime(d);
+  return expected !== null && expected === session;
 }
 
 export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
@@ -103,6 +126,22 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   const force = url.searchParams.get('force') === '1';
   const session = normalizeSession(url.searchParams.get('session'));
   const key = todayKey(session);
+
+  // --- TIME WINDOW GUARD ---
+  // GitHub Actions free-tier cron'u 1–10 saat gecikebiliyor.
+  // "Sabah" cron'u akşam 18:59'da tetiklendiğinde, brifing "Sabah Raporu" başlığıyla
+  // gecikmiş şekilde gönderiliyordu. Şimdi gerçek TR saatine bakıyoruz —
+  // session için beklenen pencerede değilsek sessizce skip ediyoruz.
+  // ?force=1 ile bypass mümkün.
+  if (!force && !isSessionInWindow(session)) {
+    return new Response(JSON.stringify({
+      ok: true,
+      skipped: true,
+      reason: 'out of expected TR time window for session',
+      session,
+      trHour: (new Date().getUTCHours() + 3) % 24,
+    }), { headers: { 'Content-Type': 'application/json' } });
+  }
 
   // --- IDEMPOTENCY CHECK ---
   // Multi-cron workflow (05/06/07 UTC) tetiklendiğinde, ilk başarılı çalışma
@@ -145,10 +184,22 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 
-  // Session başlığını brifing metninin EN ÜSTÜNE ekle.
-  // Brifing kendi başlığını (📊 *Hane Finans Brifingi*) içeriyor — onun üstüne session etiketi eklenir.
-  const sessionHeader = sessionTitle(session);
-  const fullText = `${sessionHeader}\n${text}`;
+  // Brifing kendi başlığını (📊 *Hane Finans Brifingi*) içeriyor — onun ALTINA session
+  // alt başlığını yerleştir. Böylece Telegram bildirim önizlemesinde önce "Hane Finans
+  // Brifingi" görünür, kullanıcı bildirimi hangi proje gönderdi anında anlar.
+  const subtitle = sessionSubtitle(session);
+  // İlk satır brifing başlığı, ikinci satır tarih → tarihten sonra session subtitle ekle.
+  const lines = text.split('\n');
+  if (lines.length >= 2 && lines[0].includes('Hane Finans Brifingi')) {
+    // [0] = "📊 *Hane Finans Brifingi*"
+    // [1] = "_22 Mayıs 2026 Cuma_"
+    // session subtitle'ı [1]'in altına sokuştur
+    lines.splice(2, 0, subtitle);
+  } else {
+    // Fallback: brifing format değiştiyse en üste prepend et
+    lines.unshift(subtitle);
+  }
+  const fullText = lines.join('\n');
 
   const results = await Promise.all(
     Array.from(recipients).map(async (chatId) => ({

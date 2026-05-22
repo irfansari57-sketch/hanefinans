@@ -378,121 +378,19 @@ export function FundsPage() {
             onPageChange={setCurrentPage}
           />
         </div>
-        {tab === 'watched' ? (
-          <div className="space-y-1.5">
-            {paginated.map((f, i) => (
-              <WatchedFundRow
-                key={f.code}
-                fund={f}
-                rank={(safePage - 1) * PAGE_SIZE + i + 1}
-                sortKey={sortKey}
-                onToggle={() => toggleWatch(f)}
-              />
-            ))}
-          </div>
-        ) : (
-        <div className="-mx-3 overflow-x-auto rounded-xl border border-border bg-bg-soft sm:mx-0">
-          <table className="w-full min-w-max text-xs">
-            <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
-              <tr>
-                <th className="px-3 py-2.5 text-left w-8">#</th>
-                <th className="px-3 py-2.5 text-left w-8"></th>
-                {SORT_COLUMNS.map((c) => (
-                  <th
-                    key={c.key}
-                    className={cn(
-                      'px-3 py-2.5 text-right cursor-pointer hover:text-slate-100 whitespace-nowrap',
-                      // Mobilde sadece "code" + aktif sortKey görünür; diğer dönem sütunları gizli.
-                      c.key !== 'code' && sortKey !== c.key && 'hidden md:table-cell',
-                      sortKey === c.key && 'text-accent',
-                    )}
-                    onClick={() => setSort(c.key)}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {c.short}
-                      {sortKey === c.key ? (
-                        sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
-                      ) : null}
-                    </span>
-                  </th>
-                ))}
-                <th className="hidden md:table-cell px-3 py-2.5 text-center w-40 whitespace-nowrap">Canlı Veri</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {paginated.map((f, i) => {
-                const isWatched = watchedCodes.has(f.code);
-                const globalIndex = (safePage - 1) * PAGE_SIZE + i + 1;
-                return (
-                  <tr key={f.code} className="group hover:bg-bg-card transition-colors">
-                    <td className="px-3 py-2.5 text-slate-500 tabular-nums">{globalIndex}</td>
-                    <td className="px-3 py-2.5">
-                      <button
-                        onClick={() => toggleWatch(f)}
-                        className={cn(
-                          'rounded p-1 transition',
-                          isWatched ? 'text-warning' : 'text-slate-500 hover:text-warning',
-                        )}
-                        title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
-                      >
-                        <Star size={14} fill={isWatched ? 'currentColor' : 'none'} />
-                      </button>
-                    </td>
-                    <td className="px-3 py-2.5 text-left whitespace-nowrap">
-                      <Link
-                        to={`/fund/${f.code}`}
-                        className="inline-flex items-center gap-1.5 font-mono font-semibold text-accent hover:underline"
-                      >
-                        {f.code}
-                        <ChevronRight size={10} className="opacity-0 transition group-hover:opacity-100" />
-                      </Link>
-                      {f.name && f.name !== f.code && (
-                        <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[160px] sm:max-w-[260px]">{f.name}</div>
-                      )}
-                      {f.category && (
-                        <span className="mt-1 inline-block rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent">
-                          {f.category}
-                        </span>
-                      )}
-                    </td>
-                    <PerfCell value={f.day}        hideOnMobile={sortKey !== 'day'} />
-                    <PerfCell value={f.week}       hideOnMobile={sortKey !== 'week'} />
-                    <PerfCell value={f.month}      hideOnMobile={sortKey !== 'month'} />
-                    <PerfCell value={f.threeMonth} hideOnMobile={sortKey !== 'threeMonth'} />
-                    <PerfCell value={f.sixMonth}   hideOnMobile={sortKey !== 'sixMonth'} />
-                    <PerfCell value={f.ytd}        hideOnMobile={sortKey !== 'ytd'} />
-                    <PerfCell value={f.year}       hideOnMobile={sortKey !== 'year'} />
-                    <td className="hidden md:table-cell px-3 py-2.5 text-center">
-                      <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <a
-                          href={tefasUrl(f.code)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success hover:bg-success/20"
-                          title="TEFAS'ta canlı veri"
-                        >
-                          TEFAS
-                          <ExternalLink size={9} />
-                        </a>
-                        <a
-                          href={`https://fintables.com/fonlar/${f.code}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent hover:bg-accent/20"
-                          title="Fintables'ta detaylı analiz"
-                        >
-                          Fintables
-                          <ExternalLink size={9} />
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* Hem "Tüm Fonlar" hem "Takipte" — akordeon satır liste (Trend Fonlar stili) */}
+        <div className="space-y-1.5">
+          {paginated.map((f, i) => (
+            <WatchedFundRow
+              key={f.code}
+              fund={f}
+              rank={(safePage - 1) * PAGE_SIZE + i + 1}
+              sortKey={sortKey}
+              isWatched={watchedCodes.has(f.code)}
+              onToggle={() => toggleWatch(f)}
+            />
+          ))}
         </div>
-        )}
         <div className="mt-3">
           <Pagination
             currentPage={safePage}
@@ -548,6 +446,7 @@ interface WatchedFundRowProps {
   fund: FundPerformance;
   rank: number;
   sortKey: SortKey;
+  isWatched: boolean;
   onToggle: () => void;
 }
 
@@ -557,7 +456,7 @@ interface WatchedFundRowProps {
  * seçili döneme göre büyük getiri.
  * Açılınca: 7 dönem mini grid + Detay/TEFAS/Fintables butonları + Takipten çıkar.
  */
-function WatchedFundRow({ fund, rank, sortKey, onToggle }: WatchedFundRowProps) {
+function WatchedFundRow({ fund, rank, sortKey, isWatched, onToggle }: WatchedFundRowProps) {
   const activeKey: Exclude<SortKey, 'code'> = sortKey === 'code' ? 'year' : sortKey;
   const activeLabel = PERIOD_LABEL[activeKey];
   const activeValue = fund[activeKey] as number | undefined;
@@ -587,6 +486,7 @@ function WatchedFundRow({ fund, rank, sortKey, onToggle }: WatchedFundRowProps) 
             <Link to={`/fund/${fund.code}`} className="font-mono font-bold text-slate-100 hover:text-accent" onClick={(e) => e.stopPropagation()}>
               {fund.code}
             </Link>
+            {isWatched && <Star size={10} className="text-warning" fill="currentColor" />}
             {fund.category && (
               <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{fund.category}</span>
             )}
@@ -650,10 +550,16 @@ function WatchedFundRow({ fund, rank, sortKey, onToggle }: WatchedFundRowProps) 
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-            className="ml-auto inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20"
-            title="Takipten çıkar"
+            className={cn(
+              'ml-auto inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition',
+              isWatched
+                ? 'border-danger/30 bg-danger/10 text-danger hover:bg-danger/20'
+                : 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20',
+            )}
+            title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
           >
-            <Star size={11} fill="currentColor" /> Takipten çıkar
+            <Star size={11} fill={isWatched ? 'currentColor' : 'none'} />
+            {isWatched ? 'Takipten çıkar' : 'Takibe al'}
           </button>
         </div>
       </div>

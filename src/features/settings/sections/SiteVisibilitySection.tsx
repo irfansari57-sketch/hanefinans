@@ -1,0 +1,53 @@
+import { Megaphone } from 'lucide-react';
+import { useSiteSettings } from '@/store/siteSettings';
+import { cn } from '@/lib/utils';
+
+/**
+ * Admin-only — Reklam (sponsor) banner'ını ücretsiz üyeler için açıp kapatır.
+ * PRO/ELITE üyeler bu toggle'dan etkilenmez (kendi tier kontrolleri var).
+ */
+export function SiteVisibilitySection() {
+  const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
+  const setAdBannerEnabled = useSiteSettings((s) => s.setAdBannerEnabled);
+
+  return (
+    <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 lg:col-span-2">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
+        <Megaphone size={14} /> Site Görünümü
+        <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Admin</span>
+      </h2>
+      <p className="text-xs leading-relaxed text-slate-400">
+        Panel ve Günlük Analiz üstünde + sidebar/mobil altta görünen "Sponsor"
+        reklam alanını ücretsiz üyeler için açıp kapatabilirsin. PRO/ELITE
+        üyeler her durumda görmez. YouTube sponsoru ve diğer içerikler bu
+        anahtardan etkilenmez.
+      </p>
+
+      <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-md bg-bg-card/40 px-3 py-2 transition hover:bg-bg-card/70">
+        <div>
+          <div className="text-xs font-medium text-slate-200">Reklam banner'ı (Sponsor)</div>
+          <div className="text-[10px] text-slate-500">
+            {adBannerEnabled ? 'Şu an açık — ücretsiz üyeler görüyor' : 'Şu an kapalı — kimseye gösterilmiyor'}
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={adBannerEnabled}
+          onClick={() => setAdBannerEnabled(!adBannerEnabled)}
+          className={cn(
+            'relative inline-flex h-5 w-9 shrink-0 rounded-full transition',
+            adBannerEnabled ? 'bg-success/70' : 'bg-slate-600',
+          )}
+        >
+          <span
+            className={cn(
+              'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all',
+              adBannerEnabled ? 'left-4' : 'left-0.5',
+            )}
+          />
+        </button>
+      </label>
+    </div>
+  );
+}

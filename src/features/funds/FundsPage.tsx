@@ -23,14 +23,14 @@ const tefasUrl = (code: string) => `https://www.tefas.gov.tr/FonAnaliz.aspx?FonK
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear' | 'fiveYear'> | 'code';
 
-const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string; hideOnMobile?: boolean }> = [
+const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string }> = [
   { key: 'code',       label: 'Fon Kodu', short: '#' },
   { key: 'day',        label: '1 Gün',    short: '1G (%)' },
-  { key: 'week',       label: '1 Hafta',  short: '1H (%)', hideOnMobile: true },
+  { key: 'week',       label: '1 Hafta',  short: '1H (%)' },
   { key: 'month',      label: '1 Ay',     short: '1A (%)' },
-  { key: 'threeMonth', label: '3 Ay',     short: '3A (%)', hideOnMobile: true },
+  { key: 'threeMonth', label: '3 Ay',     short: '3A (%)' },
   { key: 'sixMonth',   label: '6 Ay',     short: '6A (%)' },
-  { key: 'ytd',        label: 'Yılbaşı',  short: 'YTD (%)', hideOnMobile: true },
+  { key: 'ytd',        label: 'Yılbaşı',  short: 'YTD (%)' },
   { key: 'year',       label: '1 Yıl',    short: '1Y (%)' },
 ];
 
@@ -366,8 +366,8 @@ export function FundsPage() {
             onPageChange={setCurrentPage}
           />
         </div>
-        <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-          <table className="min-w-full text-xs">
+        <div className="-mx-3 overflow-x-auto rounded-xl border border-border bg-bg-soft sm:mx-0">
+          <table className="w-full min-w-max text-xs">
             <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
               <tr>
                 <th className="px-3 py-2.5 text-left w-8">#</th>
@@ -377,7 +377,8 @@ export function FundsPage() {
                     key={c.key}
                     className={cn(
                       'px-3 py-2.5 text-right cursor-pointer hover:text-slate-100 whitespace-nowrap',
-                      c.hideOnMobile && 'hidden md:table-cell',
+                      // Mobilde sadece "code" + aktif sortKey görünür; diğer dönem sütunları gizli.
+                      c.key !== 'code' && sortKey !== c.key && 'hidden md:table-cell',
                       sortKey === c.key && 'text-accent',
                     )}
                     onClick={() => setSort(c.key)}
@@ -390,7 +391,7 @@ export function FundsPage() {
                     </span>
                   </th>
                 ))}
-                <th className="px-3 py-2.5 text-center w-40 whitespace-nowrap">Canlı Veri</th>
+                <th className="hidden md:table-cell px-3 py-2.5 text-center w-40 whitespace-nowrap">Canlı Veri</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -421,7 +422,7 @@ export function FundsPage() {
                         <ChevronRight size={10} className="opacity-0 transition group-hover:opacity-100" />
                       </Link>
                       {f.name && f.name !== f.code && (
-                        <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[260px]">{f.name}</div>
+                        <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[160px] sm:max-w-[260px]">{f.name}</div>
                       )}
                       {f.category && (
                         <span className="mt-1 inline-block rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent">
@@ -429,14 +430,14 @@ export function FundsPage() {
                         </span>
                       )}
                     </td>
-                    <PerfCell value={f.day} />
-                    <PerfCell value={f.week} hideOnMobile />
-                    <PerfCell value={f.month} />
-                    <PerfCell value={f.threeMonth} hideOnMobile />
-                    <PerfCell value={f.sixMonth} />
-                    <PerfCell value={f.ytd} hideOnMobile />
-                    <PerfCell value={f.year} />
-                    <td className="px-3 py-2.5 text-center">
+                    <PerfCell value={f.day}        hideOnMobile={sortKey !== 'day'} />
+                    <PerfCell value={f.week}       hideOnMobile={sortKey !== 'week'} />
+                    <PerfCell value={f.month}      hideOnMobile={sortKey !== 'month'} />
+                    <PerfCell value={f.threeMonth} hideOnMobile={sortKey !== 'threeMonth'} />
+                    <PerfCell value={f.sixMonth}   hideOnMobile={sortKey !== 'sixMonth'} />
+                    <PerfCell value={f.ytd}        hideOnMobile={sortKey !== 'ytd'} />
+                    <PerfCell value={f.year}       hideOnMobile={sortKey !== 'year'} />
+                    <td className="hidden md:table-cell px-3 py-2.5 text-center">
                       <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <a
                           href={tefasUrl(f.code)}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Info, RotateCcw, Cpu, Activity, Newspaper, MessageSquare, Globe, KeyRound,
-  Database, Send, Percent, Crown, Shield,
+  Database, Send, Percent, Crown, Shield, X,
 } from 'lucide-react';
 import { resetOnboarding } from '@/components/domain/OnboardingTour';
 import { PasswordInput } from '@/components/ui/PasswordInput';

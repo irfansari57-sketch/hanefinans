@@ -4,15 +4,26 @@ import { Plus, Star, X, Search, RefreshCw, Radio, PiggyBank, TrendingUp, Externa
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { StockRow } from '@/components/domain/StockRow';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { MOCK_STOCKS } from '@/data/mock';
 import { loadStocks, clearServiceCaches } from '@/data/services';
 import { fundsRepo } from '@/data/repositories';
 import { fetchTefasFeed, type TefasFundData } from '@/data/api/tefasGithub';
+import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import type { Stock } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
+import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+
+type StockPeriod = '1g' | '1h' | '1a' | '3a' | '6a' | '1y';
+const PERIOD_LABELS: Record<StockPeriod, string> = {
+  '1g': '1 Gün',
+  '1h': '1 Hafta',
+  '1a': '1 Ay',
+  '3a': '3 Ay',
+  '6a': '6 Ay',
+  '1y': '1 Yıl',
+};
 
 const AUTO_REFRESH_MS = 60_000;
 
@@ -33,6 +44,9 @@ export function WatchlistPage() {
   const focusRef = useRef<HTMLDivElement | null>(null);
   const [kind, setKind] = useState<'stocks' | 'funds'>('stocks');
   const [tefasFunds, setTefasFunds] = useState<TefasFundData[] | null>(null);
+  const [stockPeriod, setStockPeriod] = useState<StockPeriod>('1g');
+  const [stockReturns, setStockReturns] = useState<Record<string, PeriodReturns>>({});
+  const [returnsLoading, setReturnsLoading] = useState(false);
 
   // Takipteki fonlar (Dexie)
   const watchedFunds = useLiveQuery(() => fundsRepo.active(), []) ?? [];
@@ -64,6 +78,34 @@ export function WatchlistPage() {
     const id = setInterval(() => fetchData(true), AUTO_REFRESH_MS);
     return () => clearInterval(id);
   }, [fetchData]);
+
+  // Watchlist sembollerinin dönem getirilerini Yahoo'dan çek (1y historical → 1g/1h/1a/3a/6a/1y)
+  useEffect(() => {
+    if (kind !== 'stocks' || symbols.length === 0) return;
+    let cancelled = false;
+    setReturnsLoading(true);
+    (async () => {
+      const updates: Record<string, PeriodReturns> = {};
+      const BATCH = 6;
+      for (let i = 0; i < symbols.length; i += BATCH) {
+        if (cancelled) return;
+        const slice = symbols.slice(i, i + BATCH);
+        await Promise.all(slice.map(async (sym) => {
+          try {
+            const hist = await fetchHistoricalYahoo(sym, '1y', '1d', { bistSuffix: true });
+            if (!hist || hist.bars.length === 0) return;
+            const closes = hist.bars.map((b) => ({ date: b.time * 1000, close: b.close }));
+            updates[sym] = computePeriodReturns(closes);
+          } catch {
+            /* sembol başarısız → atla */
+          }
+        }));
+        if (!cancelled) setStockReturns((prev) => ({ ...prev, ...updates }));
+      }
+      if (!cancelled) setReturnsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [symbols, kind]);
 
   useEffect(() => {
     if (focusSymbol) {
@@ -229,19 +271,61 @@ export function WatchlistPage() {
           description="Yukarıdan hisse arayıp listene ekleyebilirsin."
         />
       ) : (
-        <div className="rounded-xl border border-border bg-bg-soft p-2">
-          <div className="divide-y divide-border">
-            {watched.map((s) => (
-              <div
-                key={s.symbol}
-                ref={focusSymbol === s.symbol ? focusRef : undefined}
-                className={cn(focusSymbol === s.symbol && 'rounded-lg ring-2 ring-accent/50')}
-              >
-                <StockRow stock={s} showWatch showActions />
-              </div>
-            ))}
+        <>
+          {/* Dönem seçici — seçili döneme göre kartlar sıralanır ve büyük getiri gösterilir */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Performans</span>
+            <div className="inline-flex flex-wrap rounded-lg border border-border bg-bg-soft p-1">
+              {(['1g', '1h', '1a', '3a', '6a', '1y'] as const).map((pk) => (
+                <button
+                  key={pk}
+                  onClick={() => setStockPeriod(pk)}
+                  className={cn(
+                    'rounded-md px-2.5 py-1 text-xs font-medium transition',
+                    stockPeriod === pk
+                      ? 'bg-accent/20 text-accent'
+                      : 'text-slate-400 hover:text-slate-200',
+                  )}
+                >
+                  {PERIOD_LABELS[pk]}
+                </button>
+              ))}
+            </div>
+            {returnsLoading && (
+              <span className="text-[10px] text-slate-500">
+                <RefreshCw size={10} className="inline animate-spin mr-1" />
+                Geçmiş veriler yükleniyor…
+              </span>
+            )}
           </div>
-        </div>
+
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {[...watched]
+              .sort((a, b) => {
+                const av = stockReturns[a.symbol]?.[stockPeriod];
+                const bv = stockReturns[b.symbol]?.[stockPeriod];
+                if (av == null && bv == null) return 0;
+                if (av == null) return 1;
+                if (bv == null) return -1;
+                return bv - av;
+              })
+              .map((s) => (
+                <div
+                  key={s.symbol}
+                  ref={focusSymbol === s.symbol ? focusRef : undefined}
+                  className={cn(focusSymbol === s.symbol && 'rounded-xl ring-2 ring-accent/50')}
+                >
+                  <WatchlistStockCard
+                    stock={s}
+                    period={stockPeriod}
+                    periodLabel={PERIOD_LABELS[stockPeriod]}
+                    returns={stockReturns[s.symbol]}
+                    onRemove={() => remove(s.symbol)}
+                  />
+                </div>
+              ))}
+          </div>
+        </>
       )}
 
       <p className="mt-4 text-xs text-slate-500">
@@ -252,6 +336,80 @@ export function WatchlistPage() {
       </>
       )}
     </>
+  );
+}
+
+interface WatchlistStockCardProps {
+  stock: Stock;
+  period: StockPeriod;
+  periodLabel: string;
+  returns: PeriodReturns | undefined;
+  onRemove: () => void;
+}
+
+/**
+ * Watchlist hisse performans kartı — seçili döneme göre büyük getiri yüzdesi
+ * + fiyat + günlük değişim + hızlı aksiyonlar.
+ *
+ * Öneriler sayfasının kart stiline benzer ama daha kompakt; her hisse 1 kart,
+ * mobile'da tek sütun, sm 2 sütun, lg 3 sütun.
+ */
+function WatchlistStockCard({ stock, period, periodLabel, returns, onRemove }: WatchlistStockCardProps) {
+  const dayChange = stock.changePct;
+  const periodReturn = returns?.[period];
+  const periodTone = periodReturn == null
+    ? 'text-slate-500'
+    : periodReturn >= 0 ? 'text-success' : 'text-danger';
+  const dayTone = dayChange >= 0 ? 'text-success' : 'text-danger';
+  const sign = (v: number) => (v >= 0 ? '+' : '');
+
+  return (
+    <div className="group glass-card relative overflow-hidden p-3 transition hover:border-accent/40">
+      {/* Sağ üstte çıkar butonu */}
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+        title="Takipten çıkar"
+        className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-bg-soft/80 text-slate-500 opacity-0 transition hover:bg-danger/15 hover:text-danger group-hover:opacity-100"
+      >
+        <X size={12} />
+      </button>
+
+      <Link to={`/stock/${stock.symbol}`} className="block">
+        <div className="flex items-start gap-2 pr-6">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-mono text-base font-bold text-accent">{stock.symbol}</span>
+              {stock.sector && (
+                <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[9px] text-slate-400">
+                  {stock.sector}
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5 truncate text-[11px] text-slate-400">{stock.name}</div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-end justify-between">
+          <div>
+            <div className="text-xl font-bold tabular-nums text-slate-100">{formatMoney(stock.price)}</div>
+            <div className={cn('text-xs font-semibold tabular-nums', dayTone)}>
+              {sign(dayChange)}{dayChange.toFixed(2)}% <span className="text-[10px] text-slate-500">bugün</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">{periodLabel}</div>
+            {periodReturn == null ? (
+              <div className="text-base font-bold tabular-nums text-slate-600">—</div>
+            ) : (
+              <div className={cn('text-lg font-bold tabular-nums', periodTone)}>
+                {sign(periodReturn)}{periodReturn.toFixed(2)}%
+              </div>
+            )}
+          </div>
+        </div>
+      </Link>
+    </div>
   );
 }
 

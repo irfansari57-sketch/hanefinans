@@ -15,6 +15,7 @@ import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabe
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { useAuth, isAdmin, isPro } from '@/store/auth';
 import { AdBanner } from '@/components/domain/AdBanner';
+import { useSiteSettings } from '@/store/siteSettings';
 import { generateMarkdownReport, downloadMarkdown } from '@/lib/reportGenerator';
 import { MOCK_STOCKS, MOCK_MACRO_FALLBACK } from '@/data/mock';
 import type { Stock, MacroIndicator, NewsItem } from '@/data/types';
@@ -95,6 +96,7 @@ export function MorningReportPage() {
   const user = useAuth((s) => s.user);
   const admin = isAdmin(user);
   const proUser = isPro(user);
+  const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
   const allSymbols = useMemo(() => MOCK_STOCKS.map((s) => s.symbol), []);
 
@@ -447,8 +449,8 @@ export function MorningReportPage() {
         </div>
       )}
 
-      {/* Reklam banner — PRO/ELITE'de gizli */}
-      {!proUser && <AdBanner className="mb-5" />}
+      {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
+      {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
       {/* ============ KISA PİYASA ANALİZİ — Multi-Timeframe Long/Short ============ */}
       <section className="glass-card mb-5 p-5">

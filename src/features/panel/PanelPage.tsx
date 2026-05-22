@@ -4,6 +4,7 @@ import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, Refre
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
+import { useSiteSettings } from '@/store/siteSettings';
 import { NewsCard } from '@/components/domain/NewsCard';
 import { MacroCard } from '@/components/domain/MacroCard';
 import { StockRow } from '@/components/domain/StockRow';
@@ -62,6 +63,7 @@ export function PanelPage() {
   }, []);
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
+  const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
   const [macro, setMacro] = useState<MacroIndicator[]>(MOCK_MACRO_FALLBACK);
   const [stocks, setStocks] = useState<Stock[]>(MOCK_STOCKS);
@@ -228,8 +230,8 @@ export function PanelPage() {
         }
       />
 
-      {/* Reklam banner — PRO/ELITE'de gizli */}
-      {!proUser && <AdBanner className="mb-5" />}
+      {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
+      {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
       {/* BIST endeksleri — birinci öncelik */}
       <section className="mb-5">

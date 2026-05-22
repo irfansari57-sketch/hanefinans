@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
 import { useAuth, isAdmin, isPro } from '@/store/auth';
+import { useSiteSettings } from '@/store/siteSettings';
 import { BIST_UNIQUE } from '@/data/bistAll';
 import { activityRepo } from '@/data/repositories';
 import { RightNewsTicker } from '@/components/domain/RightNewsTicker';
@@ -104,6 +105,7 @@ export function Layout() {
   const isMockMode = useAgents((s) => s.isMockMode());
   const user = useAuth((s) => s.user);
   const admin = isAdmin(user);
+  const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
   const visibleNavGroups = navGroups
     .map((g) => ({ ...g, items: g.items.filter((it) => !it.adminOnly || admin) }))
@@ -235,8 +237,8 @@ export function Layout() {
             </div>
           </details>
 
-          {/* Sponsor banner (PRO'da gizli) */}
-          {!isPro(user) && (
+          {/* Sponsor banner — admin Ayarlar'dan açtıysa + PRO değilse */}
+          {adBannerEnabled && !isPro(user) && (
             <div className="pt-3">
               <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
                 Sponsor
@@ -430,8 +432,8 @@ export function Layout() {
             </div>
           </details>
 
-          {/* 4. Sponsor banner — PRO'da gizli */}
-          {!isPro(user) && (
+          {/* 4. Sponsor banner — admin Ayarlar'dan açtıysa + PRO değilse */}
+          {adBannerEnabled && !isPro(user) && (
             <div>
               <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
                 Sponsor

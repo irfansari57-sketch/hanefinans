@@ -120,7 +120,7 @@ export function UsMarketsPage() {
         let tf1h: TimeframeAnalysis | null = null;
         let tf4h: TimeframeAnalysis | null = null;
         let tf1d: TimeframeAnalysis | null = null;
-        let emas: { period: number; value: number }[] = [];
+        const emas: { period: number; value: number }[] = [];
 
         if (hist1h && hist1h.bars.length > 0) {
           tf1h = analyzeTimeframe(hist1h.bars.map((b) => b.close), [5, 8, 13, 21, 55]);

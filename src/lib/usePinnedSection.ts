@@ -34,7 +34,7 @@ export interface PinnedSectionState {
  */
 export function usePinnedSection(
   id: string,
-  defaultOpen: boolean = true,
+  defaultOpen = true,
   mobileDefaultOpen?: boolean,
 ): PinnedSectionState {
   const user = useAuth((s) => s.user);

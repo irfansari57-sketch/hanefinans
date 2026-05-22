@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+// Bu dosya jsdom'da eksik olan tarayıcı API'larını test ortamı için stub'lar.
+// Boş method'lar bilinçli — gerçek davranış test'lerin kapsamında değil.
 import '@testing-library/jest-dom/vitest';
 
-// JSDOM yetersiz kalan API'lar için minimal shim'ler
 // matchMedia — usePinnedSection ve responsive hook'lar kullanıyor
 if (typeof window !== 'undefined' && !window.matchMedia) {
   window.matchMedia = (query: string) => ({

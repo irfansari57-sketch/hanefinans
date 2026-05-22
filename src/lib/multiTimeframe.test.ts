@@ -93,12 +93,7 @@ describe('buildVerdict', () => {
     const v = buildVerdict({ ...baseResult, tf1d, changePct: 0.5 });
     const idx = v.indexOf('EMA dizilimi');
     expect(idx).toBeGreaterThan(0);
-    // EMA cümlesi son cümle olmalı → sonrasında başka bir tam cümle bitişi (". ") OLMAMALI
-    const afterEma = v.slice(idx);
-    // Son nokta hariç içinde " — " veya cümle ayırıcısı 1'den fazla olabilir,
-    // ama buildVerdict parts.join(' ') ile birleştiriyor, bu yüzden EMA cümlesi sondaysa
-    // "EMA dizilimi" indeksinden sonra başka bir parts cümlesi BAŞLAMAMALI.
-    // En basit doğrulama: "Aksiyon önerisi" kelimesi EMA'dan ÖNCE gelir.
+    // EMA cümlesi son cümle olmalı → "Aksiyon önerisi" kelimesi EMA'dan ÖNCE gelir.
     expect(v.indexOf('Aksiyon önerisi')).toBeLessThan(idx);
   });
 });

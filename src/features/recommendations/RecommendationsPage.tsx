@@ -379,7 +379,7 @@ export function RecommendationsPage() {
           let trend1h: TimeframeAnalysis | null = null;
           let trend4h: TimeframeAnalysis | null = null;
           let trend1d: TimeframeAnalysis | null = null;
-          let emas: { period: number; value: number }[] = [];
+          const emas: { period: number; value: number }[] = [];
           let bigPlayerLean: 'alıcı' | 'satıcı' | 'kararsız' = 'kararsız';
 
           if (hist1h && hist1h.bars.length > 0) {

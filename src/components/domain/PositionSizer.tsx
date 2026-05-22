@@ -22,7 +22,7 @@ const DEFAULT_RISK_PCT = 2;
  * - Risk %'sini, sermaye ve stop fiyatından lot adedi hesaplar
  * - Destek/direnç bazlı otomatik stop ve TP1/TP2 önerir
  */
-export function PositionSizer({ symbol, currentPrice, support, resistance }: PositionSizerProps) {
+export function PositionSizer({ symbol: _symbol, currentPrice, support, resistance }: PositionSizerProps) {
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
 
@@ -33,7 +33,37 @@ export function PositionSizer({ symbol, currentPrice, support, resistance }: Pos
     support && support < currentPrice ? support : currentPrice * 0.97,
   );
 
-  // PRO gating
+  // NOTE: Tüm hook'lar early return'den ÖNCE çağrılmalı (Rules of Hooks).
+  const calc = useMemo(() => {
+    const riskAmount = capital * (riskPct / 100);
+    const stopDistance = currentPrice - stopPrice;
+    if (stopDistance <= 0) return null;
+    const lotSize = Math.floor(riskAmount / stopDistance);
+    const positionValue = lotSize * currentPrice;
+    const positionPct = (positionValue / capital) * 100;
+    const stopPct = ((currentPrice - stopPrice) / currentPrice) * 100;
+
+    // TP önerileri
+    const tp1 = resistance && resistance > currentPrice
+      ? resistance
+      : currentPrice + stopDistance * 2; // 1:2 risk/reward
+    const tp2 = resistance && resistance > currentPrice
+      ? resistance + stopDistance * 1.5 // direnç + 1.5x daha
+      : currentPrice + stopDistance * 3; // 1:3 risk/reward
+    const tp1Pct = ((tp1 - currentPrice) / currentPrice) * 100;
+    const tp2Pct = ((tp2 - currentPrice) / currentPrice) * 100;
+    const rrTp1 = (tp1 - currentPrice) / stopDistance;
+    const rrTp2 = (tp2 - currentPrice) / stopDistance;
+    const profit1 = lotSize * (tp1 - currentPrice);
+    const profit2 = lotSize * (tp2 - currentPrice);
+
+    return {
+      riskAmount, stopDistance, lotSize, positionValue, positionPct,
+      stopPct, tp1, tp2, tp1Pct, tp2Pct, rrTp1, rrTp2, profit1, profit2,
+    };
+  }, [capital, riskPct, stopPrice, currentPrice, resistance]);
+
+  // PRO gating — hook'lardan SONRA (Rules of Hooks).
   if (!proUser) {
     return (
       <div className="card relative overflow-hidden p-5">
@@ -72,35 +102,6 @@ export function PositionSizer({ symbol, currentPrice, support, resistance }: Pos
       </div>
     );
   }
-
-  const calc = useMemo(() => {
-    const riskAmount = capital * (riskPct / 100);
-    const stopDistance = currentPrice - stopPrice;
-    if (stopDistance <= 0) return null;
-    const lotSize = Math.floor(riskAmount / stopDistance);
-    const positionValue = lotSize * currentPrice;
-    const positionPct = (positionValue / capital) * 100;
-    const stopPct = ((currentPrice - stopPrice) / currentPrice) * 100;
-
-    // TP önerileri
-    const tp1 = resistance && resistance > currentPrice
-      ? resistance
-      : currentPrice + stopDistance * 2; // 1:2 risk/reward
-    const tp2 = resistance && resistance > currentPrice
-      ? resistance + stopDistance * 1.5 // direnç + 1.5x daha
-      : currentPrice + stopDistance * 3; // 1:3 risk/reward
-    const tp1Pct = ((tp1 - currentPrice) / currentPrice) * 100;
-    const tp2Pct = ((tp2 - currentPrice) / currentPrice) * 100;
-    const rrTp1 = (tp1 - currentPrice) / stopDistance;
-    const rrTp2 = (tp2 - currentPrice) / stopDistance;
-    const profit1 = lotSize * (tp1 - currentPrice);
-    const profit2 = lotSize * (tp2 - currentPrice);
-
-    return {
-      riskAmount, stopDistance, lotSize, positionValue, positionPct,
-      stopPct, tp1, tp2, tp1Pct, tp2Pct, rrTp1, rrTp2, profit1, profit2,
-    };
-  }, [capital, riskPct, stopPrice, currentPrice, resistance]);
 
   return (
     <div className="card p-4">

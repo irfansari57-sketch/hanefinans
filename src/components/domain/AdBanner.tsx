@@ -86,7 +86,7 @@ export function AdBanner({ variant = 'wide', className }: Props) {
       <a
         href={ad.url}
         target="_blank"
-        rel="noopener sponsored"
+        rel="noopener sponsored noreferrer"
         className={cn(
           'group block rounded-lg bg-gradient-to-r p-3 transition hover:brightness-110',
           ad.gradient,
@@ -108,7 +108,7 @@ export function AdBanner({ variant = 'wide', className }: Props) {
     <a
       href={ad.url}
       target="_blank"
-      rel="noopener sponsored"
+      rel="noopener sponsored noreferrer"
       className={cn(
         'group relative block overflow-hidden rounded-xl bg-gradient-to-r shadow-md transition hover:shadow-lg hover:brightness-110',
         ad.gradient,

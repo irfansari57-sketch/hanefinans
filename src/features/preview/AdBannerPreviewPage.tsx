@@ -150,7 +150,7 @@ function InlinePreview({
       <a
         href={targetUrl}
         target="_blank"
-        rel="noopener sponsored"
+        rel="noopener sponsored noreferrer"
         className="group relative block overflow-hidden rounded-lg border border-red-500/40 bg-gradient-to-br from-red-950 via-rose-950 to-black shadow-md transition hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20"
       >
         {video && (
@@ -208,7 +208,7 @@ function InlinePreview({
     <a
       href={targetUrl}
       target="_blank"
-      rel="noopener sponsored"
+      rel="noopener sponsored noreferrer"
       className="group relative flex overflow-hidden rounded-xl border border-red-500/40 bg-gradient-to-r from-red-950 via-rose-950 to-black shadow-md transition hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20"
     >
       {video && (

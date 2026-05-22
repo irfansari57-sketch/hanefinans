@@ -191,7 +191,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
             <a
               href={targetUrl}
               target="_blank"
-              rel="noopener sponsored"
+              rel="noopener sponsored noreferrer"
               aria-label={`${video?.title ?? CHANNEL_NAME} — YouTube'da aç`}
               className="absolute inset-0 z-10"
               style={{ pointerEvents: 'auto' }}
@@ -236,7 +236,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
         <a
           href={targetUrl}
           target="_blank"
-          rel="noopener sponsored"
+          rel="noopener sponsored noreferrer"
           className="block p-2.5"
         >
           {!hasVideos && (
@@ -296,7 +296,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           <a
             href={targetUrl}
             target="_blank"
-            rel="noopener sponsored"
+            rel="noopener sponsored noreferrer"
             aria-label={`${video?.title ?? CHANNEL_NAME} — YouTube'da aç`}
             className="absolute inset-0 z-10"
           />
@@ -334,7 +334,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
       <a
         href={targetUrl}
         target="_blank"
-        rel="noopener sponsored"
+        rel="noopener sponsored noreferrer"
         className="flex flex-1 flex-col justify-center p-4"
       >
         <div className="flex items-center gap-2">

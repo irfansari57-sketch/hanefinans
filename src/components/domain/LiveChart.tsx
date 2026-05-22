@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, CrosshairMode, IChartApi, ISeriesApi, Time } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
+import { createChart, ColorType, CrosshairMode } from 'lightweight-charts';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { fetchHistoricalYahoo } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';

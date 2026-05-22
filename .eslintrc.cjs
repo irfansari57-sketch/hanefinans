@@ -37,27 +37,48 @@ module.exports = {
     // React / hooks
     'react/prop-types': 'off',
     'react/react-in-jsx-scope': 'off',
-    'react-hooks/rules-of-hooks': 'error',
+    'react/no-unescaped-entities': 'off', // TR metinlerinde ' kullanımı sık
+    'react/display-name': 'off',
+    'react-hooks/rules-of-hooks': 'error', // hata olmalı — runtime bug riski
     'react-hooks/exhaustive-deps': 'warn',
     'react-refresh/only-export-components': 'off',
 
-    // TS
+    // TS — brownfield codebase için yumuşatılmış (zamanla sıkılaştırılır)
     '@typescript-eslint/no-unused-vars': [
       'warn',
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
     ],
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
+    '@typescript-eslint/no-empty-interface': 'warn',
+    '@typescript-eslint/no-empty-function': 'warn',
+    '@typescript-eslint/no-non-null-assertion': 'warn',
+    '@typescript-eslint/ban-ts-comment': 'warn',
+    '@typescript-eslint/no-inferrable-types': 'warn',
+    '@typescript-eslint/no-namespace': 'warn',
+    '@typescript-eslint/no-var-requires': 'warn',
+    // ban-types v7'de kaldırıldı; yerini alan v8 kuralları:
+    '@typescript-eslint/no-empty-object-type': 'warn',
+    '@typescript-eslint/no-unsafe-function-type': 'warn',
+    '@typescript-eslint/no-wrapper-object-types': 'warn',
 
-    // A11y — kademe kademe sıkılaştırılacak
+    // A11y — kademe kademe sıkılaştırılacak; ilk fazda hep warn
     'jsx-a11y/no-static-element-interactions': 'warn',
     'jsx-a11y/click-events-have-key-events': 'warn',
     'jsx-a11y/label-has-associated-control': 'warn',
+    'jsx-a11y/anchor-is-valid': 'warn',
+    'jsx-a11y/alt-text': 'warn',
+    'jsx-a11y/no-noninteractive-element-interactions': 'warn',
+    'jsx-a11y/no-autofocus': 'warn',
 
     // Genel
     'no-console': ['warn', { allow: ['warn', 'error'] }],
-    'prefer-const': 'warn',
     'no-empty': ['warn', { allowEmptyCatch: true }],
+    'no-prototype-builtins': 'warn',
+    'no-case-declarations': 'warn',
+    'no-useless-escape': 'warn',
+    'prefer-const': 'warn',
+    'no-async-promise-executor': 'warn',
   },
   overrides: [
     {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  Sun, Download, Send, RefreshCw, Bitcoin, TrendingUp, Globe2, Target,
+import type {
+  Sun} from 'lucide-react';
+import { Download, Send, RefreshCw, Bitcoin, TrendingUp, Globe2, Target,
   Flame, AlertTriangle, Check, Zap, Newspaper, Activity, Coins, CircleDollarSign,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';

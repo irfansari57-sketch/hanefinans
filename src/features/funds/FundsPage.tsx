@@ -34,6 +34,18 @@ const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string }> = [
   { key: 'year',       label: '1 Yıl',    short: '1Y (%)' },
 ];
 
+const PERIOD_LABEL: Record<Exclude<SortKey, 'code'>, string> = {
+  day: '1 Gün',
+  week: '1 Hafta',
+  month: '1 Ay',
+  threeMonth: '3 Ay',
+  sixMonth: '6 Ay',
+  ytd: 'Yılbaşı',
+  year: '1 Yıl',
+  threeYear: '3 Yıl',
+  fiveYear: '5 Yıl',
+};
+
 const PRESET_SORTS: Array<{ key: Exclude<SortKey, 'code'>; label: string }> = [
   { key: 'day',        label: '1 Gün' },
   { key: 'week',       label: '1 Hafta' },
@@ -366,6 +378,18 @@ export function FundsPage() {
             onPageChange={setCurrentPage}
           />
         </div>
+        {tab === 'watched' ? (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {paginated.map((f) => (
+              <WatchedFundCard
+                key={f.code}
+                fund={f}
+                sortKey={sortKey}
+                onToggle={() => toggleWatch(f)}
+              />
+            ))}
+          </div>
+        ) : (
         <div className="-mx-3 overflow-x-auto rounded-xl border border-border bg-bg-soft sm:mx-0">
           <table className="w-full min-w-max text-xs">
             <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
@@ -467,6 +491,7 @@ export function FundsPage() {
             </tbody>
           </table>
         </div>
+        )}
         <div className="mt-3">
           <Pagination
             currentPage={safePage}
@@ -515,6 +540,92 @@ function PerfCell({ value, hideOnMobile }: { value?: number; hideOnMobile?: bool
     <td className={cn(baseClass, tone)}>
       % {value.toFixed(2).replace('.', ',')}
     </td>
+  );
+}
+
+interface WatchedFundCardProps {
+  fund: FundPerformance;
+  sortKey: SortKey;
+  onToggle: () => void;
+}
+
+/**
+ * Takipteki fon performans kartı — Watchlist'teki hisse kartlarıyla aynı stil.
+ * Sortkey'e göre büyük getiri vurgusu; altta diğer dönemler kompakt etiket.
+ */
+function WatchedFundCard({ fund, sortKey, onToggle }: WatchedFundCardProps) {
+  const activeKey: Exclude<SortKey, 'code'> = sortKey === 'code' ? 'year' : sortKey;
+  const activeLabel = PERIOD_LABEL[activeKey];
+  const activeValue = fund[activeKey] as number | undefined;
+  const activeTone = activeValue == null || !Number.isFinite(activeValue)
+    ? 'text-slate-500'
+    : activeValue >= 0 ? 'text-success' : 'text-danger';
+  const sign = (v: number) => (v >= 0 ? '+' : '');
+
+  // Diğer dönemler — kompakt 4 etiket (active hariç)
+  const otherKeys: Array<Exclude<SortKey, 'code'>> = (['day', 'month', 'sixMonth', 'year'] as const)
+    .filter((k) => k !== activeKey)
+    .slice(0, 4);
+
+  return (
+    <div className="group glass-card relative overflow-hidden p-3 transition hover:border-accent/40">
+      {/* Sağ üst yıldız — takipten çıkar */}
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+        title="Takipten çıkar"
+        className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-bg-soft/80 text-warning transition hover:bg-danger/15 hover:text-danger"
+      >
+        <Star size={12} fill="currentColor" />
+      </button>
+
+      <Link to={`/fund/${fund.code}`} className="block">
+        <div className="pr-7">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-mono text-base font-bold text-accent">{fund.code}</span>
+            {fund.category && (
+              <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[9px] text-slate-400">
+                {fund.category}
+              </span>
+            )}
+          </div>
+          {fund.name && fund.name !== fund.code && (
+            <div className="mt-0.5 truncate text-[11px] text-slate-400">{fund.name}</div>
+          )}
+        </div>
+
+        {/* Seçili dönem büyük getirisi */}
+        <div className="mt-3 flex items-end justify-between">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">{activeLabel}</div>
+            {activeValue == null || !Number.isFinite(activeValue) ? (
+              <div className="text-2xl font-bold tabular-nums text-slate-600">—</div>
+            ) : (
+              <div className={cn('text-2xl font-bold tabular-nums', activeTone)}>
+                {sign(activeValue)}{activeValue.toFixed(2)}%
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Diğer dönemler — kompakt */}
+        <div className="mt-3 grid grid-cols-4 gap-1.5 border-t border-border pt-2">
+          {otherKeys.map((k) => {
+            const v = fund[k] as number | undefined;
+            const validV = v != null && Number.isFinite(v);
+            const tone = !validV ? 'text-slate-600' : (v as number) >= 0 ? 'text-success' : 'text-danger';
+            return (
+              <div key={k} className="text-center">
+                <div className="text-[9px] uppercase tracking-wider text-slate-500">{PERIOD_LABEL[k]}</div>
+                <div className={cn('text-[11px] font-bold tabular-nums', tone)}>
+                  {validV ? `${sign(v as number)}${(v as number).toFixed(2)}%` : '—'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Link>
+    </div>
   );
 }
 

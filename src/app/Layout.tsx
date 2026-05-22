@@ -126,6 +126,19 @@ export function Layout() {
     setSearchOpen(query.trim().length > 0);
   }, [query]);
 
+  // iOS Safari'de drawer açıkken arka plan scroll'unu kilitle — momentum scroll
+  // drawer içine yönlensin.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (mobileOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [mobileOpen]);
+
   // Bir kerelik temizlik — email doğrulama feature'ı pasif edildi; eski
   // kullanıcıların localStorage'ında kalan banner/token anahtarlarını sil.
   // Plus: eski v1 mock-auth localStorage temizlenir (cloud auth'a geçildi)
@@ -354,15 +367,21 @@ export function Layout() {
           </div>
         </header>
 
-        {/* Mobile drawer */}
+        {/* Mobile drawer — iOS uyumlu: 100dvh + iç scroll + safe-area inset */}
         {mobileOpen && (
           <div className="fixed inset-0 z-40 md:hidden" onClick={closeMobile}>
             <div className="absolute inset-0 bg-black/60" />
             <aside
-              className="absolute left-0 top-0 h-full w-72 bg-bg-soft p-4 shadow-xl"
+              className="absolute left-0 top-0 flex w-72 max-w-[85vw] flex-col bg-bg-soft shadow-xl"
+              style={{
+                height: '100dvh',
+                maxHeight: '100dvh',
+                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+                paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-3 flex shrink-0 items-center justify-between px-4">
                 <Logo variant="full" size={32} />
                 <button
                   type="button"
@@ -373,7 +392,7 @@ export function Layout() {
                   <X size={18} />
                 </button>
               </div>
-              <nav className="space-y-0.5">
+              <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-4 pb-2">
                 {allNavItems.map((item) => (
                   <NavLink
                     key={item.to}

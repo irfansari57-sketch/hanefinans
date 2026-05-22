@@ -5,7 +5,6 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
-import { NewsCard } from '@/components/domain/NewsCard';
 import { MacroCard } from '@/components/domain/MacroCard';
 import { StockRow } from '@/components/domain/StockRow';
 import { TopMovers } from '@/components/domain/TopMovers';
@@ -68,7 +67,6 @@ export function PanelPage() {
   const [macro, setMacro] = useState<MacroIndicator[]>(MOCK_MACRO_FALLBACK);
   const [stocks, setStocks] = useState<Stock[]>(MOCK_STOCKS);
   const [news, setNews] = useState<NewsItem[]>(MOCK_NEWS);
-  const [newsSource, setNewsSource] = useState<'live' | 'mock' | 'mixed'>('mock');
   const [stocksSource, setStocksSource] = useState<'live' | 'mock' | 'mixed'>('mock');
   const [sentiment, setSentiment] = useState<SentimentMention[]>(MOCK_SENTIMENT);
   const [sentimentSource, setSentimentSource] = useState<'live' | 'mock' | 'derived'>('mock');
@@ -103,7 +101,6 @@ export function PanelPage() {
       setStocksSource(s.source);
       setMacro(m.data);
       setNews(n.data);
-      setNewsSource(n.source);
       setSentiment(se.data);
       setSentimentSource(se.source);
       setTopFunds(fr ? fr.funds : []);
@@ -137,7 +134,6 @@ export function PanelPage() {
     [symbols, stocks],
   );
 
-  const topNews = news.slice(0, 4);
   const upcomingEvents = useMemo(() => [...MOCK_EVENTS].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3), []);
   const topMentions = sentiment.slice(0, 3);
   const topMacro = useMemo(
@@ -520,58 +516,26 @@ export function PanelPage() {
         </Link>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* News column (2/3) */}
-        <section className="lg:col-span-2">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Canlı Gelişmeler</h2>
-            <SourceBadge source={newsSource} />
-          </div>
-          <div className="space-y-3">
-            {topNews.map((n) => (
-              <NewsCard key={n.id} item={n} />
+      {/* Canlı Gelişmeler + Global Piyasalar blokları kaldırıldı — kullanıcı talebi.
+          Gelişmeler için sol menüden "Gelişmeler", global için "Global Piyasalar" sayfası. */}
+
+      {/* Takip Listem — full-width tek blok */}
+      <div className="rounded-xl border border-border bg-bg-soft p-3">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Takip Listem</h2>
+          <SourceBadge source={stocksSource} />
+        </div>
+        {watchlistStocks.length === 0 ? (
+          <p className="px-1 py-3 text-xs text-slate-500">
+            Listende hisse yok. <Link to="/watchlist" className="text-accent hover:underline">Hisse ekle</Link>
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {watchlistStocks.map((s) => (
+              <StockRow key={s.symbol} stock={s} />
             ))}
-            <Link
-              to="/news"
-              className="block rounded-xl border border-dashed border-border bg-bg-soft/50 px-4 py-3 text-center text-xs text-slate-400 hover:border-slate-500/40 hover:text-slate-200"
-            >
-              Tüm gelişmeleri gör →
-            </Link>
           </div>
-        </section>
-
-        {/* Sidebar (1/3) */}
-        <aside className="space-y-4">
-          {/* Watchlist */}
-          <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="mb-2 flex items-center justify-between px-1">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Takip Listem</h2>
-              <SourceBadge source={stocksSource} />
-            </div>
-            {watchlistStocks.length === 0 ? (
-              <p className="px-1 py-3 text-xs text-slate-500">
-                Listende hisse yok. <Link to="/watchlist" className="text-accent hover:underline">Hisse ekle</Link>
-              </p>
-            ) : (
-              <div className="divide-y divide-border">
-                {watchlistStocks.map((s) => (
-                  <StockRow key={s.symbol} stock={s} />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Makro + Sentiment blokları kaldırıldı — global piyasa verisi için /global sayfasına yönlendir */}
-          <Link
-            to="/global"
-            className="block rounded-xl border border-accent/30 bg-accent/5 p-3 transition hover:border-accent/60 hover:bg-accent/10"
-          >
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-accent">Global Piyasalar →</h2>
-            <p className="mt-1 text-[11px] text-slate-400">
-              ABD/Avrupa/Asya endeksleri, Brent, VIX, DXY, Türkiye CDS — hepsi tek sayfada
-            </p>
-          </Link>
-        </aside>
+        )}
       </div>
     </>
   );

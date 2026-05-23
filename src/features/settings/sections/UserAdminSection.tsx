@@ -12,6 +12,8 @@ export interface AdminUser {
   emailVerified: boolean;
   emailVerifiedAt?: number;
   avatarColor: string;
+  /** Server-side flag (DB.is_admin || email fallback). */
+  isAdmin?: boolean;
   createdAt: number;
   lastLoginAt?: number;
 }
@@ -189,7 +191,9 @@ export function UserAdminSection() {
             {filtered.length === 0 ? (
               <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-500">Kayıt bulunamadı</td></tr>
             ) : filtered.map((u) => {
-              const isAdminUser = ['irfansari57@gmail.com', 'haneassistance@gmail.com'].includes(u.email);
+              // Server-side isAdmin flag — fallback olarak email kontrolü (eski cache)
+              const isAdminUser = u.isAdmin === true
+                || ['irfansari57@gmail.com', 'haneassistance@gmail.com'].includes(u.email.toLowerCase());
               const expired = u.tierExpiresAt != null && u.tierExpiresAt < Date.now();
               const effectiveTier = expired ? 'free' : u.tier;
               return (

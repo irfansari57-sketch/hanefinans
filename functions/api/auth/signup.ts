@@ -40,12 +40,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const passwordHash = await hashPassword(email, password);
   const now = Date.now();
+  // Yeni kullanıcı kayıt olurken: hardcoded admin email'leriyle eşleşirse
+  // otomatik admin yetkisi al — emniyet ağı (eğer DB'deki ilk kayıtsa).
   const isAdmin = isAdminEmail(email);
 
   const insertResult = await env.DB.prepare(`
     INSERT INTO users (email, name, password_hash, tier, email_verified, email_verified_at,
-                       avatar_color, created_at, last_login_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       avatar_color, is_admin, created_at, last_login_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     email,
     body.name?.trim() || null,
@@ -54,6 +56,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     isAdmin ? 1 : 0,             // admin'ler otomatik verified
     isAdmin ? now : null,
     randomColor(email),
+    isAdmin ? 1 : 0,             // is_admin DB kolonu — migration 002 sonrası
     now,
     now,
   ).run();

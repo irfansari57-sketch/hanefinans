@@ -1,0 +1,56 @@
+################################################################################
+# Cloudflare Pages — Security Headers
+#
+# Bu dosya `public/` altındadır → Vite build sırasında `dist/_headers`a kopyalanır
+# ve Cloudflare Pages tarafından deploy edilen tüm route'lara uygulanır.
+#
+# Reference: https://developers.cloudflare.com/pages/configuration/headers/
+#
+# NOT: Functions (`/api/*`) kendi response header'larını set eder; bunlar
+# burada tanımlananları override edebilir. CSP-Report-Only ile başlıyoruz —
+# birkaç gün console'da ihlalleri izleyip enforce'a (`Content-Security-Policy`)
+# geçilecek.
+################################################################################
+
+/*
+  # === Content Security Policy (report-only) ===
+  # default 'self' + spesifik allowlist. inline script yok; vite + workbox
+  # build ettiği js dosyaları zaten hashed asset olarak `'self'` altında.
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://gnews.io https://api.twelvedata.com https://api.coingecko.com https://www.goldapi.io https://api.frankfurter.app https://api.alternative.me https://cdn.jsdelivr.net https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
+
+  # === Clickjacking / framing koruması ===
+  X-Frame-Options: DENY
+
+  # === MIME-type sniffing koruması ===
+  X-Content-Type-Options: nosniff
+
+  # === Referrer policy — cross-origin'de URL leak'ini sınırla ===
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # === Permissions Policy — gereksiz cihaz API'larını kapat ===
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()
+
+  # === Cross-Origin koruma ===
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+  # === HSTS — HTTPS zorla, alt domainler dahil ===
+  # (Cloudflare zaten Edge'de HSTS set ediyor olabilir; idempotent.)
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# === Service Worker — uzun cache yok ===
+# Yeni SW dosyasının hızla yayılması için
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /
+
+/registerSW.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600
+
+# === Hashed asset'ler — uzun süre cache ===
+# Vite hashed isim üretiyor (index-DNVJkOUV.js), içerik değişince hash de değişir.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

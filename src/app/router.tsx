@@ -2,6 +2,7 @@ import { lazy, Suspense, type ComponentType } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { PageSkeleton } from '@/components/ui/Skeleton';
+import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary';
 
 /**
  * Cloudflare Pages'e yeni build deploy edilince eski tarayıcı index.html'i
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Navigate to="/panel" replace /> },
       { path: 'panel', element: withSuspense(<PanelPage />) },

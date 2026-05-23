@@ -23,6 +23,8 @@ export interface SessionUser {
   avatarColor: string;
   emailVerified: boolean;
   emailVerifiedAt?: number;
+  /** Server-side hesaplanır (DB.is_admin || email fallback). */
+  isAdmin?: boolean;
   createdAt: number;
   lastLoginAt?: number;
 }
@@ -39,6 +41,14 @@ interface AuthState {
   refresh: () => Promise<void>;
 }
 
+/**
+ * Hardcoded admin email listesi — fallback amaçlı. Server-side migration
+ * sonrası tüm admin check'ler `user.isAdmin` (server'dan gelen) üzerinden
+ * yapılır. Bu liste yalnızca:
+ *   1. Eski session cache'lerinde isAdmin alanı henüz yoksa
+ *   2. Ödeme gate'i için (`upgradeTier`) admin bypass'i — emniyet ağı
+ * için tutuluyor.
+ */
 const ADMIN_EMAILS_LC = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
 
 async function apiPost<T>(path: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
@@ -166,6 +176,10 @@ export const isElite = (user: SessionUser | null): boolean => {
 
 export const isAdmin = (user: SessionUser | null): boolean => {
   if (!user) return false;
+  // Server-side hesaplanan flag — primary truth source
+  if (user.isAdmin === true) return true;
+  if (user.isAdmin === false) return false;
+  // Eski session cache'i (isAdmin field'ı yok) — email fallback
   return ADMIN_EMAILS_LC.includes(user.email.toLowerCase());
 };
 

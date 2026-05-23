@@ -21,6 +21,8 @@ export interface UserRow {
   email_verified: 0 | 1;
   email_verified_at: number | null;
   avatar_color: string | null;
+  /** DB kolonu — migration 002 ile eklendi. Eski satırlarda null gelebilir. */
+  is_admin?: 0 | 1 | null;
   created_at: number;
   last_login_at: number | null;
 }
@@ -34,26 +36,47 @@ export interface PublicUser {
   emailVerified: boolean;
   emailVerifiedAt?: number;
   avatarColor: string;
+  /** True ise frontend admin UI'larını render edebilir. */
+  isAdmin: boolean;
   createdAt: number;
   lastLoginAt?: number;
 }
 
+/**
+ * Eski email-bazlı admin kontrolü — sadece fallback olarak korunuyor.
+ * Migration 002 sonrası tüm kontroller `isAdminUser(row)` üzerinden DB'deki
+ * `is_admin` kolonunu okur. Bu liste yalnızca DB'de henüz işaretlenmemiş
+ * kullanıcılar için emniyet ağı.
+ */
 const ADMIN_EMAILS_LC = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
 
 export function isAdminEmail(email: string): boolean {
   return ADMIN_EMAILS_LC.includes(email.trim().toLowerCase());
 }
 
+/**
+ * Dual-mode admin check: önce DB kolonuna bak, yoksa email fallback.
+ * Migration uygulandıktan sonra is_admin=1 olan kullanıcılar admin sayılır.
+ * Migration uygulanmadıysa hardcoded liste hâlâ admin erişimi verir.
+ */
+export function isAdminUser(row: UserRow): boolean {
+  if (row.is_admin === 1) return true;
+  // Migration uygulanmamışsa veya kolon henüz değer almamışsa email fallback
+  return isAdminEmail(row.email);
+}
+
 export function publicUser(row: UserRow): PublicUser {
+  const admin = isAdminUser(row);
   return {
     id: row.id,
     email: row.email,
     name: row.name ?? undefined,
     tier: row.tier,
     tierExpiresAt: row.tier_expires_at ?? undefined,
-    emailVerified: isAdminEmail(row.email) || row.email_verified === 1,
+    emailVerified: admin || row.email_verified === 1,
     emailVerifiedAt: row.email_verified_at ?? undefined,
     avatarColor: row.avatar_color ?? randomColor(row.email),
+    isAdmin: admin,
     createdAt: row.created_at,
     lastLoginAt: row.last_login_at ?? undefined,
   };
@@ -186,6 +209,6 @@ export async function getAuthedUser(req: Request, env: Env): Promise<{ payload: 
 export async function requireAdmin(req: Request, env: Env): Promise<{ payload: JwtPayload; user: UserRow } | Response> {
   const auth = await getAuthedUser(req, env);
   if (!auth) return jsonResponse({ ok: false, error: 'Yetkisiz' }, 401);
-  if (!isAdminEmail(auth.user.email)) return jsonResponse({ ok: false, error: 'Admin yetkisi gerekli' }, 403);
+  if (!isAdminUser(auth.user)) return jsonResponse({ ok: false, error: 'Admin yetkisi gerekli' }, 403);
   return auth;
 }

@@ -170,6 +170,14 @@ export function Layout() {
 
   return (
     <div className="relative flex min-h-screen bg-bg">
+      {/* A11y: klavye kullanıcıları için skip-to-content link.
+          Tab basınca solda görünür, Enter ile main'e atlatır. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-bg-base focus:shadow-lg"
+      >
+        İçeriğe atla
+      </a>
       {/* Finansal sahne — şehir + neon grafik + bokeh */}
       <div className="bg-finance-scene" aria-hidden="true" />
       <div className="bg-darken" aria-hidden="true" />
@@ -416,7 +424,12 @@ export function Layout() {
           </div>
         )}
 
-        <main key={location.pathname} className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 pb-20 sm:px-6 sm:py-6 sm:pb-20 md:pb-6 lg:px-8">
+        <main
+          id="main-content"
+          key={location.pathname}
+          tabIndex={-1}
+          className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 pb-20 focus:outline-none sm:px-6 sm:py-6 sm:pb-20 md:pb-6 lg:px-8"
+        >
           <Outlet />
         </main>
 

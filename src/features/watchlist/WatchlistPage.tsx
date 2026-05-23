@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import * as Tabs from '@radix-ui/react-tabs';
 import { Plus, Star, X, Search, RefreshCw, Radio, PiggyBank, TrendingUp, ExternalLink, ChevronRight, Trash2 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -158,34 +159,42 @@ export function WatchlistPage() {
         }
       />
 
-      {/* Tab: Hisseler / Fonlar */}
-      <div className="mb-4 inline-flex rounded-lg border border-border bg-bg-soft p-1">
-        <button
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition',
-            kind === 'stocks' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setKind('stocks')}
+      {/* Tab: Hisseler / Fonlar — Radix Tabs, ok tuşları ile keyboard nav */}
+      <Tabs.Root
+        value={kind}
+        onValueChange={(v) => setKind(v as 'stocks' | 'funds')}
+      >
+        <Tabs.List
+          aria-label="Takip listesi türü"
+          className="mb-4 inline-flex rounded-lg border border-border bg-bg-soft p-1"
         >
-          <TrendingUp size={13} /> Hisseler ({symbols.length})
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition',
-            kind === 'funds' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setKind('funds')}
-        >
-          <PiggyBank size={13} /> Fonlar ({watchedFunds.length})
-        </button>
-      </div>
+          <Tabs.Trigger
+            value="stocks"
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+              'data-[state=active]:bg-bg-card data-[state=active]:text-slate-100',
+              'data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-200',
+            )}
+          >
+            <TrendingUp size={13} /> Hisseler ({symbols.length})
+          </Tabs.Trigger>
+          <Tabs.Trigger
+            value="funds"
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+              'data-[state=active]:bg-bg-card data-[state=active]:text-slate-100',
+              'data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-200',
+            )}
+          >
+            <PiggyBank size={13} /> Fonlar ({watchedFunds.length})
+          </Tabs.Trigger>
+        </Tabs.List>
 
-      {kind === 'funds' && (
-        <FundsTab watchedFundsWithData={watchedFundsWithData} />
-      )}
+        <Tabs.Content value="funds" className="focus:outline-none">
+          <FundsTab watchedFundsWithData={watchedFundsWithData} />
+        </Tabs.Content>
 
-      {kind === 'stocks' && (
-      <>
+        <Tabs.Content value="stocks" className="focus:outline-none">
       <div className="mb-4 rounded-xl border border-border bg-bg-soft p-3">
         <div className="relative">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -333,8 +342,8 @@ export function WatchlistPage() {
           ? 'Fiyatlar Twelve Data\'dan canlı, 60 saniye önbelleğe alınır.'
           : 'Fiyatlar şu an mock\'tur. Ayarlar > API Bağlantıları sayfasından Twelve Data anahtarını ekleyerek canlıya geçebilirsin.'}
       </p>
-      </>
-      )}
+        </Tabs.Content>
+      </Tabs.Root>
     </>
   );
 }

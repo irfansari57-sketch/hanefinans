@@ -10,3 +10,7 @@ dist-ssr
 .idea
 .DS_Store
 *.log
+
+# Vitest temp dosyaları — config değişikliğinde otomatik üretilir
+vitest.config.*.timestamp-*.mjs
+vite.config.*.timestamp-*.mjs

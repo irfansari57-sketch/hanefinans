@@ -11,6 +11,7 @@ import { useWatchlist } from '@/store/watchlist';
 import { useAuth, isAdmin } from '@/store/auth';
 import { usePricing } from '@/store/pricing';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import type { AgentStatus } from '@/data/types';
 import { API_STATUS, API_KEYS } from '@/data/api/keys';

@@ -55,14 +55,13 @@ export function isAdminEmail(email: string): boolean {
 }
 
 /**
- * Dual-mode admin check: önce DB kolonuna bak, yoksa email fallback.
- * Migration uygulandıktan sonra is_admin=1 olan kullanıcılar admin sayılır.
- * Migration uygulanmadıysa hardcoded liste hâlâ admin erişimi verir.
+ * Tek truth source: DB `is_admin` kolonu (#Ö2 + #Ö15).
+ * Email fallback kaldırıldı — migration 002 uygulandı, fallback artık güvenlik açığı:
+ * saldırgan `haneassistance@gmail.com` ile signup olup auto-grant'ı atlayabilir.
+ * Yeni admin eklemek için manuel SQL: UPDATE users SET is_admin=1 WHERE email=?
  */
 export function isAdminUser(row: UserRow): boolean {
-  if (row.is_admin === 1) return true;
-  // Migration uygulanmamışsa veya kolon henüz değer almamışsa email fallback
-  return isAdminEmail(row.email);
+  return row.is_admin === 1;
 }
 
 export function publicUser(row: UserRow): PublicUser {

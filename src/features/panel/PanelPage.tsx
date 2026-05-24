@@ -31,6 +31,7 @@ import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { daysUntil, formatDateShort } from '@/lib/date';
 import { macroKeyToRoute } from '@/lib/macroRoutes';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 const sentimentTone = {
   positive: 'text-success',
@@ -188,6 +189,8 @@ export function PanelPage() {
 
   return (
     <>
+      <SeoHead title="Panel" description="BIST endeksleri, takip listeniz, fonlar, kripto ve makro göstergelerin canlı özet panosu." path="/panel" />
+
       {/* Live ticker — sayfanın en üstünde */}
       <div className="mb-3">
         <Ticker stocks={tickerStocks} speed={50} />

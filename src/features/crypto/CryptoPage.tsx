@@ -12,6 +12,7 @@ import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, ty
 import type { OHLC } from '@/lib/indicators';
 import { formatCompact } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 // Multi-timeframe için BTC, ETH, BNB (Yahoo'da var)
 const CRYPTO_MT_SYMBOLS = [
@@ -99,6 +100,8 @@ export function CryptoPage() {
 
   return (
     <>
+      <SeoHead title="Kripto Piyasası" description="Bitcoin, Ethereum ve top kriptolar — anlık fiyat (TRY/USD), 24s değişim, market cap, hacim." path="/kripto" />
+
       <PageHeader
         title="Kripto Para"
         subtitle="Ana kriptolar, market durumu, sentiment ve 24 saatlik en çok yükselen/düşenler (CoinGecko)."

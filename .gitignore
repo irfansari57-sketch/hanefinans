@@ -14,3 +14,21 @@ dist-ssr
 # Vitest temp dosyaları — config değişikliğinde otomatik üretilir
 vitest.config.*.timestamp-*.mjs
 vite.config.*.timestamp-*.mjs
+
+# === Cloudflare Wrangler local state ===
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# === TypeScript incremental build cache ===
+*.tsbuildinfo
+
+# === Test coverage çıktıları ===
+coverage/
+.nyc_output/
+
+# === Build artefakts ===
+dist-types/
+
+# === OS ===
+Thumbs.db

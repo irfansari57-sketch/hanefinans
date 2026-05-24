@@ -134,13 +134,34 @@ async function hmacSha256(secret: string, payload: string): Promise<string> {
   return base64urlEncode(sig);
 }
 
-const JWT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 gün
+const JWT_TTL_SEC = 30 * 24 * 60 * 60; // 30 gün (saniye)
+const JWT_TTL_MS = JWT_TTL_SEC * 1000;
+
+/**
+ * RFC 7519: iat / exp UNIX SANIYE cinsindendir (#Ö6).
+ * verifyJwt eski (ms) ve yeni (sn) token'ları birlikte kabul eder; 30 gün sonra
+ * tüm eski token'lar zaten expire olur.
+ *
+ * HMAC karşılaştırması sabit-zamanlı (#N2 timing attack savunması).
+ */
+
+function nowSec(): number {
+  return Math.floor(Date.now() / 1000);
+}
+
+/** Constant-time string compare — timing attack savunması (#N2). */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 export async function signJwt(uid: number, email: string, secret: string): Promise<string> {
   const header = base64urlEncode(new TextEncoder().encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
-  const now = Date.now();
+  const now = nowSec();
   const payload = base64urlEncode(new TextEncoder().encode(JSON.stringify({
-    uid, email, iat: now, exp: now + JWT_TTL_MS,
+    uid, email, iat: now, exp: now + JWT_TTL_SEC,
   } satisfies JwtPayload)));
   const sig = await hmacSha256(secret, `${header}.${payload}`);
   return `${header}.${payload}.${sig}`;
@@ -151,11 +172,13 @@ export async function verifyJwt(token: string, secret: string): Promise<JwtPaylo
   if (parts.length !== 3) return null;
   const [header, payload, sig] = parts;
   const expected = await hmacSha256(secret, `${header}.${payload}`);
-  if (sig !== expected) return null;
+  if (!timingSafeEqual(sig, expected)) return null;
   try {
     const json = new TextDecoder().decode(base64urlDecode(payload));
     const p = JSON.parse(json) as JwtPayload;
-    if (p.exp < Date.now()) return null;
+    // Backward-compat: eski token'lar ms cinsinden. Eşik 1e11 (≈ yıl 5138).
+    const expSec = p.exp > 1e11 ? Math.floor(p.exp / 1000) : p.exp;
+    if (expSec < nowSec()) return null;
     return p;
   } catch {
     return null;

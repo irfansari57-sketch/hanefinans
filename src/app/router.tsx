@@ -63,6 +63,8 @@ const MorningReportPage     = lazyWithRetry(() => import('@/features/morning/Mor
 const RecommendationsPage   = lazyWithRetry(() => import('@/features/recommendations/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
 const LoginPage             = lazyWithRetry(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage            = lazyWithRetry(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.SignupPage })));
+const ForgotPasswordPage    = lazyWithRetry(() => import('@/features/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage     = lazyWithRetry(() => import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const SmartSearchPage       = lazyWithRetry(() => import('@/features/smartSearch/SmartSearchPage').then((m) => ({ default: m.SmartSearchPage })));
 const FinancialLiteracyPage = lazyWithRetry(() => import('@/features/literacy/FinancialLiteracyPage').then((m) => ({ default: m.FinancialLiteracyPage })));
 const MembershipPage        = lazyWithRetry(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
@@ -115,6 +117,8 @@ export const router = createBrowserRouter([
       { path: 'preview/ad-banner', element: withSuspense(<AdBannerPreviewPage />) },
       { path: 'auth/login', element: withSuspense(<LoginPage />) },
       { path: 'auth/signup', element: withSuspense(<SignupPage />) },
+      { path: 'auth/forgot-password', element: withSuspense(<ForgotPasswordPage />) },
+      { path: 'auth/reset-password', element: withSuspense(<ResetPasswordPage />) },
       { path: '*', element: <Navigate to="/panel" replace /> },
     ],
   },

@@ -12,15 +12,19 @@
  */
 
 import { signToken, generateCode, jsonResponse, corsPreflightResponse } from './_token';
+import { verifyTurnstile } from '../../_turnstile';
+import { getClientIp } from '../../_rate-limit';
 
 interface Env {
   RESEND_API_KEY?: string;
   AUTH_TOKEN_SECRET?: string;
   RESEND_FROM_EMAIL?: string;
+  TURNSTILE_SECRET_KEY?: string;
 }
 
 interface SendCodeRequest {
   email: string;
+  turnstileToken?: string;
 }
 
 const EXPIRY_MS = 15 * 60 * 1000;
@@ -38,6 +42,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     body = await request.json();
   } catch {
     return jsonResponse({ ok: false, error: 'Geçersiz JSON' }, 400);
+  }
+
+  // Turnstile (#Ö5) — Resend kota DoS savunması
+  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request));
+  if (!turnstileOk) {
+    return jsonResponse({ ok: false, error: 'Bot doğrulaması başarısız' }, 403);
   }
 
   const email = (body.email ?? '').trim().toLowerCase();

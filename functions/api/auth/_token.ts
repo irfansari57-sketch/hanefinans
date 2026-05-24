@@ -49,28 +49,51 @@ export interface VerificationPayload {
   email: string;
   code: string;
   exp: number;
+  purpose?: 'verify-email' | 'reset-password';
 }
 
-export async function signToken(payload: VerificationPayload, secret: string): Promise<string> {
+/** Şifre sıfırlama için payload — code yok. */
+export interface ResetPayload {
+  email: string;
+  exp: number;
+  purpose: 'reset-password';
+  nonce: string;
+}
+
+/** Constant-time string compare — timing attack savunması (#N2). */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+export async function signToken<T extends { exp: number }>(payload: T, secret: string): Promise<string> {
   const body = base64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const sig = await hmac(secret, body);
   return `${body}.${sig}`;
 }
 
-export async function verifyToken(token: string, secret: string): Promise<VerificationPayload | null> {
+export async function verifyToken<T extends { exp: number }>(token: string, secret: string): Promise<T | null> {
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const [body, sig] = parts;
   const expectedSig = await hmac(secret, body);
-  if (sig !== expectedSig) return null;
+  if (!timingSafeEqual(sig, expectedSig)) return null;
   try {
     const json = new TextDecoder().decode(base64urlDecode(body));
-    const payload = JSON.parse(json) as VerificationPayload;
+    const payload = JSON.parse(json) as T;
     if (payload.exp < Date.now()) return null;
     return payload;
   } catch {
     return null;
   }
+}
+
+/** 16 byte rastgele nonce. */
+export function generateNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return base64urlEncode(bytes);
 }
 
 export function generateCode(): string {

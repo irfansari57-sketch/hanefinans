@@ -35,6 +35,7 @@ import { ScalpPoolStats } from './sections/ScalpPoolStats';
 import { ScalpRowItem } from './sections/ScalpRowItem';
 import { FundConsensusStrip, computeFundPoolStats } from './sections/FundConsensusStrip';
 import { FundAccordionItem } from './sections/FundAccordionItem';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 const BROKER_COUNT = BROKER_RECOMMENDATIONS.length;
 const PORTFOLIO_COUNT = BROKER_PORTFOLIOS.length;
@@ -294,6 +295,8 @@ export function RecommendationsPage() {
 
   return (
     <>
+      <SeoHead title="Öneriler" description="Hisse ve fon önerileri — scalp, swing, uzun vadeli sinyaller. Çoklu zaman dilimi teknik analiz." path="/recommendations" />
+
       <PageHeader
         title="Öneriler"
         subtitle="Aracı kurum hisse önerileri, trend fonlar ve algoritmik kısa vade sinyalleri."

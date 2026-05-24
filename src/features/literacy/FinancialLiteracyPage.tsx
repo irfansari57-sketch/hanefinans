@@ -6,6 +6,7 @@ import {
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BESCalculator } from '@/components/domain/BESCalculator';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 interface Topic {
   slug: string;
@@ -390,6 +391,8 @@ export function FinancialLiteracyPage() {
 
   return (
     <>
+      <SeoHead title="Finansal Okuryazarlık" description="Borsa, fon, kripto ve bireysel yatırım için başlangıç rehberi. Vergi, BES, risk yönetimi." path="/egitim" />
+
       <PageHeader
         title="Finansal Okuryazarlık"
         subtitle="Borsa, fonlar, teknik analiz, risk yönetimi, kripto ve vergi — bilmen gereken her şey."

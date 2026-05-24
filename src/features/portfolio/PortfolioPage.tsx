@@ -18,6 +18,7 @@ import { MOCK_STOCKS } from '@/data/mock';
 import type { Stock } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 interface PositionRow extends PortfolioPosition {
   currentPrice?: number;
@@ -117,6 +118,8 @@ export function PortfolioPage() {
 
   return (
     <>
+      <SeoHead title="Portföyüm" description="Portföy pozisyonlarınız, kar/zarar, dağılım ve performans." path="/portfoy" noindex />
+
       <PageHeader
         title="Portföyüm"
         subtitle="Pozisyonlarını ekle, canlı kâr/zarar takibi yap. Veriler tarayıcına kaydedilir."

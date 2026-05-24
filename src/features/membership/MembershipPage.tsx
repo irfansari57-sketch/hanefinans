@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { usePricing } from '@/store/pricing';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 interface Plan {
   tier: 'free' | 'pro' | 'elite';
@@ -121,6 +122,8 @@ export function MembershipPage() {
   if (!user) {
     return (
       <>
+      <SeoHead title="Üyelik Planları" description="Hane Finans Free, Pro ve Elite üyelik planları. AI agent erişimi, push bildirimleri, gelişmiş öneriler." path="/uyelik" />
+
         <PageHeader title="Üyelik" subtitle="Plan seçmek için önce hesabına gir veya ücretsiz hesap aç." />
         <div className="glass-card p-8 text-center">
           <AlertCircle size={32} className="mx-auto text-warning" />

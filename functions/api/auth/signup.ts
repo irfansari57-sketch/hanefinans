@@ -7,16 +7,23 @@
 
 import {
   type Env, type UserRow, hashPassword, signJwt, makeSessionCookie,
-  publicUser, isAdminEmail, randomColor, jsonResponse,
+  publicUser, randomColor, jsonResponse,
 } from './_utils';
+import { verifyTurnstile } from '../../_turnstile';
+import { getClientIp } from '../../_rate-limit';
 
 interface SignupRequest {
   email: string;
   password: string;
   name?: string;
+  turnstileToken?: string;
 }
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+interface SignupEnv extends Env {
+  TURNSTILE_SECRET_KEY?: string;
+}
+
+export const onRequestPost: PagesFunction<SignupEnv> = async ({ request, env }) => {
   if (!env.AUTH_TOKEN_SECRET) return jsonResponse({ ok: false, error: 'AUTH_TOKEN_SECRET env eksik' }, 503);
   if (!env.DB) return jsonResponse({ ok: false, error: 'D1 binding (DB) eksik — Pages Functions binding ekle' }, 503);
 
@@ -24,13 +31,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try { body = await request.json(); }
   catch { return jsonResponse({ ok: false, error: 'Geçersiz JSON' }, 400); }
 
+  // Turnstile (#Ö5) — bot/spam savunması. Secret yoksa skip.
+  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request));
+  if (!turnstileOk) {
+    return jsonResponse({ ok: false, error: 'Bot doğrulaması başarısız. Sayfayı yenileyip tekrar dene.' }, 403);
+  }
+
   const email = (body.email ?? '').trim().toLowerCase();
   const password = body.password ?? '';
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return jsonResponse({ ok: false, error: 'Geçerli bir e-posta gir' }, 400);
   }
-  if (password.length < 6) {
-    return jsonResponse({ ok: false, error: 'Şifre en az 6 karakter olmalı' }, 400);
+  if (password.length < 8) {
+    return jsonResponse({ ok: false, error: 'Şifre en az 8 karakter olmalı' }, 400);
   }
 
   const existing = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
@@ -40,9 +53,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const passwordHash = await hashPassword(email, password);
   const now = Date.now();
-  // Yeni kullanıcı kayıt olurken: hardcoded admin email'leriyle eşleşirse
-  // otomatik admin yetkisi al — emniyet ağı (eğer DB'deki ilk kayıtsa).
-  const isAdmin = isAdminEmail(email);
+
+  // Güvenlik (#Ö2): Signup hiçbir zaman otomatik admin/elite atamaz.
+  // Eski davranış (isAdminEmail auto-grant) kaldırıldı — DB sıfırlanmış state'te
+  // saldırgan admin email'iyle kayıt olup yetki kazanabilirdi.
+  // Admin atama yalnızca elle SQL ile yapılır. Migration 002 hardcoded admin'leri işaretledi.
 
   const insertResult = await env.DB.prepare(`
     INSERT INTO users (email, name, password_hash, tier, email_verified, email_verified_at,
@@ -52,11 +67,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     email,
     body.name?.trim() || null,
     passwordHash,
-    isAdmin ? 'elite' : 'free',  // admin'ler otomatik elite
-    isAdmin ? 1 : 0,             // admin'ler otomatik verified
-    isAdmin ? now : null,
+    'free',                       // default tier — admin/elite SADECE manuel SQL ile
+    0,                            // email_verified=0 — send-code/verify ile aktifleşir
+    null,                         // email_verified_at
     randomColor(email),
-    isAdmin ? 1 : 0,             // is_admin DB kolonu — migration 002 sonrası
+    0,                            // is_admin=0 — manuel SQL gerekli
     now,
     now,
   ).run();

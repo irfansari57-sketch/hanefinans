@@ -1,0 +1,28 @@
+# Hane Finans — robots.txt
+# Reference: https://developers.google.com/search/docs/crawling-indexing/robots/intro
+
+User-agent: *
+Allow: /
+
+# Private/personal sayfalar — index etme
+Disallow: /settings
+Disallow: /portfoy
+Disallow: /watchlist
+Disallow: /history
+Disallow: /auth/
+Disallow: /api/
+
+# AI crawler'lar (eğitim verisine girmesin istersek)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+Sitemap: https://hanefinans.net/sitemap.xml

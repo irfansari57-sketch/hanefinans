@@ -12,6 +12,7 @@ import { BIST_UNIQUE } from '@/data/bistAll';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 type StockRow = Stock & {
   returns?: PeriodReturns;
@@ -227,6 +228,8 @@ export function StocksPage() {
 
   return (
     <>
+      <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat, günlük değişim, hacim ve teknik göstergelerle. Filtre, arama, sıralama." path="/stocks" />
+
       <PageHeader
         title="Hisseler"
         subtitle="BIST hisselerinin gün/hafta/ay/3ay/6ay/yıl getirileri — canlı Yahoo Finance verisi."

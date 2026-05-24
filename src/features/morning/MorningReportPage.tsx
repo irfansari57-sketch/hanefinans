@@ -35,6 +35,7 @@ import { SectionHeader } from './sections/SectionHeader';
 import { MiniRow } from './sections/MiniRow';
 import { MultiTimeframeCard } from './sections/MultiTimeframeCard';
 import { buildTelegramText } from './sections/buildTelegramText';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 export function MorningReportPage() {
   const [cryptos, setCryptos] = useState<CryptoPrice[]>([]);
@@ -367,6 +368,8 @@ export function MorningReportPage() {
 
   return (
     <>
+      <SeoHead title="Günlük Analiz" description="Sabah, öğlen ve akşam piyasa brifingi — endeksler, kripto, emtia, makro veriler ve günün öne çıkanları." path="/morning" />
+
       <PageHeader
         title="Günlük Analiz"
         subtitle={`${new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' })} • ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`}

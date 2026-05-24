@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo } from '@/data/api/yahoo';
 import { FOREX_SYMBOLS, type ForexMeta } from '@/data/forexSymbols';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 interface ForexQuote extends ForexMeta {
   value?: number;
@@ -79,6 +80,8 @@ export function ForexPage() {
 
   return (
     <>
+      <SeoHead title="Döviz Kurları" description="USD/TRY, EUR/TRY ve çapraz kurlar — canlı fiyat, günlük değişim, geçmiş grafik." path="/doviz" />
+
       <PageHeader
         title="Döviz Kurları"
         subtitle="TL pariteleri + major çapraz kurlar + DXY — canlı Yahoo Finance verisi, 2 dk auto-refresh."

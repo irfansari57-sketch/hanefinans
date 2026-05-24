@@ -19,6 +19,7 @@ import { loadFundsAsPerformanceDetailed, isTefasGithubConfigured, type TefasFeed
 import type { FundPerformance, FundCategory } from '@/data/types';
 import { formatRelative } from '@/lib/date';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 const tefasUrl = (code: string) => `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(code)}`;
 
@@ -203,6 +204,8 @@ export function FundsPage() {
 
   return (
     <>
+      <SeoHead title="TEFAS Fonları" description="TEFAS yatırım fonları — günlük getiri, 1A/3A/YBB performans, kategoriye göre filtreleme. Karşılaştırma ve takip." path="/funds" />
+
       <PageHeader
         title="Fonlar"
         subtitle="TEFAS fonları en yüksek getiriye göre sıralı. Üstteki butonlarla periyodu değiştir; sütunu tıklayarak da sıralayabilirsin."

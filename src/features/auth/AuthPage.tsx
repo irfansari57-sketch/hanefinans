@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, User as UserIcon, ArrowRight, AlertTriangle, Sparkles, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { TurnstileWidget } from '@/components/auth/TurnstileWidget';
 import { useAuth } from '@/store/auth';
 import { FEATURES } from '@/lib/featureFlags';
 import { cn } from '@/lib/utils';
@@ -34,6 +35,9 @@ export function AuthPage({ mode }: Props) {
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  // Turnstile token — widget hazır olunca dolar; site key yoksa boş string (#Ö5)
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const t = setInterval(() => setResendCooldown((c) => Math.max(0, c - 1)), 1000);
@@ -46,7 +50,7 @@ export function AuthPage({ mode }: Props) {
       const r = await fetch('/api/auth/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail }),
+        body: JSON.stringify({ email: targetEmail, turnstileToken }),
       });
       const j = (await r.json()) as { ok: boolean; token?: string; error?: string };
       if (!j.ok || !j.token) {
@@ -68,7 +72,7 @@ export function AuthPage({ mode }: Props) {
     setError(null);
 
     if (mode === 'login') {
-      const r = await login({ email, password });
+      const r = await login({ email, password, turnstileToken });
       if (!r.ok) {
         setError(r.error ?? 'Bilinmeyen hata');
         return;
@@ -79,7 +83,7 @@ export function AuthPage({ mode }: Props) {
     }
 
     // signup akışı
-    const r = await signup({ email, password, name });
+    const r = await signup({ email, password, name, turnstileToken });
     if (!r.ok) {
       setError(r.error ?? 'Bilinmeyen hata');
       return;
@@ -285,11 +289,21 @@ export function AuthPage({ mode }: Props) {
             </div>
 
             <div>
-              <label className="label">Şifre</label>
+              <div className="flex items-center justify-between">
+                <label className="label">Şifre</label>
+                {mode === 'login' && (
+                  <Link
+                    to="/auth/forgot-password"
+                    className="text-[11px] text-accent hover:underline"
+                  >
+                    Şifremi unuttum
+                  </Link>
+                )}
+              </div>
               <PasswordInput
                 required
-                minLength={6}
-                placeholder="En az 6 karakter"
+                minLength={mode === 'signup' ? 8 : 6}
+                placeholder={mode === 'signup' ? 'En az 8 karakter' : 'Şifren'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
@@ -300,6 +314,8 @@ export function AuthPage({ mode }: Props) {
                 </p>
               )}
             </div>
+
+            <TurnstileWidget onToken={setTurnstileToken} action={mode} />
 
             {error && (
               <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">

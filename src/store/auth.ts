@@ -33,8 +33,8 @@ interface AuthState {
   user: SessionUser | null;
   loading: boolean;
   lastError: string | null;
-  signup: (input: { email: string; password: string; name?: string }) => Promise<{ ok: boolean; error?: string }>;
-  login: (input: { email: string; password: string }) => Promise<{ ok: boolean; error?: string }>;
+  signup: (input: { email: string; password: string; name?: string; turnstileToken?: string }) => Promise<{ ok: boolean; error?: string }>;
+  login: (input: { email: string; password: string; turnstileToken?: string }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   upgradeTier: (tier: UserTier, durationMonths?: number) => Promise<void>;
   markEmailVerified: () => Promise<void>;
@@ -42,14 +42,10 @@ interface AuthState {
 }
 
 /**
- * Hardcoded admin email listesi — fallback amaçlı. Server-side migration
- * sonrası tüm admin check'ler `user.isAdmin` (server'dan gelen) üzerinden
- * yapılır. Bu liste yalnızca:
- *   1. Eski session cache'lerinde isAdmin alanı henüz yoksa
- *   2. Ödeme gate'i için (`upgradeTier`) admin bypass'i — emniyet ağı
- * için tutuluyor.
+ * Güvenlik (#Ö15): Hardcoded admin email listesi frontend bundle'ından kaldırıldı.
+ * Phishing/credential-stuffing saldırganlarına hedef listesi sağlıyordu.
+ * Tek truth source artık server'dan gelen `user.isAdmin` flag'i.
  */
-const ADMIN_EMAILS_LC = ['irfansari57@gmail.com', 'haneassistance@gmail.com'];
 
 async function apiPost<T>(path: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
@@ -85,9 +81,9 @@ export const useAuth = create<AuthState>()(
       loading: false,
       lastError: null,
 
-      signup: async ({ email, password, name }) => {
+      signup: async ({ email, password, name, turnstileToken }) => {
         set({ loading: true, lastError: null });
-        const r = await apiPost<{ user: SessionUser }>('/api/auth/signup', { email, password, name });
+        const r = await apiPost<{ user: SessionUser }>('/api/auth/signup', { email, password, name, turnstileToken });
         set({ loading: false });
         if (!r.ok) {
           set({ lastError: r.error });
@@ -97,9 +93,9 @@ export const useAuth = create<AuthState>()(
         return { ok: true };
       },
 
-      login: async ({ email, password }) => {
+      login: async ({ email, password, turnstileToken }) => {
         set({ loading: true, lastError: null });
-        const r = await apiPost<{ user: SessionUser }>('/api/auth/login', { email, password });
+        const r = await apiPost<{ user: SessionUser }>('/api/auth/login', { email, password, turnstileToken });
         set({ loading: false });
         if (!r.ok) {
           set({ lastError: r.error });
@@ -117,8 +113,8 @@ export const useAuth = create<AuthState>()(
       upgradeTier: async (tier, durationMonths = 1) => {
         const u = get().user;
         if (!u) return;
-        // Ödeme altyapısı kurulana kadar admin dışındaki kullanıcılar PRO/ELITE'e geçemez
-        const isAdminUser = ADMIN_EMAILS_LC.includes(u.email.toLowerCase());
+        // Tek truth source: server-side `user.isAdmin` flag (#Ö15).
+        const isAdminUser = u.isAdmin === true;
         if (!isAdminUser && (tier === 'pro' || tier === 'elite')) {
           set({ lastError: 'Ödeme altyapısı çok yakında devreye giriyor. PRO/ELITE üyelik geçişi şu an devre dışı.' });
           return;
@@ -176,11 +172,8 @@ export const isElite = (user: SessionUser | null): boolean => {
 
 export const isAdmin = (user: SessionUser | null): boolean => {
   if (!user) return false;
-  // Server-side hesaplanan flag — primary truth source
-  if (user.isAdmin === true) return true;
-  if (user.isAdmin === false) return false;
-  // Eski session cache'i (isAdmin field'ı yok) — email fallback
-  return ADMIN_EMAILS_LC.includes(user.email.toLowerCase());
+  // Tek truth source: server flag (#Ö15). Eski cache → false; refresh ile düzelir.
+  return user.isAdmin === true;
 };
 
 export const isEmailVerified = (user: SessionUser | null): boolean => {

@@ -8,6 +8,7 @@ import { loadNews } from '@/data/services';
 import type { NewsItem } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 export function NewsPage() {
   const watchlist = useWatchlist((s) => s.symbols);
@@ -77,6 +78,8 @@ export function NewsPage() {
 
   return (
     <>
+      <SeoHead title="Finans Haberleri" description="BIST, ekonomi, kripto ve makro piyasalardan güncel haberler. KAP, Reuters, AA, GNews kaynaklı türkçe finans akışı." path="/news" />
+
       <PageHeader
         title="Gelişmeler"
         subtitle="Mynet Finans, BloombergHT, AA Ekonomi ve Yahoo Finance kaynaklı canlı haber akışı."

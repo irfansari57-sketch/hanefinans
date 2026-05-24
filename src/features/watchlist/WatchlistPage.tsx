@@ -16,6 +16,7 @@ import type { Stock } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 type StockPeriod = '1g' | '1h' | '1a' | '3a' | '6a' | '1y';
 const PERIOD_LABELS: Record<StockPeriod, string> = {
@@ -146,6 +147,8 @@ export function WatchlistPage() {
 
   return (
     <>
+      <SeoHead title="Takip Listem" description="Favori BIST hisseleriniz ve TEFAS fonlarınız tek ekranda. Performans karşılaştırma, dönem getirileri." path="/watchlist" noindex />
+
       <PageHeader
         title="Takip Listem"
         subtitle="İlgilendiğin hisse ve fonları takip et, fiyatları ve değişimleri gör."

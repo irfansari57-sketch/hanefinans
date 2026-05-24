@@ -9,6 +9,7 @@ import { MOCK_STOCKS } from '@/data/mock';
 import type { Stock } from '@/data/types';
 import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 const AUTO_REFRESH_MS = 60_000;
 
@@ -74,6 +75,8 @@ export function HeatMapPage() {
   if (!proUser) {
     return (
       <>
+      <SeoHead title="BIST Heat Map" description="BIST hisseleri sektör bazlı ısı haritası — günlük performansı tek bakışta gör." path="/heatmap" />
+
         <PageHeader
           title="Heat Map"
           subtitle="BIST tüm sektörler tek bakışta — renkli sıcaklık haritası."

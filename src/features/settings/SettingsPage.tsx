@@ -24,6 +24,7 @@ import { PushNotificationSection } from './sections/PushNotificationSection';
 import { SiteVisibilitySection } from './sections/SiteVisibilitySection';
 import { PriceField } from './sections/PriceField';
 import { DeleteAccountSection } from './sections/DeleteAccountSection';
+import { ChangePasswordSection } from './sections/ChangePasswordSection';
 import { UserAdminSection } from './sections/UserAdminSection';
 
 const agentIcon: Record<AgentStatus['key'], typeof Cpu> = {
@@ -167,6 +168,9 @@ export function SettingsPage() {
             <RotateCcw size={12} /> Tanıtım turunu tekrar başlat
           </button>
         </div>
+
+        {/* Şifre değiştir — login olmuş tüm kullanıcılar için (#Ö1) */}
+        {user && <ChangePasswordSection />}
 
         {/* Hesap silme — admin olmayan kullanıcılar için (kendi hesabını sil) */}
         {user && !admin && <DeleteAccountSection />}

@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo, ouncePriceToGramTRY } from '@/data/api/yahoo';
 import { loadMacroAll } from '@/data/services';
 import { cn } from '@/lib/utils';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 interface CommodityRow {
   key: string;
@@ -81,6 +82,8 @@ export function CommoditiesPage() {
 
   return (
     <>
+      <SeoHead title="Emtia Piyasaları" description="Altın, gümüş, petrol, doğalgaz ve diğer emtialar — canlı fiyat ve günlük analiz." path="/emtia" />
+
       <PageHeader
         title="Emtialar"
         subtitle="Altın, gümüş, petrol ve diğer emtialar için canlı uluslararası fiyatlar (Yahoo Finance)."

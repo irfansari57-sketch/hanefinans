@@ -64,13 +64,16 @@ html.light {
   html.light .text-slate-200,
   html.light .text-slate-300 {
     color: rgb(15 23 42); /* slate-900 — guclu siyah */
+    font-weight: 600;
   }
   html.light .text-slate-400 {
-    color: rgb(51 65 85); /* slate-700 — koyu gri */
+    color: rgb(30 41 59); /* slate-800 */
+    font-weight: 500;
   }
   html.light .text-slate-500,
   html.light .text-slate-600 {
-    color: rgb(71 85 105); /* slate-600 — orta */
+    color: rgb(51 65 85); /* slate-700 — daha koyu */
+    font-weight: 500;
   }
   /* Sidebar nav linkleri ozellikle belirgin olmali */
   html.light aside nav a,
@@ -78,11 +81,31 @@ html.light {
   html.light aside a span,
   html.light aside button span {
     color: rgb(15 23 42);
+    font-weight: 600;
+  }
+  /* Section uppercase basliklar — koyu + bold (SIRALA:, GENEL, PIYASALAR vs) */
+  html.light .uppercase.tracking-wider,
+  html.light .uppercase.tracking-\[0\.15em\],
+  html.light .uppercase.tracking-\[0\.18em\] {
+    color: rgb(15 23 42) !important; /* slate-900 — guclu */
+    font-weight: 700 !important;
+  }
+  /* Tum h1-h6 ve PageHeader basliklari koyu + bold */
+  html.light h1,
+  html.light h2,
+  html.light h3,
+  html.light h4 {
+    color: rgb(15 23 42);
+    font-weight: 700;
+  }
+  /* Buton metinleri belirgin */
+  html.light button {
     font-weight: 500;
   }
-  /* Section uppercase basliklar — daha koyu */
-  html.light .uppercase.tracking-wider {
-    color: rgb(30 41 59); /* slate-800 */
+  /* Tablo basliklari */
+  html.light th {
+    color: rgb(15 23 42);
+    font-weight: 600;
   }
   ::selection {
     background-color: rgba(34, 211, 238, 0.25);

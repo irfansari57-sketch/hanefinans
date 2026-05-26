@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, ExternalLink, Search, ChevronUp, ChevronDown, ChevronRight, Star, RefreshCw } from 'lucide-react';
+import { TrendingUp, ExternalLink, Search, ChevronRight, Star, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
@@ -23,22 +23,30 @@ type SortKey =
   | 'symbol' | 'price' | 'changePct'
   | 'r1g' | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'rytd' | 'r1y';
 
-const SORT_COLUMNS: Array<{ key: SortKey; label: string; period?: keyof PeriodReturns; hideOnMobile?: boolean }> = [
-  // Sembol sütun başlığı boş — hisse kodları satırlarda zaten görünüyor
-  { key: 'symbol',    label: '' },
-  { key: 'price',     label: 'Fiyat' },
-  { key: 'changePct', label: 'Gün %' },
-  { key: 'r1g',  label: '1 Gün',   period: '1g', hideOnMobile: true },
-  { key: 'r1h',  label: '1 Hafta', period: '1h', hideOnMobile: true },
-  { key: 'r1a',  label: '1 Ay',    period: '1a', hideOnMobile: true },
-  { key: 'r3a',  label: '3 Ay',    period: '3a', hideOnMobile: true },
-  { key: 'r6a',  label: '6 Ay',    period: '6a', hideOnMobile: true },
-  { key: 'rytd', label: 'YTD',     period: '1y', hideOnMobile: true },
-  { key: 'r1y',  label: '1 Yıl',   period: '1y' },
+const PERIOD_LABEL: Record<Exclude<SortKey, 'symbol' | 'price'>, string> = {
+  changePct: 'Gün %',
+  r1g: '1 Gün',
+  r1h: '1 Hafta',
+  r1a: '1 Ay',
+  r3a: '3 Ay',
+  r6a: '6 Ay',
+  rytd: 'YTD',
+  r1y: '1 Yıl',
+};
+
+const SORT_OPTIONS: Array<{ key: SortKey; short: string }> = [
+  { key: 'symbol',    short: 'Sembol' },
+  { key: 'changePct', short: 'Gün' },
+  { key: 'r1h',       short: '1H' },
+  { key: 'r1a',       short: '1A' },
+  { key: 'r3a',       short: '3A' },
+  { key: 'r6a',       short: '6A' },
+  { key: 'rytd',      short: 'YTD' },
+  { key: 'r1y',       short: '1Y' },
 ];
 
 const STOCK_RETURNS_CACHE_KEY = 'fa.stocks.returns.v1';
-const STOCK_RETURNS_TTL_MS = 30 * 60_000; // 30 dk
+const STOCK_RETURNS_TTL_MS = 30 * 60_000;
 
 interface ReturnsCache {
   fetchedAt: number;
@@ -61,18 +69,32 @@ function writeReturnsCache(data: Record<string, PeriodReturns>) {
   } catch { /* ignore */ }
 }
 
+// Module-level state cache — sayfa kapatılıp açıldığında verinin anında render olması için.
+// FundsPage'in `tefasGithub.ts` modülünde tuttuğu cache ile aynı pattern.
+// Stale-while-revalidate: cache'den anında render et, arka planda fresh fetch çalışsın.
+const STOCKS_MEMO_TTL_MS = 5 * 60_000;
+interface StocksMemo {
+  fetchedAt: number;
+  stocks: StockRow[];
+  updatedAt: number;
+}
+let stocksMemo: StocksMemo | null = null;
+
 export function StocksPage() {
   const watchedSymbolsList = useWatchlist((s) => s.symbols);
   const toggleWatchlist = useWatchlist((s) => s.toggle);
   const watchedSymbols = useMemo(() => new Set(watchedSymbolsList), [watchedSymbolsList]);
 
-  const [stocks, setStocks] = useState<StockRow[]>([]);
-  const [returnsMap, setReturnsMap] = useState<Record<string, PeriodReturns>>({});
-  const [loading, setLoading] = useState(true);
+  // Module-level memo varsa direkt onunla başla — sayfa açılışında instant render
+  const [stocks, setStocks] = useState<StockRow[]>(() => stocksMemo?.stocks ?? []);
+  const [returnsMap, setReturnsMap] = useState<Record<string, PeriodReturns>>(
+    () => readReturnsCache() ?? {},
+  );
+  const [loading, setLoading] = useState(() => !stocksMemo);
   const [returnsLoading, setReturnsLoading] = useState(false);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => stocksMemo?.updatedAt);
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('r1y');
+  const [sortKey, setSortKey] = useState<SortKey>('changePct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [tab, setTab] = useState<'all' | 'watched'>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,11 +103,9 @@ export function StocksPage() {
   const refresh = async (forceReturns = false) => {
     setLoading(true);
     try {
-      // Tüm BIST evreni — MOCK_STOCKS (zengin meta) + BIST_UNIQUE (geniş kapsam) birleşik
       const richMap = new Map(MOCK_STOCKS.map((s) => [s.symbol, s]));
       const universe: { symbol: string; name: string; sector: string }[] = [];
       const seen = new Set<string>();
-      // Önce zengin olanlar
       for (const s of MOCK_STOCKS) {
         if (seen.has(s.symbol)) continue;
         seen.add(s.symbol);
@@ -98,7 +118,6 @@ export function StocksPage() {
       }
       const all = universe.map((s) => s.symbol);
 
-      // İlk paint: tüm sembolleri placeholder Stock ile göster (price=0)
       const placeholderStocks: Stock[] = universe.map((u) => {
         const rich = richMap.get(u.symbol);
         return {
@@ -112,40 +131,52 @@ export function StocksPage() {
       });
       setStocks(placeholderStocks);
 
-      // Quote'ları 50'şer batch — Yahoo proxy'yi zorlamadan tüm 270'i çek
       const BATCH_SIZE = 50;
+      const BATCH_DELAY_MS = 1500;
       const liveStocks: Stock[] = [];
       for (let i = 0; i < all.length; i += BATCH_SIZE) {
         const batch = all.slice(i, i + BATCH_SIZE);
         const { data } = await loadStocks(batch);
         liveStocks.push(...data);
-        // Her batch sonrası UI'a yansıt (incremental)
         const liveMap = new Map(liveStocks.map((s) => [s.symbol, s]));
         const merged = placeholderStocks.map((p) => liveMap.get(p.symbol) ?? p);
         setStocks(merged);
+        if (i + BATCH_SIZE < all.length) {
+          await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+        }
       }
       setUpdatedAt(Date.now());
 
-      // Returns cache'i oku
       const cached = forceReturns ? null : readReturnsCache();
       if (cached) {
         setReturnsMap(cached);
         return;
       }
-      // Cache yoksa: historical fetch — yine 30'lu batch'te (1Y data daha ağır)
       setReturnsLoading(true);
       const newReturns: Record<string, PeriodReturns> = {};
-      const RETURNS_BATCH = 30;
-      for (let i = 0; i < all.length; i += RETURNS_BATCH) {
-        const batch = all.slice(i, i + RETURNS_BATCH);
+      // Top 200 mover — warmer'ın ısıttığı kapsamla aynı
+      // (warmer cache hit'inde Yahoo'ya gitmeden D1'den anında dönecek)
+      const topMovers = [...liveStocks]
+        .filter((s) => s.price > 0)
+        .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
+        .slice(0, 200)
+        .map((s) => s.symbol);
+      // Daha agresif paralelleştirme — D1 cache'den geliyorsa hızlı, gitmiyorsa
+      // SWR ile arka planda yenilenir; ön yüze stale-D1 anında döner.
+      const RETURNS_BATCH = 15;
+      const RETURNS_BATCH_DELAY_MS = 600;
+      for (let i = 0; i < topMovers.length; i += RETURNS_BATCH) {
+        const batch = topMovers.slice(i, i + RETURNS_BATCH);
         await Promise.all(
           batch.map(async (sym) => {
             const hist = await fetchHistoricalYahoo(sym, '1y', '1d');
             if (hist) newReturns[sym] = computePeriodReturns(hist.closes);
           }),
         );
-        // İncremental update — kullanıcı dolan satırları gerçek zamanlı görsün
         setReturnsMap({ ...newReturns });
+        if (i + RETURNS_BATCH < topMovers.length) {
+          await new Promise((r) => setTimeout(r, RETURNS_BATCH_DELAY_MS));
+        }
       }
       writeReturnsCache(newReturns);
     } finally {
@@ -154,7 +185,25 @@ export function StocksPage() {
     }
   };
 
+  // Module-level memo'yu state ile senkron tut — sayfa kapatılıp açıldığında initial state olarak kullanılacak
   useEffect(() => {
+    if (stocks.length === 0) return;
+    stocksMemo = {
+      fetchedAt: Date.now(),
+      stocks,
+      updatedAt: updatedAt ?? Date.now(),
+    };
+  }, [stocks, updatedAt]);
+
+  useEffect(() => {
+    // Module cache fresh (< 5dk) ise refresh atlama — anında render, arka planda da yenileme yok
+    // Stale ise arka planda yenile (loading göstermeden, kullanıcıya cache'i yansıt)
+    const memoAge = stocksMemo ? Date.now() - stocksMemo.fetchedAt : Infinity;
+    if (memoAge < STOCKS_MEMO_TTL_MS) {
+      // Fresh — refresh hiç yapma
+      setLoading(false);
+      return;
+    }
     refresh(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -206,14 +255,12 @@ export function StocksPage() {
     return arr;
   }, [filtered, sortKey, sortDir]);
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginated = useMemo(
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  // Filter/sort/tab değişimi → 1. sayfaya dön
   useEffect(() => {
     setCurrentPage(1);
   }, [search, tab, sortKey, sortDir]);
@@ -228,7 +275,7 @@ export function StocksPage() {
 
   return (
     <>
-      <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat, günlük değişim, hacim ve teknik göstergelerle. Filtre, arama, sıralama." path="/stocks" />
+      <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat, günlük değişim ve dönem getirileri. Akordeon satır görünümü." path="/stocks" />
 
       <PageHeader
         title="Hisseler"
@@ -276,6 +323,30 @@ export function StocksPage() {
         </div>
       </div>
 
+      {/* Sıralama: dönem butonları + asc/desc */}
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500">Sırala:</span>
+        {SORT_OPTIONS.map((opt) => {
+          const active = sortKey === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setSort(opt.key)}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] transition',
+                active
+                  ? 'border-accent/40 bg-accent/15 text-accent'
+                  : 'border-border bg-bg-soft text-slate-400 hover:text-slate-200',
+              )}
+            >
+              {opt.short}
+              {active && <span className="text-[9px]">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+            </button>
+          );
+        })}
+      </div>
+
       {returnsLoading && (
         <div className="mb-3 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-slate-400">
           Getiriler Yahoo Finance'tan çekiliyor (~30 sn) — sonuçlar 30 dk cache'lenir.
@@ -290,117 +361,40 @@ export function StocksPage() {
         />
       ) : (
         <>
-        <div className="mb-3">
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={sorted.length}
-            pageSize={PAGE_SIZE}
-            onPageChange={setCurrentPage}
-          />
-        </div>
-        <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-          <table className="min-w-full text-xs">
-            <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
-              <tr>
-                <th className="px-3 py-2.5 text-left w-8">#</th>
-                <th className="px-3 py-2.5 text-left w-8"></th>
-                {SORT_COLUMNS.map((c) => (
-                  <th
-                    key={c.key}
-                    className={cn(
-                      'px-3 py-2.5 text-right cursor-pointer hover:text-slate-100 whitespace-nowrap',
-                      c.hideOnMobile && 'hidden md:table-cell',
-                    )}
-                    onClick={() => setSort(c.key)}
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {c.label}
-                      {sortKey === c.key ? (
-                        sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />
-                      ) : null}
-                    </span>
-                  </th>
-                ))}
-                <th className="px-3 py-2.5 text-center w-28 whitespace-nowrap">Detay</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {paginated.map((s, i) => {
-                const isWatched = watchedSymbols.has(s.symbol);
-                const globalIndex = (safePage - 1) * PAGE_SIZE + i + 1;
-                return (
-                  <tr key={s.symbol} className="group hover:bg-bg-card transition-colors">
-                    <td className="px-3 py-2.5 text-slate-500 tabular-nums">{globalIndex}</td>
-                    <td className="px-3 py-2.5">
-                      <button
-                        onClick={() => toggleWatch(s.symbol)}
-                        className={cn(
-                          'rounded p-1 transition',
-                          isWatched ? 'text-warning' : 'text-slate-500 hover:text-warning',
-                        )}
-                        title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
-                      >
-                        <Star size={14} fill={isWatched ? 'currentColor' : 'none'} />
-                      </button>
-                    </td>
-                    <td className="px-3 py-2.5 text-left whitespace-nowrap">
-                      <Link
-                        to={`/stock/${s.symbol}`}
-                        className="inline-flex items-center gap-1.5 font-mono font-semibold text-accent hover:underline"
-                      >
-                        {s.symbol}
-                        <ChevronRight size={10} className="opacity-0 transition group-hover:opacity-100" />
-                      </Link>
-                      <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[200px]">{s.name}</div>
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-100">
-                      ₺{s.price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
-                    </td>
-                    <PerfCell value={s.changePct} />
-                    <PerfCell value={s.returns?.['1g']} hideOnMobile />
-                    <PerfCell value={s.returns?.['1h']} hideOnMobile />
-                    <PerfCell value={s.returns?.['1a']} hideOnMobile />
-                    <PerfCell value={s.returns?.['3a']} hideOnMobile />
-                    <PerfCell value={s.returns?.['6a']} hideOnMobile />
-                    <PerfCell value={s.returns?.['1y']} hideOnMobile />
-                    <PerfCell value={s.returns?.['1y']} />
-                    <td className="px-3 py-2.5 text-center">
-                      <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Link
-                          to={`/stock/${s.symbol}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent hover:bg-accent/20"
-                          title="Grafik ve teknik analiz"
-                        >
-                          Grafik
-                        </Link>
-                        <a
-                          href={`https://fintables.com/sirketler/${s.symbol}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success hover:bg-success/20"
-                          title="Fintables'ta detay"
-                        >
-                          FT
-                          <ExternalLink size={9} />
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-3">
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={sorted.length}
-            pageSize={PAGE_SIZE}
-            onPageChange={setCurrentPage}
-          />
-        </div>
+          <div className="mb-3">
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={sorted.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+          <div className="space-y-1.5">
+            {paginated.map((s, i) => {
+              const isWatched = watchedSymbols.has(s.symbol);
+              const globalIndex = (safePage - 1) * PAGE_SIZE + i + 1;
+              return (
+                <WatchedStockRow
+                  key={s.symbol}
+                  stock={s}
+                  rank={globalIndex}
+                  sortKey={sortKey}
+                  isWatched={isWatched}
+                  onToggle={() => toggleWatch(s.symbol)}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-3">
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={sorted.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </>
       )}
 
@@ -411,15 +405,194 @@ export function StocksPage() {
   );
 }
 
-function PerfCell({ value, hideOnMobile }: { value?: number; hideOnMobile?: boolean }) {
-  const baseClass = cn('px-3 py-2.5 text-right tabular-nums whitespace-nowrap', hideOnMobile && 'hidden md:table-cell');
+interface WatchedStockRowProps {
+  stock: StockRow;
+  rank: number;
+  sortKey: SortKey;
+  isWatched: boolean;
+  onToggle: () => void;
+}
+
+/**
+ * Hisse akordeon satırı — Fonlar sayfasındaki WatchedFundRow tarzı.
+ * Summary: sıra rozeti · sembol · sektör chip · ad · 3 mini chip · büyük perf
+ * Açılınca: 7 dönem mini grid + Grafik/Fintables butonları + Takipten çıkar.
+ */
+function WatchedStockRow({ stock, rank, sortKey, isWatched, onToggle }: WatchedStockRowProps) {
+  // Active period için kullanılacak değer
+  const getValue = (k: SortKey): number | undefined => {
+    switch (k) {
+      case 'changePct': return stock.changePct;
+      case 'r1g': return stock.returns?.['1g'];
+      case 'r1h': return stock.returns?.['1h'];
+      case 'r1a': return stock.returns?.['1a'];
+      case 'r3a': return stock.returns?.['3a'];
+      case 'r6a': return stock.returns?.['6a'];
+      case 'rytd': return stock.returns?.['1y'];
+      case 'r1y': return stock.returns?.['1y'];
+      default: return undefined;
+    }
+  };
+
+  const activeKey: Exclude<SortKey, 'symbol' | 'price'> = sortKey === 'symbol' || sortKey === 'price' ? 'changePct' : sortKey;
+  const activeLabel = PERIOD_LABEL[activeKey];
+  const activeValue = getValue(activeKey);
+  const activeValid = activeValue != null && Number.isFinite(activeValue);
+  const activeTone = !activeValid ? 'text-slate-500' : (activeValue as number) >= 0 ? 'text-success' : 'text-danger';
+  const isLong = activeValid && (activeValue as number) > 0;
+
+  // 3 mini chip — activeKey hariç en alakalı 3 dönem
+  const microKeys: Array<Exclude<SortKey, 'symbol' | 'price'>> = (['changePct', 'r1h', 'r1a', 'r1y'] as const)
+    .filter((k) => k !== activeKey)
+    .slice(0, 3);
+
+  return (
+    <details className={cn(
+      'group rounded-lg border transition',
+      isLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
+    )}>
+      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
+        <span className={cn(
+          'grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs',
+          isLong ? 'border-success/40 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning',
+        )}>
+          {rank}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link
+              to={`/stock/${stock.symbol}`}
+              className="font-mono font-bold text-slate-100 hover:text-accent"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {stock.symbol}
+            </Link>
+            {isWatched && <Star size={10} className="text-warning" fill="currentColor" />}
+            {stock.sector && stock.sector !== 'Diğer' && (
+              <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">
+                {stock.sector}
+              </span>
+            )}
+            {stock.price > 0 && (
+              <span className="font-mono text-[10px] tabular-nums text-slate-300">
+                ₺{stock.price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
+          {stock.name && stock.name !== stock.symbol && (
+            <div className="truncate text-[10px] text-slate-500">{stock.name}</div>
+          )}
+        </div>
+        <div className="hidden md:flex items-center gap-1 text-[9px]">
+          {microKeys.map((k) => (
+            <PerfMicro key={k} label={shortLabel(k)} value={getValue(k)} />
+          ))}
+        </div>
+        <div className="w-24 text-right">
+          <div className="text-[9px] uppercase tracking-wider text-slate-500">{activeLabel}</div>
+          {activeValid ? (
+            <div className={cn('text-sm font-bold tabular-nums', activeTone)}>
+              {(activeValue as number) >= 0 ? '+' : ''}{(activeValue as number).toFixed(2)}%
+            </div>
+          ) : (
+            <div className="text-sm font-bold tabular-nums text-slate-600">—</div>
+          )}
+        </div>
+        <ChevronRight size={14} className="shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
+      </summary>
+
+      <div className="border-t border-border bg-bg-card p-4">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <PerfMini label="Gün"     value={stock.changePct} />
+          <PerfMini label="1 Gün"   value={stock.returns?.['1g']} />
+          <PerfMini label="1 Hafta" value={stock.returns?.['1h']} />
+          <PerfMini label="1 Ay"    value={stock.returns?.['1a']} />
+          <PerfMini label="3 Ay"    value={stock.returns?.['3a']} />
+          <PerfMini label="6 Ay"    value={stock.returns?.['6a']} />
+          <PerfMini label="1 Yıl"   value={stock.returns?.['1y']} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to={`/stock/${stock.symbol}`} className="btn-primary">
+            Detay <ChevronRight size={14} />
+          </Link>
+          <a
+            href={`https://fintables.com/sirketler/${stock.symbol}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20"
+          >
+            Fintables <ExternalLink size={11} />
+          </a>
+          <a
+            href={`https://finance.yahoo.com/quote/${stock.symbol}.IS`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20"
+          >
+            Yahoo <ExternalLink size={11} />
+          </a>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+            className={cn(
+              'ml-auto inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition',
+              isWatched
+                ? 'border-danger/30 bg-danger/10 text-danger hover:bg-danger/20'
+                : 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20',
+            )}
+            title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
+          >
+            <Star size={11} fill={isWatched ? 'currentColor' : 'none'} />
+            {isWatched ? 'Takipten çıkar' : 'Takibe al'}
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function shortLabel(k: Exclude<SortKey, 'symbol' | 'price'>): string {
+  switch (k) {
+    case 'changePct': return 'Gün';
+    case 'r1g': return '1G';
+    case 'r1h': return '1H';
+    case 'r1a': return '1A';
+    case 'r3a': return '3A';
+    case 'r6a': return '6A';
+    case 'rytd': return 'YTD';
+    case 'r1y': return '1Y';
+  }
+}
+
+function PerfMicro({ label, value }: { label: string; value: number | undefined }) {
   if (value == null || !Number.isFinite(value)) {
-    return <td className={cn(baseClass, 'text-slate-600')}>—</td>;
+    return <span className="rounded bg-bg-card px-1 py-0.5 text-slate-500">{label} —</span>;
+  }
+  const tone = value >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger';
+  return (
+    <span className={cn('rounded px-1 py-0.5 font-mono tabular-nums', tone)}>
+      {label} {value >= 0 ? '+' : ''}{value.toFixed(1)}
+    </span>
+  );
+}
+
+function PerfMini({ label, value }: { label: string; value: number | undefined }) {
+  if (value == null || !Number.isFinite(value)) {
+    return (
+      <div className="rounded bg-bg-soft px-2 py-1.5">
+        <div className="text-[10px] text-slate-500">{label}</div>
+        <div className="tabular-nums text-slate-600">—</div>
+      </div>
+    );
   }
   const tone = value >= 0 ? 'text-success' : 'text-danger';
   return (
-    <td className={cn(baseClass, tone)}>
-      {value >= 0 ? '+' : ''}{value.toFixed(2)}%
-    </td>
+    <div className="rounded bg-bg-soft px-2 py-1.5">
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className={cn('text-sm font-medium tabular-nums', tone)}>
+        {value >= 0 ? '+' : ''}{value.toFixed(2)}%
+      </div>
+    </div>
   );
 }

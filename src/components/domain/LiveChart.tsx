@@ -15,6 +15,8 @@ interface LiveChartProps {
   tradingViewSymbol?: string;
   /** BIST `.IS` suffix uygulanmasın (ABD hisseleri, kripto, emtia için false) */
   bistSuffix?: boolean;
+  /** Her bar fiyatına uygulanır (örn. USD→TL dönüşümü). undefined ise raw bırakılır. */
+  priceTransform?: (price: number) => number;
 }
 
 const RANGES: Array<{ key: Range; label: string; interval: '5m' | '15m' | '60m' | '1d' | '1wk' }> = [
@@ -27,7 +29,7 @@ const RANGES: Array<{ key: Range; label: string; interval: '5m' | '15m' | '60m' 
   { key: '5y',  label: '5Y',  interval: '1wk' },
 ];
 
-export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix = true }: LiveChartProps) {
+export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix = true, priceTransform }: LiveChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -136,7 +138,18 @@ export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix 
         return;
       }
 
-      const bars = series.bars;
+      // priceTransform varsa her bar'ı dönüştür (örn. USD/ons → gram TL)
+      const tx = priceTransform;
+      const bars = tx
+        ? series.bars.map((b) => ({
+            time: b.time,
+            open: tx(b.open),
+            high: tx(b.high),
+            low: tx(b.low),
+            close: tx(b.close),
+            volume: b.volume,
+          }))
+        : series.bars;
       const firstBar = bars[0];
       const lastBar = bars[bars.length - 1];
       setStats({
@@ -181,7 +194,7 @@ export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix 
     });
 
     return () => { alive = false; };
-  }, [symbol, range, chartType, bistSuffix]);
+  }, [symbol, range, chartType, bistSuffix, priceTransform]);
 
   const tvHref = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tradingViewSymbol ?? `BIST:${symbol}`)}`;
 
@@ -235,18 +248,18 @@ export function LiveChart({ symbol, height = 480, tradingViewSymbol, bistSuffix 
           </a>
         </div>
       </div>
-      <div className="relative">
+      <div className="relative" style={{ height }}>
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-soft/60">
             <RefreshCw size={20} className="animate-spin text-slate-400" />
           </div>
         )}
-        {error && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center text-xs text-danger">
-            {error}
+        {error && !loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg-soft/80">
+            <p className="text-xs text-danger">{error}</p>
           </div>
         )}
-        <div ref={containerRef} style={{ height, width: '100%' }} />
+        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       </div>
     </div>
   );

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, Gem, Calendar, ExternalLink, RefreshCw, Activity,
+  ArrowLeft, Gem, ExternalLink, RefreshCw, Activity,
 } from 'lucide-react';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { LiveBadge } from '@/components/domain/LiveBadge';
@@ -15,17 +14,27 @@ import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { PeriodReturns } from '@/components/domain/PeriodReturns';
 import { PositionSizer } from '@/components/domain/PositionSizer';
 import { cn } from '@/lib/utils';
-import { formatRelative } from '@/lib/date';
 
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
 
-// Emtia sembollerini metadata ile eşle
+// Yahoo spot XA?USD=X için historical / chart veri yok — futures'a fallback (yön/yapı için yeterli)
+const SPOT_TO_FUTURES: Record<string, string> = {
+  'XAUUSD=X': 'GC=F',
+  'XAGUSD=X': 'SI=F',
+  'XPTUSD=X': 'PL=F',
+};
+
 const COMMODITY_META: Record<string, { label: string; description: string; unit: string; category: string; precious: boolean }> = {
-  'GC=F':  { label: 'Altın',          description: 'COMEX Altın Vadeli Kontratı',   unit: '$ / ons',     category: 'Kıymetli Maden', precious: true },
+  // Spot (OTC) — panel ile ayni kaynak
+  'XAUUSD=X': { label: 'Altın',  description: 'OTC Spot Altın (XAU/USD)',  unit: '$ / ons', category: 'Kıymetli Maden', precious: true },
+  'XAGUSD=X': { label: 'Gümüş',  description: 'OTC Spot Gümüş (XAG/USD)',  unit: '$ / ons', category: 'Kıymetli Maden', precious: true },
+  'XPTUSD=X': { label: 'Platin', description: 'OTC Spot Platin (XPT/USD)', unit: '$ / ons', category: 'Kıymetli Maden', precious: true },
+  // Futures — eski linkler ic in geriye uyumlu
+  'GC=F':  { label: 'Altın',          description: 'COMEX Altın Vadeli',            unit: '$ / ons',     category: 'Kıymetli Maden', precious: true },
   'SI=F':  { label: 'Gümüş',          description: 'COMEX Gümüş Vadeli',            unit: '$ / ons',     category: 'Kıymetli Maden', precious: true },
   'PL=F':  { label: 'Platin',         description: 'NYMEX Platin Vadeli',           unit: '$ / ons',     category: 'Kıymetli Maden', precious: true },
   'PA=F':  { label: 'Paladyum',       description: 'NYMEX Paladyum Vadeli',         unit: '$ / ons',     category: 'Kıymetli Maden', precious: true },
-  'BZ=F':  { label: 'Brent Petrol',   description: 'ICE Brent Vadeli (Kuzey Denizi)', unit: '$ / varil', category: 'Enerji',         precious: false },
+  'BZ=F':  { label: 'Brent Petrol',   description: 'ICE Brent Vadeli',              unit: '$ / varil',   category: 'Enerji',         precious: false },
   'CL=F':  { label: 'WTI Ham Petrol', description: 'NYMEX WTI Vadeli',              unit: '$ / varil',   category: 'Enerji',         precious: false },
   'NG=F':  { label: 'Doğal Gaz',      description: 'Henry Hub Doğal Gaz Vadeli',    unit: '$ / MMBtu',   category: 'Enerji',         precious: false },
   'HG=F':  { label: 'Bakır',          description: 'COMEX Bakır Vadeli',            unit: '$ / lb',      category: 'Endüstri',       precious: false },
@@ -36,8 +45,21 @@ const COMMODITY_META: Record<string, { label: string; description: string; unit:
 export function CommodityDetailPage() {
   const { symbol = '' } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const ySym = decodeURIComponent(symbol).toUpperCase();
   const meta = COMMODITY_META[ySym];
+
+  const unitParam = searchParams.get('u');
+  const initialUnit: 'ons' | 'gram' = unitParam === 'gram' && COMMODITY_META[ySym]?.precious ? 'gram' : 'ons';
+  const [unit, setUnit] = useState<'ons' | 'gram'>(initialUnit);
+
+  const setUnitAndUrl = (next: 'ons' | 'gram') => {
+    setUnit(next);
+    const sp = new URLSearchParams(searchParams);
+    if (next === 'gram') sp.set('u', 'gram');
+    else sp.delete('u');
+    setSearchParams(sp, { replace: true });
+  };
 
   const [spot, setSpot] = useState<{ value: number; changePct: number } | null>(null);
   const [historical, setHistorical] = useState<HistoricalSeries | null>(null);
@@ -47,14 +69,44 @@ export function CommodityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
 
+  // Spot semboller icin backend Stooq endpoint'i kullan (panel ile ayni veri)
+  const fetchSpotPrice = async (): Promise<{ value: number; changePct: number } | null> => {
+    if (ySym === 'XAUUSD=X' || ySym === 'XAGUSD=X' || ySym === 'XPTUSD=X') {
+      try {
+        const r = await fetch('/api/spot-metals');
+        if (r.ok) {
+          const j = (await r.json()) as { ok: boolean; XAU?: { value: number; changePct: number }; XAG?: { value: number; changePct: number }; XPT?: { value: number; changePct: number } };
+          if (j.ok) {
+            const map: Record<string, { value: number; changePct: number } | undefined> = {
+              'XAUUSD=X': j.XAU, 'XAGUSD=X': j.XAG, 'XPTUSD=X': j.XPT,
+            };
+            const s = map[ySym];
+            if (s && Number.isFinite(s.value) && s.value > 0) return s;
+          }
+        }
+      } catch { /* yahoo'ya dus */ }
+    }
+    return fetchIndexYahoo(ySym);
+  };
+
+  const fetchHistoricalWithFallback = async (range: '1d' | '5d' | '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | 'ytd', interval: '1m' | '5m' | '15m' | '30m' | '60m' | '1d' | '1wk' | '1mo') => {
+    const primary = await fetchHistoricalYahoo(ySym, range, interval, { bistSuffix: false });
+    if (primary && primary.bars.length > 0) return primary;
+    const futSym = SPOT_TO_FUTURES[ySym];
+    if (futSym) {
+      return fetchHistoricalYahoo(futSym, range, interval, { bistSuffix: false });
+    }
+    return null;
+  };
+
   const refresh = async () => {
     if (!meta) return;
     setLoading(true);
     try {
       const [spotR, hist1d, hist1h, macroR] = await Promise.all([
-        fetchIndexYahoo(ySym),
-        fetchHistoricalYahoo(ySym, '1y', '1d', { bistSuffix: false }),
-        fetchHistoricalYahoo(ySym, '1mo', '60m', { bistSuffix: false }),
+        fetchSpotPrice(),
+        fetchHistoricalWithFallback('1y', '1d'),
+        fetchHistoricalWithFallback('1mo', '60m'),
         loadMacroAll(),
       ]);
       setSpot(spotR);
@@ -64,7 +116,6 @@ export function CommodityDetailPage() {
       }
       setUsdTry(macroR.data.find((m) => m.key === 'USD/TRY')?.value ?? null);
 
-      // Multi-timeframe
       if (hist1d || hist1h) {
         const price = spotR?.value ?? hist1d?.bars.at(-1)?.close ?? 0;
         const changePct = spotR?.changePct ?? 0;
@@ -149,6 +200,7 @@ export function CommodityDetailPage() {
   const tone = change >= 0 ? 'text-success' : 'text-danger';
   const sign = change >= 0 ? '+' : '';
   const gramTRY = meta.precious && usdTry ? ouncePriceToGramTRY(price, usdTry) : null;
+  const showGramAsPrimary = meta.precious && unit === 'gram' && gramTRY != null;
 
   return (
     <>
@@ -164,7 +216,6 @@ export function CommodityDetailPage() {
         </div>
       </div>
 
-      {/* Hero */}
       <div className="card relative mb-4 overflow-hidden p-6">
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-warning/10 blur-3xl" />
         <div className="relative flex flex-wrap items-end justify-between gap-6">
@@ -180,17 +231,58 @@ export function CommodityDetailPage() {
             <p className="mt-1 text-sm text-slate-300">{meta.description}</p>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-bold tabular-nums text-slate-100">
-              ${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-            </div>
-            <div className="text-[10px] text-slate-500">{meta.unit}</div>
-            <div className={cn('mt-1 text-lg font-semibold tabular-nums', tone)}>
-              {sign}{change.toFixed(2)}%
-            </div>
-            {gramTRY != null && (
-              <div className="mt-1 text-sm text-accent">
-                ≈ {gramTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}₺ / gram
+            {meta.precious && gramTRY != null && (
+              <div className="mb-2 inline-flex rounded-md border border-border bg-bg-soft p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setUnitAndUrl('ons')}
+                  className={cn(
+                    'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
+                    unit === 'ons' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  )}
+                >
+                  Ons USD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUnitAndUrl('gram')}
+                  className={cn(
+                    'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
+                    unit === 'gram' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                  )}
+                >
+                  Gram TL
+                </button>
               </div>
+            )}
+            {showGramAsPrimary ? (
+              <>
+                <div className="text-3xl font-bold tabular-nums text-slate-100">
+                  ₺{gramTRY!.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[10px] text-slate-500">₺ / gram</div>
+                <div className={cn('mt-1 text-lg font-semibold tabular-nums', tone)}>
+                  {sign}{change.toFixed(2)}%
+                </div>
+                <div className="mt-1 text-sm text-accent">
+                  ≈ ${price.toLocaleString('en-US', { maximumFractionDigits: 2 })} / ons
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl font-bold tabular-nums text-slate-100">
+                  ${price.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-[10px] text-slate-500">{meta.unit}</div>
+                <div className={cn('mt-1 text-lg font-semibold tabular-nums', tone)}>
+                  {sign}{change.toFixed(2)}%
+                </div>
+                {gramTRY != null && (
+                  <div className="mt-1 text-sm text-accent">
+                    ≈ ₺{gramTRY.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} / gram
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -200,15 +292,29 @@ export function CommodityDetailPage() {
         </div>
       </div>
 
-      {/* Live Chart */}
       <div className="card mb-4 overflow-hidden p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-300">Canlı Grafik <span className="text-slate-500">(Yahoo Finance + lightweight-charts)</span></h2>
+        <h2 className="mb-1 text-sm font-semibold text-slate-300">
+          Canlı Grafik <span className="text-slate-500">(Yahoo Finance + lightweight-charts)</span>
+        </h2>
+        {showGramAsPrimary && (
+          <p className="mb-3 text-[11px] text-slate-500">
+            Grafik <span className="text-accent">₺/gram</span> bazlı (her bar: USD/ons ÷ 31.1035 × USD/TRY).
+            {usdTry && <> Anlık USD/TRY: <span className="tabular-nums text-slate-300">{usdTry.toFixed(2)}</span></>}
+          </p>
+        )}
         <Suspense fallback={<Skeleton variant="rect" className="w-full" height={460} />}>
-          <LiveChart symbol={ySym} height={460} />
+          <LiveChart
+            symbol={SPOT_TO_FUTURES[ySym] ?? ySym}
+            height={460}
+            priceTransform={
+              showGramAsPrimary && usdTry
+                ? (p: number) => (p / 31.1035) * usdTry
+                : undefined
+            }
+          />
         </Suspense>
       </div>
 
-      {/* Multi-Timeframe */}
       {mtResult && (
         <div className="card mb-4 p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
@@ -219,7 +325,6 @@ export function CommodityDetailPage() {
         </div>
       )}
 
-      {/* Teknik Analiz */}
       {technicalAnalysis && (
         <div className="card mb-4 p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
@@ -291,7 +396,6 @@ export function CommodityDetailPage() {
         </div>
       )}
 
-      {/* Pozisyon Hesaplayıcı */}
       {technicalAnalysis && (
         <div className="mb-4">
           <PositionSizer
@@ -303,7 +407,6 @@ export function CommodityDetailPage() {
         </div>
       )}
 
-      {/* Dış Linkler */}
       <div className="card p-4">
         <h3 className="mb-3 text-sm font-semibold text-slate-200">Dış Kaynaklar</h3>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -315,7 +418,7 @@ export function CommodityDetailPage() {
             <span>Yahoo Finance</span><ExternalLink size={11} />
           </a>
           <a
-            href={`https://www.tradingview.com/symbols/${encodeURIComponent(ySym.replace('=F', ''))}/`}
+            href={`https://www.tradingview.com/symbols/${encodeURIComponent(ySym.replace('=F', '').replace('=X', ''))}/`}
             target="_blank" rel="noreferrer"
             className="flex items-center justify-between rounded-lg border border-border bg-bg-card px-3 py-2 text-xs text-slate-300 hover:border-accent/40 hover:text-accent"
           >

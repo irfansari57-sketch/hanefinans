@@ -10,11 +10,20 @@ import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const NEWS_MEMO_TTL_MS = 3 * 60_000;
+interface NewsMemo {
+  fetchedAt: number;
+  items: NewsItem[];
+  source: 'live' | 'mock';
+}
+let newsMemo: NewsMemo | null = null;
+
 export function NewsPage() {
   const watchlist = useWatchlist((s) => s.symbols);
-  const [items, setItems] = useState<NewsItem[]>([]);
-  const [source, setSource] = useState<'live' | 'mock'>('mock');
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<NewsItem[]>(() => newsMemo?.items ?? []);
+  const [source, setSource] = useState<'live' | 'mock'>(() => newsMemo?.source ?? 'mock');
+  const [loading, setLoading] = useState(() => !newsMemo);
 
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'all' | string>('all');
@@ -28,7 +37,23 @@ export function NewsPage() {
     return ['all', ...Array.from(set).sort()];
   }, [items]);
 
+  // Memo cache sync
   useEffect(() => {
+    if (items.length > 0) {
+      newsMemo = {
+        fetchedAt: Date.now(),
+        items,
+        source,
+      };
+    }
+  }, [items, source]);
+
+  useEffect(() => {
+    const memoAge = newsMemo ? Date.now() - newsMemo.fetchedAt : Infinity;
+    if (memoAge < NEWS_MEMO_TTL_MS) {
+      setLoading(false);
+      return;
+    }
     let alive = true;
     setLoading(true);
     loadNews({ max: 25 })

@@ -17,13 +17,16 @@ interface YahooChartResult {
         longName?: string;
         exchangeName?: string;
       };
+      timestamp?: number[];
+      indicators?: {
+        quote?: { close?: (number | null)[] }[];
+      };
     }[];
     error?: { code: string; description: string } | null;
   };
 }
 
 function toBISTSymbol(s: string): string {
-  // BIST sembolleri Yahoo'da `.IS` suffix'iyle: THYAO.IS
   if (s.includes('.') || s.startsWith('^') || s.includes('=')) return s;
   return `${s}.IS`;
 }
@@ -34,10 +37,21 @@ async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as YahooChartResult;
-    const meta = json.chart.result?.[0]?.meta;
-    if (!meta || meta.regularMarketPrice == null) return null;
-    const prev = meta.previousClose ?? meta.chartPreviousClose ?? meta.regularMarketPrice;
-    const price = meta.regularMarketPrice;
+    const result = json.chart.result?.[0];
+    const meta = result?.meta;
+    if (!meta) return null;
+
+    let price: number | undefined = meta.regularMarketPrice;
+    if (price == null) {
+      const closes = result?.indicators?.quote?.[0]?.close ?? [];
+      for (let i = closes.length - 1; i >= 0; i--) {
+        const c = closes[i];
+        if (c != null && Number.isFinite(c)) { price = c; break; }
+      }
+    }
+    if (price == null || !Number.isFinite(price) || price <= 0) return null;
+
+    const prev = meta.previousClose ?? meta.chartPreviousClose ?? price;
     const changePct = prev ? ((price - prev) / prev) * 100 : 0;
     const updatedAt = meta.regularMarketTime
       ? new Date(meta.regularMarketTime * 1000).toISOString()
@@ -76,16 +90,16 @@ export async function fetchIndexYahoo(
   return { value: r.price, changePct: r.changePct };
 }
 
-// Predefined Yahoo symbols for our macro indicators
+// Predefined Yahoo symbols — kıymetli madenler için spot (=X) forex pair
 export const YAHOO_SYMBOLS = {
   bist100: 'XU100.IS',
   bist30: 'XU030.IS',
   brent: 'BZ=F',
   wti: 'CL=F',
   vix: '^VIX',
-  gold: 'GC=F',     // $ / ons (yedek; GoldAPI birincil)
-  silver: 'SI=F',   // $ / ons
-  platinum: 'PL=F', // $ / ons
+  gold: 'XAUUSD=X',
+  silver: 'XAGUSD=X',
+  platinum: 'XPTUSD=X',
   sp500Futures: 'ES=F',
   nasdaqFutures: 'NQ=F',
   dowFutures: 'YM=F',
@@ -98,7 +112,7 @@ export function ouncePriceToGramTRY(ouncePriceUsd: number, usdToTry: number): nu
 
 // ============= Historical data =============
 export interface OhlcvBar {
-  time: number;       // unix seconds (lightweight-charts formatı)
+  time: number;
   open: number;
   high: number;
   low: number;
@@ -108,8 +122,8 @@ export interface OhlcvBar {
 
 export interface HistoricalSeries {
   symbol: string;
-  closes: { date: number; close: number }[]; // timestamp ms + close (geriye uyumluluk)
-  bars: OhlcvBar[];                            // candlestick için tam OHLCV
+  closes: { date: number; close: number }[];
+  bars: OhlcvBar[];
   meta: {
     currency?: string;
     fiftyTwoWeekHigh?: number;
@@ -148,8 +162,6 @@ export async function fetchHistoricalYahoo(
   interval: '1m' | '5m' | '15m' | '30m' | '60m' | '1d' | '1wk' | '1mo' = '1d',
   options?: { bistSuffix?: boolean },
 ): Promise<HistoricalSeries | null> {
-  // Default true — BIST hisseleri için THYAO → THYAO.IS dönüşümü.
-  // ABD/kripto/forex için false geçilmeli (sembol olduğu gibi kullanılır).
   const useBistSuffix = options?.bistSuffix !== false;
   const ySym = (
     symbol.includes('.') || symbol.startsWith('^') || symbol.includes('=') || symbol.includes('-') || !useBistSuffix
@@ -178,7 +190,6 @@ export async function fetchHistoricalYahoo(
       const v = quote?.volume?.[i];
       if (c == null) continue;
       pairs.push({ date: timestamps[i] * 1000, close: c });
-      // Bar için OHLC eksikse close ile doldur (tek satır flat candle)
       bars.push({
         time: timestamps[i],
         open: o ?? c,
@@ -210,7 +221,6 @@ export async function fetchHistoricalYahoo(
   }
 }
 
-/** Verilen tarihsel seriden periyot getirileri hesapla. */
 export interface PeriodReturns {
   '1g'?: number;
   '1h'?: number;
@@ -225,7 +235,6 @@ export function computePeriodReturns(closes: { date: number; close: number }[]):
   const last = closes[closes.length - 1];
   const findOldest = (daysAgo: number) => {
     const targetMs = last.date - daysAgo * 86400_000;
-    // Hedef tarihten önceki veya eşit olan en yakın değeri bul
     let best: { date: number; close: number } | null = null;
     for (const p of closes) {
       if (p.date <= targetMs) best = p;

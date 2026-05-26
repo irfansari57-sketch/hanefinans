@@ -45,7 +45,7 @@ const sentimentLabel = {
   negative: 'Negatif',
 } as const;
 
-const AUTO_REFRESH_MS = 60_000;
+const AUTO_REFRESH_MS = 30_000;
 
 export function PanelPage() {
   const symbols = useWatchlist((s) => s.symbols);
@@ -311,6 +311,24 @@ export function PanelPage() {
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2 lg:grid-cols-6">
           {macro
             .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Gram Platin', 'Ons Altın', 'Ons Gümüş', 'Ons Platin'].includes(m.key))
+            .map((m) => (
+              <MacroCard key={m.key} item={m} compact />
+            ))}
+        </div>
+      </section>
+
+      {/* Kripto — popüler 4 (BTC/ETH/XRP/DOGE), Yahoo BTC-USD format */}
+      <section className="mb-5">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+            Kripto · BTC · ETH · XRP · DOGE (USD)
+          </h2>
+          <span className="text-[10px] text-slate-500">ikincil</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-4">
+          {['BTC/USD', 'ETH/USD', 'XRP/USD', 'DOGE/USD']
+            .map((k) => macro.find((m) => m.key === k))
+            .filter((m): m is MacroIndicator => !!m)
             .map((m) => (
               <MacroCard key={m.key} item={m} compact />
             ))}

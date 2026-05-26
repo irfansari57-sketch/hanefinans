@@ -23,14 +23,27 @@ const CRYPTO_MT_SYMBOLS = [
 
 const STABLE_COINS = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD'];
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const CRYPTO_MEMO_TTL_MS = 2 * 60_000;
+interface CryptoMemo {
+  fetchedAt: number;
+  majors: CryptoPrice[];
+  global: CryptoMarketGlobal | null;
+  fearGreed: FearGreedSnapshot | null;
+  movers: AltcoinMover[];
+  mtResults: MultiTimeframeResult[];
+  updatedAt: number;
+}
+let cryptoMemo: CryptoMemo | null = null;
+
 export function CryptoPage() {
-  const [majors, setMajors] = useState<CryptoPrice[]>([]);
-  const [global, setGlobal] = useState<CryptoMarketGlobal | null>(null);
-  const [fearGreed, setFearGreed] = useState<FearGreedSnapshot | null>(null);
-  const [movers, setMovers] = useState<AltcoinMover[]>([]);
-  const [mtResults, setMtResults] = useState<MultiTimeframeResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [majors, setMajors] = useState<CryptoPrice[]>(() => cryptoMemo?.majors ?? []);
+  const [global, setGlobal] = useState<CryptoMarketGlobal | null>(() => cryptoMemo?.global ?? null);
+  const [fearGreed, setFearGreed] = useState<FearGreedSnapshot | null>(() => cryptoMemo?.fearGreed ?? null);
+  const [movers, setMovers] = useState<AltcoinMover[]>(() => cryptoMemo?.movers ?? []);
+  const [mtResults, setMtResults] = useState<MultiTimeframeResult[]>(() => cryptoMemo?.mtResults ?? []);
+  const [loading, setLoading] = useState(() => !cryptoMemo);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => cryptoMemo?.updatedAt);
   const [showStables, setShowStables] = useState(false);
 
   const refresh = async () => {
@@ -88,7 +101,28 @@ export function CryptoPage() {
     }
   };
 
+  // Memo cache sync
   useEffect(() => {
+    if (majors.length > 0 && updatedAt) {
+      cryptoMemo = {
+        fetchedAt: Date.now(),
+        majors,
+        global,
+        fearGreed,
+        movers,
+        mtResults,
+        updatedAt,
+      };
+    }
+  }, [majors, global, fearGreed, movers, mtResults, updatedAt]);
+
+  useEffect(() => {
+    const memoAge = cryptoMemo ? Date.now() - cryptoMemo.fetchedAt : Infinity;
+    if (memoAge < CRYPTO_MEMO_TTL_MS) {
+      setLoading(false);
+      const id = setInterval(refresh, 2 * 60_000);
+      return () => clearInterval(id);
+    }
     refresh();
     const id = setInterval(refresh, 2 * 60_000); // 2 dakikada bir
     return () => clearInterval(id);

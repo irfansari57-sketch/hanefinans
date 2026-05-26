@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" font-family="Inter,system-ui,sans-serif">
+  <title>Hane Finans — Financial Intelligence (Animated)</title>
+  <desc>BIST · TEFAS · Kripto · Multi-Agent AI · Telegram günlük rapor. Döngüsel 25 saniyelik vektör tanıtım animasyonu.</desc>
+
+  <defs>
+    <!-- Background -->
+    <radialGradient id="bg-rad" cx="50%" cy="40%" r="80%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="55%" stop-color="#0b1220"/>
+      <stop offset="100%" stop-color="#050a14"/>
+    </radialGradient>
+
+    <!-- Cyan gradients matching the real Logo.tsx -->
+    <linearGradient id="hf-bar-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="50%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <pattern id="hf-pixels" patternUnits="userSpaceOnUse" width="2" height="2.5">
+      <rect width="2" height="2.5" fill="url(#hf-bar-grad)"/>
+      <rect y="0.8" width="2" height="0.5" fill="#0e7490" opacity="0.35"/>
+    </pattern>
+    <linearGradient id="hf-top-light" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Chart fill gradient -->
+    <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="chartLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#67e8f9"/>
+    </linearGradient>
+
+    <!-- Brand text gradient -->
+    <linearGradient id="brandText" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+
+    <!-- Glows -->
+    <filter id="cyan-glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="soft-glow"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="text-glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+
+    <!-- Reusable logo symbol — same as Logo.tsx -->
+    <symbol id="hane-logo" viewBox="0 0 80 56">
+      <g filter="url(#cyan-glow)">
+        <rect x="13" y="30" width="8" height="18" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="24" y="20" width="8" height="28" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="35" y="6"  width="8" height="42" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="46" y="14" width="8" height="34" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="57" y="26" width="8" height="22" rx="0.5" fill="url(#hf-pixels)"/>
+      </g>
+      <g opacity="0.85">
+        <rect x="13" y="30" width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="24" y="20" width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="35" y="6"  width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="46" y="14" width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="57" y="26" width="8" height="1.2" fill="url(#hf-top-light)"/>
+      </g>
+      <path d="M 0,50 C 14,44 28,54 40,50 S 66,42 80,48" stroke="#22d3ee" stroke-width="0.8" fill="none" stroke-dasharray="1.2,1.6" opacity="0.95"/>
+      <path d="M 0,53 C 18,48 32,56 42,53 S 68,46 80,52" stroke="#22d3ee" stroke-width="0.6" fill="none" stroke-dasharray="0.8,1.8" opacity="0.55"/>
+      <ellipse cx="40" cy="50" rx="38" ry="6" fill="#22d3ee" opacity="0.12"/>
+    </symbol>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="url(#bg-rad)"/>
+
+  <!-- Ambient grid -->
+  <g opacity="0.06" stroke="#22d3ee" stroke-width="1">
+    <line x1="0" y1="150" x2="1600" y2="150"/>
+    <line x1="0" y1="300" x2="1600" y2="300"/>
+    <line x1="0" y1="450" x2="1600" y2="450"/>
+    <line x1="0" y1="600" x2="1600" y2="600"/>
+    <line x1="0" y1="750" x2="1600" y2="750"/>
+    <line x1="200" y1="0" x2="200" y2="900"/>
+    <line x1="400" y1="0" x2="400" y2="900"/>
+    <line x1="600" y1="0" x2="600" y2="900"/>
+    <line x1="800" y1="0" x2="800" y2="900"/>
+    <line x1="1000" y1="0" x2="1000" y2="900"/>
+    <line x1="1200" y1="0" x2="1200" y2="900"/>
+    <line x1="1400" y1="0" x2="1400" y2="900"/>
+  </g>
+
+  <!-- Floating particles -->
+  <g filter="url(#soft-glow)">
+    <circle cx="200" cy="850" r="2" fill="#22d3ee">
+      <animate attributeName="cy" values="850;-50" dur="9s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.6;0.6;0" dur="9s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="500" cy="850" r="2.5" fill="#22d3ee">
+      <animate attributeName="cy" values="850;-50" dur="11s" begin="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.7;0.7;0" dur="11s" begin="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="900" cy="850" r="2" fill="#22d3ee">
+      <animate attributeName="cy" values="850;-50" dur="10s" begin="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.6;0.6;0" dur="10s" begin="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1300" cy="850" r="2.5" fill="#22d3ee">
+      <animate attributeName="cy" values="850;-50" dur="12s" begin="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.7;0.7;0" dur="12s" begin="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1450" cy="850" r="2" fill="#22d3ee">
+      <animate attributeName="cy" values="850;-50" dur="9.5s" begin="4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;0.6;0.6;0" dur="9.5s" begin="4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- ============================================================
+       Master timeline: 25 seconds, looping
+       Phase 1 (0-4s):  Logo + brand
+       Phase 2 (4-10s): Live BIST ticker + chart growing
+       Phase 3 (10-16s): 4 Multi-Agent cards
+       Phase 4 (16-21s): Morning report → Telegram delivery
+       Phase 5 (21-25s): URL CTA
+       ============================================================ -->
+
+  <!-- ====== PHASE 1: Logo build (0-4s, fades 3.7-4.3) ====== -->
+  <g id="phase1">
+    <animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.148;0.172;1" dur="25s" repeatCount="indefinite"/>
+
+    <!-- Big logo center -->
+    <use href="#hane-logo" x="660" y="320" width="280" height="196"/>
+
+    <!-- Brand text -->
+    <text x="800" y="600" text-anchor="middle" font-size="80" font-weight="800" fill="url(#brandText)" letter-spacing="-1" filter="url(#text-glow)" opacity="0">
+      HANE FINANS
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.02;0.05;0.148;0.172" dur="25s" repeatCount="indefinite"/>
+    </text>
+    <text x="800" y="660" text-anchor="middle" font-size="18" font-weight="600" fill="#22d3ee" letter-spacing="14" opacity="0">
+      FINANCIAL INTELLIGENCE
+      <animate attributeName="opacity" values="0;0;0.95;0.95;0" keyTimes="0;0.04;0.07;0.148;0.172" dur="25s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- Pulse ring around logo -->
+    <circle cx="800" cy="418" r="160" fill="none" stroke="#22d3ee" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" values="0;0;0.5;0;0.5;0" keyTimes="0;0.02;0.06;0.10;0.13;0.16" dur="25s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="100;100;180;240;180;240" keyTimes="0;0.02;0.06;0.10;0.13;0.16" dur="25s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- ====== PHASE 2: Live BIST ticker + chart (4-10s) ====== -->
+  <g id="phase2">
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.16;0.18;0.38;0.40;1" dur="25s" repeatCount="indefinite"/>
+
+    <!-- Section title -->
+    <text x="800" y="120" text-anchor="middle" font-size="42" font-weight="300" fill="#e2e8f0" letter-spacing="-0.5">
+      BIST'in <tspan font-weight="800" fill="#22d3ee">nabzı</tspan>, gerçek zamanlı
+    </text>
+
+    <!-- Top mini-cards row: BIST 100, USD/TRY, BTC -->
+    <g transform="translate(150,170)">
+      <!-- BIST 100 card -->
+      <g>
+        <rect width="380" height="100" rx="14" fill="#111a2e" stroke="#1f2a44"/>
+        <text x="24" y="34" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="2">BIST 100</text>
+        <text x="24" y="74" font-size="36" font-weight="800" fill="#e2e8f0" font-family="JetBrains Mono,monospace">9,847.32</text>
+        <text x="356" y="74" text-anchor="end" font-size="22" font-weight="700" fill="#22c55e" font-family="JetBrains Mono,monospace">▲ +1.42%</text>
+        <circle cx="356" cy="32" r="5" fill="#22c55e"><animate attributeName="opacity" values="1;0.3;1" dur="1.4s" repeatCount="indefinite"/></circle>
+      </g>
+      <!-- USD/TRY card -->
+      <g transform="translate(460,0)">
+        <rect width="380" height="100" rx="14" fill="#111a2e" stroke="#1f2a44"/>
+        <text x="24" y="34" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="2">USD / TRY</text>
+        <text x="24" y="74" font-size="36" font-weight="800" fill="#e2e8f0" font-family="JetBrains Mono,monospace">34.18</text>
+        <text x="356" y="74" text-anchor="end" font-size="22" font-weight="700" fill="#22c55e" font-family="JetBrains Mono,monospace">▲ +0.04%</text>
+        <circle cx="356" cy="32" r="5" fill="#22c55e"><animate attributeName="opacity" values="1;0.3;1" dur="1.4s" repeatCount="indefinite"/></circle>
+      </g>
+      <!-- BTC card -->
+      <g transform="translate(920,0)">
+        <rect width="380" height="100" rx="14" fill="#111a2e" stroke="#1f2a44"/>
+        <text x="24" y="34" font-size="13" font-weight="700" fill="#94a3b8" letter-spacing="2">BTC / USD</text>
+        <text x="24" y="74" font-size="36" font-weight="800" fill="#e2e8f0" font-family="JetBrains Mono,monospace">$68,420</text>
+        <text x="356" y="74" text-anchor="end" font-size="22" font-weight="700" fill="#22c55e" font-family="JetBrains Mono,monospace">▲ +1.8%</text>
+        <circle cx="356" cy="32" r="5" fill="#22c55e"><animate attributeName="opacity" values="1;0.3;1" dur="1.4s" repeatCount="indefinite"/></circle>
+      </g>
+    </g>
+
+    <!-- Big chart -->
+    <g transform="translate(150,310)">
+      <rect width="1300" height="360" rx="16" fill="#111a2e" stroke="#1f2a44"/>
+      <text x="28" y="40" font-size="16" font-weight="700" fill="#e2e8f0">GARAN</text>
+      <text x="78" y="40" font-size="13" font-weight="500" fill="#94a3b8">Garanti BBVA</text>
+      <text x="1272" y="40" text-anchor="end" font-size="16" font-weight="800" fill="#22c55e" font-family="JetBrains Mono,monospace">142.80 ₺   ▲ +2.14%</text>
+
+      <!-- Y-axis grid -->
+      <g stroke="#1f2a44" stroke-width="0.5">
+        <line x1="40" y1="100" x2="1260" y2="100"/>
+        <line x1="40" y1="170" x2="1260" y2="170"/>
+        <line x1="40" y1="240" x2="1260" y2="240"/>
+        <line x1="40" y1="310" x2="1260" y2="310"/>
+      </g>
+
+      <!-- Chart line draw-in -->
+      <path d="M 40,300 L 130,290 L 220,280 L 310,270 L 400,240 L 490,250 L 580,210 L 670,195 L 760,170 L 850,140 L 940,120 L 1030,105 L 1120,90 L 1210,75 L 1260,60 L 1260,320 L 40,320 Z"
+            fill="url(#chartFill)" opacity="0">
+        <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.22;0.30;0.38;0.40" dur="25s" repeatCount="indefinite"/>
+      </path>
+      <path d="M 40,300 L 130,290 L 220,280 L 310,270 L 400,240 L 490,250 L 580,210 L 670,195 L 760,170 L 850,140 L 940,120 L 1030,105 L 1120,90 L 1210,75 L 1260,60"
+            fill="none" stroke="url(#chartLine)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"
+            stroke-dasharray="2000" stroke-dashoffset="2000" filter="url(#cyan-glow)">
+        <animate attributeName="stroke-dashoffset" values="2000;2000;0;0;0" keyTimes="0;0.18;0.30;0.38;0.40" dur="25s" repeatCount="indefinite"/>
+      </path>
+      <!-- Latest price dot -->
+      <circle cx="1260" cy="60" r="6" fill="#22d3ee" opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.26;0.30;0.32;0.38;0.40" dur="25s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="1260" cy="60" r="12" fill="#22d3ee" opacity="0">
+        <animate attributeName="opacity" values="0;0;0;0.4;0.4;0" keyTimes="0;0.26;0.30;0.32;0.38;0.40" dur="25s" repeatCount="indefinite"/>
+      </circle>
+
+      <!-- Y-axis labels -->
+      <text x="1268" y="105" font-size="11" fill="#64748b" font-family="JetBrains Mono,monospace">144</text>
+      <text x="1268" y="175" font-size="11" fill="#64748b" font-family="JetBrains Mono,monospace">142</text>
+      <text x="1268" y="245" font-size="11" fill="#64748b" font-family="JetBrains Mono,monospace">140</text>
+      <text x="1268" y="315" font-size="11" fill="#64748b" font-family="JetBrains Mono,monospace">138</text>
+    </g>
+
+    <!-- Bottom ticker scrolling -->
+    <g transform="translate(0,720)">
+      <rect width="1600" height="60" fill="#0a1120"/>
+      <line x1="0" y1="0" x2="1600" y2="0" stroke="#1f2a44"/>
+      <line x1="0" y1="60" x2="1600" y2="60" stroke="#1f2a44"/>
+      <g font-family="JetBrains Mono,monospace" font-size="15">
+        <g>
+          <animateTransform attributeName="transform" type="translate" from="1600,0" to="-3200,0" dur="20s" repeatCount="indefinite"/>
+          <text x="0" y="38" fill="#e2e8f0" font-weight="700">THYAO <tspan fill="#94a3b8">312.40</tspan> <tspan fill="#22c55e">▲ +4.82%</tspan>   ·   ASELS <tspan fill="#94a3b8">75.20</tspan> <tspan fill="#22c55e">▲ +3.61%</tspan>   ·   GARAN <tspan fill="#94a3b8">142.80</tspan> <tspan fill="#22c55e">▲ +2.14%</tspan>   ·   AKBNK <tspan fill="#94a3b8">68.95</tspan> <tspan fill="#22c55e">▲ +1.84%</tspan>   ·   KCHOL <tspan fill="#94a3b8">234.00</tspan> <tspan fill="#22c55e">▲ +1.47%</tspan>   ·   SAHOL <tspan fill="#94a3b8">91.40</tspan> <tspan fill="#22c55e">▲ +1.22%</tspan>   ·   EREGL <tspan fill="#94a3b8">48.20</tspan> <tspan fill="#ef4444">▼ -1.92%</tspan>   ·   KRDMD <tspan fill="#94a3b8">24.80</tspan> <tspan fill="#ef4444">▼ -0.84%</tspan>   ·   SISE <tspan fill="#94a3b8">56.40</tspan> <tspan fill="#22c55e">▲ +0.71%</tspan>   ·   OTKAR <tspan fill="#94a3b8">442.00</tspan> <tspan fill="#22c55e">▲ +2.81%</tspan>   ·   ALARK <tspan fill="#94a3b8">88.20</tspan> <tspan fill="#22c55e">▲ +1.84%</tspan>   ·   YKBNK <tspan fill="#94a3b8">32.40</tspan> <tspan fill="#22c55e">▲ +0.93%</tspan>   ·   PETKM <tspan fill="#94a3b8">18.62</tspan> <tspan fill="#22c55e">▲ +0.54%</tspan></text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Live badge -->
+    <g transform="translate(60,810)">
+      <rect width="120" height="32" rx="16" fill="#0a1120" stroke="#22d3ee" stroke-width="1.5"/>
+      <circle cx="20" cy="16" r="4" fill="#22d3ee">
+        <animate attributeName="opacity" values="1;0.3;1" dur="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="36" y="22" font-size="13" font-weight="700" fill="#22d3ee" letter-spacing="2">CANLI</text>
+    </g>
+    <text x="200" y="833" font-size="12" fill="#64748b" font-family="JetBrains Mono,monospace">BIST 500 · CoinGecko · Yahoo · EVDS</text>
+  </g>
+
+  <!-- ====== PHASE 3: 4 Multi-Agent cards (10-16s) ====== -->
+  <g id="phase3">
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.40;0.42;0.62;0.64;1" dur="25s" repeatCount="indefinite"/>
+
+    <text x="800" y="100" text-anchor="middle" font-size="42" font-weight="300" fill="#e2e8f0" letter-spacing="-0.5">
+      <tspan font-weight="800" fill="#22d3ee">4 Ajan</tspan> · Tek kararda buluşur
+    </text>
+    <text x="800" y="135" text-anchor="middle" font-size="16" fill="#94a3b8" letter-spacing="1">Sentiment · News · Macro · Indicator</text>
+
+    <!-- Agent 1: Sentiment -->
+    <g transform="translate(140,200)">
+      <rect width="660" height="240" rx="14" fill="#111a2e" stroke="#1f2a44" opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.43;0.46;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+      </rect>
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.43;0.47;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+        <!-- Agent icon -->
+        <rect x="20" y="20" width="40" height="40" rx="10" fill="#22d3ee" opacity="0.15"/>
+        <circle cx="40" cy="40" r="6" fill="none" stroke="#22d3ee" stroke-width="2"/>
+        <line x1="40" y1="22" x2="40" y2="28" stroke="#22d3ee" stroke-width="2"/>
+        <line x1="40" y1="52" x2="40" y2="58" stroke="#22d3ee" stroke-width="2"/>
+        <line x1="22" y1="40" x2="28" y2="40" stroke="#22d3ee" stroke-width="2"/>
+        <line x1="52" y1="40" x2="58" y2="40" stroke="#22d3ee" stroke-width="2"/>
+
+        <text x="80" y="38" font-size="14" font-weight="700" fill="#94a3b8" letter-spacing="2">SENTIMENT AGENT</text>
+        <text x="80" y="58" font-size="11" font-weight="600" fill="#22c55e" font-family="JetBrains Mono,monospace">● v2.1 · 247 mention/24sa</text>
+
+        <text x="20" y="105" font-size="16" fill="#e2e8f0" font-weight="500">Reddit · Twitter · forumlar tarandı.</text>
+        <text x="20" y="135" font-size="16" fill="#e2e8f0" font-weight="500"><tspan fill="#22c55e" font-weight="800">THYAO</tspan> ve <tspan fill="#22c55e" font-weight="800">ASELS</tspan> için pozitif</text>
+        <text x="20" y="160" font-size="16" fill="#e2e8f0" font-weight="500">duyarlılık dalgası tespit edildi.</text>
+
+        <rect x="20" y="185" width="620" height="36" rx="8" fill="#22c55e" opacity="0.15"/>
+        <text x="38" y="208" font-size="13" font-weight="800" fill="#22c55e" font-family="JetBrains Mono,monospace">▲  POZİTİF MOMENTUM  ·  87 / 100</text>
+      </g>
+    </g>
+
+    <!-- Agent 2: News -->
+    <g transform="translate(820,200)">
+      <rect width="660" height="240" rx="14" fill="#111a2e" stroke="#1f2a44" opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.45;0.48;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+      </rect>
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.45;0.49;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+        <rect x="20" y="20" width="40" height="40" rx="10" fill="#f59e0b" opacity="0.15"/>
+        <rect x="30" y="30" width="20" height="20" rx="2" fill="none" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="34" y1="36" x2="46" y2="36" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="34" y1="40" x2="46" y2="40" stroke="#f59e0b" stroke-width="2"/>
+        <line x1="34" y1="44" x2="42" y2="44" stroke="#f59e0b" stroke-width="2"/>
+
+        <text x="80" y="38" font-size="14" font-weight="700" fill="#94a3b8" letter-spacing="2">NEWS AGENT</text>
+        <text x="80" y="58" font-size="11" font-weight="600" fill="#22c55e" font-family="JetBrains Mono,monospace">● v3.0 · KAP + 15 kaynak</text>
+
+        <text x="20" y="105" font-size="16" fill="#e2e8f0" font-weight="500"><tspan fill="#f59e0b" font-weight="800">EREGL</tspan> Q3 net kâr beklentinin</text>
+        <text x="20" y="135" font-size="16" fill="#e2e8f0" font-weight="500"><tspan fill="#22c55e" font-weight="800">%18 üzerinde.</tspan></text>
+        <text x="20" y="160" font-size="16" fill="#e2e8f0" font-weight="500">Anadolu Sigorta temettü pozitif.</text>
+
+        <rect x="20" y="185" width="620" height="36" rx="8" fill="#f59e0b" opacity="0.15"/>
+        <text x="38" y="208" font-size="13" font-weight="800" fill="#f59e0b" font-family="JetBrains Mono,monospace">◆  KARMA  ·  12 önemli haber</text>
+      </g>
+    </g>
+
+    <!-- Agent 3: Macro -->
+    <g transform="translate(140,460)">
+      <rect width="660" height="240" rx="14" fill="#111a2e" stroke="#1f2a44" opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.47;0.50;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+      </rect>
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.47;0.51;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+        <rect x="20" y="20" width="40" height="40" rx="10" fill="#22c55e" opacity="0.15"/>
+        <polyline points="28,52 36,42 42,46 50,32 56,38" stroke="#22c55e" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="51,32 56,32 56,37" stroke="#22c55e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+        <text x="80" y="38" font-size="14" font-weight="700" fill="#94a3b8" letter-spacing="2">MACRO AGENT</text>
+        <text x="80" y="58" font-size="11" font-weight="600" fill="#22c55e" font-family="JetBrains Mono,monospace">● TCMB EVDS · resmi</text>
+
+        <text x="20" y="105" font-size="16" fill="#e2e8f0" font-weight="500">TÜFE: <tspan fill="#ef4444" font-weight="800">%47.3</tspan> (yıllık)</text>
+        <text x="20" y="135" font-size="16" fill="#e2e8f0" font-weight="500">Politika faizi: <tspan fill="#22d3ee" font-weight="800">%42.50</tspan></text>
+        <text x="20" y="160" font-size="16" fill="#e2e8f0" font-weight="500">Reel faiz: <tspan fill="#ef4444" font-weight="800">-%4.8</tspan></text>
+
+        <rect x="20" y="185" width="620" height="36" rx="8" fill="#ef4444" opacity="0.15"/>
+        <text x="38" y="208" font-size="13" font-weight="800" fill="#ef4444" font-family="JetBrains Mono,monospace">▼  GERGİN  ·  Reel faiz negatif</text>
+      </g>
+    </g>
+
+    <!-- Agent 4: Indicator -->
+    <g transform="translate(820,460)">
+      <rect width="660" height="240" rx="14" fill="#111a2e" stroke="#1f2a44" opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.49;0.52;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+      </rect>
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;0;1;1;0" keyTimes="0;0.40;0.49;0.53;0.62;0.64" dur="25s" repeatCount="indefinite"/>
+        <rect x="20" y="20" width="40" height="40" rx="10" fill="#a855f7" opacity="0.15"/>
+        <polyline points="28,52 28,28" stroke="#a855f7" stroke-width="2" fill="none"/>
+        <polyline points="28,52 56,52" stroke="#a855f7" stroke-width="2" fill="none"/>
+        <polyline points="32,46 38,40 44,44 50,32" stroke="#a855f7" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+        <text x="80" y="38" font-size="14" font-weight="700" fill="#94a3b8" letter-spacing="2">INDICATOR AGENT</text>
+        <text x="80" y="58" font-size="11" font-weight="600" fill="#22c55e" font-family="JetBrains Mono,monospace">● RSI · MACD · ADX · Boll</text>
+
+        <text x="20" y="105" font-size="16" fill="#e2e8f0" font-weight="500">5 zaman dilimi tarandı.</text>
+        <text x="20" y="135" font-size="16" fill="#e2e8f0" font-weight="500"><tspan fill="#22c55e" font-weight="800">GARAN</tspan> 4sa RSI 32, golden</text>
+        <text x="20" y="160" font-size="16" fill="#e2e8f0" font-weight="500">cross hazırlığı. MACD pozitif.</text>
+
+        <rect x="20" y="185" width="620" height="36" rx="8" fill="#22c55e" opacity="0.15"/>
+        <text x="38" y="208" font-size="13" font-weight="800" fill="#22c55e" font-family="JetBrains Mono,monospace">▲  AL SİNYALİ  ·  9 sembolde</text>
+      </g>
+    </g>
+
+    <text x="800" y="780" text-anchor="middle" font-size="16" fill="#64748b" letter-spacing="2">+ ÇOKLU ZAMAN DİLİMİ VERDICT  ·  TEFAS FON KONSENSÜSÜ</text>
+  </g>
+
+  <!-- ====== PHASE 4: Morning Report → Telegram (16-21s) ====== -->
+  <g id="phase4">
+    <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.64;0.66;0.83;0.84;1" dur="25s" repeatCount="indefinite"/>
+
+    <text x="800" y="100" text-anchor="middle" font-size="42" font-weight="300" fill="#e2e8f0" letter-spacing="-0.5">
+      Sabah <tspan font-weight="800" fill="#22d3ee">raporu</tspan>, doğrudan cebinize
+    </text>
+
+    <!-- Report mock (left) -->
+    <g transform="translate(120,170)">
+      <rect width="680" height="600" rx="14" fill="#111a2e" stroke="#1f2a44"/>
+      <!-- header -->
+      <line x1="20" y1="60" x2="660" y2="60" stroke="#1f2a44"/>
+      <circle cx="40" cy="35" r="11" fill="none" stroke="#f59e0b" stroke-width="2"/>
+      <text x="62" y="40" font-size="20" font-weight="800" fill="#e2e8f0">Günlük Analiz</text>
+      <text x="660" y="40" text-anchor="end" font-size="11" fill="#64748b" font-family="JetBrains Mono,monospace">24 MAY 2026 · 08:30</text>
+
+      <!-- Crypto section -->
+      <text x="20" y="95" font-size="11" font-weight="800" fill="#22d3ee" letter-spacing="2">KRİPTO LİDERLER</text>
+      <g font-family="JetBrains Mono,monospace" font-size="14">
+        <text x="20" y="125" fill="#e2e8f0">BTC · $68,420</text>
+        <text x="660" y="125" text-anchor="end" fill="#22c55e" font-weight="700">+1.8%</text>
+        <line x1="20" y1="135" x2="660" y2="135" stroke="#1a253f"/>
+        <text x="20" y="160" fill="#e2e8f0">ETH · $3,142</text>
+        <text x="660" y="160" text-anchor="end" fill="#22c55e" font-weight="700">+2.4%</text>
+        <line x1="20" y1="170" x2="660" y2="170" stroke="#1a253f"/>
+        <text x="20" y="195" fill="#e2e8f0">F&amp;G Index</text>
+        <text x="660" y="195" text-anchor="end" fill="#e2e8f0" font-weight="700">68 · Greed</text>
+      </g>
+
+      <!-- BIST Verdict -->
+      <text x="20" y="235" font-size="11" font-weight="800" fill="#22d3ee" letter-spacing="2">BIST VERDICT · ÇOKLU ZAMAN DİLİMİ</text>
+      <g font-family="JetBrains Mono,monospace" font-size="14">
+        <text x="20" y="265" fill="#e2e8f0">THYAO</text>
+        <text x="660" y="265" text-anchor="end" fill="#22c55e" font-weight="700">GÜÇLÜ AL · 87/100</text>
+        <line x1="20" y1="275" x2="660" y2="275" stroke="#1a253f"/>
+        <text x="20" y="300" fill="#e2e8f0">ASELS</text>
+        <text x="660" y="300" text-anchor="end" fill="#22c55e" font-weight="700">AL · 74/100</text>
+        <line x1="20" y1="310" x2="660" y2="310" stroke="#1a253f"/>
+        <text x="20" y="335" fill="#e2e8f0">GARAN</text>
+        <text x="660" y="335" text-anchor="end" fill="#22c55e" font-weight="700">AL · 71/100</text>
+        <line x1="20" y1="345" x2="660" y2="345" stroke="#1a253f"/>
+        <text x="20" y="370" fill="#e2e8f0">EREGL</text>
+        <text x="660" y="370" text-anchor="end" fill="#ef4444" font-weight="700">SAT · 28/100</text>
+      </g>
+
+      <!-- Macro -->
+      <text x="20" y="410" font-size="11" font-weight="800" fill="#22d3ee" letter-spacing="2">MAKRO ÖZET</text>
+      <g font-family="JetBrains Mono,monospace" font-size="14">
+        <text x="20" y="440" fill="#e2e8f0">USD/TRY</text>
+        <text x="660" y="440" text-anchor="end" fill="#e2e8f0" font-weight="700">34.18 · ±0.0%</text>
+        <line x1="20" y1="450" x2="660" y2="450" stroke="#1a253f"/>
+        <text x="20" y="475" fill="#e2e8f0">Politika Faizi</text>
+        <text x="660" y="475" text-anchor="end" fill="#e2e8f0" font-weight="700">42.50%</text>
+      </g>
+
+      <!-- Send button -->
+      <g transform="translate(20,520)">
+        <rect width="640" height="60" rx="12" fill="#22d3ee" filter="url(#cyan-glow)"/>
+        <text x="320" y="38" text-anchor="middle" font-size="16" font-weight="800" fill="#022c33" letter-spacing="2">▶  TELEGRAM'A GÖNDER</text>
+      </g>
+    </g>
+
+    <!-- Arrow flying -->
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;0;0;1;0;0" keyTimes="0;0.64;0.72;0.74;0.78;0.84" dur="25s" repeatCount="indefinite"/>
+      <path d="M 800 470 L 870 470" stroke="#22d3ee" stroke-width="4" stroke-linecap="round" fill="none" filter="url(#cyan-glow)"/>
+      <polygon points="865,460 880,470 865,480" fill="#22d3ee"/>
+    </g>
+
+    <!-- Telegram mock (right) -->
+    <g transform="translate(900,170)">
+      <rect width="580" height="600" rx="20" fill="#17212b" stroke="#2b3a4a"/>
+
+      <!-- Header -->
+      <line x1="20" y1="65" x2="560" y2="65" stroke="#2b3a4a"/>
+      <circle cx="42" cy="35" r="18" fill="url(#chartLine)"/>
+      <text x="42" y="40" text-anchor="middle" font-size="13" font-weight="800" fill="#022c33">HF</text>
+      <text x="74" y="32" font-size="15" font-weight="600" fill="#ffffff">Hane Finans · Günlük</text>
+      <text x="74" y="50" font-size="11" fill="#7a8a9a">son görülme: az önce</text>
+
+      <!-- Message bubble appearing -->
+      <g opacity="0">
+        <animate attributeName="opacity" values="0;0;0;0;1;1;0" keyTimes="0;0.64;0.72;0.76;0.78;0.83;0.84" dur="25s" repeatCount="indefinite"/>
+
+        <rect x="20" y="85" width="540" height="490" rx="14" fill="#2b3a4a"/>
+        <g font-family="JetBrains Mono,monospace" font-size="14" fill="#e4f2ff">
+          <text x="38" y="120">🌅 GÜNAYDIN</text>
+          <text x="38" y="142" fill="#a5c4dc" font-size="12">24 Mayıs · BIST açılışına 2 saat</text>
+
+          <text x="38" y="178">📊 BIST Verdict</text>
+          <text x="38" y="202">• THYAO  <tspan fill="#22d3ee">▲ GÜÇLÜ AL</tspan></text>
+          <text x="38" y="224">• ASELS  <tspan fill="#22d3ee">▲ AL</tspan></text>
+          <text x="38" y="246">• GARAN  <tspan fill="#22d3ee">▲ AL</tspan></text>
+          <text x="38" y="268">• EREGL  <tspan fill="#ff7a7a">▼ SAT</tspan></text>
+
+          <text x="38" y="304">💰 Kripto</text>
+          <text x="38" y="326">BTC $68,420 (+1.8%)</text>
+          <text x="38" y="348">ETH $3,142 (+2.4%)</text>
+
+          <text x="38" y="384">🌐 USD/TRY 34.18</text>
+          <text x="38" y="406">🌐 Politika Faizi 42.50%</text>
+
+          <text x="38" y="446">⚡ AI önerisi:</text>
+          <text x="38" y="468" fill="#a5c4dc" font-size="12">"Bankacılık sektörü pozitif, kısa</text>
+          <text x="38" y="486" fill="#a5c4dc" font-size="12">vadeli takipte THYAO ve GARAN."</text>
+
+          <text x="38" y="528">İyi günler · Hane Finans</text>
+        </g>
+        <text x="540" y="558" text-anchor="end" font-size="11" fill="#5fc3ff" font-family="JetBrains Mono,monospace">08:30 ✓✓</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ====== PHASE 5: URL CTA (21-25s) ====== -->
+  <g id="phase5">
+    <animate attributeName="opacity" values="0;0;1;1;1" keyTimes="0;0.84;0.86;1;1" dur="25s" repeatCount="indefinite"/>
+
+    <text x="800" y="240" text-anchor="middle" font-size="36" font-weight="300" fill="#e2e8f0" letter-spacing="-0.5">
+      Türkiye'nin <tspan font-weight="800" fill="#22d3ee">Financial Intelligence</tspan> platformu
+    </text>
+
+    <!-- Big URL -->
+    <text x="800" y="490" text-anchor="middle" font-size="140" font-weight="900" fill="url(#brandText)" letter-spacing="-3" filter="url(#text-glow)" opacity="0">
+      hanefinans<tspan fill="#22d3ee">.</tspan>net
+      <animate attributeName="opacity" values="0;0;0;1;1" keyTimes="0;0.84;0.87;0.89;1" dur="25s" repeatCount="indefinite"/>
+    </text>
+
+    <!-- CTA button -->
+    <g transform="translate(800,610)" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;0;1;1" keyTimes="0;0.84;0.89;0.91;0.93;1" dur="25s" repeatCount="indefinite"/>
+      <rect x="-220" y="-32" width="440" height="64" rx="32" fill="url(#chartLine)" filter="url(#cyan-glow)">
+        <animate attributeName="width" values="440;460;440;460;440" keyTimes="0;0.94;0.96;0.98;1" dur="25s" repeatCount="indefinite"/>
+        <animate attributeName="x" values="-220;-230;-220;-230;-220" keyTimes="0;0.94;0.96;0.98;1" dur="25s" repeatCount="indefinite"/>
+      </rect>
+      <text y="8" text-anchor="middle" font-size="22" font-weight="800" fill="#022c33" letter-spacing="3">ÜCRETSİZ BAŞLA</text>
+    </g>
+
+    <!-- Tagline strip -->
+    <g transform="translate(800,750)" font-size="14" letter-spacing="6" fill="#94a3b8" opacity="0">
+      <animate attributeName="opacity" values="0;0;0;0;0.8;0.8" keyTimes="0;0.84;0.91;0.93;0.95;1" dur="25s" repeatCount="indefinite"/>
+      <circle cx="-340" cy="-4" r="3" fill="#22d3ee"/>
+      <text x="-320" y="0">BIST</text>
+      <circle cx="-260" cy="-4" r="3" fill="#22d3ee"/>
+      <text x="-240" y="0">TEFAS</text>
+      <circle cx="-160" cy="-4" r="3" fill="#22d3ee"/>
+      <text x="-140" y="0">KRİPTO</text>
+      <circle cx="-50" cy="-4" r="3" fill="#22d3ee"/>
+      <text x="-30" y="0">FOREX</text>
+      <circle cx="60" cy="-4" r="3" fill="#22d3ee"/>
+      <text x="80" y="0">MAKRO</text>
+      <circle cx="170" cy="-4" r="3" fill="#22d3ee"/>
+      <text x="190" y="0">AI AGENTS</text>
+      <circle cx="330" cy="-4" r="3" fill="#22d3ee"/>
+    </g>
+
+    <!-- Small logo bottom -->
+    <use href="#hane-logo" x="740" y="100" width="120" height="84"/>
+  </g>
+
+</svg>

@@ -37,7 +37,11 @@ export type MacroKey =
   | 'Ons Platin'
   | 'VIX'
   | 'ABD 10Y Faiz'
-  | 'CDS 5Y';
+  | 'CDS 5Y'
+  | 'BTC/USD'
+  | 'ETH/USD'
+  | 'XRP/USD'
+  | 'DOGE/USD';
 
 export interface MacroIndicator {
   key: MacroKey;

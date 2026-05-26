@@ -21,12 +21,21 @@ const GROUPS: Array<{ key: ForexMeta['group']; title: string; subtitle: string }
   { key: 'INDEX', title: 'Endeksler',       subtitle: 'Dolar endeksi (DXY)' },
 ];
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const FOREX_MEMO_TTL_MS = 2 * 60_000;
+interface ForexMemo {
+  fetchedAt: number;
+  quotes: ForexQuote[];
+  updatedAt: number;
+}
+let forexMemo: ForexMemo | null = null;
+
 export function ForexPage() {
   const [quotes, setQuotes] = useState<ForexQuote[]>(() =>
-    FOREX_SYMBOLS.map((f) => ({ ...f, loading: true })),
+    forexMemo?.quotes ?? FOREX_SYMBOLS.map((f) => ({ ...f, loading: true })),
   );
-  const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [loading, setLoading] = useState(() => !forexMemo);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => forexMemo?.updatedAt);
   const [search, setSearch] = useState('');
 
   const refresh = async () => {
@@ -54,7 +63,25 @@ export function ForexPage() {
     setLoading(false);
   };
 
+  // Memo cache sync
   useEffect(() => {
+    const hasData = quotes.some((q) => q.value != null);
+    if (hasData && updatedAt) {
+      forexMemo = {
+        fetchedAt: Date.now(),
+        quotes,
+        updatedAt,
+      };
+    }
+  }, [quotes, updatedAt]);
+
+  useEffect(() => {
+    const memoAge = forexMemo ? Date.now() - forexMemo.fetchedAt : Infinity;
+    if (memoAge < FOREX_MEMO_TTL_MS) {
+      setLoading(false);
+      const id = setInterval(refresh, 2 * 60_000);
+      return () => clearInterval(id);
+    }
     refresh();
     const id = setInterval(refresh, 2 * 60_000); // 2 dakikada bir
     return () => clearInterval(id);

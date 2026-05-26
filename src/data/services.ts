@@ -1,6 +1,6 @@
 import { MOCK_STOCKS, MOCK_NEWS, MOCK_MACRO_FALLBACK, MOCK_SENTIMENT } from './mock';
 import type { Stock, NewsItem, MacroIndicator, SentimentMention } from './types';
-import { fetchQuotesTD } from './api/twelvedata';
+import { fetchQuotesTD, fetchMetalSpotTD } from './api/twelvedata';
 import { fetchQuotesYahoo, fetchIndexYahoo, YAHOO_SYMBOLS, ouncePriceToGramTRY } from './api/yahoo';
 import { fetchNewsGNews } from './api/gnews';
 import { fetchGramAltinTRY } from './api/goldapi';
@@ -10,15 +10,13 @@ import { loadMacro as loadMacroFx } from './macro';
 import { useAgents } from '@/store/agents';
 import { deriveSentimentFromNews } from './sentiment';
 
-// Cache prefix versiyon ekli — versiyon değişince eski cache otomatik invalid olur
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v7';
 const CACHE_PREFIX = `fa.service.${CACHE_VERSION}.`;
-const STOCK_TTL_MS = 60_000;
-const NEWS_TTL_MS = 90_000; // 90 sn — daha taze haberler için
-const MACRO_TTL_MS = 60_000;
+const STOCK_TTL_MS = 30_000;
+const NEWS_TTL_MS = 90_000;
+const MACRO_TTL_MS = 30_000;
 const SENTIMENT_TTL_MS = 5 * 60_000;
 
-// Build/refresh durumunda eski versiyonları ve eski mock fallback değerlerini temizle
 (function purgeStaleCache() {
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
@@ -28,15 +26,11 @@ const SENTIMENT_TTL_MS = 5 * 60_000;
         localStorage.removeItem(k);
       }
     }
-    // Eski macro cache'i de tümüyle temizle (değer skali güncellendi)
     localStorage.removeItem('fa.macro.cache.v1');
   } catch { /* ignore */ }
 })();
 
-interface CacheEntry<T> {
-  fetchedAt: number;
-  payload: T;
-}
+interface CacheEntry<T> { fetchedAt: number; payload: T; }
 
 function readCache<T>(key: string, ttl: number): T | null {
   try {
@@ -45,17 +39,13 @@ function readCache<T>(key: string, ttl: number): T | null {
     const parsed = JSON.parse(raw) as CacheEntry<T>;
     if (Date.now() - parsed.fetchedAt > ttl) return null;
     return parsed.payload;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function writeCache<T>(key: string, payload: T) {
   try {
     localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ fetchedAt: Date.now(), payload }));
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 }
 
 function enrichStocks(live: Stock[]): Stock[] {
@@ -65,7 +55,25 @@ function enrichStocks(live: Stock[]): Stock[] {
   });
 }
 
-// ---------- Stocks ----------
+// Spot metals — inline fetch (no module indirection)
+interface SpotMetalsApi {
+  ok: boolean;
+  XAU?: { value: number; changePct: number };
+  XAG?: { value: number; changePct: number };
+  XPT?: { value: number; changePct: number };
+}
+async function fetchSpotMetalsInline(): Promise<SpotMetalsApi | null> {
+  try {
+    const r = await fetch('/api/spot-metals');
+    if (!r.ok) return null;
+    const j = (await r.json()) as SpotMetalsApi;
+    if (!j.ok) return null;
+    return j;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; source: 'live' | 'mock' | 'mixed' }> {
   const want = symbols ?? MOCK_STOCKS.map((s) => s.symbol);
   const cacheKey = `stocks-${want.sort().join(',')}`;
@@ -102,7 +110,6 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
   return result;
 }
 
-// ---------- News ----------
 export async function loadNews(opts: { query?: string; symbols?: string[]; max?: number } = {}): Promise<{
   data: NewsItem[];
   source: 'live' | 'mock';
@@ -111,7 +118,6 @@ export async function loadNews(opts: { query?: string; symbols?: string[]; max?:
   const cached = readCache<{ data: NewsItem[]; source: 'live' | 'mock' }>(cacheKey, NEWS_TTL_MS);
   if (cached) return cached;
 
-  // 1) Birincil: Pages Function `/api/news` — Mynet/AA/BloombergHT/Yahoo RSS aggregate
   try {
     const params = new URLSearchParams();
     params.set('max', String(opts.max ?? 30));
@@ -126,9 +132,8 @@ export async function loadNews(opts: { query?: string; symbols?: string[]; max?:
         return result;
       }
     }
-  } catch { /* devam, yedek kaynak dene */ }
+  } catch { /* devam */ }
 
-  // 2) Yedek: GNews
   if (API_KEYS.gnews) {
     const knownSymbols = opts.symbols ?? MOCK_STOCKS.map((s) => s.symbol);
     const live = await fetchNewsGNews({ query: opts.query, symbols: knownSymbols, max: opts.max });
@@ -139,12 +144,10 @@ export async function loadNews(opts: { query?: string; symbols?: string[]; max?:
       return result;
     }
   }
-  // Mock'a düşme — boş dön, UI "canlı veri alınamadı" göstersin
   useAgents.getState().setState('news', 'mock');
   return { data: [], source: 'mock' };
 }
 
-// ---------- Macro ----------
 export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 'live' | 'mock' | 'mixed' }> {
   const cacheKey = 'macro-all';
   const cached = readCache<{ data: MacroIndicator[]; source: 'live' | 'mock' | 'mixed' }>(cacheKey, MACRO_TTL_MS);
@@ -154,16 +157,44 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
   const usdTry = base.find((m) => m.key === 'USD/TRY')?.value ?? null;
   const nowIso = new Date().toISOString();
 
-  // BIST 100, BIST 30, Brent, VIX, ons emtia — Yahoo Finance dev proxy
-  const [bist, bist30, brent, vix, silver, platinum, goldOz] = await Promise.all([
+  // Kıymetli maden — backend Stooq spot birincil, TD spot yedek, Yahoo spot yedek, futures son.
+  const spotMetals = await fetchSpotMetalsInline();
+  // Debug: console.log helps verify deploy includes this code
+  if (typeof window !== 'undefined') {
+    try { (window as { __spotMetalsDebug?: SpotMetalsApi | null }).__spotMetalsDebug = spotMetals; } catch { /* ignore */ }
+  }
+
+  const fetchMetal = async (
+    kind: 'XAU' | 'XAG' | 'XPT',
+    tdPair: 'XAU/USD' | 'XAG/USD' | 'XPT/USD',
+    spotSym: string,
+    futSym: string,
+  ): Promise<{ value: number; changePct: number } | null> => {
+    const s = spotMetals?.[kind];
+    if (s && Number.isFinite(s.value) && s.value > 0) {
+      return { value: s.value, changePct: s.changePct };
+    }
+    const td = await fetchMetalSpotTD(tdPair);
+    if (td && Number.isFinite(td.value) && td.value > 0) return td;
+    const ySpot = await fetchIndexYahoo(spotSym);
+    if (ySpot && Number.isFinite(ySpot.value) && ySpot.value > 0) return ySpot;
+    return fetchIndexYahoo(futSym);
+  };
+
+  const [bist, bist30, brent, vix, silver, platinum, goldOz, btc, eth, xrp, doge] = await Promise.all([
     fetchIndexYahoo(YAHOO_SYMBOLS.bist100),
     fetchIndexYahoo(YAHOO_SYMBOLS.bist30),
     fetchIndexYahoo(YAHOO_SYMBOLS.brent),
     fetchIndexYahoo(YAHOO_SYMBOLS.vix),
-    fetchIndexYahoo(YAHOO_SYMBOLS.silver),
-    fetchIndexYahoo(YAHOO_SYMBOLS.platinum),
-    fetchIndexYahoo(YAHOO_SYMBOLS.gold),
+    fetchMetal('XAG', 'XAG/USD', YAHOO_SYMBOLS.silver, 'SI=F'),
+    fetchMetal('XPT', 'XPT/USD', YAHOO_SYMBOLS.platinum, 'PL=F'),
+    fetchMetal('XAU', 'XAU/USD', YAHOO_SYMBOLS.gold, 'GC=F'),
+    fetchIndexYahoo('BTC-USD'),
+    fetchIndexYahoo('ETH-USD'),
+    fetchIndexYahoo('XRP-USD'),
+    fetchIndexYahoo('DOGE-USD'),
   ]);
+
   if (bist) {
     const i = base.findIndex((m) => m.key === 'BIST 100');
     if (i >= 0) base[i] = { ...base[i], value: bist.value, changePct: bist.changePct, source: 'live', updatedAt: nowIso };
@@ -181,69 +212,45 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
     if (i >= 0) base[i] = { ...base[i], value: vix.value, changePct: vix.changePct, source: 'live', updatedAt: nowIso };
   }
 
-  // Gram Gümüş (Yahoo SI=F ons → gram TL)
   if (silver && usdTry) {
     const i = base.findIndex((m) => m.key === 'Gram Gümüş');
     if (i >= 0) {
-      base[i] = {
-        ...base[i],
-        value: ouncePriceToGramTRY(silver.value, usdTry),
-        changePct: silver.changePct,
-        source: 'live',
-        updatedAt: nowIso,
-      };
+      base[i] = { ...base[i], value: ouncePriceToGramTRY(silver.value, usdTry), changePct: silver.changePct, source: 'live', updatedAt: nowIso };
     }
-    // Ons gümüş (USD)
     const oi = base.findIndex((m) => m.key === 'Ons Gümüş');
     if (oi >= 0) {
       base[oi] = { ...base[oi], value: silver.value, changePct: silver.changePct, source: 'live', updatedAt: nowIso };
     }
   }
 
-  // Gram Platin (Yahoo PL=F ons → gram TL)
   if (platinum && usdTry) {
     const i = base.findIndex((m) => m.key === 'Gram Platin');
     if (i >= 0) {
-      base[i] = {
-        ...base[i],
-        value: ouncePriceToGramTRY(platinum.value, usdTry),
-        changePct: platinum.changePct,
-        source: 'live',
-        updatedAt: nowIso,
-      };
+      base[i] = { ...base[i], value: ouncePriceToGramTRY(platinum.value, usdTry), changePct: platinum.changePct, source: 'live', updatedAt: nowIso };
     }
-    // Ons platin (USD)
     const oi = base.findIndex((m) => m.key === 'Ons Platin');
     if (oi >= 0) {
       base[oi] = { ...base[oi], value: platinum.value, changePct: platinum.changePct, source: 'live', updatedAt: nowIso };
     }
   }
 
-  // Gram Altın — birincil: GoldAPI (varsa), yedek: Yahoo GC=F
   let goldFilled = false;
-  if (API_KEYS.goldApi) {
+  if (goldOz && usdTry) {
+    const i = base.findIndex((m) => m.key === 'Gram Altın');
+    if (i >= 0) {
+      base[i] = { ...base[i], value: ouncePriceToGramTRY(goldOz.value, usdTry), changePct: goldOz.changePct, source: 'live', updatedAt: nowIso };
+      goldFilled = true;
+    }
+  }
+  if (!goldFilled && API_KEYS.goldApi) {
     const gold = await fetchGramAltinTRY(usdTry);
     if (gold) {
       const i = base.findIndex((m) => m.key === 'Gram Altın');
       if (i >= 0) {
         base[i] = { ...base[i], value: gold.value, changePct: gold.changePct, source: 'live', updatedAt: nowIso };
-        goldFilled = true;
       }
     }
   }
-  if (!goldFilled && goldOz && usdTry) {
-    const i = base.findIndex((m) => m.key === 'Gram Altın');
-    if (i >= 0) {
-      base[i] = {
-        ...base[i],
-        value: ouncePriceToGramTRY(goldOz.value, usdTry),
-        changePct: goldOz.changePct,
-        source: 'live',
-        updatedAt: nowIso,
-      };
-    }
-  }
-  // Ons altın (USD)
   if (goldOz) {
     const oi = base.findIndex((m) => m.key === 'Ons Altın');
     if (oi >= 0) {
@@ -251,7 +258,22 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
     }
   }
 
-  // Politika Faizi — kullanıcı manuel override edebilir (LocalStorage)
+  // Kripto
+  const cryptoMap: Array<[string, { value: number; changePct: number } | null]> = [
+    ['BTC/USD', btc],
+    ['ETH/USD', eth],
+    ['XRP/USD', xrp],
+    ['DOGE/USD', doge],
+  ];
+  for (const [key, data] of cryptoMap) {
+    if (data) {
+      const i = base.findIndex((m) => m.key === key);
+      if (i >= 0) {
+        base[i] = { ...base[i], value: data.value, changePct: data.changePct, source: 'live', updatedAt: nowIso };
+      }
+    }
+  }
+
   try {
     const manual = localStorage.getItem('fa.macro.policyRate');
     if (manual) {
@@ -263,7 +285,6 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
     }
   } catch { /* ignore */ }
 
-  // TCMB (Politika faizi, TÜFE) — Vite proxy
   try {
     const tcmb = await loadTcmbMacro();
     for (const series of tcmb) {
@@ -281,8 +302,6 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
   return result;
 }
 
-// ---------- Sentiment ----------
-// Reddit yerine: var olan haber akışından türetilir
 export async function loadSentiment(): Promise<{ data: SentimentMention[]; source: 'derived' | 'mock' }> {
   const cacheKey = 'sentiment-derived';
   const cached = readCache<{ data: SentimentMention[]; source: 'derived' | 'mock' }>(cacheKey, SENTIMENT_TTL_MS);
@@ -309,7 +328,5 @@ export function clearServiceCaches() {
       if (k && k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
     }
     localStorage.removeItem('fa.macro.cache.v1');
-  } catch {
-    /* ignore */
-  }
+  } catch { /* ignore */ }
 }

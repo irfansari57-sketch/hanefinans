@@ -37,14 +37,24 @@ interface UsStockRec {
   longScore: number; // sıralama için
 }
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const US_MEMO_TTL_MS = 3 * 60_000;
+interface UsMemo {
+  fetchedAt: number;
+  indexResults: MultiTimeframeResult[];
+  stockRecs: UsStockRec[];
+  updatedAt: number;
+}
+let usMemo: UsMemo | null = null;
+
 export function UsMarketsPage() {
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
 
-  const [indexResults, setIndexResults] = useState<MultiTimeframeResult[]>([]);
-  const [stockRecs, setStockRecs] = useState<UsStockRec[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [indexResults, setIndexResults] = useState<MultiTimeframeResult[]>(() => usMemo?.indexResults ?? []);
+  const [stockRecs, setStockRecs] = useState<UsStockRec[]>(() => usMemo?.stockRecs ?? []);
+  const [loading, setLoading] = useState(() => !usMemo);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => usMemo?.updatedAt);
 
   // Sıralama + filtre + arama state
   const [sortBy, setSortBy] = useState<UsSortBy>('score');
@@ -152,8 +162,26 @@ export function UsMarketsPage() {
     }
   };
 
+  // Memo cache sync
+  useEffect(() => {
+    if ((indexResults.length > 0 || stockRecs.length > 0) && updatedAt) {
+      usMemo = {
+        fetchedAt: Date.now(),
+        indexResults,
+        stockRecs,
+        updatedAt,
+      };
+    }
+  }, [indexResults, stockRecs, updatedAt]);
+
   useEffect(() => {
     if (!proUser) return;
+    const memoAge = usMemo ? Date.now() - usMemo.fetchedAt : Infinity;
+    if (memoAge < US_MEMO_TTL_MS) {
+      setLoading(false);
+      const id = setInterval(refresh, 3 * 60_000);
+      return () => clearInterval(id);
+    }
     refresh();
     const id = setInterval(refresh, 3 * 60_000); // 3 dk
     return () => clearInterval(id);

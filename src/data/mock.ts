@@ -196,11 +196,20 @@ export const MOCK_MACRO_FALLBACK: MacroIndicator[] = [
   { key: 'Brent',           label: 'Brent',          value: 104.2,    changePct: -0.60, unit: '$', source: 'mock', updatedAt: minutesAgo(2) },
   { key: 'VIX',             label: 'VIX',            value: 18.1,     changePct: -2.10, source: 'mock', updatedAt: minutesAgo(3) },
   { key: 'CDS 5Y',          label: 'CDS 5Y',         value: 268,      changePct: -1.20, unit: 'bps', source: 'mock', updatedAt: minutesAgo(2) },
+  // Kripto — popüler 4 (Yahoo BTC-USD format)
+  { key: 'BTC/USD',         label: 'BTC/USD',        value: 95000,    changePct: 0.50,  unit: '$', source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'ETH/USD',         label: 'ETH/USD',        value: 3200,     changePct: 0.80,  unit: '$', source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'XRP/USD',         label: 'XRP/USD',        value: 2.10,     changePct: 1.20,  unit: '$', source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'DOGE/USD',        label: 'DOGE/USD',       value: 0.38,     changePct: 1.50,  unit: '$', source: 'mock', updatedAt: minutesAgo(1) },
 ];
 
+// #106: indicator default 'live' — yahoo-warmer cron + D1 cache ile hisse fiyatları
+// her zaman taze. Diğer 3 agent (news/sentiment/macro) talep üzerine servis
+// çağrısıyla 'live'a flip oluyor. Bu sayede Layout'taki "Mock akış" göstergesi
+// (isMockMode = hepsi mock) yanlış pozitif vermez.
 export const AGENTS_DEFAULT: AgentStatus[] = [
   { key: 'news',      label: 'News Agent',      state: 'mock', description: 'KAP, Reuters, Bloomberg gibi kaynaklardan canlı haber akışını toplar.' },
   { key: 'sentiment', label: 'Sentiment Agent', state: 'mock', description: 'Sosyal medya ve forumlardaki hisse anlatımını puanlar.' },
-  { key: 'indicator', label: 'Indicator Agent', state: 'mock', description: 'Hisse fiyatları, teknik göstergeler ve hareketler için sinyaller üretir.' },
+  { key: 'indicator', label: 'Indicator Agent', state: 'live', description: 'Hisse fiyatları, teknik göstergeler ve hareketler için sinyaller üretir.' },
   { key: 'macro',     label: 'Macro Agent',     state: 'mock', description: 'Makroekonomik göstergeleri ve yaklaşan olayları izler.' },
 ];

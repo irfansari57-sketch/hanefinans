@@ -13,13 +13,22 @@ import { SeoHead } from '@/components/seo/SeoHead';
 
 const AUTO_REFRESH_MS = 60_000;
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const HEATMAP_MEMO_TTL_MS = 60_000;
+interface HeatMapMemo {
+  fetchedAt: number;
+  stocks: Stock[];
+  updatedAt: number;
+}
+let heatMapMemo: HeatMapMemo | null = null;
+
 export function HeatMapPage() {
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
 
-  const [stocks, setStocks] = useState<Stock[]>(MOCK_STOCKS);
-  const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [stocks, setStocks] = useState<Stock[]>(() => heatMapMemo?.stocks ?? MOCK_STOCKS);
+  const [loading, setLoading] = useState(() => !heatMapMemo);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => heatMapMemo?.updatedAt);
   const [sortBy, setSortBy] = useState<'change' | 'size' | 'alpha'>('change');
 
   const allSymbols = useMemo(() => MOCK_STOCKS.map((s) => s.symbol), []);
@@ -36,8 +45,25 @@ export function HeatMapPage() {
     }
   };
 
+  // Memo cache sync
   useEffect(() => {
-    if (!proUser) return; // Sadece PRO için veri çek
+    if (stocks.length > 0 && stocks !== MOCK_STOCKS && updatedAt) {
+      heatMapMemo = {
+        fetchedAt: Date.now(),
+        stocks,
+        updatedAt,
+      };
+    }
+  }, [stocks, updatedAt]);
+
+  useEffect(() => {
+    if (!proUser) return;
+    const memoAge = heatMapMemo ? Date.now() - heatMapMemo.fetchedAt : Infinity;
+    if (memoAge < HEATMAP_MEMO_TTL_MS) {
+      setLoading(false);
+      const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
+      return () => clearInterval(id);
+    }
     refresh(true);
     const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
     return () => clearInterval(id);

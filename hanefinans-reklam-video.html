@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hane Finans — Tanıtım Filmi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1220;
+  --bg-soft:#0f172a;
+  --bg-card:#111a2e;
+  --bg-card-2:#0c1426;
+  --border:#1f2a44;
+  --border-soft:#1a253f;
+  --accent:#22d3ee;
+  --accent-2:#67e8f9;
+  --accent-3:#0891b2;
+  --accent-4:#0e7490;
+  --accent-fg:#022c33;
+  --success:#22c55e;
+  --success-2:#16a34a;
+  --danger:#ef4444;
+  --danger-2:#dc2626;
+  --warning:#f59e0b;
+  --text:#e2e8f0;
+  --text-mute:#94a3b8;
+  --text-dim:#64748b;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;color:var(--text);font-family:'Inter',system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+.stage{
+  position:relative;width:100vw;height:100vh;
+  background:radial-gradient(ellipse 80% 60% at 50% 40%, #0f172a 0%, #0b1220 55%, #050a14 100%);
+  overflow:hidden;
+}
+
+/* Subtle ambient grid */
+.grid-bg{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(34,211,238,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,211,238,0.04) 1px, transparent 1px);
+  background-size:80px 80px;
+  mask-image:radial-gradient(ellipse at center, black 30%, transparent 80%);
+  opacity:0.7;
+}
+
+/* Subtle moving stars */
+.stars{position:absolute;inset:0;pointer-events:none}
+.star{position:absolute;width:2px;height:2px;background:#22d3ee;border-radius:50%;opacity:0;animation:twinkle 4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:0}50%{opacity:0.5;box-shadow:0 0 6px #22d3ee}}
+
+/* Scenes */
+.scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;pointer-events:none;padding:0 60px}
+.scene.active{opacity:1;pointer-events:auto}
+
+/* === LOGO === */
+.hf-logo{display:inline-flex;align-items:center;gap:14px}
+.hf-logo svg{filter:drop-shadow(0 4px 20px rgba(34,211,238,0.35))}
+.hf-name{
+  display:flex;flex-direction:column;line-height:1;
+}
+.hf-name .brand{
+  font-family:'Inter',sans-serif;
+  font-weight:800;
+  font-size:28px;
+  letter-spacing:-0.5px;
+  background:linear-gradient(135deg,#fff 0%,#22d3ee 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hf-name .tag{
+  font-size:10px;color:rgba(34,211,238,0.9);letter-spacing:3px;margin-top:4px;font-weight:600
+}
+
+/* === SCENE 1: Brand intro === */
+.scene-1 .hf-logo{transform:scale(1.6)}
+.scene-1.active .hf-logo svg{animation:logoEnter 1.2s cubic-bezier(.2,.7,.2,1) both}
+.scene-1.active .brand{animation:slideIn 1s ease 0.5s both}
+.scene-1.active .tag{animation:slideIn 1s ease 0.8s both}
+.scene-1 .pulse-ring{position:absolute;width:160px;height:160px;border:1px solid #22d3ee;border-radius:50%;opacity:0;animation:ring 2s ease-out 1.2s infinite}
+@keyframes ring{0%{transform:scale(0.4);opacity:0.6}100%{transform:scale(1.4);opacity:0}}
+@keyframes logoEnter{from{opacity:0;transform:scale(0.4) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* === SCENE 2: Hook with ticker === */
+.hook-text{font-size:84px;font-weight:200;text-align:center;line-height:1.1;letter-spacing:-2px;max-width:1200px}
+.hook-text strong{font-weight:800;color:var(--accent);background:linear-gradient(135deg,#67e8f9,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hook-text .line{display:block;overflow:hidden}
+.hook-text .line span{display:inline-block;transform:translateY(110%)}
+.scene-2.active .hook-text .line:nth-child(1) span{animation:lineUp .9s cubic-bezier(.2,.7,.2,1) .3s forwards}
+.scene-2.active .hook-text .line:nth-child(2) span{animation:lineUp .9s cubic-bezier(.2,.7,.2,1) .7s forwards}
+@keyframes lineUp{to{transform:translateY(0)}}
+
+.ticker-tape{
+  position:absolute;bottom:120px;left:0;right:0;
+  background:rgba(15,23,42,0.85);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:14px 0;overflow:hidden;opacity:0
+}
+.scene-2.active .ticker-tape{animation:fadeIn .8s ease 1.3s forwards}
+.ticker-track{display:flex;gap:48px;width:max-content;animation:tickerSlide 35s linear infinite;font-family:'JetBrains Mono',monospace;font-size:14px}
+@keyframes tickerSlide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker-item{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.ticker-item .sym{font-weight:700;color:var(--text)}
+.ticker-item .price{color:var(--text-mute)}
+.ticker-item.up .chg{color:var(--success)}
+.ticker-item.down .chg{color:var(--danger)}
+.ticker-item .arrow{font-size:11px}
+
+/* === SCENE 3: Multi-Source === */
+.scene-title{font-size:56px;font-weight:300;letter-spacing:-1px;margin-bottom:60px;text-align:center;max-width:1100px}
+.scene-title strong{font-weight:800;background:linear-gradient(135deg,#67e8f9,#22d3ee);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sources-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;width:100%;max-width:1200px}
+.source-card{
+  background:linear-gradient(160deg,rgba(34,211,238,0.06),rgba(15,23,42,0.4));
+  border:1px solid var(--border);
+  border-radius:16px;padding:28px;
+  display:flex;flex-direction:column;gap:14px;
+  opacity:0;transform:translateY(40px);
+  position:relative;overflow:hidden;
+}
+.source-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0;transition:opacity .3s
+}
+.source-card.active::before{opacity:1;animation:scan 2s ease-in-out infinite}
+@keyframes scan{0%,100%{transform:translateX(-100%)}50%{transform:translateX(100%)}}
+.source-card .icon{width:44px;height:44px;border-radius:10px;background:rgba(34,211,238,0.12);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+.source-card .icon svg{width:24px;height:24px}
+.source-card h3{font-size:18px;font-weight:700;color:var(--text)}
+.source-card .meta{font-size:12px;color:var(--text-mute);font-family:'JetBrains Mono',monospace}
+.source-card .pill{display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.12);color:var(--success);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;width:fit-content}
+.source-card .pill .dot{width:6px;height:6px;background:var(--success);border-radius:50%;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+.scene-3.active .source-card:nth-child(1){animation:cardUp .7s ease .3s forwards}
+.scene-3.active .source-card:nth-child(2){animation:cardUp .7s ease .5s forwards}
+.scene-3.active .source-card:nth-child(3){animation:cardUp .7s ease .7s forwards}
+.scene-3.active .source-card:nth-child(4){animation:cardUp .7s ease .9s forwards}
+.scene-3.active .source-card:nth-child(5){animation:cardUp .7s ease 1.1s forwards}
+.scene-3.active .source-card:nth-child(6){animation:cardUp .7s ease 1.3s forwards}
+@keyframes cardUp{to{opacity:1;transform:translateY(0)}}
+
+/* === SCENE 4: Multi-Agent === */
+.agent-stage{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;width:100%;max-width:1100px}
+.agent-card{
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:14px;padding:22px;
+  opacity:0;transform:translateY(30px) scale(0.95);
+  position:relative;
+}
+.agent-card .agent-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.agent-card .agent-name{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--text-mute)}
+.agent-card .agent-name .agent-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.agent-card .live-dot{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--success);font-family:'JetBrains Mono',monospace}
+.agent-card .live-dot .d{width:6px;height:6px;background:var(--success);border-radius:50%;box-shadow:0 0 8px var(--success);animation:pulse 1.5s ease infinite}
+.agent-card .agent-body{font-size:13px;line-height:1.6;color:var(--text)}
+.agent-card .verdict{margin-top:14px;padding:10px 12px;border-radius:8px;font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.verdict.bullish{background:rgba(34,197,94,0.12);color:var(--success);border:1px solid rgba(34,197,94,0.3)}
+.verdict.bearish{background:rgba(239,68,68,0.12);color:var(--danger);border:1px solid rgba(239,68,68,0.3)}
+.verdict.neutral{background:rgba(245,158,11,0.12);color:var(--warning);border:1px solid rgba(245,158,11,0.3)}
+.scene-4.active .agent-card:nth-child(1){animation:agentIn .8s cubic-bezier(.2,.7,.2,1) .3s forwards}
+.scene-4.active .agent-card:nth-child(2){animation:agentIn .8s cubic-bezier(.2,.7,.2,1) .6s forwards}
+.scene-4.active .agent-card:nth-child(3){animation:agentIn .8s cubic-bezier(.2,.7,.2,1) .9s forwards}
+.scene-4.active .agent-card:nth-child(4){animation:agentIn .8s cubic-bezier(.2,.7,.2,1) 1.2s forwards}
+@keyframes agentIn{to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* === SCENE 5: Multi-timeframe verdict — real BIST UI === */
+.app-mockup{
+  width:1280px;max-width:96vw;height:660px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,211,238,0.05);
+  overflow:hidden;display:flex;
+  opacity:0;transform:translateY(40px) scale(0.96);
+}
+.scene-5.active .app-mockup{animation:appIn 1s cubic-bezier(.2,.7,.2,1) .2s forwards}
+@keyframes appIn{to{opacity:1;transform:translateY(0) scale(1)}}
+.mock-sidebar{
+  width:220px;background:#0a1120;border-right:1px solid var(--border);padding:18px 0;font-size:13px;
+}
+.mock-sidebar .sb-brand{padding:0 18px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.mock-sidebar .sb-brand .name{font-weight:800;font-size:15px;letter-spacing:-0.3px}
+.mock-sidebar .sb-group{padding:14px 0;border-bottom:1px solid var(--border-soft)}
+.mock-sidebar .sb-title{padding:0 18px 8px;font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;font-weight:700}
+.mock-sidebar .sb-item{padding:8px 18px;display:flex;align-items:center;gap:10px;color:var(--text-mute);cursor:pointer;transition:all .2s;position:relative}
+.mock-sidebar .sb-item.active{background:rgba(34,211,238,0.08);color:var(--accent)}
+.mock-sidebar .sb-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--accent);border-radius:0 3px 3px 0}
+.mock-sidebar .sb-item svg{width:16px;height:16px}
+.mock-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.mock-header{padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px}
+.mock-search{flex:1;max-width:380px;background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mute)}
+.mock-search svg{width:14px;height:14px}
+.mock-header-actions{display:flex;align-items:center;gap:12px}
+.mock-pro-pill{background:linear-gradient(135deg,#22d3ee,#0891b2);color:#022c33;font-size:11px;font-weight:800;padding:5px 10px;border-radius:6px;letter-spacing:1px}
+.mock-content{flex:1;padding:24px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.mock-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.mock-card-head{display:flex;align-items:center;justify-content:space-between}
+.mock-card-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.mock-card-title .accent-icon{color:var(--accent);display:flex}
+.mock-card-title .accent-icon svg{width:16px;height:16px}
+.mock-card-meta{font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.mock-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-soft);font-size:13px}
+.mock-row:last-child{border:none}
+.mock-row .sym{font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+.mock-row .name{flex:1;margin-left:14px;color:var(--text-mute);font-size:12px}
+.mock-row .pct{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:13px}
+.mock-row .pct.up{color:var(--success)}
+.mock-row .pct.down{color:var(--danger)}
+.mock-mini-spark{width:60px;height:18px}
+.mock-tf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+.mock-tf{background:var(--bg-soft);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.mock-tf .tf-label{font-size:10px;color:var(--text-dim);letter-spacing:1px;font-weight:700;text-transform:uppercase}
+.mock-tf .tf-val{font-size:13px;font-weight:700;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.mock-tf.up .tf-val{color:var(--success)}
+.mock-tf.down .tf-val{color:var(--danger)}
+.mock-tf.neutral .tf-val{color:var(--warning)}
+.mock-verdict{margin-top:12px;padding:14px;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(34,197,94,0.03));border:1px solid rgba(34,197,94,0.3);font-size:14px;font-weight:600;color:var(--success);display:flex;align-items:center;gap:10px}
+.mock-verdict .vbadge{background:var(--success);color:#0a1120;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;letter-spacing:1px}
+
+/* SVG chart for mock */
+.mock-chart-area{height:140px;width:100%;margin-top:6px}
+
+/* === SCENE 6: Morning report → Telegram === */
+.split-stage{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;width:100%;max-width:1280px;align-items:center}
+.report-mock{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  opacity:0;transform:translateX(-30px);
+}
+.scene-6.active .report-mock{animation:slideRight .9s ease .3s forwards}
+@keyframes slideRight{to{opacity:1;transform:translateX(0)}}
+.report-mock .rh{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.report-mock .rh .title{font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px}
+.report-mock .rh .title svg{color:var(--warning);width:22px;height:22px}
+.report-mock .rh .date{font-size:11px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+.report-section{margin-top:14px}
+.report-section .label{font-size:10px;letter-spacing:2px;color:var(--accent);font-weight:700;margin-bottom:6px;text-transform:uppercase}
+.report-section .row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border-soft)}
+.report-section .row .v{font-family:'JetBrains Mono',monospace;font-weight:600}
+.report-section .row .v.up{color:var(--success)}
+.report-section .row .v.down{color:var(--danger)}
+.report-line{height:1px;background:var(--border);margin:14px 0}
+.report-action{margin-top:18px;background:linear-gradient(135deg,#22d3ee,#0891b2);color:#022c33;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+
+.tg-mock{
+  background:#17212b;border-radius:16px;
+  padding:18px;box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  border:1px solid #2b3a4a;
+  opacity:0;transform:translateX(30px);
+  position:relative;
+}
+.scene-6.active .tg-mock{animation:slideLeft .9s ease .6s forwards}
+@keyframes slideLeft{to{opacity:1;transform:translateX(0)}}
+.tg-head{display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid #2b3a4a;margin-bottom:12px}
+.tg-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#22d3ee,#0891b2);display:flex;align-items:center;justify-content:center;color:#022c33;font-weight:800;font-size:14px}
+.tg-name{font-size:14px;font-weight:600;color:#fff}
+.tg-sub{font-size:11px;color:#7a8a9a}
+.tg-bubble{background:#2b3a4a;color:#e4f2ff;padding:14px;border-radius:12px;font-size:13px;line-height:1.5;font-family:'JetBrains Mono',monospace;white-space:pre-line;position:relative}
+.tg-bubble .seen{position:absolute;bottom:6px;right:10px;font-size:10px;color:#5fc3ff;display:flex;align-items:center;gap:3px}
+.tg-bubble .typing{display:inline-block}
+.tg-bubble .typing::after{content:'▌';color:#22d3ee;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+.scene-6 .scene-title{font-size:42px;margin-bottom:40px}
+
+/* === SCENE 7: CTA === */
+.cta-stage{display:flex;flex-direction:column;align-items:center;gap:30px;text-align:center}
+.cta-stage .pre{font-size:32px;font-weight:300;color:var(--text-mute);opacity:0}
+.cta-stage .pre strong{color:var(--text);font-weight:700}
+.scene-7.active .pre{animation:fadeIn .8s ease .3s forwards}
+.cta-url{
+  font-size:140px;font-weight:900;letter-spacing:-4px;line-height:1;
+  background:linear-gradient(135deg,#fff 0%,#67e8f9 50%,#22d3ee 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  opacity:0;
+  filter:drop-shadow(0 0 40px rgba(34,211,238,0.4));
+}
+.cta-url .dot{
+  background:linear-gradient(135deg,#22d3ee,#0891b2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.scene-7.active .cta-url{animation:ctaUrlIn 1.2s cubic-bezier(.2,.8,.2,1) .7s forwards}
+@keyframes ctaUrlIn{from{opacity:0;transform:scale(0.7) translateY(40px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.cta-btn{
+  margin-top:10px;padding:20px 56px;
+  background:linear-gradient(135deg,#22d3ee,#0891b2);color:#022c33;
+  font-size:18px;font-weight:800;letter-spacing:3px;border-radius:60px;border:none;cursor:pointer;
+  box-shadow:0 15px 50px rgba(34,211,238,0.4);
+  opacity:0;text-transform:uppercase;
+}
+.cta-btn:hover{transform:translateY(-2px)}
+.scene-7.active .cta-btn{animation:fadeInUp .8s ease 1.8s forwards, ctaPulse 2s ease 2.6s infinite}
+@keyframes ctaPulse{0%,100%{box-shadow:0 15px 50px rgba(34,211,238,0.4);transform:scale(1)}50%{box-shadow:0 15px 80px rgba(34,211,238,0.8);transform:scale(1.04)}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{to{opacity:1}}
+.tagline-strip{
+  position:absolute;bottom:60px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:18px;font-size:12px;letter-spacing:6px;color:var(--text-mute);opacity:0
+}
+.scene-7.active .tagline-strip{animation:fadeIn .8s ease 2.4s forwards}
+.tagline-strip .ts-dot{width:5px;height:5px;background:var(--accent);border-radius:50%;box-shadow:0 0 6px var(--accent)}
+
+/* === Top HUD (scene labels + progress) === */
+.hud-top{
+  position:absolute;top:24px;left:0;right:0;display:flex;justify-content:space-between;
+  padding:0 30px;z-index:50;pointer-events:none;
+}
+.hud-brand{
+  display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:4px;
+  color:var(--text-mute);background:rgba(15,23,42,0.5);backdrop-filter:blur(20px);
+  padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+}
+.hud-brand .ts-dot{width:5px;height:5px;background:var(--accent);border-radius:50%;box-shadow:0 0 6px var(--accent)}
+.scene-counter{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-mute);background:rgba(15,23,42,0.5);backdrop-filter:blur(20px);padding:8px 14px;border-radius:8px;border:1px solid var(--border)}
+.scene-counter .acc{color:var(--accent)}
+.progress{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.05);z-index:100}
+.progress-bar{height:100%;background:linear-gradient(90deg,#22d3ee,#67e8f9);width:0;box-shadow:0 0 12px rgba(34,211,238,0.6)}
+
+/* Controls */
+.controls{position:absolute;bottom:24px;right:24px;display:flex;gap:8px;z-index:200}
+.ctrl-btn{
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(15,23,42,0.7);border:1px solid var(--border);color:var(--text-mute);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(20px);transition:all .2s
+}
+.ctrl-btn:hover{background:rgba(34,211,238,0.15);border-color:var(--accent);color:var(--accent)}
+.ctrl-btn svg{width:18px;height:18px}
+
+/* Start overlay */
+.start-overlay{
+  position:absolute;inset:0;background:rgba(11,18,32,0.96);backdrop-filter:blur(20px);z-index:1000;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:28px;cursor:pointer;
+}
+.start-overlay .hf-logo{transform:scale(1.4)}
+.start-tagline{color:var(--text-mute);font-size:14px;letter-spacing:6px;text-transform:uppercase}
+.start-play{
+  width:96px;height:96px;border-radius:50%;
+  background:linear-gradient(135deg,#22d3ee,#0891b2);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 60px rgba(34,211,238,0.5);
+  animation:playPulse 2s ease infinite;cursor:pointer;
+}
+@keyframes playPulse{0%,100%{box-shadow:0 0 40px rgba(34,211,238,0.4);transform:scale(1)}50%{box-shadow:0 0 80px rgba(34,211,238,0.7);transform:scale(1.05)}}
+.start-play svg{width:36px;height:36px;color:#022c33;margin-left:5px}
+.start-cta{font-size:13px;color:var(--text-mute);letter-spacing:2px;text-transform:uppercase}
+.start-overlay.hidden{display:none}
+
+/* SVG helpers */
+.spark-line{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <div class="grid-bg"></div>
+  <div class="stars" id="stars"></div>
+
+  <!-- Reusable: SVG of Hane Finans logo (5 bars + dashed waves) -->
+  <template id="logoSvgTpl">
+    <svg width="64" height="45" viewBox="0 0 80 56" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hf-bar-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#67e8f9"/>
+          <stop offset="50%" stop-color="#22d3ee"/>
+          <stop offset="100%" stop-color="#0891b2"/>
+        </linearGradient>
+        <pattern id="hf-pixels" patternUnits="userSpaceOnUse" width="2" height="2.5">
+          <rect width="2" height="2.5" fill="url(#hf-bar-grad)"/>
+          <rect y="0.8" width="2" height="0.5" fill="#0e7490" opacity="0.35"/>
+        </pattern>
+        <linearGradient id="hf-top-light" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#a5f3fc"/>
+          <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+        </linearGradient>
+        <filter id="hf-skyline-glow"><feGaussianBlur stdDeviation="0.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <g filter="url(#hf-skyline-glow)">
+        <rect x="13" y="30" width="8" height="18" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="24" y="20" width="8" height="28" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="35" y="6"  width="8" height="42" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="46" y="14" width="8" height="34" rx="0.5" fill="url(#hf-pixels)"/>
+        <rect x="57" y="26" width="8" height="22" rx="0.5" fill="url(#hf-pixels)"/>
+      </g>
+      <g opacity="0.85">
+        <rect x="13" y="30" width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="24" y="20" width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="35" y="6"  width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="46" y="14" width="8" height="1.2" fill="url(#hf-top-light)"/>
+        <rect x="57" y="26" width="8" height="1.2" fill="url(#hf-top-light)"/>
+      </g>
+      <path d="M 0,50 C 14,44 28,54 40,50 S 66,42 80,48" stroke="#22d3ee" stroke-width="0.8" fill="none" stroke-dasharray="1.2,1.6" opacity="0.95"/>
+      <path d="M 0,53 C 18,48 32,56 42,53 S 68,46 80,52" stroke="#22d3ee" stroke-width="0.6" fill="none" stroke-dasharray="0.8,1.8" opacity="0.55"/>
+      <ellipse cx="40" cy="50" rx="38" ry="6" fill="#22d3ee" opacity="0.12"/>
+    </svg>
+  </template>
+
+  <!-- ====== HUD ====== -->
+  <div class="hud-top">
+    <div class="hud-brand">
+      <span class="ts-dot"></span>
+      <span>HANE FINANS</span>
+      <span class="ts-dot"></span>
+      <span>FINANCIAL INTELLIGENCE</span>
+    </div>
+    <div class="scene-counter" id="sceneCounter">
+      <span>SAHNE</span>&nbsp;&nbsp;<span class="acc" id="sceneNum">01</span>/07
+    </div>
+  </div>
+
+  <!-- ====== SCENE 1: Brand intro ====== -->
+  <div class="scene scene-1" data-dur="5000">
+    <div class="pulse-ring"></div>
+    <div class="hf-logo" data-logo></div>
+  </div>
+
+  <!-- ====== SCENE 2: Hook + ticker ====== -->
+  <div class="scene scene-2" data-dur="7000">
+    <div class="hook-text">
+      <span class="line"><span>Piyasanın <strong>nabzı</strong>.</span></span>
+      <span class="line"><span>Cebinizde, gerçek zamanlı.</span></span>
+    </div>
+    <div class="ticker-tape">
+      <div class="ticker-track" id="tickerTrack"></div>
+    </div>
+  </div>
+
+  <!-- ====== SCENE 3: Multi-source data ====== -->
+  <div class="scene scene-3" data-dur="9000">
+    <div class="scene-title">Tüm piyasalar <strong>tek ekran</strong></div>
+    <div class="sources-grid">
+      <div class="source-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg></div>
+        <div>
+          <h3>BIST 500</h3>
+          <div class="meta">Yahoo Finance · gecikmesiz</div>
+        </div>
+        <span class="pill"><span class="dot"></span>CANLI</span>
+      </div>
+      <div class="source-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div>
+          <h3>TEFAS Fonları</h3>
+          <div class="meta">600+ yatırım fonu · günlük</div>
+        </div>
+        <span class="pill"><span class="dot"></span>GÜNCEL</span>
+      </div>
+      <div class="source-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20"/></svg></div>
+        <div>
+          <h3>Kripto + Forex</h3>
+          <div class="meta">CoinGecko · Yahoo FX</div>
+        </div>
+        <span class="pill"><span class="dot"></span>7/24</span>
+      </div>
+      <div class="source-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+        <div>
+          <h3>Makro &amp; TCMB</h3>
+          <div class="meta">EVDS · TÜFE · faiz · sepet</div>
+        </div>
+        <span class="pill"><span class="dot"></span>RESMİ</span>
+      </div>
+      <div class="source-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></div>
+        <div>
+          <h3>KAP + Haberler</h3>
+          <div class="meta">15+ kaynak · AI özetli</div>
+        </div>
+        <span class="pill"><span class="dot"></span>ANLIK</span>
+      </div>
+      <div class="source-card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg></div>
+        <div>
+          <h3>ABD + Global</h3>
+          <div class="meta">S&amp;P, NASDAQ, DJ, DAX, FTSE</div>
+        </div>
+        <span class="pill"><span class="dot"></span>PRO</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SCENE 4: Multi-Agent AI ====== -->
+  <div class="scene scene-4" data-dur="9000">
+    <div class="scene-title"><strong>4 Ajan</strong> · Tek karar</div>
+    <div class="agent-stage">
+      <div class="agent-card">
+        <div class="agent-head">
+          <div class="agent-name">
+            <span class="agent-icon" style="background:rgba(34,211,238,0.12);color:#22d3ee"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg></span>
+            <span>SENTIMENT AGENT</span>
+          </div>
+          <span class="live-dot"><span class="d"></span>v2.1</span>
+        </div>
+        <div class="agent-body">Reddit · Twitter · Forum sinyalleri tarandı. <strong style="color:var(--success)">THYAO</strong> ve <strong style="color:var(--success)">ASELS</strong> için pozitif duyarlılık dalgası tespit edildi.</div>
+        <div class="verdict bullish">▲  POZİTİF MOMENTUM — 247 mention / 24sa</div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-head">
+          <div class="agent-name">
+            <span class="agent-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg></span>
+            <span>NEWS AGENT</span>
+          </div>
+          <span class="live-dot"><span class="d"></span>v3.0</span>
+        </div>
+        <div class="agent-body">KAP açıklaması: <strong>EREGL</strong> Q3 net kârı beklentinin %18 üzerinde. Anadolu Sigorta temettü kararı pozitif sinyal.</div>
+        <div class="verdict neutral">◆  KARMA — 12 önemli haber</div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-head">
+          <div class="agent-name">
+            <span class="agent-icon" style="background:rgba(34,197,94,0.12);color:#22c55e"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg></span>
+            <span>MACRO AGENT</span>
+          </div>
+          <span class="live-dot"><span class="d"></span>EVDS</span>
+        </div>
+        <div class="agent-body">TÜFE: <strong>%47.3</strong> (yıllık). Politika faizi: <strong>%42.5</strong>. USD/TRY: <strong>34.18</strong>. Reel faiz: <span style="color:var(--danger)">-%4.8</span>.</div>
+        <div class="verdict bearish">▼  GERGİN — Reel faiz negatif</div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-head">
+          <div class="agent-name">
+            <span class="agent-icon" style="background:rgba(168,85,247,0.12);color:#a855f7"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 4-4"/></svg></span>
+            <span>INDICATOR AGENT</span>
+          </div>
+          <span class="live-dot"><span class="d"></span>RSI · MACD · ADX</span>
+        </div>
+        <div class="agent-body">5 zaman dilimi taraması: <strong>GARAN</strong> 4 saatlik RSI 32, golden cross hazırlığı. MACD pozitif kesişim.</div>
+        <div class="verdict bullish">▲  AL SİNYALİ — 9 sembolde</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SCENE 5: App mockup ====== -->
+  <div class="scene scene-5" data-dur="10000">
+    <div class="app-mockup">
+      <!-- Sidebar -->
+      <div class="mock-sidebar">
+        <div class="sb-brand">
+          <div data-logo-small></div>
+          <div class="name">HANE<br><span style="color:var(--accent)">FINANS</span></div>
+        </div>
+        <div class="sb-group">
+          <div class="sb-title">Genel</div>
+          <div class="sb-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Panel</div>
+          <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>Günlük Analiz</div>
+          <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3"/><path d="M12 2C6 8 6 14 12 22c6-8 6-14 0-20z"/></svg>Öneriler</div>
+        </div>
+        <div class="sb-group">
+          <div class="sb-title">Piyasalar</div>
+          <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>Hisseler</div>
+          <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 5L5 19M9 5v10M5 9h10M19 13v6M13 19h6"/></svg>Fonlar</div>
+          <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>Emtialar</div>
+          <div class="sb-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M14.31 8l5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94"/></svg>Kripto</div>
+        </div>
+      </div>
+
+      <!-- Main -->
+      <div class="mock-main">
+        <div class="mock-header">
+          <div class="mock-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span>Akıllı arama: hisse, fon veya sembol…</span>
+          </div>
+          <div class="mock-header-actions">
+            <span class="mock-pro-pill">PRO</span>
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#22d3ee,#0891b2);"></div>
+          </div>
+        </div>
+        <div class="mock-content">
+          <!-- Top movers -->
+          <div class="mock-card">
+            <div class="mock-card-head">
+              <div class="mock-card-title"><span class="accent-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/></svg></span>BIST Top Movers</div>
+              <div class="mock-card-meta">CANLI · 15:42</div>
+            </div>
+            <div>
+              <div class="mock-row"><span class="sym">THYAO</span><span class="name">Türk Hava Yolları</span><svg class="mock-mini-spark" viewBox="0 0 60 18"><polyline class="spark-line" stroke="#22c55e" points="0,14 8,12 16,10 24,11 32,7 40,5 48,4 60,2"/></svg><span class="pct up">+4.82%</span></div>
+              <div class="mock-row"><span class="sym">ASELS</span><span class="name">Aselsan</span><svg class="mock-mini-spark" viewBox="0 0 60 18"><polyline class="spark-line" stroke="#22c55e" points="0,12 10,11 18,9 28,8 36,6 44,5 52,3 60,2"/></svg><span class="pct up">+3.61%</span></div>
+              <div class="mock-row"><span class="sym">GARAN</span><span class="name">Garanti BBVA</span><svg class="mock-mini-spark" viewBox="0 0 60 18"><polyline class="spark-line" stroke="#22c55e" points="0,10 8,11 16,9 24,8 32,7 40,7 48,6 60,5"/></svg><span class="pct up">+2.14%</span></div>
+              <div class="mock-row"><span class="sym">EREGL</span><span class="name">Ereğli Demir Çelik</span><svg class="mock-mini-spark" viewBox="0 0 60 18"><polyline class="spark-line" stroke="#ef4444" points="0,4 8,6 16,7 24,9 32,8 40,11 48,12 60,14"/></svg><span class="pct down">-1.92%</span></div>
+              <div class="mock-row"><span class="sym">KCHOL</span><span class="name">Koç Holding</span><svg class="mock-mini-spark" viewBox="0 0 60 18"><polyline class="spark-line" stroke="#22c55e" points="0,12 10,10 20,9 30,8 40,8 48,6 60,4"/></svg><span class="pct up">+1.47%</span></div>
+            </div>
+          </div>
+
+          <!-- Multi-timeframe -->
+          <div class="mock-card">
+            <div class="mock-card-head">
+              <div class="mock-card-title"><span class="accent-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>Çoklu Zaman Dilimi · GARAN</div>
+              <div class="mock-card-meta">RSI · MACD · ADX</div>
+            </div>
+            <svg class="mock-chart-area" viewBox="0 0 400 140" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.4"/>
+                  <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <g stroke="#1f2a44" stroke-width="0.5">
+                <line x1="0" y1="35" x2="400" y2="35"/>
+                <line x1="0" y1="70" x2="400" y2="70"/>
+                <line x1="0" y1="105" x2="400" y2="105"/>
+              </g>
+              <path d="M0,110 Q40,100 60,95 T120,80 T180,70 T240,60 T300,40 T400,20 L400,140 L0,140 Z" fill="url(#chartGrad)"/>
+              <path d="M0,110 Q40,100 60,95 T120,80 T180,70 T240,60 T300,40 T400,20" fill="none" stroke="#22d3ee" stroke-width="2"/>
+              <circle cx="400" cy="20" r="4" fill="#22d3ee"/>
+              <circle cx="400" cy="20" r="8" fill="#22d3ee" opacity="0.3"/>
+            </svg>
+            <div class="mock-tf-grid">
+              <div class="mock-tf up"><div class="tf-label">15dk</div><div class="tf-val">AL</div></div>
+              <div class="mock-tf up"><div class="tf-label">1sa</div><div class="tf-val">AL</div></div>
+              <div class="mock-tf up"><div class="tf-label">4sa</div><div class="tf-val">AL</div></div>
+              <div class="mock-tf neutral"><div class="tf-label">1g</div><div class="tf-val">TUT</div></div>
+            </div>
+            <div class="mock-verdict"><span class="vbadge">VERDICT</span>Güçlü Al · Big Player Lean: +0.72</div>
+          </div>
+
+          <!-- Sentiment/News -->
+          <div class="mock-card">
+            <div class="mock-card-head">
+              <div class="mock-card-title"><span class="accent-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg></span>Sentiment Akışı</div>
+              <div class="mock-card-meta">son 24sa</div>
+            </div>
+            <div>
+              <div class="mock-row"><span class="sym" style="color:var(--accent)">@</span><span class="name" style="margin-left:0;color:var(--text)">"THYAO Q3 sonrası dirençleri kırdı..."</span><span class="pct up">+87</span></div>
+              <div class="mock-row"><span class="sym" style="color:var(--accent)">@</span><span class="name" style="margin-left:0;color:var(--text)">"BIST 100'de teknik formasyon iyi"</span><span class="pct up">+54</span></div>
+              <div class="mock-row"><span class="sym" style="color:var(--accent)">@</span><span class="name" style="margin-left:0;color:var(--text)">"USD/TRY yatay, fonlar tercih ediliyor"</span><span class="pct">+18</span></div>
+            </div>
+          </div>
+
+          <!-- TEFAS Top -->
+          <div class="mock-card">
+            <div class="mock-card-head">
+              <div class="mock-card-title"><span class="accent-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 21h19M3 21V9l9-7 9 7v12M9 9h6v12H9z"/></svg></span>TEFAS · 30g Top Performans</div>
+              <div class="mock-card-meta">600+ fon taranıyor</div>
+            </div>
+            <div>
+              <div class="mock-row"><span class="sym">IPB</span><span class="name">İş Portföy BIST 30 Hisse</span><span class="pct up">+11.2%</span></div>
+              <div class="mock-row"><span class="sym">AFA</span><span class="name">Ak Portföy Hisse</span><span class="pct up">+9.8%</span></div>
+              <div class="mock-row"><span class="sym">QQB</span><span class="name">QNB Finans Birinci Hisse</span><span class="pct up">+8.4%</span></div>
+              <div class="mock-row"><span class="sym">GAH</span><span class="name">Garanti BBVA Hisse</span><span class="pct up">+7.9%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SCENE 6: Morning Report → Telegram ====== -->
+  <div class="scene scene-6" data-dur="9000">
+    <div class="scene-title">Sabah <strong>raporu</strong>, doğrudan cebinize</div>
+    <div class="split-stage">
+      <!-- Report mock -->
+      <div class="report-mock">
+        <div class="rh">
+          <div class="title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg>Günlük Analiz</div>
+          <div class="date">24 MAY 2026 · 08:30</div>
+        </div>
+        <div class="report-section">
+          <div class="label">Kripto Liderler</div>
+          <div class="row"><span>BTC · $68,420</span><span class="v up">+1.8%</span></div>
+          <div class="row"><span>ETH · $3,142</span><span class="v up">+2.4%</span></div>
+          <div class="row"><span>F&amp;G Index</span><span class="v">68 · Greed</span></div>
+        </div>
+        <div class="report-section">
+          <div class="label">BIST Verdict — Çoklu Zaman Dilimi</div>
+          <div class="row"><span>THYAO</span><span class="v up">GÜÇLÜ AL · 87/100</span></div>
+          <div class="row"><span>ASELS</span><span class="v up">AL · 74/100</span></div>
+          <div class="row"><span>GARAN</span><span class="v up">AL · 71/100</span></div>
+          <div class="row"><span>EREGL</span><span class="v down">SAT · 28/100</span></div>
+        </div>
+        <div class="report-section">
+          <div class="label">Makro Özet</div>
+          <div class="row"><span>USD/TRY</span><span class="v">34.18 · ±0.0%</span></div>
+          <div class="row"><span>Politika Faizi</span><span class="v">42.50%</span></div>
+        </div>
+        <div class="report-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Telegram'a Gönder
+        </div>
+      </div>
+
+      <!-- Telegram mock -->
+      <div class="tg-mock">
+        <div class="tg-head">
+          <div class="tg-avatar">HF</div>
+          <div>
+            <div class="tg-name">Hane Finans · Günlük</div>
+            <div class="tg-sub">son görülme: az önce</div>
+          </div>
+        </div>
+        <div class="tg-bubble">
+🌅 GÜNAYDIN
+24 Mayıs · BIST açılışına 2 saat
+
+📊 BIST Verdict
+• THYAO  ▲ GÜÇLÜ AL
+• ASELS  ▲ AL
+• GARAN  ▲ AL
+• EREGL  ▼ SAT
+
+💰 Kripto
+BTC $68,420 (+1.8%)
+ETH $3,142 (+2.4%)
+
+🌐 USD/TRY 34.18
+
+İyi günler · Hane Finans<span class="seen">08:30 ✓✓</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SCENE 7: CTA ====== -->
+  <div class="scene scene-7" data-dur="9000">
+    <div class="cta-stage">
+      <div class="pre">Türkiye'nin <strong>Financial Intelligence</strong> platformu</div>
+      <div class="cta-url">hanefinans<span class="dot">.</span>net</div>
+      <button class="cta-btn" onclick="window.open('https://hanefinans.net','_blank')">ÜCRETSİZ BAŞLA</button>
+    </div>
+    <div class="tagline-strip">
+      <span class="ts-dot"></span>
+      <span>BIST</span>
+      <span class="ts-dot"></span>
+      <span>TEFAS</span>
+      <span class="ts-dot"></span>
+      <span>KRİPTO</span>
+      <span class="ts-dot"></span>
+      <span>MAKRO</span>
+      <span class="ts-dot"></span>
+      <span>AI AGENTS</span>
+      <span class="ts-dot"></span>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="ctrl-btn" id="muteBtn" title="Ses">
+      <svg id="muteIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+        <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+      </svg>
+    </button>
+    <button class="ctrl-btn" id="replayBtn" title="Tekrar oynat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+    </button>
+  </div>
+
+  <!-- Start overlay -->
+  <div class="start-overlay" id="startOverlay">
+    <div class="hf-logo" data-logo-start></div>
+    <div class="start-tagline">FINANCIAL INTELLIGENCE</div>
+    <div class="start-play"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg></div>
+    <div class="start-cta">TANITIM FİLMİNİ BAŞLAT</div>
+  </div>
+
+</div>
+
+<script>
+// ===== Setup logos =====
+function buildLogo(target, withText=true){
+  const tpl = document.getElementById('logoSvgTpl');
+  const svg = tpl.content.cloneNode(true).querySelector('svg');
+  target.innerHTML = '';
+  target.appendChild(svg);
+  if (withText) {
+    const txt = document.createElement('div');
+    txt.className = 'hf-name';
+    txt.innerHTML = '<span class="brand">HANE FINANS</span><span class="tag">FINANCIAL INTELLIGENCE</span>';
+    target.appendChild(txt);
+  }
+}
+document.querySelectorAll('[data-logo]').forEach(el => buildLogo(el));
+document.querySelectorAll('[data-logo-start]').forEach(el => buildLogo(el));
+document.querySelectorAll('[data-logo-small]').forEach(el => {
+  const tpl = document.getElementById('logoSvgTpl');
+  const svg = tpl.content.cloneNode(true).querySelector('svg');
+  svg.setAttribute('width', '36');
+  svg.setAttribute('height', '26');
+  el.innerHTML = '';
+  el.appendChild(svg);
+});
+
+// ===== Stars =====
+const stars = document.getElementById('stars');
+for (let i = 0; i < 50; i++){
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.left = Math.random()*100 + '%';
+  s.style.top = Math.random()*100 + '%';
+  s.style.animationDelay = (Math.random()*5) + 's';
+  stars.appendChild(s);
+}
+
+// ===== Ticker =====
+const tickerData = [
+  ['THYAO','312.40','+4.82','up'],['ASELS','75.20','+3.61','up'],['GARAN','142.80','+2.14','up'],
+  ['AKBNK','68.95','+1.84','up'],['KCHOL','234.00','+1.47','up'],['SAHOL','91.40','+1.22','up'],
+  ['EREGL','48.20','-1.92','down'],['KRDMD','24.80','-0.84','down'],['SISE','56.40','+0.71','up'],
+  ['PETKM','18.62','+0.54','up'],['ISCTR','18.20','-0.27','down'],['YKBNK','32.40','+0.93','up'],
+  ['HALKB','17.85','+1.12','up'],['VAKBN','16.20','+0.62','up'],['OTKAR','442.00','+2.81','up'],
+  ['TKFEN','52.30','-0.38','down'],['DOHOL','27.50','+0.18','up'],['ALARK','88.20','+1.84','up'],
+  ['BIST 100','9,847.32','+1.42','up'],['USD/TRY','34.18','+0.04','up'],['EUR/TRY','37.04','-0.12','down'],
+  ['ALTIN','2,621','+0.84','up'],['BRENT','82.40','+1.21','up'],['BTC','$68,420','+1.8','up'],
+  ['ETH','$3,142','+2.4','up']
+];
+function buildTicker(){
+  const track = document.getElementById('tickerTrack');
+  let html = '';
+  const items = tickerData.concat(tickerData);
+  items.forEach(([sym,price,chg,dir]) => {
+    const arrow = dir === 'up' ? '▲' : '▼';
+    html += `<span class="ticker-item ${dir}"><span class="sym">${sym}</span><span class="price">${price}</span><span class="chg">${arrow} ${chg}%</span></span>`;
+  });
+  track.innerHTML = html;
+}
+buildTicker();
+
+// ===== Scene engine =====
+const scenes = document.querySelectorAll('.scene');
+const progressBar = document.getElementById('progressBar');
+const sceneNum = document.getElementById('sceneNum');
+const totalScenes = scenes.length;
+let current = 0;
+let sceneStart = 0;
+let totalDur = 0;
+let running = false;
+let raf = null;
+scenes.forEach(s => totalDur += parseInt(s.dataset.dur));
+
+function setScene(idx){
+  scenes.forEach((s,i) => s.classList.toggle('active', i === idx));
+  sceneNum.textContent = String(idx + 1).padStart(2, '0');
+  current = idx;
+  sceneStart = performance.now();
+  onSceneEnter(idx);
+}
+
+function tick(){
+  if (!running) return;
+  const now = performance.now();
+  const sceneEl = now - sceneStart;
+  const sceneDur = parseInt(scenes[current].dataset.dur);
+  let cum = 0;
+  for (let i = 0; i < current; i++) cum += parseInt(scenes[i].dataset.dur);
+  const total = cum + Math.min(sceneEl, sceneDur);
+  progressBar.style.width = (total / totalDur * 100) + '%';
+  if (sceneEl >= sceneDur){
+    if (current < totalScenes - 1){
+      setScene(current + 1);
+    } else {
+      running = false;
+      return;
+    }
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+// ===== Audio =====
+let audioCtx = null;
+let muted = false;
+let pad = null;
+
+function ensureAudio(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function tone(freq, dur, type='sine', vol=0.1, delay=0){
+  if (muted) return;
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  g.gain.value = 0;
+  osc.connect(g); g.connect(ctx.destination);
+  const t0 = ctx.currentTime + delay;
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.start(t0); osc.stop(t0 + dur + 0.05);
+}
+function chord(notes, dur, vol=0.06){ notes.forEach(n => tone(n, dur, 'sine', vol)); }
+function whoosh(){
+  if (muted) return;
+  const ctx = ensureAudio();
+  const bs = ctx.sampleRate * 0.6;
+  const buf = ctx.createBuffer(1, bs, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bs; i++) d[i] = (Math.random()*2 - 1) * (1 - i/bs);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+  f.frequency.setValueAtTime(2200, ctx.currentTime);
+  f.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.6);
+  const g = ctx.createGain(); g.gain.value = 0.1;
+  src.connect(f); f.connect(g); g.connect(ctx.destination);
+  src.start();
+}
+function startPad(){
+  if (muted || pad) return;
+  const ctx = ensureAudio();
+  const notes = [110, 138.59, 164.81, 220];
+  pad = notes.map(f => {
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.value = 0;
+    o.connect(g); g.connect(ctx.destination);
+    o.start();
+    g.gain.linearRampToValueAtTime(0.02, ctx.currentTime + 2);
+    return {o, g};
+  });
+}
+function stopPad(){
+  if (!pad) return;
+  const ctx = ensureAudio();
+  pad.forEach(n => { n.g.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4); n.o.stop(ctx.currentTime + 0.5); });
+  pad = null;
+}
+
+function onSceneEnter(idx){
+  switch(idx){
+    case 0:
+      startPad();
+      chord([523.25, 659.25, 783.99], 1.5, 0.07);
+      setTimeout(() => tone(1046.5, 0.4, 'triangle', 0.08), 600);
+      break;
+    case 1:
+      whoosh();
+      setTimeout(() => tone(440, 0.15, 'triangle', 0.08), 200);
+      setTimeout(() => tone(587.33, 0.15, 'triangle', 0.08), 700);
+      setTimeout(() => tone(659.25, 0.35, 'triangle', 0.08), 1200);
+      break;
+    case 2:
+      [0,1,2,3,4,5].forEach((i) => setTimeout(() => tone(523.25 + i*40, 0.2, 'sine', 0.05), 300 + i*200));
+      break;
+    case 3:
+      chord([392, 493.88, 587.33], 1.5, 0.06);
+      // Each agent reveal sound
+      [0,1,2,3].forEach(i => setTimeout(() => tone(659.25 + i*60, 0.25, 'triangle', 0.06), 300 + i*300));
+      break;
+    case 4:
+      whoosh();
+      setTimeout(() => chord([523.25, 659.25, 783.99, 1046.5], 1.5, 0.07), 300);
+      // Mock typing sounds
+      for (let i = 0; i < 6; i++) setTimeout(() => tone(1200 + Math.random()*200, 0.04, 'square', 0.02), 1000 + i*250);
+      break;
+    case 5:
+      tone(440, 0.2, 'triangle', 0.06);
+      setTimeout(() => tone(659.25, 0.2, 'triangle', 0.06), 300);
+      // Telegram message arrives
+      setTimeout(() => { tone(880, 0.12, 'triangle', 0.08); setTimeout(() => tone(1318.51, 0.2, 'triangle', 0.08), 120); }, 3500);
+      break;
+    case 6:
+      whoosh();
+      setTimeout(() => chord([523.25, 659.25, 783.99, 1046.5], 2.5, 0.08), 400);
+      setTimeout(() => tone(1318.51, 0.6, 'triangle', 0.08), 1500);
+      break;
+  }
+}
+
+// Controls
+document.getElementById('muteBtn').addEventListener('click', () => {
+  muted = !muted;
+  document.getElementById('muteIcon').innerHTML = muted
+    ? '<path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>'
+    : '<path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>';
+  if (muted) stopPad(); else startPad();
+});
+document.getElementById('replayBtn').addEventListener('click', () => {
+  stopPad();
+  setScene(0);
+  running = true;
+  raf = requestAnimationFrame(tick);
+});
+document.getElementById('startOverlay').addEventListener('click', () => {
+  document.getElementById('startOverlay').classList.add('hidden');
+  ensureAudio();
+  setScene(0);
+  running = true;
+  raf = requestAnimationFrame(tick);
+});
+</script>
+</body>
+</html>

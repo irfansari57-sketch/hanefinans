@@ -45,3 +45,27 @@ export async function fetchQuotesTD(symbols: string[]): Promise<Stock[] | null> 
     return null;
   }
 }
+
+/**
+ * Spot metal fiyatı çek (XAU/USD, XAG/USD, XPT/USD).
+ * TwelveData forex/commodity için exchange param gerekmez.
+ * Free tier: 800 req/gün, 8 req/dk.
+ */
+export async function fetchMetalSpotTD(
+  pair: 'XAU/USD' | 'XAG/USD' | 'XPT/USD',
+): Promise<{ value: number; changePct: number } | null> {
+  if (!API_KEYS.twelveData) return null;
+  try {
+    const url = `${BASE}/quote?symbol=${encodeURIComponent(pair)}&apikey=${API_KEYS.twelveData}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = (await res.json()) as TDQuote;
+    if (isError(json)) return null;
+    const value = parseFloat(json.close ?? '');
+    if (!Number.isFinite(value) || value <= 0) return null;
+    const changePct = parseFloat(json.percent_change ?? '0');
+    return { value, changePct: Number.isFinite(changePct) ? changePct : 0 };
+  } catch {
+    return null;
+  }
+}

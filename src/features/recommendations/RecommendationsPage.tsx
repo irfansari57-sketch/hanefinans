@@ -42,6 +42,17 @@ const PORTFOLIO_COUNT = BROKER_PORTFOLIOS.length;
 
 const AUTO_REFRESH_MS = 120_000;
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const RECS_MEMO_TTL_MS = 2 * 60_000;
+interface RecsMemo {
+  fetchedAt: number;
+  recs: ScalpRec[];
+  topFunds: FundPerformance[];
+  fundsConfigured: boolean;
+  updatedAt: number;
+}
+let recsMemo: RecsMemo | null = null;
+
 export function RecommendationsPage() {
   const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds'>('scalp');
   const [scalpFilter, setScalpFilter] = useState<'all' | 'longonly' | 'watchlist'>('all');
@@ -50,11 +61,11 @@ export function RecommendationsPage() {
   const [tazeAlertsEnabled, setTazeAlertsEnabled] = useState<boolean>(() => {
     try { return localStorage.getItem('fa.scalp.tazeAlertsEnabled') === '1'; } catch { return false; }
   });
-  const [recs, setRecs] = useState<ScalpRec[]>([]);
-  const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
-  const [fundsConfigured, setFundsConfigured] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [recs, setRecs] = useState<ScalpRec[]>(() => recsMemo?.recs ?? []);
+  const [topFunds, setTopFunds] = useState<FundPerformance[]>(() => recsMemo?.topFunds ?? []);
+  const [fundsConfigured, setFundsConfigured] = useState(() => recsMemo?.fundsConfigured ?? true);
+  const [loading, setLoading] = useState(() => !recsMemo);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => recsMemo?.updatedAt);
 
   const watchlistHas = useWatchlist((s) => s.has);
   const toggleWatch = useWatchlist((s) => s.toggle);
@@ -268,7 +279,26 @@ export function RecommendationsPage() {
     }
   };
 
+  // Memo cache sync
   useEffect(() => {
+    if (recs.length > 0 && updatedAt) {
+      recsMemo = {
+        fetchedAt: Date.now(),
+        recs,
+        topFunds,
+        fundsConfigured,
+        updatedAt,
+      };
+    }
+  }, [recs, topFunds, fundsConfigured, updatedAt]);
+
+  useEffect(() => {
+    const memoAge = recsMemo ? Date.now() - recsMemo.fetchedAt : Infinity;
+    if (memoAge < RECS_MEMO_TTL_MS) {
+      setLoading(false);
+      const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
+      return () => clearInterval(id);
+    }
     refresh(true);
     const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
     return () => clearInterval(id);
@@ -276,6 +306,7 @@ export function RecommendationsPage() {
   }, []);
 
   useEffect(() => {
+    if (recsMemo && (recsMemo.topFunds.length > 0 || !recsMemo.fundsConfigured)) return;
     let alive = true;
     loadFundsAsPerformance().then((r) => {
       if (!alive) return;

@@ -95,17 +95,28 @@ interface QuoteState {
   error?: boolean;
 }
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const GLOBAL_MEMO_TTL_MS = 3 * 60_000;
+interface GlobalMemo {
+  fetchedAt: number;
+  quotes: Record<string, QuoteState>;
+  trCds: TrCdsData | null;
+  tr10y: Tr10yData | null;
+  updatedAt: number;
+}
+let globalMemo: GlobalMemo | null = null;
+
 export function GlobalPage() {
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
 
-  const [quotes, setQuotes] = useState<Record<string, QuoteState>>({});
-  const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
-  const [trCds, setTrCds] = useState<TrCdsData | null>(null);
-  const [trCdsLoading, setTrCdsLoading] = useState(true);
-  const [tr10y, setTr10y] = useState<Tr10yData | null>(null);
-  const [tr10yLoading, setTr10yLoading] = useState(true);
+  const [quotes, setQuotes] = useState<Record<string, QuoteState>>(() => globalMemo?.quotes ?? {});
+  const [loading, setLoading] = useState(() => !globalMemo);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => globalMemo?.updatedAt);
+  const [trCds, setTrCds] = useState<TrCdsData | null>(() => globalMemo?.trCds ?? null);
+  const [trCdsLoading, setTrCdsLoading] = useState(() => !globalMemo);
+  const [tr10y, setTr10y] = useState<Tr10yData | null>(() => globalMemo?.tr10y ?? null);
+  const [tr10yLoading, setTr10yLoading] = useState(() => !globalMemo);
 
   const allSymbols = useMemo(
     () => GROUPS.flatMap((g) => g.items.map((i) => i.symbol)),
@@ -150,8 +161,29 @@ export function GlobalPage() {
     setLoading(false);
   };
 
+  // Memo cache sync
+  useEffect(() => {
+    if (Object.keys(quotes).length > 0 && updatedAt) {
+      globalMemo = {
+        fetchedAt: Date.now(),
+        quotes,
+        trCds,
+        tr10y,
+        updatedAt,
+      };
+    }
+  }, [quotes, trCds, tr10y, updatedAt]);
+
   useEffect(() => {
     if (!proUser) return;
+    const memoAge = globalMemo ? Date.now() - globalMemo.fetchedAt : Infinity;
+    if (memoAge < GLOBAL_MEMO_TTL_MS) {
+      setLoading(false);
+      setTrCdsLoading(false);
+      setTr10yLoading(false);
+      const id = setInterval(refresh, 3 * 60_000);
+      return () => clearInterval(id);
+    }
     refresh();
     const id = setInterval(refresh, 3 * 60_000);
     return () => clearInterval(id);

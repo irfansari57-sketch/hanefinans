@@ -14,11 +14,34 @@ const eventTone: Record<number, string> = {
   1: 'text-slate-400',
 };
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const MACRO_MEMO_TTL_MS = 2 * 60_000;
+interface MacroMemo {
+  fetchedAt: number;
+  macro: MacroIndicator[];
+}
+let macroMemo: MacroMemo | null = null;
+
 export function MacroPage() {
-  const [macro, setMacro] = useState<MacroIndicator[]>(MOCK_MACRO_FALLBACK);
-  const [loading, setLoading] = useState(true);
+  const [macro, setMacro] = useState<MacroIndicator[]>(() => macroMemo?.macro ?? MOCK_MACRO_FALLBACK);
+  const [loading, setLoading] = useState(() => !macroMemo);
+
+  // Memo cache sync
+  useEffect(() => {
+    if (macro.length > 0 && macro !== MOCK_MACRO_FALLBACK && macro.some((m) => m.source === 'live')) {
+      macroMemo = {
+        fetchedAt: Date.now(),
+        macro,
+      };
+    }
+  }, [macro]);
 
   useEffect(() => {
+    const memoAge = macroMemo ? Date.now() - macroMemo.fetchedAt : Infinity;
+    if (memoAge < MACRO_MEMO_TTL_MS) {
+      setLoading(false);
+      return;
+    }
     // İlk yüklemede cache'i temizle, taze çek
     clearServiceCaches();
     loadMacroAll()

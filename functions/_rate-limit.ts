@@ -119,5 +119,22 @@ export function classifyRoute(path: string): { bucket: string; limit: number; wi
   if (path.startsWith('/api/ai/') || path.startsWith('/api/agents/')) {
     return { bucket: 'ai', limit: 30, windowSec: 60 * 60 };
   }
+  // Public data proxy'leri — Yahoo, TCMB, news, twelvedata, goldapi, vb.
+  // Tek sayfa açılışında 100+ paralel istek olabiliyor (örn. /stocks 270 sembol).
+  // Bunlar read-only ve upstream rate limit kendi tarafında zaten var.
+  // Yüksek limit ver (600/dk) — yoksa default 60/dk anında doluyor ve
+  // aynı IP'den admin panel + auth/me gibi gerçek auth istekleri 429 yiyor.
+  if (
+    path.startsWith('/api/yahoo/') ||
+    path.startsWith('/api/tcmb/') ||
+    path.startsWith('/api/news') ||
+    path.startsWith('/api/twelvedata/') ||
+    path.startsWith('/api/goldapi/') ||
+    path.startsWith('/api/gnews/') ||
+    path.startsWith('/api/tefas') ||
+    path.startsWith('/api/csp-report')
+  ) {
+    return { bucket: 'public', limit: 600, windowSec: 60 };
+  }
   return { bucket: 'default', limit: 60, windowSec: 60 };
 }

@@ -34,11 +34,21 @@ const COMMODITIES: Omit<CommodityRow, 'priceUsd' | 'changePct' | 'priceTRY'>[] =
   { key: 'corn',     label: 'Mısır',            symbolYahoo: 'ZC=F', unit: '$ / bushel', category: 'Tarım' },
 ];
 
+// Module-level memo cache — sayfa değişimlerinde yeniden fetch'i önler
+const COMMODITIES_MEMO_TTL_MS = 5 * 60_000;
+interface CommoditiesMemo {
+  fetchedAt: number;
+  rows: CommodityRow[];
+  usdTry: number | null;
+  updatedAt: number;
+}
+let commoditiesMemo: CommoditiesMemo | null = null;
+
 export function CommoditiesPage() {
-  const [rows, setRows] = useState<CommodityRow[]>(COMMODITIES);
-  const [usdTry, setUsdTry] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [rows, setRows] = useState<CommodityRow[]>(() => commoditiesMemo?.rows ?? COMMODITIES);
+  const [usdTry, setUsdTry] = useState<number | null>(() => commoditiesMemo?.usdTry ?? null);
+  const [loading, setLoading] = useState(() => !commoditiesMemo);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => commoditiesMemo?.updatedAt);
 
   const refresh = async () => {
     setLoading(true);
@@ -72,7 +82,26 @@ export function CommoditiesPage() {
     }
   };
 
+  // Memo cache sync — state değiştiğinde memo'yu güncelle
   useEffect(() => {
+    if (rows.some((r) => r.priceUsd != null) && updatedAt) {
+      commoditiesMemo = {
+        fetchedAt: Date.now(),
+        rows,
+        usdTry,
+        updatedAt,
+      };
+    }
+  }, [rows, usdTry, updatedAt]);
+
+  useEffect(() => {
+    // Memo taze ise refresh'i atla
+    const memoAge = commoditiesMemo ? Date.now() - commoditiesMemo.fetchedAt : Infinity;
+    if (memoAge < COMMODITIES_MEMO_TTL_MS) {
+      setLoading(false);
+      const id = setInterval(refresh, 5 * 60_000);
+      return () => clearInterval(id);
+    }
     refresh();
     const id = setInterval(refresh, 5 * 60_000); // 5 dakikada bir
     return () => clearInterval(id);

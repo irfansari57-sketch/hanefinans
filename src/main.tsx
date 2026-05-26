@@ -10,9 +10,17 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 
-// Sentry'yi olabildiğince erken init et — global window error'ları da yakalayabilsin
-// DSN env'de yoksa no-op döner, bundle'a SDK girmez
+// Sentry'yi olabildiğince erken init et
 initSentry();
+
+// PWA service worker register — installable app olabilmek için
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.error('SW register failed', err);
+    });
+  });
+}
 
 initDb()
   .catch((err) => {

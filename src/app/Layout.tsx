@@ -300,8 +300,15 @@ export function Layout() {
             <Menu size={20} />
           </button>
 
-          <Link to="/panel" className="md:hidden">
-            <Logo size={32} />
+          <Link to="/panel" className="md:hidden inline-flex items-center gap-2">
+            <img
+              src="/web-app-manifest-192x192.png?v=2"
+              alt="Hane Finans"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-lg shadow-md"
+            />
+            <span className="font-bold text-sm tracking-tight">Hane Finans</span>
           </Link>
 
           <div className="relative flex-1 max-w-xl">
@@ -393,7 +400,19 @@ export function Layout() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-3 flex shrink-0 items-center justify-between px-4">
-                <Logo variant="full" size={32} />
+                <div className="inline-flex flex-col items-center gap-1">
+                  <img
+                    src="/web-app-manifest-192x192.png?v=2"
+                    alt="Hane Finans"
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 rounded-xl shadow-md"
+                  />
+                  <div className="flex flex-col items-center leading-tight">
+                    <span className="text-sm font-extrabold tracking-tight">HANE FİNANS</span>
+                    <span lang="en" className="mt-0.5 text-[10px] tracking-[0.18em] text-accent font-semibold">FINANCIAL INTELLIGENCE</span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={closeMobile}

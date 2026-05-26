@@ -38,6 +38,7 @@ import { ToastContainer } from '@/components/ui/Toast';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { HaneModAdBanner } from '@/components/domain/HaneModAdBanner';
 import { AdVideo } from '@/components/domain/AdVideo';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
@@ -365,6 +366,7 @@ export function Layout() {
               </span>
               {isMockMode ? 'Mock akış' : 'Canlı akış'}
             </span>
+            <ThemeToggle size="sm" />
             <button
               type="button"
               className="hidden sm:inline-flex rounded-md p-1.5 text-slate-300 hover:bg-bg-card"

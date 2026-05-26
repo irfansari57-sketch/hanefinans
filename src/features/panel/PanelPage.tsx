@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
 import { MacroCard } from '@/components/domain/MacroCard';
@@ -214,7 +213,6 @@ export function PanelPage() {
         subtitle="BIST gelişmeleri, makro durum ve takip listenizdeki hisseler için canlı feed."
         actions={
           <div className="flex items-center gap-2">
-            <ThemeToggle size="sm" />
             <LiveBadge updatedAt={updatedAt} refreshing={refreshing} label="CANLI" />
             <button
               className="btn-secondary"
@@ -302,25 +300,31 @@ export function PanelPage() {
         </div>
       </PinnableAccordion>
 
-      {/* Emtia ikinci plan — mobilde 3 sütun, lg 6 sütun. */}
-      <section className="mb-5">
-        <div className="mb-2 flex items-center justify-between px-1">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Altın · Gümüş · Platin (Gram TL / Ons USD)
-          </h2>
-          <span className="text-[10px] text-slate-500">ikincil</span>
-        </div>
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 lg:grid-cols-6">
+      {/* Emtia — pinnable accordion */}
+      <PinnableAccordion
+        id="panel-emtia"
+        title="Altın & Gümüş"
+        icon={<Sparkles size={16} />}
+        iconColorClass="bg-warning/15 text-warning"
+        defaultOpen
+      >
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4">
           {macro
-            .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Gram Platin', 'Ons Altın', 'Ons Gümüş', 'Ons Platin'].includes(m.key))
+            .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Ons Altın', 'Ons Gümüş'].includes(m.key))
             .map((m) => (
               <MacroCard key={m.key} item={m} compact />
             ))}
         </div>
-      </section>
+      </PinnableAccordion>
 
-      {/* Kripto — popüler 4 (BTC/ETH/XRP/DOGE), Yahoo BTC-USD format */}
-      <section className="mb-5">
+      {/* Kripto — pinnable accordion */}
+      <PinnableAccordion
+        id="panel-kripto"
+        title="Kripto · BTC · ETH · XRP · DOGE"
+        icon={<Activity size={16} />}
+        iconColorClass="bg-warning/15 text-warning"
+        defaultOpen
+      >
         <div className="mb-2 flex items-center justify-between px-1">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
             Kripto · BTC · ETH · XRP · DOGE (USD)
@@ -335,7 +339,7 @@ export function PanelPage() {
               <MacroCard key={m.key} item={m} compact />
             ))}
         </div>
-      </section>
+      </PinnableAccordion>
 
       {/* Top movers — hisseler (pin'lenebilir, her ekranda aç/kapa) */}
       <details
@@ -460,6 +464,30 @@ export function PanelPage() {
         </details>
       )}
 
+      {/* Takip Listem — pinnable accordion, AI Agent'larin ustunde */}
+      <PinnableAccordion
+        id="panel-watchlist"
+        title="Takip Listem"
+        icon={<Newspaper size={16} />}
+        iconColorClass="bg-accent/15 text-accent"
+        defaultOpen
+      >
+        <div className="flex items-center justify-end mb-2">
+          <SourceBadge source={stocksSource} />
+        </div>
+        {watchlistStocks.length === 0 ? (
+          <p className="px-1 py-3 text-xs text-slate-500">
+            Listende hisse yok. <Link to="/watchlist" className="text-accent hover:underline">Hisse ekle</Link>
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {watchlistStocks.map((s) => (
+              <StockRow key={s.symbol} stock={s} />
+            ))}
+          </div>
+        )}
+      </PinnableAccordion>
+
       {/* AI Agent'lar — PRO/Elite üyelere özel, akordeon + pin */}
       {proUser ? (
         <section className="mb-5">
@@ -542,24 +570,6 @@ export function PanelPage() {
       {/* Canlı Gelişmeler + Global Piyasalar blokları kaldırıldı — kullanıcı talebi.
           Gelişmeler için sol menüden "Gelişmeler", global için "Global Piyasalar" sayfası. */}
 
-      {/* Takip Listem — full-width tek blok */}
-      <div className="rounded-xl border border-border bg-bg-soft p-3">
-        <div className="mb-2 flex items-center justify-between px-1">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">Takip Listem</h2>
-          <SourceBadge source={stocksSource} />
-        </div>
-        {watchlistStocks.length === 0 ? (
-          <p className="px-1 py-3 text-xs text-slate-500">
-            Listende hisse yok. <Link to="/watchlist" className="text-accent hover:underline">Hisse ekle</Link>
-          </p>
-        ) : (
-          <div className="divide-y divide-border">
-            {watchlistStocks.map((s) => (
-              <StockRow key={s.symbol} stock={s} />
-            ))}
-          </div>
-        )}
-      </div>
     </>
   );
 }

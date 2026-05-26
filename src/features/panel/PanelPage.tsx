@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
+import { AdVideo } from '@/components/domain/AdVideo';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
 import { MacroCard } from '@/components/domain/MacroCard';
@@ -232,6 +233,11 @@ export function PanelPage() {
 
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
+
+      {/* HaneFinans reklam videosu — sadece mobil/tablet (desktop'ta sağ sidebar'da gösteriliyor) */}
+      <div className="mb-5 lg:hidden">
+        <AdVideo />
+      </div>
 
       {/* BIST endeksleri — birinci öncelik. Mobilde 2 sütun (kompakt), sm+ 2, lg 4. */}
       <section className="mb-5">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Volume2, VolumeX, Maximize2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -10,11 +11,11 @@ const VIDEO_SRC = '/HaneFinans_FinancialIntelligence.mp4';
 
 /**
  * HaneFinans reklam videosu — autoplay muted + tikla unmute.
- * Genislet butonu modal pop-up'ta buyuk versiyonu acar.
+ * Genislet butonu modal pop-up'ta buyuk versiyonu acar (React Portal
+ * ile body'ye render edilir, ata containing block sorunlari onlenir).
  */
 export function AdVideo({ className }: AdVideoProps) {
   const inlineRef = useRef<HTMLVideoElement>(null);
-  const modalRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [open, setOpen] = useState(false);
 
@@ -30,18 +31,15 @@ export function AdVideo({ className }: AdVideoProps) {
   };
 
   const openModal = () => {
-    // Inline videoyu pause et — modal'da kendi videosu calisacak
     inlineRef.current?.pause();
     setOpen(true);
   };
 
   const closeModal = () => {
     setOpen(false);
-    // Modal kapaninca inline'i tekrar baslat
     inlineRef.current?.play().catch(() => { /* sessizce */ });
   };
 
-  // Modal aciksa Escape ile kapat + body scroll kilitle
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -78,7 +76,6 @@ export function AdVideo({ className }: AdVideoProps) {
           onClick={toggleMute}
         />
 
-        {/* Sesi ac/kapat */}
         <button
           type="button"
           onClick={toggleMute}
@@ -89,7 +86,6 @@ export function AdVideo({ className }: AdVideoProps) {
           {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
 
-        {/* Buyut / pop-up'ta ac */}
         <button
           type="button"
           onClick={openModal}
@@ -107,42 +103,42 @@ export function AdVideo({ className }: AdVideoProps) {
         )}
       </div>
 
-      {/* Modal pop-up — buyuk video */}
-      {open && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 sm:p-6"
-          onClick={closeModal}
-          role="dialog"
-          aria-modal="true"
-          aria-label="HaneFinans reklam videosu — buyuk goruntu"
-        >
+      {open && typeof document !== 'undefined' &&
+        createPortal(
           <div
-            className="relative w-full max-w-5xl"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4 sm:p-8"
+            onClick={closeModal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="HaneFinans reklam videosu — buyuk goruntu"
           >
-            <video
-              ref={modalRef}
-              src={VIDEO_SRC}
-              autoPlay
-              controls
-              loop
-              playsInline
-              preload="auto"
-              className="block w-full rounded-lg shadow-2xl"
-              aria-label="HaneFinans reklam videosu — buyuk"
-            />
-            <button
-              type="button"
-              onClick={closeModal}
-              className="absolute -top-3 -right-3 grid h-10 w-10 place-items-center rounded-full bg-white text-black shadow-lg transition hover:scale-110 active:scale-95 sm:-top-4 sm:-right-4"
-              aria-label="Kapat"
-              title="Kapat (Esc)"
+            <div
+              className="relative w-full max-w-5xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-      )}
+              <video
+                src={VIDEO_SRC}
+                autoPlay
+                controls
+                loop
+                playsInline
+                preload="auto"
+                className="block w-full rounded-lg bg-black shadow-2xl"
+                aria-label="HaneFinans reklam videosu — buyuk"
+              />
+              <button
+                type="button"
+                onClick={closeModal}
+                className="absolute -top-3 -right-3 grid h-11 w-11 place-items-center rounded-full bg-white text-black shadow-lg transition hover:scale-110 active:scale-95 sm:-top-5 sm:-right-5"
+                aria-label="Kapat"
+                title="Kapat (Esc)"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

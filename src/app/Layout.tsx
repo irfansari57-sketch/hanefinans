@@ -523,8 +523,8 @@ export function Layout() {
       {/* Mobil fiks alt bar — Panel/Gelişmeler/Takip/Portföy + Daha */}
       <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
 
-      {/* İlk ziyarette 5 adımlık onboarding overlay (DisclaimerModal sonrasında) */}
-      <OnboardingTour />
+      {/* Onboarding tour kullanici talebiyle kaldirildi (gerekirse ileride re-enable) */}
+      {/* <OnboardingTour /> */}
 
       {/* PWA "Ana ekrana ekle" banner — beforeinstallprompt + iOS Safari manuel */}
       <PwaInstallBanner />

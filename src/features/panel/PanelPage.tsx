@@ -214,18 +214,6 @@ export function PanelPage() {
         actions={
           <div className="flex items-center gap-2">
             <LiveBadge updatedAt={updatedAt} refreshing={refreshing} label="CANLI" />
-            <button
-              className="btn-secondary"
-              onClick={() => refresh(true)}
-              disabled={refreshing}
-              title="Şimdi yenile"
-            >
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-              Yenile
-            </button>
-            <Link to="/news" className="btn-secondary">
-              Tüm gelişmeleri gör <ArrowUpRight size={16} />
-            </Link>
           </div>
         }
       />

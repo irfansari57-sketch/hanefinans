@@ -18,7 +18,7 @@ export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
         <LogoIcon size={size} />
         <div className="flex flex-col items-center leading-tight">
           <span className="logo-text-3d text-base font-extrabold tracking-tight">
-            HANE FINANS
+            HANE FİNANS
           </span>
           <span lang="en" className="mt-0.5 text-[10px] tracking-[0.18em] text-accent/85 font-semibold">
             FINANCIAL INTELLIGENCE

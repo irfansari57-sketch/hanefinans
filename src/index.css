@@ -2,6 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   THEME — CSS variables. Dark default; html.light = aydinlik mod.
+   Renkler 'r g b' formatinda (Tailwind alpha-value uyumlulugu icin).
+   ============================================================ */
+:root {
+  /* Dark theme (default) — koyu mavi finans estetigi */
+  --c-bg: 11 18 32;
+  --c-bg-soft: 15 23 42;
+  --c-bg-card: 17 26 46;
+  --c-border: 31 42 68;
+  --c-accent: 34 211 238;
+  --c-accent-fg: 2 44 51;
+  --c-success: 34 197 94;
+  --c-danger: 239 68 68;
+  --c-warning: 245 158 11;
+  /* Metin renkleri — slate-100 ailesi */
+  --c-text-1: 226 232 240;   /* primary (slate-200) */
+  --c-text-2: 148 163 184;   /* secondary (slate-400) */
+  --c-text-3: 100 116 139;   /* muted (slate-500) */
+  color-scheme: dark;
+}
+
+html.light {
+  /* Light theme — logo'daki beyaz + canli mavi estetigi */
+  --c-bg: 248 250 252;       /* slate-50 */
+  --c-bg-soft: 241 245 249;  /* slate-100 */
+  --c-bg-card: 255 255 255;  /* pure white kart */
+  --c-border: 226 232 240;   /* slate-200 */
+  --c-accent: 14 165 233;    /* sky-500 - logo mavisi */
+  --c-accent-fg: 255 255 255;
+  --c-success: 22 163 74;    /* green-600 - aydinlik kontrast */
+  --c-danger: 220 38 38;     /* red-600 */
+  --c-warning: 217 119 6;    /* amber-600 */
+  --c-text-1: 15 23 42;      /* slate-900 */
+  --c-text-2: 71 85 105;     /* slate-600 */
+  --c-text-3: 100 116 139;   /* slate-500 */
+  color-scheme: light;
+}
+
 @layer base {
   html,
   body,
@@ -17,8 +56,27 @@
     @apply bg-bg text-slate-100 antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+  html.light body {
+    color: rgb(var(--c-text-1));
+  }
+  /* Light modda hardcoded slate-* text'leri okunabilir tonlara cevir */
+  html.light .text-slate-100,
+  html.light .text-slate-200 {
+    color: rgb(var(--c-text-1));
+  }
+  html.light .text-slate-300,
+  html.light .text-slate-400 {
+    color: rgb(var(--c-text-2));
+  }
+  html.light .text-slate-500,
+  html.light .text-slate-600 {
+    color: rgb(var(--c-text-3));
+  }
   ::selection {
     background-color: rgba(34, 211, 238, 0.25);
+  }
+  html.light ::selection {
+    background-color: rgba(14, 165, 233, 0.25);
   }
 }
 
@@ -142,6 +200,11 @@
     linear-gradient(90deg, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
 }
+html.light .bg-grid {
+  background-image:
+    linear-gradient(rgba(14, 165, 233, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.05) 1px, transparent 1px);
+}
 
 /* Finansal sahne — SVG arka plan (şehir + bokeh + neon line chart) */
 @keyframes bg-pan {
@@ -171,6 +234,13 @@
   pointer-events: none;
   z-index: 0;
   background: linear-gradient(180deg, rgba(2, 6, 23, 0.35) 0%, rgba(2, 6, 23, 0.55) 100%);
+}
+/* Light modda koyu sahne katmanlarini sondur — aydinlik temada gereksiz */
+html.light .bg-finance-scene,
+html.light .bg-darken,
+html.light .bg-candles,
+html.light .bg-finance-mesh {
+  display: none;
 }
 
 /* Finansal mesh — eski gradient orblar (yedek katman olarak küçük opacity) */
@@ -227,6 +297,23 @@
     0 1px 0 rgba(255, 255, 255, 0.04) inset,
     0 12px 32px -12px rgba(0, 0, 0, 0.5);
   transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+html.light .glass-card {
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.04) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(14, 165, 233, 0.02) 100%);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px -12px rgba(15, 23, 42, 0.08);
+}
+html.light .glass-card::before {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), transparent 40%, transparent 60%, rgba(14, 165, 233, 0.12));
+  opacity: 0.4;
+}
+html.light .glass-card:hover {
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.06),
+    0 16px 32px -12px rgba(14, 165, 233, 0.15);
 }
 .glass-card::before {
   content: '';

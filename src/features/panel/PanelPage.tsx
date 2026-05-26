@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
 import { MacroCard } from '@/components/domain/MacroCard';
@@ -213,6 +214,7 @@ export function PanelPage() {
         subtitle="BIST gelişmeleri, makro durum ve takip listenizdeki hisseler için canlı feed."
         actions={
           <div className="flex items-center gap-2">
+            <ThemeToggle size="sm" />
             <LiveBadge updatedAt={updatedAt} refreshing={refreshing} label="CANLI" />
             <button
               className="btn-secondary"
@@ -233,14 +235,15 @@ export function PanelPage() {
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
-      {/* BIST endeksleri — birinci öncelik. Mobilde 2 sütun (kompakt), sm+ 2, lg 4. */}
-      <section className="mb-5">
-        <div className="mb-2 flex items-center justify-between px-1">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-accent">
-            BIST Endeksleri
-          </h2>
-          <span className="text-[10px] text-slate-500">öncelikli</span>
-        </div>
+      {/* BIST endeksleri — pinnable accordion (kullanici istemezse kapatabilir) */}
+      <PinnableAccordion
+        id="panel-bist-indices"
+        title="BIST Endeksleri"
+        description="BIST 100, BIST 30 + USD/TRY, EUR/TRY"
+        icon={<BarChart3 size={16} />}
+        iconColorClass="bg-accent/15 text-accent"
+        defaultOpen
+      >
         <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {macro
             .filter((m) => m.key === 'BIST 100' || m.key === 'BIST 30')
@@ -298,7 +301,7 @@ export function PanelPage() {
               );
             })}
         </div>
-      </section>
+      </PinnableAccordion>
 
       {/* Emtia ikinci plan — mobilde 3 sütun, lg 6 sütun. */}
       <section className="mb-5">

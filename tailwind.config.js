@@ -5,21 +5,22 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Theme — CSS variable bazlı, dark default + light alternatif
         bg: {
-          DEFAULT: '#0b1220',
-          soft: '#0f172a',
-          card: '#111a2e',
+          DEFAULT: 'rgb(var(--c-bg) / <alpha-value>)',
+          soft: 'rgb(var(--c-bg-soft) / <alpha-value>)',
+          card: 'rgb(var(--c-bg-card) / <alpha-value>)',
         },
         border: {
-          DEFAULT: '#1f2a44',
+          DEFAULT: 'rgb(var(--c-border) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#22d3ee',
-          fg: '#022c33',
+          DEFAULT: 'rgb(var(--c-accent) / <alpha-value>)',
+          fg: 'rgb(var(--c-accent-fg) / <alpha-value>)',
         },
-        success: '#22c55e',
-        danger: '#ef4444',
-        warning: '#f59e0b',
+        success: 'rgb(var(--c-success) / <alpha-value>)',
+        danger: 'rgb(var(--c-danger) / <alpha-value>)',
+        warning: 'rgb(var(--c-warning) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'Segoe UI', 'sans-serif'],

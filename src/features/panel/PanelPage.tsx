@@ -221,10 +221,10 @@ export function PanelPage() {
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
-      {/* BIST endeksleri — pinnable accordion (kullanici istemezse kapatabilir) */}
+      {/* Piyasa Özeti — endeks + döviz, pinnable accordion */}
       <PinnableAccordion
         id="panel-bist-indices"
-        title="BIST Endeksleri"
+        title="Piyasa Özeti"
         icon={<BarChart3 size={16} />}
         iconColorClass="bg-accent/15 text-accent"
         defaultOpen
@@ -288,7 +288,7 @@ export function PanelPage() {
         </div>
       </PinnableAccordion>
 
-      {/* Emtia — pinnable accordion */}
+      {/* Emtia — pinnable accordion, BIST stilinde kartlar */}
       <PinnableAccordion
         id="panel-emtia"
         title="Altın & Gümüş"
@@ -296,36 +296,75 @@ export function PanelPage() {
         iconColorClass="bg-warning/15 text-warning"
         defaultOpen
       >
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {macro
             .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Ons Altın', 'Ons Gümüş'].includes(m.key))
-            .map((m) => (
-              <MacroCard key={m.key} item={m} compact />
-            ))}
+            .map((m) => {
+              const route = macroKeyToRoute(m.key);
+              const card = (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-accent">{m.label}</span>
+                  </div>
+                  <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
+                    {m.value.toLocaleString('tr-TR', { maximumFractionDigits: m.value < 100 ? 2 : 0 })}
+                    {m.unit && <span className="ml-1 text-[10px] font-medium text-slate-500">{m.unit}</span>}
+                  </div>
+                  {m.changePct != null && (
+                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                    </div>
+                  )}
+                </>
+              );
+              return route ? (
+                <Link key={m.key} to={route} className="glass-card block p-3 transition hover:border-accent/40 sm:p-4">
+                  {card}
+                </Link>
+              ) : (
+                <div key={m.key} className="glass-card p-3 sm:p-4">{card}</div>
+              );
+            })}
         </div>
       </PinnableAccordion>
 
-      {/* Kripto — pinnable accordion */}
+      {/* Kripto — pinnable accordion, BIST stilinde kartlar */}
       <PinnableAccordion
         id="panel-kripto"
-        title="Kripto · BTC · ETH · XRP · DOGE"
+        title="Kripto"
         icon={<Activity size={16} />}
         iconColorClass="bg-warning/15 text-warning"
         defaultOpen
       >
-        <div className="mb-2 flex items-center justify-between px-1">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Kripto · BTC · ETH · XRP · DOGE (USD)
-          </h2>
-          <span className="text-[10px] text-slate-500">ikincil</span>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {['BTC/USD', 'ETH/USD', 'XRP/USD', 'DOGE/USD']
             .map((k) => macro.find((m) => m.key === k))
             .filter((m): m is MacroIndicator => !!m)
-            .map((m) => (
-              <MacroCard key={m.key} item={m} compact />
-            ))}
+            .map((m) => {
+              const route = macroKeyToRoute(m.key);
+              const card = (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-accent">{m.label}</span>
+                  </div>
+                  <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
+                    ${m.value.toLocaleString('en-US', { maximumFractionDigits: m.value < 10 ? 4 : m.value < 1000 ? 2 : 0 })}
+                  </div>
+                  {m.changePct != null && (
+                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                    </div>
+                  )}
+                </>
+              );
+              return route ? (
+                <Link key={m.key} to={route} className="glass-card block p-3 transition hover:border-accent/40 sm:p-4">
+                  {card}
+                </Link>
+              ) : (
+                <div key={m.key} className="glass-card p-3 sm:p-4">{card}</div>
+              );
+            })}
         </div>
       </PinnableAccordion>
 

@@ -1,7 +1,19 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" class="light">
   <head>
     <meta charset="UTF-8" />
+    <!-- Theme init — FOUC engelle, localStorage'dan oku, default light -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('fa.theme');
+          var theme = (t === 'dark' || t === 'light') ? t : 'light';
+          var r = document.documentElement;
+          r.classList.remove('light', 'dark');
+          r.classList.add(theme);
+        } catch (e) { /* sessizce */ }
+      })();
+    </script>
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=2" />
     <link rel="icon" type="image/png" sizes="192x192" href="/web-app-manifest-192x192.png?v=2" />
     <link rel="icon" type="image/png" sizes="512x512" href="/web-app-manifest-512x512.png?v=2" />

@@ -41,6 +41,20 @@ export function RightNewsTicker() {
 
   return (
     <aside className="relative z-10 hidden lg:flex lg:w-72 lg:flex-col xl:w-80 border-l border-border bg-bg-soft/80 backdrop-blur-md">
+      {/* Reklam videosu — Gündem & Haberler başlığının üstünde döner */}
+      <div className="border-b border-border bg-bg-card/40 p-2">
+        <video
+          src="/HaneFinans_FinancialIntelligence.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="block w-full rounded-md"
+          aria-label="HaneFinans reklam videosu"
+        />
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">

@@ -7,8 +7,9 @@ interface AdVideoProps {
 }
 
 /**
- * HaneFinans reklam videosu — autoplay muted + tıklayınca unmute.
- * Hem desktop (RightNewsTicker) hem mobile (PanelPage) için kullanılır.
+ * HaneFinans reklam videosu — autoplay muted + tikla unmute.
+ * Hem desktop (RightNewsTicker) hem mobile (PanelPage) icin kullanilir.
+ * Mobile uyumu: aspect-video + min-height ile zero-height collapse engellenir.
  */
 export function AdVideo({ className }: AdVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -26,7 +27,12 @@ export function AdVideo({ className }: AdVideoProps) {
   };
 
   return (
-    <div className={cn('relative overflow-hidden rounded-lg border border-border bg-bg-card/40', className)}>
+    <div
+      className={cn(
+        'relative aspect-video min-h-[180px] w-full overflow-hidden rounded-lg border border-border bg-black',
+        className,
+      )}
+    >
       <video
         ref={videoRef}
         src="/HaneFinans_FinancialIntelligence.mp4"
@@ -34,22 +40,22 @@ export function AdVideo({ className }: AdVideoProps) {
         muted={muted}
         loop
         playsInline
-        preload="metadata"
-        className="block w-full cursor-pointer"
+        preload="auto"
+        className="absolute inset-0 h-full w-full cursor-pointer object-cover"
         aria-label="HaneFinans reklam videosu"
         onClick={toggleMute}
       />
       <button
         type="button"
         onClick={toggleMute}
-        className="absolute bottom-2 right-2 grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 hover:scale-110"
+        className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-black/70 text-white backdrop-blur-sm transition hover:bg-black/85 active:scale-95"
         aria-label={muted ? 'Sesi ac' : 'Sesi kapat'}
         title={muted ? 'Sesi ac' : 'Sesi kapat'}
       >
-        {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
       </button>
       {muted && (
-        <div className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+        <div className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
           Tikla sesi ac
         </div>
       )}

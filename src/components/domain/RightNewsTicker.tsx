@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Newspaper, ExternalLink } from 'lucide-react';
+import { Newspaper, ExternalLink, ChevronDown } from 'lucide-react';
 import { loadNews } from '@/data/services';
 import type { NewsItem } from '@/data/types';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ import { AdVideo } from './AdVideo';
 
 const REFRESH_MS = 90_000;
 const SCROLL_SPEED_SECONDS = 180;
+const COLLAPSE_KEY = 'fa.rightNews.collapsed';
 
 const sourceTone: Record<string, string> = {
   KAP: 'bg-accent/15 text-accent border-accent/20',
@@ -21,6 +22,23 @@ const sourceTone: Record<string, string> = {
 export function RightNewsTicker() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(COLLAPSE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+    } catch {
+      /* sessizce */
+    }
+  };
 
   useEffect(() => {
     const fetchIt = () => {
@@ -39,80 +57,102 @@ export function RightNewsTicker() {
   const repeated = useMemo(() => [...news, ...news], [news]);
 
   return (
-    <aside className="relative z-10 hidden lg:flex lg:w-72 lg:flex-col xl:w-80 border-l border-border bg-bg-soft/80 backdrop-blur-md">
+    <aside className={cn(
+      'relative z-10 hidden lg:flex lg:w-72 lg:flex-col xl:w-80 border-l border-border bg-bg-soft/80 backdrop-blur-md',
+      collapsed && 'lg:w-72 xl:w-80',
+    )}>
       <div className="border-b border-border bg-bg-card/40 p-2">
         <AdVideo />
       </div>
 
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      {/* Header — tıklanabilir akordeon başlığı */}
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        className="flex w-full items-center justify-between border-b border-border px-4 py-3 transition hover:bg-bg-card/50"
+        aria-expanded={!collapsed}
+        aria-controls="right-news-content"
+      >
         <div className="flex items-center gap-2">
           <span className="grid h-7 w-7 place-items-center rounded-md bg-accent/15 text-accent">
             <Newspaper size={14} />
           </span>
-          <div>
+          <div className="text-left">
             <div className="text-xs font-semibold text-slate-100">Gundem &amp; Haberler</div>
-            <div className="text-[10px] text-slate-500">yukaridan asagi akis</div>
+            <div className="text-[10px] text-slate-500">
+              {collapsed ? 'Acmak icin tikla' : `${news.length} haber - tikla kapat`}
+            </div>
           </div>
         </div>
-        <></>
-      </div>
+        <ChevronDown
+          size={16}
+          className={cn(
+            'shrink-0 text-slate-400 transition-transform',
+            collapsed ? '-rotate-90' : 'rotate-0',
+          )}
+        />
+      </button>
 
-      <div className="news-ticker-mask relative flex-1 overflow-hidden">
-        {news.length === 0 ? (
-          <div className="p-4 text-center text-[11px] text-slate-500">
-            {loading ? 'Haberler yukleniyor...' : 'Canli haber alinamadi.'}
-          </div>
-        ) : null}
-        <div
-          className="news-ticker-track flex flex-col gap-2 px-3 py-2"
-          style={{ animationDuration: `${SCROLL_SPEED_SECONDS}s` }}
-        >
-          {repeated.map((item, i) => {
-            const tone = sourceTone[item.source] ?? sourceTone['Diger'];
-            const importance = item.importance;
-            const importanceTone =
-              importance >= 8 ? 'text-danger' :
-              importance >= 6 ? 'text-warning' :
-              'text-slate-400';
-            return (
-              <article
-                key={`${item.id}-${i}`}
-                className="rounded-lg border border-border bg-bg-card/85 backdrop-blur-sm p-2.5 transition-colors hover:border-accent/40"
-              >
-                <div className="flex items-center justify-between gap-1 text-[9px]">
-                  <div className="flex items-center gap-1">
-                    <span className={cn('rounded border px-1 py-0.5 font-medium', tone)}>
-                      {item.source}
-                    </span>
-                    {item.symbols.slice(0, 1).map((s) => (
-                      <SymbolBadge key={s} symbol={s} className="!text-[9px] !px-1 !py-0.5" />
-                    ))}
-                    <span className={cn('font-medium', importanceTone)}>{importance}</span>
+      {!collapsed && (
+        <div id="right-news-content" className="news-ticker-mask relative flex-1 overflow-hidden">
+          {news.length === 0 ? (
+            <div className="p-4 text-center text-[11px] text-slate-500">
+              {loading ? 'Haberler yukleniyor...' : 'Canli haber alinamadi.'}
+            </div>
+          ) : null}
+          <div
+            className="news-ticker-track flex flex-col gap-2 px-3 py-2"
+            style={{ animationDuration: `${SCROLL_SPEED_SECONDS}s` }}
+          >
+            {repeated.map((item, i) => {
+              const tone = sourceTone[item.source] ?? sourceTone['Diger'];
+              const importance = item.importance;
+              const importanceTone =
+                importance >= 8 ? 'text-danger' :
+                importance >= 6 ? 'text-warning' :
+                'text-slate-400';
+              return (
+                <article
+                  key={`${item.id}-${i}`}
+                  className="rounded-lg border border-border bg-bg-card/85 backdrop-blur-sm p-2.5 transition-colors hover:border-accent/40"
+                >
+                  <div className="flex items-center justify-between gap-1 text-[9px]">
+                    <div className="flex items-center gap-1">
+                      <span className={cn('rounded border px-1 py-0.5 font-medium', tone)}>
+                        {item.source}
+                      </span>
+                      {item.symbols.slice(0, 1).map((s) => (
+                        <SymbolBadge key={s} symbol={s} className="!text-[9px] !px-1 !py-0.5" />
+                      ))}
+                      <span className={cn('font-medium', importanceTone)}>{importance}</span>
+                    </div>
+                    <span className="shrink-0 text-slate-500">{formatRelative(item.publishedAt)}</span>
                   </div>
-                  <span className="shrink-0 text-slate-500">{formatRelative(item.publishedAt)}</span>
-                </div>
-                <h3 className="mt-1.5 text-[11px] font-medium leading-snug text-slate-200 line-clamp-3">
-                  {item.title}
-                </h3>
-                {item.url && (
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 inline-flex items-center gap-1 text-[10px] text-accent hover:underline"
-                  >
-                    detay <ExternalLink size={9} />
-                  </a>
-                )}
-              </article>
-            );
-          })}
+                  <h3 className="mt-1.5 text-[11px] font-medium leading-snug text-slate-200 line-clamp-3">
+                    {item.title}
+                  </h3>
+                  {item.url && (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-[10px] text-accent hover:underline"
+                    >
+                      detay <ExternalLink size={9} />
+                    </a>
+                  )}
+                </article>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="border-t border-border bg-bg-soft/90 px-3 py-1.5 text-center text-[9px] text-slate-500">
-        uzerine gel - dursun
-      </div>
+      {!collapsed && (
+        <div className="border-t border-border bg-bg-soft/90 px-3 py-1.5 text-center text-[9px] text-slate-500">
+          uzerine gel - dursun
+        </div>
+      )}
     </aside>
   );
 }

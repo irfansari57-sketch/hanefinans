@@ -37,6 +37,7 @@ import { Logo } from '@/components/brand/Logo';
 import { ToastContainer } from '@/components/ui/Toast';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { HaneModAdBanner } from '@/components/domain/HaneModAdBanner';
+import { AdVideo } from '@/components/domain/AdVideo';
 import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
@@ -442,7 +443,15 @@ export function Layout() {
           {/* 1. Branding (görsel + 3D parlama başlık) — herkese */}
           <BrandingBlock />
 
-          {/* 2. YouTube banner — PRO'da gizli */}
+          {/* 2a. HaneFinans reklam videosu — herkese, sponsor (YouTube) ustunde */}
+          <div>
+            <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+              Hane Finans
+            </div>
+            <AdVideo />
+          </div>
+
+          {/* 2b. YouTube banner — PRO'da gizli */}
           {!isPro(user) && (
             <div>
               <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">

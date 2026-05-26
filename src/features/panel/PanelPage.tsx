@@ -239,7 +239,6 @@ export function PanelPage() {
       <PinnableAccordion
         id="panel-bist-indices"
         title="BIST Endeksleri"
-        description="BIST 100, BIST 30 + USD/TRY, EUR/TRY"
         icon={<BarChart3 size={16} />}
         iconColorClass="bg-accent/15 text-accent"
         defaultOpen
@@ -252,7 +251,7 @@ export function PanelPage() {
               const card = (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-accent">{m.label}</span>
                   </div>
                   <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
@@ -280,7 +279,7 @@ export function PanelPage() {
               const card = (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-500">{m.label}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-accent">{m.label}</span>
                   </div>
                   <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
                     {m.value.toFixed(2)}

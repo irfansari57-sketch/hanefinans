@@ -8,25 +8,28 @@ interface ThemeToggleProps {
 }
 
 /**
- * Aydinlik / karanlik mod switch'i.
- * Tek tikla theme'i toggle eder. localStorage'a persist eder.
+ * Aydinlik / karanlik mod switch'i — belirgin renkli pill.
  */
 export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
   const theme = useTheme((s) => s.theme);
   const toggle = useTheme((s) => s.toggle);
   const isDark = theme === 'dark';
 
-  const dim = size === 'sm' ? 'h-7 w-12' : 'h-8 w-14';
-  const knob = size === 'sm' ? 'h-5 w-5' : 'h-6 w-6';
-  const iconSize = size === 'sm' ? 11 : 13;
+  const dim = size === 'sm' ? 'h-8 w-16' : 'h-9 w-20';
+  const knob = size === 'sm' ? 'h-6 w-6' : 'h-7 w-7';
+  const iconSize = size === 'sm' ? 13 : 15;
+  const knobOffset = size === 'sm' ? '0.25rem' : '0.25rem';
 
   return (
     <button
       type="button"
       onClick={toggle}
       className={cn(
-        'relative inline-flex items-center rounded-full border border-border transition-colors',
-        isDark ? 'bg-bg-soft' : 'bg-accent/15',
+        'group relative inline-flex shrink-0 items-center rounded-full border-2 transition-all',
+        'shadow-md hover:shadow-lg active:scale-95',
+        isDark
+          ? 'border-accent/60 bg-gradient-to-r from-slate-800 to-slate-900 shadow-accent/20'
+          : 'border-accent bg-gradient-to-r from-sky-100 to-sky-50 shadow-accent/30',
         dim,
         className,
       )}
@@ -35,35 +38,39 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
       aria-label={isDark ? 'Aydinlik moda gec' : 'Karanlik moda gec'}
       title={isDark ? 'Aydinlik moda gec' : 'Karanlik moda gec'}
     >
-      {/* Sun (light hedef) */}
+      {/* Sol arkaplan icon — light hedef gosterimi */}
       <span
         className={cn(
           'absolute left-1.5 flex items-center justify-center transition-opacity',
-          isDark ? 'opacity-40 text-slate-400' : 'opacity-0',
+          isDark ? 'opacity-70 text-warning' : 'opacity-0',
         )}
         aria-hidden
       >
         <Sun size={iconSize} />
       </span>
-      {/* Moon (dark hedef) */}
+      {/* Sag arkaplan icon — dark hedef gosterimi */}
       <span
         className={cn(
           'absolute right-1.5 flex items-center justify-center transition-opacity',
-          isDark ? 'opacity-0' : 'opacity-40 text-slate-700',
+          isDark ? 'opacity-0' : 'opacity-70 text-accent',
         )}
         aria-hidden
       >
         <Moon size={iconSize} />
       </span>
-      {/* Knob */}
+      {/* Knob — surukli */}
       <span
         className={cn(
-          'absolute top-1 grid place-items-center rounded-full shadow-md transition-all',
+          'absolute grid place-items-center rounded-full shadow-lg ring-1 transition-all duration-300',
           knob,
           isDark
-            ? 'left-1 bg-slate-700 text-warning'
-            : 'left-[calc(100%-1.5rem-0.25rem)] bg-white text-accent',
+            ? 'bg-gradient-to-br from-slate-100 to-slate-300 text-slate-900 ring-white/40'
+            : 'bg-gradient-to-br from-accent to-sky-600 text-white ring-accent/40',
         )}
+        style={{
+          top: knobOffset,
+          left: isDark ? knobOffset : `calc(100% - ${size === 'sm' ? '1.5rem' : '1.75rem'} - ${knobOffset})`,
+        }}
       >
         {isDark ? <Moon size={iconSize} /> : <Sun size={iconSize} />}
       </span>

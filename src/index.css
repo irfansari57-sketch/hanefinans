@@ -300,20 +300,37 @@ html.light .bg-finance-mesh {
 }
 html.light .glass-card {
   background:
-    linear-gradient(135deg, rgba(14, 165, 233, 0.04) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(14, 165, 233, 0.02) 100%);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(203, 213, 225, 0.9);
   box-shadow:
+    /* 3D efekt — ust hafif highlight + alt derin golge */
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.15),
     0 1px 2px rgba(15, 23, 42, 0.04),
-    0 8px 24px -12px rgba(15, 23, 42, 0.08);
+    0 4px 8px -2px rgba(15, 23, 42, 0.08),
+    0 16px 32px -12px rgba(14, 165, 233, 0.12);
 }
 html.light .glass-card::before {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), transparent 40%, transparent 60%, rgba(14, 165, 233, 0.12));
-  opacity: 0.4;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.35), transparent 35%, transparent 65%, rgba(14, 165, 233, 0.18));
+  opacity: 0.5;
 }
 html.light .glass-card:hover {
+  transform: translateY(-3px);
   box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.15),
     0 2px 4px rgba(15, 23, 42, 0.06),
-    0 16px 32px -12px rgba(14, 165, 233, 0.15);
+    0 12px 24px -4px rgba(15, 23, 42, 0.12),
+    0 24px 48px -8px rgba(14, 165, 233, 0.25);
+}
+
+/* Karanlik modda da kartlari biraz daha 3D yap */
+.glass-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 4px 8px -2px rgba(0, 0, 0, 0.3),
+    0 12px 32px -12px rgba(0, 0, 0, 0.5);
 }
 .glass-card::before {
   content: '';

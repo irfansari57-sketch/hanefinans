@@ -1,0 +1,7 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/LiveChart-CwqLPaij.js","assets/index-DbNZDccI.js","assets/index-lxMAeoDL.css"])))=>i.map(i=>d[i]);
+import{ac as l,aN as a,az as e,O as o,a2 as c}from"./index-DbNZDccI.js";import{M as h}from"./Field-DXfGWjL5.js";/**
+ * @license lucide-react v0.424.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const d=l("ChartLine",[["path",{d:"M3 3v16a2 2 0 0 0 2 2h16",key:"c24i48"}],["path",{d:"m19 9-5 5-4-4-3 3",key:"2osh9i"}]]),x=a.lazy(()=>c(()=>import("./LiveChart-CwqLPaij.js"),__vite__mapDeps([0,1,2])).then(t=>({default:t.LiveChart})));function u({symbol:t,name:i,size:n=13}){const[r,s]=a.useState(!1);return e.jsxs(e.Fragment,{children:[e.jsxs("button",{type:"button",onClick:()=>s(!0),className:"inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-slate-400 transition hover:bg-bg-card hover:text-slate-200",title:"Grafik",children:[e.jsx(d,{size:n}),e.jsx("span",{className:"hidden sm:inline",children:"Grafik"})]}),e.jsxs(h,{open:r,onClose:()=>s(!1),title:`${t}${i?` — ${i}`:""}`,size:"lg",children:[e.jsx(a.Suspense,{fallback:e.jsx(o,{variant:"rect",className:"w-full",height:460}),children:e.jsx(x,{symbol:t,height:460})}),e.jsx("p",{className:"mt-2 text-[11px] text-slate-500",children:`Yahoo Finance verisi + TradingView lightweight-charts. Zaman dilimi ve grafik tipini yukarıdan seç. Detaylı analiz için sağdaki "TradingView'de aç" linkini kullan.`})]})]})}export{u as C};

@@ -1,0 +1,1 @@
+let n=null;async function r(a=!1){if(!a&&n&&Date.now()-n.t<3e5)return n.data;try{const e=await fetch("/api/tr-cds",{headers:{Accept:"application/json"}});if(!e.ok||!(e.headers.get("content-type")??"").includes("application/json"))return null;const t=await e.json();return t.ok?(n={data:t,t:Date.now()},t):(n={data:t,t:Date.now()},t)}catch{return null}}export{r as f};

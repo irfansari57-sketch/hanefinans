@@ -11,7 +11,7 @@ import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary';
  */
 function lazyWithRetry<T extends ComponentType<unknown>>(factory: () => Promise<{ default: T }>) {
   return lazy(() =>
-    factory().catch((err: Error) => {
+    factory().catch(async (err: Error) => {
       const msg = err?.message ?? '';
       const isChunkError =
         msg.includes('Failed to fetch dynamically imported module') ||
@@ -23,6 +23,19 @@ function lazyWithRetry<T extends ComponentType<unknown>>(factory: () => Promise<
         // 30 saniye debounce — sonsuz reload döngüsünü engelle
         if (!last || now - parseInt(last, 10) > 30_000) {
           sessionStorage.setItem('fa.lastChunkReload', String(now));
+          // Service worker'i temizle — eski cached index.html eski chunk hash'lerine referans verir
+          try {
+            if ('serviceWorker' in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(regs.map((r) => r.unregister()));
+            }
+            if ('caches' in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map((k) => caches.delete(k)));
+            }
+          } catch {
+            /* SW temizlenemediyse sessizce gec — reload yine de denenir */
+          }
           window.location.reload();
           // Reload tetiklendi; geri dönüş yapma
           return new Promise<{ default: T }>(() => {});

@@ -149,27 +149,7 @@ export function CryptoPage() {
         }
       />
 
-      {/* Market durumu — global */}
-      {global && fearGreed && (
-        <section className="glass-card mb-5 p-4">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-warning">Piyasa Durumu</h2>
-          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-            <MetricBox
-              label="Toplam Market Cap"
-              value={`$${formatCompact(global.totalMarketCapUsd)}`}
-            />
-            <MetricBox
-              label="BTC Dominance"
-              value={`%${global.btcDominance.toFixed(2)}`}
-            />
-            <MetricBox
-              label="ETH Dominance"
-              value={`%${global.ethDominance.toFixed(2)}`}
-            />
-            <FearGreedBox fg={fearGreed} />
-          </div>
-        </section>
-      )}
+      {/* Market durumu kullanici talebiyle kaldirildi */}
 
       {/* Multi-Timeframe Trend Analizi */}
       <section className="glass-card mb-5 p-4">

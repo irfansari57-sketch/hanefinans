@@ -208,15 +208,11 @@ export function PanelPage() {
         />
       </div>
 
-      <PageHeader
-        title="Panel"
-        subtitle="BIST gelişmeleri, makro durum ve takip listenizdeki hisseler için canlı feed."
-        actions={
-          <div className="flex items-center gap-2">
-            <LiveBadge updatedAt={updatedAt} refreshing={refreshing} label="CANLI" />
-          </div>
-        }
-      />
+      {/* Panel basligi kullanici talebiyle kaldirildi.
+          LiveBadge'i ufak bir cubukta sag ust köşede tutuyoruz. */}
+      <div className="mb-3 flex justify-end">
+        <LiveBadge updatedAt={updatedAt} refreshing={refreshing} label="CANLI" />
+      </div>
 
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}

@@ -114,7 +114,8 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
     for (const sym of want) {
       const ySym = sym.includes('.') || sym.includes('=') || sym.includes('-') ? sym : `${sym}.IS`;
       const q = snap.quotes[ySym];
-      if (q) {
+      // STALE FILTER: changePct === 0 && price > 0 -> Yahoo fetchOne fallback'e yonlendir
+      if (q && !(q.changePct === 0 && q.price > 0)) {
         liveMap.set(sym, {
           symbol: sym,
           name: q.name ?? sym,
@@ -378,6 +379,4 @@ export function clearServiceCaches() {
     }
     localStorage.removeItem('fa.macro.cache.v1');
   } catch { /* ignore */ }
-}
-*/ }
 }

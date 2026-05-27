@@ -84,11 +84,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     });
   }
 
-  // Quote cache keys: ":5d:1d" suffix (new) veya ":2d:1d" (legacy)
+  // Quote cache keys: ":5d:1d" suffix (yeni). Legacy 2d:1d'yi skip — tatil/kapali piyasa
+  // verilerinde changePct=0 dondurup frontend'i mock'a dusururdu.
   const rows = await env.DB
     .prepare(
       `SELECT key, payload, updated_at FROM yahoo_cache
-       WHERE key LIKE '%:5d:1d' OR key LIKE '%:2d:1d'
+       WHERE key LIKE '%:5d:1d'
        ORDER BY updated_at DESC`,
     )
     .all<{ key: string; payload: string; updated_at: number }>();

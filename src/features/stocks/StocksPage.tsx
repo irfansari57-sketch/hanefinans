@@ -47,13 +47,32 @@ function writeReturnsCache(data: Record<string, PeriodReturns>) {
   } catch { /* ignore */ }
 }
 
-const STOCKS_MEMO_TTL_MS = 5 * 60_000;
+// Agresif memo: hem in-memory hem localStorage — sayfa yenilemede de instant render
+const STOCKS_MEMO_TTL_MS = 30 * 60_000;
+const STOCKS_MEMO_LS_KEY = 'fa.stocksMemo.v1';
 interface StocksMemo {
   fetchedAt: number;
   stocks: StockRow[];
   updatedAt: number;
 }
-let stocksMemo: StocksMemo | null = null;
+
+function readStocksMemoLS(): StocksMemo | null {
+  try {
+    const raw = localStorage.getItem(STOCKS_MEMO_LS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StocksMemo;
+    if (Date.now() - parsed.fetchedAt > STOCKS_MEMO_TTL_MS) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function writeStocksMemoLS(memo: StocksMemo) {
+  try {
+    localStorage.setItem(STOCKS_MEMO_LS_KEY, JSON.stringify(memo));
+  } catch { /* quota */ }
+}
+
+let stocksMemo: StocksMemo | null = readStocksMemoLS();
 
 export function StocksPage() {
   const watchedSymbolsList = useWatchlist((s) => s.symbols);
@@ -156,7 +175,9 @@ export function StocksPage() {
 
   useEffect(() => {
     if (stocks.length === 0) return;
-    stocksMemo = { fetchedAt: Date.now(), stocks, updatedAt: updatedAt ?? Date.now() };
+    const memo = { fetchedAt: Date.now(), stocks, updatedAt: updatedAt ?? Date.now() };
+    stocksMemo = memo;
+    writeStocksMemoLS(memo);
   }, [stocks, updatedAt]);
 
   useEffect(() => {

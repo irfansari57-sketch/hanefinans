@@ -74,6 +74,32 @@ async function fetchSpotMetalsInline(): Promise<SpotMetalsApi | null> {
   }
 }
 
+// Snapshot endpoint cache — modul-level, tum sayfa boyunca paylasilir
+interface SnapshotApi {
+  ok: boolean;
+  count: number;
+  updatedAt: number;
+  quotes: Record<string, { price: number; changePct: number; prev: number; updatedAt: number; name?: string }>;
+}
+let snapshotMemo: { fetchedAt: number; data: SnapshotApi } | null = null;
+const SNAPSHOT_TTL_MS = 60_000;
+
+async function fetchSnapshot(): Promise<SnapshotApi | null> {
+  if (snapshotMemo && Date.now() - snapshotMemo.fetchedAt < SNAPSHOT_TTL_MS) {
+    return snapshotMemo.data;
+  }
+  try {
+    const r = await fetch('/api/yahoo/snapshot');
+    if (!r.ok) return null;
+    const j = (await r.json()) as SnapshotApi;
+    if (!j.ok) return null;
+    snapshotMemo = { fetchedAt: Date.now(), data: j };
+    return j;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; source: 'live' | 'mock' | 'mixed' }> {
   const want = symbols ?? MOCK_STOCKS.map((s) => s.symbol);
   const cacheKey = `stocks-${want.sort().join(',')}`;
@@ -81,9 +107,32 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
   if (cached) return cached;
 
   const liveMap = new Map<string, Stock>();
+
+  // 1. Snapshot endpoint — tek HTTP isteyle D1 cache'den toplu quote
+  const snap = await fetchSnapshot();
+  if (snap) {
+    for (const sym of want) {
+      const ySym = sym.includes('.') || sym.includes('=') || sym.includes('-') ? sym : `${sym}.IS`;
+      const q = snap.quotes[ySym];
+      if (q) {
+        liveMap.set(sym, {
+          symbol: sym,
+          name: q.name ?? sym,
+          price: q.price,
+          changePct: q.changePct,
+          updatedAt: new Date(q.updatedAt).toISOString(),
+        });
+      }
+    }
+  }
+
+  // 2. Snapshot'tan gelmeyenler icin TD/Yahoo fallback
   if (API_KEYS.twelveData) {
-    const tdLive = await fetchQuotesTD(want);
-    if (tdLive) tdLive.forEach((s) => liveMap.set(s.symbol, s));
+    const tdMissing = want.filter((s) => !liveMap.has(s));
+    if (tdMissing.length > 0) {
+      const tdLive = await fetchQuotesTD(tdMissing);
+      if (tdLive) tdLive.forEach((s) => liveMap.set(s.symbol, s));
+    }
   }
   const missing = want.filter((s) => !liveMap.has(s));
   if (missing.length > 0) {
@@ -329,4 +378,6 @@ export function clearServiceCaches() {
     }
     localStorage.removeItem('fa.macro.cache.v1');
   } catch { /* ignore */ }
+}
+*/ }
 }

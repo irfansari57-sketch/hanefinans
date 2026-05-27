@@ -33,7 +33,8 @@ function toBISTSymbol(s: string): string {
 
 async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct: number; name?: string; updatedAt: string } | null> {
   try {
-    const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=2d`;
+    // range=5d → tatil/hafta sonu dahil son 2 islem gunu kapanislarini yakala
+    const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as YahooChartResult;
@@ -41,18 +42,30 @@ async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct
     const meta = result?.meta;
     if (!meta) return null;
 
-    let price: number | undefined = meta.regularMarketPrice;
-    if (price == null) {
-      const closes = result?.indicators?.quote?.[0]?.close ?? [];
-      for (let i = closes.length - 1; i >= 0; i--) {
-        const c = closes[i];
-        if (c != null && Number.isFinite(c)) { price = c; break; }
-      }
+    // Closes dizisinden valid kapanislari sondan basa sus — son 2 kapanis
+    const closes = result?.indicators?.quote?.[0]?.close ?? [];
+    const validCloses: number[] = [];
+    for (let i = closes.length - 1; i >= 0; i--) {
+      const c = closes[i];
+      if (c != null && Number.isFinite(c) && c > 0) validCloses.push(c as number);
+      if (validCloses.length >= 2) break;
     }
+
+    let price: number | undefined = meta.regularMarketPrice;
+    if (price == null && validCloses.length > 0) price = validCloses[0];
     if (price == null || !Number.isFinite(price) || price <= 0) return null;
 
-    const prev = meta.previousClose ?? meta.chartPreviousClose ?? price;
-    const changePct = prev ? ((price - prev) / prev) * 100 : 0;
+    // Tatil/hafta sonu: price === validCloses[0] => prev = validCloses[1]
+    // Piyasa acik: prev = validCloses[0] (bugunku kapanisin onceki gunu)
+    let prev: number;
+    if (validCloses.length >= 2) {
+      const lastClose = validCloses[0];
+      const beforeClose = validCloses[1];
+      prev = Math.abs(price - lastClose) < 0.0001 ? beforeClose : lastClose;
+    } else {
+      prev = meta.previousClose ?? meta.chartPreviousClose ?? price;
+    }
+    const changePct = prev > 0 ? ((price - prev) / prev) * 100 : 0;
     const updatedAt = meta.regularMarketTime
       ? new Date(meta.regularMarketTime * 1000).toISOString()
       : new Date().toISOString();

@@ -223,16 +223,16 @@ async function handleScheduled(event: ScheduledEvent, env: Env): Promise<void> {
     return;
   }
 
-  // Crypto — her 5 dk
+  // Crypto — her 5 dk (range=5d → tatil/hafta sonu Gün % fix)
   if (cron === '*/5 * * * *') {
-    const result = await warmBatch(env, CRYPTO_SYMBOLS, '2d', '1d', { concurrency: 4, batchDelayMs: 200 });
+    const result = await warmBatch(env, CRYPTO_SYMBOLS, '5d', '1d', { concurrency: 4, batchDelayMs: 200 });
     console.log(`[warmer] crypto: ${result.ok} ok, ${result.fail} fail`, result.status);
     return;
   }
 
-  // BIST quotes — her 10 dk (BIST açık) — chunk rotasyonu
+  // BIST quotes — her 10 dk (BIST açık) — chunk rotasyonu (range=5d için)
   const chunk = pickChunk(allSymbols, event.scheduledTime);
-  const result = await warmBatch(env, chunk, '2d', '1d', { concurrency: 4, batchDelayMs: 250 });
+  const result = await warmBatch(env, chunk, '5d', '1d', { concurrency: 4, batchDelayMs: 250 });
   console.log(`[warmer] quotes chunk (${chunk.length} symbols): ${result.ok} ok, ${result.fail} fail`, result.status);
 }
 

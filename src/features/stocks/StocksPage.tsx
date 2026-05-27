@@ -8,6 +8,7 @@ import { loadStocks } from '@/data/services';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
+import { BIST_INDICES, INDEX_TO_SECTORS } from '@/data/bistIndices';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
@@ -71,6 +72,7 @@ export function StocksPage() {
   const [sortKey, setSortKey] = useState<SortKey>('changePct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [tab, setTab] = useState<'all' | 'watched'>('all');
+  const [indexFilter, setIndexFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -187,14 +189,16 @@ export function StocksPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const sectorAllowList = indexFilter === 'all' ? null : new Set(INDEX_TO_SECTORS.get(indexFilter) ?? []);
     return rows.filter((s) => {
+      if (sectorAllowList && !sectorAllowList.has(s.sector ?? '')) return false;
       if (q) {
         const blob = `${s.symbol} ${s.name}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [rows, search]);
+  }, [rows, search, indexFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -228,7 +232,7 @@ export function StocksPage() {
   );
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, tab, sortKey, sortDir]);
+  }, [search, tab, sortKey, sortDir, indexFilter]);
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -269,6 +273,19 @@ export function StocksPage() {
           <button className="btn-secondary" onClick={() => refresh(true)} disabled={loading || returnsLoading}>
             <RefreshCw size={14} className={loading || returnsLoading ? 'animate-spin' : ''} /> Yenile
           </button>
+          <select
+            value={indexFilter}
+            onChange={(e) => setIndexFilter(e.target.value)}
+            className="input h-9 cursor-pointer text-xs"
+            title="Sektör/endeks filtresi"
+          >
+            <option value="all">Tüm Sektörler</option>
+            {BIST_INDICES.map((idx) => (
+              <option key={idx.code} value={idx.code}>
+                {idx.code} · {idx.label}
+              </option>
+            ))}
+          </select>
           <div className="relative">
             <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -452,6 +469,31 @@ function StockTableRow({ stock, rank, isWatched, onToggle }: StockTableRowProps)
         {stock.price > 0 ? `₺${stock.price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : '—'}
       </td>
       <PerfCell value={stock.changePct} />
+      <PerfCell value={stock.returns?.['1h']} />
+      <PerfCell value={stock.returns?.['1a']} />
+      <PerfCell value={stock.returns?.['3a']} />
+      <PerfCell value={stock.returns?.['6a']} />
+      <PerfCell value={stock.returns?.['1y']} />
+      <PerfCell value={stock.returns?.['1y']} />
+    </tr>
+  );
+}
+
+function PerfCell({ value }: { value: number | undefined }) {
+  if (value == null || !Number.isFinite(value)) {
+    return (
+      <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">
+        —
+      </td>
+    );
+  }
+  const tone = value >= 0 ? 'text-success' : 'text-danger';
+  return (
+    <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums whitespace-nowrap', tone)}>
+      {value >= 0 ? '+' : ''}{value.toFixed(2)}%
+    </td>
+  );
+}
       <PerfCell value={stock.returns?.['1h']} />
       <PerfCell value={stock.returns?.['1a']} />
       <PerfCell value={stock.returns?.['3a']} />

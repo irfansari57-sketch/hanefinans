@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import {
-  PiggyBank, Plus, Search, Star, AlertCircle, ArrowUpDown,
+  PiggyBank, Search, Star, AlertCircle, ArrowUpDown,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
-import { Modal } from '@/components/ui/Modal';
-import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { fundsRepo } from '@/data/repositories';
@@ -20,23 +18,13 @@ import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year'> | 'code';
 
-const ALL_CATEGORIES: FundCategory[] = [
-  'Para Piyasası',
-  'Serbest',
-  'Hisse Senedi',
-  'Değişken',
-  'Fon Sepeti',
-  'Kıymetli Madenler',
-  'Borçlanma Araçları',
-  'Katılım',
-];
+// ALL_CATEGORIES kaldırıldı — Manuel Ekle ile birlikte gerek kalmadı
 
 export function FundsPage() {
   const watched = useLiveQuery(() => fundsRepo.list(), []) ?? [];
   const watchedCodes = useMemo(() => new Set(watched.map((f) => f.code)), [watched]);
 
   const [tab, setTab] = useState<'all' | 'watched'>('all');
-  const [addOpen, setAddOpen] = useState(false);
   const [toDelete, setToDelete] = useState<FundEntry | null>(null);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('week');
@@ -245,9 +233,6 @@ export function FundsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button className="btn-secondary" onClick={() => setAddOpen(true)}>
-            <Plus size={14} /> Manuel Ekle
-          </button>
         </div>
       </div>
 
@@ -334,10 +319,6 @@ export function FundsPage() {
           Toplam {sorted.length} fon. Veri güncelleme: {formatRelative(feedUpdatedAt)}. Kodu tıklayarak detay sayfasına, yıldıza basarak takibe ekle.
         </p>
       )}
-
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Manuel Fon Ekle" size="md">
-        <AddFundForm onClose={() => setAddOpen(false)} />
-      </Modal>
 
       <ConfirmDialog
         open={!!toDelete}
@@ -471,56 +452,4 @@ function PerfCell({ value }: { value: number | undefined }) {
   );
 }
 
-function AddFundForm({ onClose }: { onClose: () => void }) {
-  const [code, setCode] = useState('');
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<FundCategory>('Serbest');
-  const [saving, setSaving] = useState(false);
-
-  const save = async () => {
-    if (!code.trim()) return;
-    setSaving(true);
-    try {
-      await fundsRepo.add({ code, name, category });
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <Field label="Fon Kodu" hint="ör. TLY, AFA, AKE">
-        <input
-          className="input uppercase"
-          placeholder="ör. TLY"
-          value={code}
-          onChange={(e) => setCode(e.target.value.toUpperCase())}
-          autoFocus
-          maxLength={5}
-        />
-      </Field>
-      <Field label="Tam Adı (opsiyonel)">
-        <input
-          className="input"
-          placeholder="ör. Türkiye Garanti Yatırım Hisse Senedi (TL) Fonu"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </Field>
-      <Field label="Kategori">
-        <select className="input" value={category} onChange={(e) => setCategory(e.target.value as FundCategory)}>
-          {ALL_CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </Field>
-      <div className="flex justify-end gap-2 pt-2">
-        <button className="btn-secondary" onClick={onClose}>İptal</button>
-        <button className="btn-primary" onClick={save} disabled={saving || !code.trim()}>
-          Ekle
-        </button>
-      </div>
-    </div>
-  );
-}
+// AddFundForm fonksiyonu kaldırıldı — kullanıcı talebi

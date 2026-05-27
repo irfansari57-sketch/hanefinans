@@ -12,7 +12,6 @@ import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabe
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { PeriodReturns } from '@/components/domain/PeriodReturns';
-import { PositionSizer } from '@/components/domain/PositionSizer';
 import { cn } from '@/lib/utils';
 
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
@@ -396,16 +395,7 @@ export function CommodityDetailPage() {
         </div>
       )}
 
-      {technicalAnalysis && (
-        <div className="mb-4">
-          <PositionSizer
-            symbol={meta.label}
-            currentPrice={price}
-            support={technicalAnalysis.support}
-            resistance={technicalAnalysis.resistance}
-          />
-        </div>
-      )}
+      {/* Pozisyon Hesaplayıcı kaldırıldı — kullanıcı talebi */}
 
       <div className="card p-4">
         <h3 className="mb-3 text-sm font-semibold text-slate-200">Dış Kaynaklar</h3>

@@ -23,7 +23,6 @@ import { loadStocks, loadNews } from '@/data/services';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
-import { PositionSizer } from '@/components/domain/PositionSizer';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { useWatchlist } from '@/store/watchlist';
@@ -458,17 +457,7 @@ export function StockDetailPage() {
         </div>
       )}
 
-      {/* Pozisyon Hesaplayıcı + Stop/TP — BIST için TL bazlı; US için gizli */}
-      {technicalAnalysis && !isUs && (
-        <div className="mb-4">
-          <PositionSizer
-            symbol={sym}
-            currentPrice={stock.price}
-            support={technicalAnalysis.support}
-            resistance={technicalAnalysis.resistance}
-          />
-        </div>
-      )}
+      {/* Pozisyon Hesaplayıcı kaldırıldı — kullanıcı talebi */}
 
       {/* AI Hisse Analizi — PRO/ELITE özellik */}
       <div className="card mb-4 p-5">

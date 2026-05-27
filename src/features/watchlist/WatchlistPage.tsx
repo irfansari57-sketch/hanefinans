@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Plus, Star, X, Search, RefreshCw, Radio, PiggyBank, TrendingUp, ExternalLink, ChevronRight, Trash2 } from 'lucide-react';
+import { Plus, Star, X, Search, RefreshCw, PiggyBank, TrendingUp, ExternalLink } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -132,11 +132,28 @@ export function WatchlistPage() {
 
   const summary = useMemo(() => {
     if (!watched.length) return null;
-    const positives = watched.filter((s) => s.changePct > 0).length;
-    const negatives = watched.filter((s) => s.changePct < 0).length;
-    const avg = watched.reduce((s, x) => s + x.changePct, 0) / watched.length;
-    return { positives, negatives, avg };
-  }, [watched]);
+    // Seçili döneme göre değer çek: 1g → günlük changePct, diğerleri → tarihsel getiri.
+    // Henüz tarihsel veri yüklenmemiş semboller sayıma dahil edilmez (avg yamulmasın diye).
+    const getVal = (sym: string, dayChange: number): number | null => {
+      if (stockPeriod === '1g') return dayChange;
+      const r = stockReturns[sym]?.[stockPeriod];
+      return r == null ? null : r;
+    };
+    let positives = 0;
+    let negatives = 0;
+    let sum = 0;
+    let count = 0;
+    for (const s of watched) {
+      const v = getVal(s.symbol, s.changePct);
+      if (v == null) continue;
+      if (v > 0) positives += 1;
+      else if (v < 0) negatives += 1;
+      sum += v;
+      count += 1;
+    }
+    const avg = count > 0 ? sum / count : 0;
+    return { positives, negatives, avg, count, total: watched.length };
+  }, [watched, stockReturns, stockPeriod]);
 
   // Takipteki fonların TEFAS verisi ile birleşimi
   const watchedFundsWithData = useMemo(() => {
@@ -259,18 +276,33 @@ export function WatchlistPage() {
             <div className="mt-1 text-xl font-semibold">{watched.length}</div>
           </div>
           <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Bugün Yeşil / Kırmızı</div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">
+              {PERIOD_LABELS[stockPeriod]} Yeşil / Kırmızı
+            </div>
             <div className="mt-1 text-xl font-semibold">
               <span className="text-success">{summary.positives}</span>
               <span className="mx-1 text-slate-600">/</span>
               <span className="text-danger">{summary.negatives}</span>
+              {summary.count < summary.total && (
+                <span className="ml-2 text-[10px] font-normal text-slate-500">
+                  ({summary.count}/{summary.total})
+                </span>
+              )}
             </div>
           </div>
           <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Ortalama Değişim</div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">
+              Ortalama Değişim · {PERIOD_LABELS[stockPeriod]}
+            </div>
             <div className={cn('mt-1 text-xl font-semibold', summary.avg >= 0 ? 'text-success' : 'text-danger')}>
-              {summary.avg >= 0 ? '+' : ''}
-              {summary.avg.toFixed(2)}%
+              {summary.count === 0 ? (
+                <span className="text-slate-500">—</span>
+              ) : (
+                <>
+                  {summary.avg >= 0 ? '+' : ''}
+                  {summary.avg.toFixed(2)}%
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -432,19 +464,50 @@ interface FundsTabProps {
   }>;
 }
 
+// UI dönem anahtarı → TEFAS API'sindeki returns alanı
+type FundPeriodKey = '1d' | '1w' | '1m' | '3m' | '6m' | '1y';
+const FUND_PERIOD_MAP: Record<StockPeriod, FundPeriodKey> = {
+  '1g': '1d',
+  '1h': '1w',
+  '1a': '1m',
+  '3a': '3m',
+  '6a': '6m',
+  '1y': '1y',
+};
+
 function FundsTab({ watchedFundsWithData }: FundsTabProps) {
+  const [fundPeriod, setFundPeriod] = useState<StockPeriod>('1g');
+
   const fmtPct = (v: number | null | undefined) => {
     if (v == null || !Number.isFinite(v)) return '—';
     const sign = v >= 0 ? '+' : '';
     return `${sign}${v.toFixed(2)}%`;
   };
-  const toneFor = (v: number | null | undefined) =>
-    v == null || !Number.isFinite(v) ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
 
   const remove = async (id?: number) => {
     if (id == null) return;
     await fundsRepo.remove(id);
   };
+
+  // Seçili dönem için period-aware özet — hisselerle paralel davranış
+  const summary = useMemo(() => {
+    if (!watchedFundsWithData.length) return null;
+    const apiKey = FUND_PERIOD_MAP[fundPeriod];
+    let positives = 0;
+    let negatives = 0;
+    let sum = 0;
+    let count = 0;
+    for (const { tefas } of watchedFundsWithData) {
+      const v = tefas?.returns?.[apiKey];
+      if (v == null || !Number.isFinite(v)) continue;
+      if (v > 0) positives += 1;
+      else if (v < 0) negatives += 1;
+      sum += v;
+      count += 1;
+    }
+    const avg = count > 0 ? sum / count : 0;
+    return { positives, negatives, avg, count, total: watchedFundsWithData.length };
+  }, [watchedFundsWithData, fundPeriod]);
 
   if (watchedFundsWithData.length === 0) {
     return (
@@ -456,84 +519,191 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
     );
   }
 
+  const apiKey = FUND_PERIOD_MAP[fundPeriod];
+
+  // Seçili döneme göre sıralı liste — en iyi getiri en üstte
+  const sortedFunds = [...watchedFundsWithData].sort((a, b) => {
+    const av = a.tefas?.returns?.[apiKey];
+    const bv = b.tefas?.returns?.[apiKey];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return bv - av;
+  });
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-      <table className="min-w-full text-xs">
-        <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
-          <tr>
-            <th className="px-3 py-2.5 text-left">Kod</th>
-            <th className="px-3 py-2.5 text-right">NAV (TL)</th>
-            <th className="px-3 py-2.5 text-right">1 Gün</th>
-            <th className="px-3 py-2.5 text-right hidden md:table-cell">1 Hafta</th>
-            <th className="px-3 py-2.5 text-right">1 Ay</th>
-            <th className="px-3 py-2.5 text-right hidden md:table-cell">3 Ay</th>
-            <th className="px-3 py-2.5 text-right">1 Yıl</th>
-            <th className="px-3 py-2.5 text-center w-32">İşlem</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {watchedFundsWithData.map(({ entry, tefas }) => (
-            <tr key={entry.code} className="group hover:bg-bg-card transition-colors">
-              <td className="px-3 py-2.5 text-left whitespace-nowrap">
-                <Link
-                  to={`/fund/${entry.code}`}
-                  className="inline-flex items-center gap-1.5 font-mono font-semibold text-accent hover:underline"
-                >
-                  {entry.code}
-                  <ChevronRight size={10} className="opacity-0 transition group-hover:opacity-100" />
-                </Link>
-                {(tefas?.name ?? entry.name) && (
-                  <div className="mt-0.5 truncate text-[10px] text-slate-500 max-w-[260px]">
-                    {tefas?.name ?? entry.name}
-                  </div>
-                )}
-                {(tefas?.category ?? entry.category) && (
-                  <span className="mt-1 inline-block rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent">
-                    {tefas?.category ?? entry.category}
-                  </span>
-                )}
-              </td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-slate-100">
-                {tefas?.nav != null ? `₺${tefas.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}` : '—'}
-              </td>
-              <td className={cn('px-3 py-2.5 text-right tabular-nums', toneFor(tefas?.returns['1d']))}>
-                {fmtPct(tefas?.returns['1d'])}
-              </td>
-              <td className={cn('px-3 py-2.5 text-right tabular-nums hidden md:table-cell', toneFor(tefas?.returns['1w']))}>
-                {fmtPct(tefas?.returns['1w'])}
-              </td>
-              <td className={cn('px-3 py-2.5 text-right tabular-nums', toneFor(tefas?.returns['1m']))}>
-                {fmtPct(tefas?.returns['1m'])}
-              </td>
-              <td className={cn('px-3 py-2.5 text-right tabular-nums hidden md:table-cell', toneFor(tefas?.returns['3m']))}>
-                {fmtPct(tefas?.returns['3m'])}
-              </td>
-              <td className={cn('px-3 py-2.5 text-right tabular-nums', toneFor(tefas?.returns['1y']))}>
-                {fmtPct(tefas?.returns['1y'])}
-              </td>
-              <td className="px-3 py-2.5 text-center">
-                <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  <a
-                    href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(entry.code)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success hover:bg-success/20"
-                  >
-                    TEFAS <ExternalLink size={9} />
-                  </a>
-                  <button
-                    onClick={() => remove(entry.id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-danger/30 bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger hover:bg-danger/20"
-                    title="Takipten çıkar"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                </div>
-              </td>
-            </tr>
+    <>
+      {summary && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-border bg-bg-soft p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">Takipte</div>
+            <div className="mt-1 text-xl font-semibold">{summary.total}</div>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-soft p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">
+              {PERIOD_LABELS[fundPeriod]} Yeşil / Kırmızı
+            </div>
+            <div className="mt-1 text-xl font-semibold">
+              <span className="text-success">{summary.positives}</span>
+              <span className="mx-1 text-slate-600">/</span>
+              <span className="text-danger">{summary.negatives}</span>
+              {summary.count < summary.total && (
+                <span className="ml-2 text-[10px] font-normal text-slate-500">
+                  ({summary.count}/{summary.total})
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-soft p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">
+              Ortalama Değişim · {PERIOD_LABELS[fundPeriod]}
+            </div>
+            <div className={cn('mt-1 text-xl font-semibold', summary.avg >= 0 ? 'text-success' : 'text-danger')}>
+              {summary.count === 0 ? (
+                <span className="text-slate-500">—</span>
+              ) : (
+                <>
+                  {summary.avg >= 0 ? '+' : ''}
+                  {summary.avg.toFixed(2)}%
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dönem seçici — hisselerle aynı UX, kartlar seçili döneme göre sıralanır */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Performans</span>
+        <div className="inline-flex flex-wrap rounded-lg border border-border bg-bg-soft p-1">
+          {(['1g', '1h', '1a', '3a', '6a', '1y'] as const).map((pk) => (
+            <button
+              key={pk}
+              onClick={() => setFundPeriod(pk)}
+              className={cn(
+                'rounded-md px-2.5 py-1 text-xs font-medium transition',
+                fundPeriod === pk ? 'bg-accent/20 text-accent' : 'text-slate-400 hover:text-slate-200',
+              )}
+            >
+              {PERIOD_LABELS[pk]}
+            </button>
           ))}
-        </tbody>
-      </table>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+        {sortedFunds.map(({ entry, tefas }) => (
+          <WatchlistFundCard
+            key={entry.code}
+            entry={entry}
+            tefas={tefas}
+            period={fundPeriod}
+            periodLabel={PERIOD_LABELS[fundPeriod]}
+            apiKey={apiKey}
+            fmtPct={fmtPct}
+            onRemove={() => remove(entry.id)}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+interface WatchlistFundCardProps {
+  entry: { id?: number; code: string; name?: string; category?: string };
+  tefas: TefasFundData | undefined;
+  period: StockPeriod;
+  periodLabel: string;
+  apiKey: FundPeriodKey;
+  fmtPct: (v: number | null | undefined) => string;
+  onRemove: () => void;
+}
+
+/**
+ * Watchlist fon performans kartı — hisse kartının fon eşdeğeri.
+ * Sol üstte kod + kategori, sol altta NAV + 1G değişim, sağ altta seçili dönem getirisi.
+ * Sağ üstte takipten çıkarma butonu, alt bantta TEFAS dış bağlantısı.
+ */
+function WatchlistFundCard({ entry, tefas, period, periodLabel, apiKey, fmtPct, onRemove }: WatchlistFundCardProps) {
+  const dayChange = tefas?.returns?.['1d'];
+  // 1G seçiliyse büyük yüzde de günlük; tekrar göstermeyelim — diğer dönemlerde alt+büyük ayrı
+  const periodReturn = tefas?.returns?.[apiKey];
+  const periodTone = periodReturn == null || !Number.isFinite(periodReturn)
+    ? 'text-slate-500'
+    : periodReturn >= 0 ? 'text-success' : 'text-danger';
+  const dayTone = dayChange == null || !Number.isFinite(dayChange)
+    ? 'text-slate-500'
+    : dayChange >= 0 ? 'text-success' : 'text-danger';
+  const sign = (v: number) => (v >= 0 ? '+' : '');
+  const displayName = tefas?.name ?? entry.name;
+  const displayCategory = tefas?.category ?? entry.category;
+
+  return (
+    <div className="group glass-card relative overflow-hidden p-3 transition hover:border-accent/40">
+      {/* Sağ üstte çıkar butonu */}
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+        title="Takipten çıkar"
+        className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-bg-soft/80 text-slate-500 opacity-0 transition hover:bg-danger/15 hover:text-danger group-hover:opacity-100"
+      >
+        <X size={12} />
+      </button>
+
+      <Link to={`/fund/${entry.code}`} className="block">
+        <div className="flex items-start gap-2 pr-6">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-mono text-base font-bold text-accent">{entry.code}</span>
+              {displayCategory && (
+                <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[9px] text-slate-400">
+                  {displayCategory}
+                </span>
+              )}
+            </div>
+            {displayName && (
+              <div className="mt-0.5 truncate text-[11px] text-slate-400">{displayName}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-end justify-between">
+          <div>
+            <div className="text-xl font-bold tabular-nums text-slate-100">
+              {tefas?.nav != null
+                ? `₺${tefas.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}`
+                : '—'}
+            </div>
+            <div className={cn('text-xs font-semibold tabular-nums', dayTone)}>
+              {dayChange == null || !Number.isFinite(dayChange)
+                ? '—'
+                : `${sign(dayChange)}${dayChange.toFixed(2)}%`} <span className="text-[10px] text-slate-500">bugün</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-slate-500">{periodLabel}</div>
+            {periodReturn == null || !Number.isFinite(periodReturn) ? (
+              <div className="text-base font-bold tabular-nums text-slate-600">—</div>
+            ) : (
+              <div className={cn('text-lg font-bold tabular-nums', periodTone)}>
+                {sign(periodReturn)}{periodReturn.toFixed(2)}%
+              </div>
+            )}
+          </div>
+        </div>
+      </Link>
+
+      {/* Alt bant: TEFAS dış bağlantı */}
+      <div className="mt-2 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+        <a
+          href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(entry.code)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success hover:bg-success/20"
+        >
+          TEFAS <ExternalLink size={9} />
+        </a>
+      </div>
     </div>
   );
 }

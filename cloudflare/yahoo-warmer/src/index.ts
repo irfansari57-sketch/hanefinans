@@ -193,26 +193,14 @@ async function handleScheduled(event: ScheduledEvent, env: Env): Promise<void> {
   const cron = event.cron;
   const allSymbols = allWarmupSymbols();
 
-  // Cleanup — günlük 22:00 UTC
-  if (cron === '0 22 * * *') {
-    const deleted = await cleanupStale(env);
-    console.log(`[warmer] cleanup: deleted ${deleted} stale rows`);
-    return;
-  }
-
   // BIST historical — günde 1 kez 18:30 TR — top 200 sembol
   if (cron === '30 15 * * 1-5') {
     const popular = allSymbols.slice(0, 200);
     const result = await warmBatch(env, popular, '1y', '1d', { concurrency: 4, batchDelayMs: 250 });
     console.log(`[warmer] historical (200): ${result.ok} ok, ${result.fail} fail`, result.status);
-    return;
-  }
-
-  // BIST historical — sabah 09:30 TR de bir ısıt (kullanıcı gün açılışında hazır olsun)
-  if (cron === '30 6 * * 1-5') {
-    const popular = allSymbols.slice(0, 200);
-    const result = await warmBatch(env, popular, '1y', '1d', { concurrency: 4, batchDelayMs: 250 });
-    console.log(`[warmer] historical morning (200): ${result.ok} ok, ${result.fail} fail`, result.status);
+    // Cleanup — historical sonrasi opportunistic (günde 1 kez)
+    const deleted = await cleanupStale(env);
+    console.log(`[warmer] cleanup: deleted ${deleted} stale rows`);
     return;
   }
 

@@ -47,7 +47,6 @@ function writeReturnsCache(data: Record<string, PeriodReturns>) {
   } catch { /* ignore */ }
 }
 
-// Module-level memo — sayfa geçişlerinde anında render
 const STOCKS_MEMO_TTL_MS = 5 * 60_000;
 interface StocksMemo {
   fetchedAt: number;
@@ -62,9 +61,7 @@ export function StocksPage() {
   const watchedSymbols = useMemo(() => new Set(watchedSymbolsList), [watchedSymbolsList]);
 
   const [stocks, setStocks] = useState<StockRow[]>(() => stocksMemo?.stocks ?? []);
-  const [returnsMap, setReturnsMap] = useState<Record<string, PeriodReturns>>(
-    () => readReturnsCache() ?? {},
-  );
+  const [returnsMap, setReturnsMap] = useState<Record<string, PeriodReturns>>(() => readReturnsCache() ?? {});
   const [loading, setLoading] = useState(() => !stocksMemo);
   const [returnsLoading, setReturnsLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>(() => stocksMemo?.updatedAt);
@@ -159,11 +156,7 @@ export function StocksPage() {
 
   useEffect(() => {
     if (stocks.length === 0) return;
-    stocksMemo = {
-      fetchedAt: Date.now(),
-      stocks,
-      updatedAt: updatedAt ?? Date.now(),
-    };
+    stocksMemo = { fetchedAt: Date.now(), stocks, updatedAt: updatedAt ?? Date.now() };
   }, [stocks, updatedAt]);
 
   useEffect(() => {
@@ -181,9 +174,7 @@ export function StocksPage() {
   };
 
   const rows: StockRow[] = useMemo(() => {
-    const base = tab === 'watched'
-      ? stocks.filter((s) => watchedSymbols.has(s.symbol))
-      : stocks;
+    const base = tab === 'watched' ? stocks.filter((s) => watchedSymbols.has(s.symbol)) : stocks;
     return base.map((s) => ({ ...s, returns: returnsMap[s.symbol] }));
   }, [stocks, returnsMap, tab, watchedSymbols]);
 
@@ -230,9 +221,7 @@ export function StocksPage() {
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, tab, sortKey, sortDir, indexFilter]);
+  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, indexFilter]);
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -244,24 +233,18 @@ export function StocksPage() {
 
   return (
     <>
-      <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat, günlük değişim ve dönem getirileri. Liste/tablo görünümü." path="/stocks" />
+      <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat ve dönem getirileri." path="/stocks" />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
           <button
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm transition',
-              tab === 'all' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-            )}
+            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'all' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
             onClick={() => setTab('all')}
           >
             Tüm Hisseler
           </button>
           <button
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm transition',
-              tab === 'watched' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-            )}
+            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'watched' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
             onClick={() => setTab('watched')}
           >
             Takipte ({watchedSymbols.size})
@@ -281,9 +264,7 @@ export function StocksPage() {
           >
             <option value="all">Tüm Sektörler</option>
             {BIST_INDICES.map((idx) => (
-              <option key={idx.code} value={idx.code}>
-                {idx.code} · {idx.label}
-              </option>
+              <option key={idx.code} value={idx.code}>{idx.code} · {idx.label}</option>
             ))}
           </select>
           <div className="relative">
@@ -322,21 +303,12 @@ export function StocksPage() {
             />
           </div>
 
-          {/* Fintables-stili tablo — yatay kaydırmalı, sembol sol sabit */}
           <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
             <table className="w-full min-w-[820px] text-sm">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
-                  <SortableHeader
-                    label="Sembol"
-                    sortKey="symbol"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onClick={setSort}
-                    align="left"
-                    className="sticky left-8 z-20 bg-bg-soft"
-                  />
+                  <SortableHeader label="Sembol" sortKey="symbol" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />
                   <th className="px-2 py-2.5 text-left hidden sm:table-cell">Ad / Sektör</th>
                   <SortableHeader label="Fiyat" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="Gün %" sortKey="changePct" activeKey={sortKey} dir={sortDir} onClick={setSort} />
@@ -379,7 +351,7 @@ export function StocksPage() {
       )}
 
       <p className="mt-3 text-[11px] text-slate-500">
-        Toplam {sorted.length} hisse. Fiyat 60 sn cache, dönemsel getiriler 30 dk cache (Yahoo Finance). Sembole tıkla → detay. Yıldıza tıkla → takibe ekle.
+        Toplam {sorted.length} hisse. Fiyat 60 sn cache, dönemsel getiriler 30 dk cache (Yahoo Finance).
       </p>
     </>
   );
@@ -409,11 +381,7 @@ function SortableHeader({ label, sortKey, activeKey, dir, onClick, align = 'righ
     >
       <span className="inline-flex items-center gap-1">
         {label}
-        {active ? (
-          <span className="text-[9px]">{dir === 'asc' ? '▲' : '▼'}</span>
-        ) : (
-          <ArrowUpDown size={10} className="opacity-30" />
-        )}
+        {active ? <span className="text-[9px]">{dir === 'asc' ? '▲' : '▼'}</span> : <ArrowUpDown size={10} className="opacity-30" />}
       </span>
     </th>
   );
@@ -429,40 +397,28 @@ interface StockTableRowProps {
 function StockTableRow({ stock, rank, isWatched, onToggle }: StockTableRowProps) {
   return (
     <tr className="border-b border-border/60 transition hover:bg-bg-card">
-      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">
-        {rank}
-      </td>
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{rank}</td>
       <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-            className={cn(
-              'shrink-0 transition',
-              isWatched ? 'text-warning' : 'text-slate-600 hover:text-warning',
-            )}
+            className={cn('shrink-0 transition', isWatched ? 'text-warning' : 'text-slate-600 hover:text-warning')}
             title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
           >
             <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
           </button>
-          <Link
-            to={`/stock/${stock.symbol}`}
-            className="font-mono text-[13px] font-semibold text-slate-100 hover:text-accent"
-          >
+          <Link to={`/stock/${stock.symbol}`} className="font-mono text-[13px] font-semibold text-slate-100 hover:text-accent">
             {stock.symbol}
           </Link>
         </div>
       </td>
       <td className="hidden sm:table-cell px-2 py-2">
         <div className="flex items-center gap-1.5">
-          {stock.sector && stock.sector !== 'Diğer' && (
-            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">
-              {stock.sector}
-            </span>
+          {stock.sector && stock.sector !== 'Diger' && stock.sector !== 'Diğer' && (
+            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">{stock.sector}</span>
           )}
-          <span className="truncate text-[11px] text-slate-400 max-w-[200px]">
-            {stock.name}
-          </span>
+          <span className="truncate text-[11px] text-slate-400 max-w-[200px]">{stock.name}</span>
         </div>
       </td>
       <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-300 whitespace-nowrap">
@@ -481,36 +437,7 @@ function StockTableRow({ stock, rank, isWatched, onToggle }: StockTableRowProps)
 
 function PerfCell({ value }: { value: number | undefined }) {
   if (value == null || !Number.isFinite(value)) {
-    return (
-      <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">
-        —
-      </td>
-    );
-  }
-  const tone = value >= 0 ? 'text-success' : 'text-danger';
-  return (
-    <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums whitespace-nowrap', tone)}>
-      {value >= 0 ? '+' : ''}{value.toFixed(2)}%
-    </td>
-  );
-}
-      <PerfCell value={stock.returns?.['1h']} />
-      <PerfCell value={stock.returns?.['1a']} />
-      <PerfCell value={stock.returns?.['3a']} />
-      <PerfCell value={stock.returns?.['6a']} />
-      <PerfCell value={stock.returns?.['1y']} />
-      <PerfCell value={stock.returns?.['1y']} />
-    </tr>
-  );
-}
-
-function PerfCell({ value }: { value: number | undefined }) {
-  if (value == null || !Number.isFinite(value)) {
-    return (
-      <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">
-        —
-      </td>
-    );
+    return <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">—</td>;
   }
   const tone = value >= 0 ? 'text-success' : 'text-danger';
   return (

@@ -1,16 +1,12 @@
 /**
  * BIST sektör endeksleri — kullanıcıya filtreleme icin sunulan endeks kodlari.
- * Her endeks bir veya birkac sektore karsi gelir.
- *
- * Sektor degerleri bistAll.ts ile uyumlu (45 unique sektor).
- * Endeks kodlari BIST'in resmi sektör endeks kodlari (XBANK, XMDN, XHLD vs.).
  */
 
 export interface BistIndexDef {
-  code: string;        // ör. XBANK
-  label: string;       // ör. Bankacılık
+  code: string;
+  label: string;
   description?: string;
-  sectors: string[];   // bistAll.ts sektör string'leri
+  sectors: string[];
 }
 
 export const BIST_INDICES: BistIndexDef[] = [
@@ -41,7 +37,6 @@ export const BIST_INDICES: BistIndexDef[] = [
   { code: 'XFINK', label: 'Finansal Kuruluşlar',  sectors: ['Aracı Kurum', 'Finansal', 'Faktöring'] },
 ];
 
-/** Endeks kodu → bistAll.ts'teki sektör listesi */
 export const INDEX_TO_SECTORS = new Map(
   BIST_INDICES.map((idx) => [idx.code, idx.sectors] as const),
 );

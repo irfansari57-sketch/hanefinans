@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import {
-  PiggyBank, Search, Star, AlertCircle, ArrowUpDown,
-} from 'lucide-react';
+import { PiggyBank, Search, Star, AlertCircle, ArrowUpDown } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -17,8 +15,6 @@ import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year'> | 'code';
-
-// ALL_CATEGORIES kaldırıldı — Manuel Ekle ile birlikte gerek kalmadı
 
 export function FundsPage() {
   const watched = useLiveQuery(() => fundsRepo.list(), []) ?? [];
@@ -122,9 +118,7 @@ export function FundsPage() {
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, tab, sortKey, sortDir, categoryFilter]);
+  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, categoryFilter]);
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -145,9 +139,8 @@ export function FundsPage() {
 
   return (
     <>
-      <SeoHead title="TEFAS Fonları" description="TEFAS yatırım fonları — günlük getiri, 1A/3A/YBB performans, kategoriye göre filtreleme. Liste/tablo görünümü." path="/funds" />
+      <SeoHead title="TEFAS Fonları" description="TEFAS yatırım fonları liste/tablo görünümü." path="/funds" />
 
-      {/* Feed yapılandırma uyarısı */}
       {!feedConfigured && (
         <div className="card mb-4 border-warning/40 bg-warning/5 p-5">
           <div className="flex items-start gap-3">
@@ -155,10 +148,7 @@ export function FundsPage() {
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-warning">Canlı TEFAS verisi yapılandırılmadı</h3>
               <p className="mt-1 text-xs leading-relaxed text-slate-300">
-                Bu sayfa <strong>yalnızca gerçek TEFAS verisiyle</strong> çalışır. Sahte/demo veri kullanmıyoruz.
-              </p>
-              <p className="mt-2 text-[11px] text-slate-500">
-                Detaylı kurulum rehberi için proje kökündeki <code className="rounded bg-bg-card px-1 font-mono">SETUP_GITHUB_TEFAS.md</code> dosyasına bak.
+                Bu sayfa <strong>yalnızca gerçek TEFAS verisiyle</strong> çalışır.
               </p>
             </div>
           </div>
@@ -181,23 +171,16 @@ export function FundsPage() {
         </div>
       )}
 
-      {/* Üst kontrol bar */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
           <button
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm transition',
-              tab === 'all' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-            )}
+            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'all' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
             onClick={() => setTab('all')}
           >
             Tüm Fonlar ({liveFunds?.length ?? 0})
           </button>
           <button
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm transition',
-              tab === 'watched' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-            )}
+            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'watched' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
             onClick={() => setTab('watched')}
           >
             Takipte ({watched.length})
@@ -206,10 +189,7 @@ export function FundsPage() {
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {feedUpdatedAt && (
-            <LiveBadge
-              updatedAt={new Date(feedUpdatedAt).getTime()}
-              refreshing={loading}
-            />
+            <LiveBadge updatedAt={new Date(feedUpdatedAt).getTime()} refreshing={loading} />
           )}
           {availableCategories.length > 0 && (
             <select
@@ -239,16 +219,8 @@ export function FundsPage() {
       {sorted.length === 0 ? (
         <EmptyState
           icon={<PiggyBank size={28} />}
-          title={
-            !feedConfigured ? 'Veri bekleniyor'
-            : tab === 'watched' ? 'Takipte fon yok'
-            : 'Eşleşme yok'
-          }
-          description={
-            !feedConfigured ? 'TEFAS feed kurulumu yukarıdaki yönergeyi takip et.'
-            : tab === 'watched' ? 'Üstteki "Tüm Fonlar"a geç, yıldıza basarak fon ekle.'
-            : 'Arama veya kategori filtresini gevşet.'
-          }
+          title={!feedConfigured ? 'Veri bekleniyor' : tab === 'watched' ? 'Takipte fon yok' : 'Eşleşme yok'}
+          description={!feedConfigured ? 'TEFAS feed kurulumu tamamlanmalı.' : tab === 'watched' ? 'Üstteki "Tüm Fonlar"a geç, yıldıza basarak fon ekle.' : 'Arama veya kategori filtresini gevşet.'}
         />
       ) : (
         <>
@@ -262,21 +234,12 @@ export function FundsPage() {
             />
           </div>
 
-          {/* Fintables-stili tablo */}
           <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
             <table className="w-full min-w-[860px] text-sm">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
-                  <SortableHeader
-                    label="Kod"
-                    sortKey="code"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onClick={setSort}
-                    align="left"
-                    className="sticky left-8 z-20 bg-bg-soft"
-                  />
+                  <SortableHeader label="Kod" sortKey="code" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />
                   <th className="px-2 py-2.5 text-left hidden sm:table-cell">Şemsiye / Kategori</th>
                   <th className="px-2 py-2.5 text-center hidden md:table-cell whitespace-nowrap">TEFAS</th>
                   <SortableHeader label="Gün %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
@@ -316,7 +279,7 @@ export function FundsPage() {
 
       {feedUpdatedAt && hasLiveData && (
         <p className="mt-3 text-[11px] text-slate-500">
-          Toplam {sorted.length} fon. Veri güncelleme: {formatRelative(feedUpdatedAt)}. Kodu tıklayarak detay sayfasına, yıldıza basarak takibe ekle.
+          Toplam {sorted.length} fon. Veri güncelleme: {formatRelative(feedUpdatedAt)}.
         </p>
       )}
 
@@ -360,11 +323,7 @@ function SortableHeader({ label, sortKey, activeKey, dir, onClick, align = 'righ
     >
       <span className="inline-flex items-center gap-1">
         {label}
-        {active ? (
-          <span className="text-[9px]">{dir === 'asc' ? '▲' : '▼'}</span>
-        ) : (
-          <ArrowUpDown size={10} className="opacity-30" />
-        )}
+        {active ? <span className="text-[9px]">{dir === 'asc' ? '▲' : '▼'}</span> : <ArrowUpDown size={10} className="opacity-30" />}
       </span>
     </th>
   );
@@ -380,26 +339,18 @@ interface FundTableRowProps {
 function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
   return (
     <tr className="border-b border-border/60 transition hover:bg-bg-card">
-      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">
-        {rank}
-      </td>
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{rank}</td>
       <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-            className={cn(
-              'shrink-0 transition',
-              isWatched ? 'text-warning' : 'text-slate-600 hover:text-warning',
-            )}
+            className={cn('shrink-0 transition', isWatched ? 'text-warning' : 'text-slate-600 hover:text-warning')}
             title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
           >
             <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
           </button>
-          <Link
-            to={`/fund/${fund.code}`}
-            className="font-mono text-[13px] font-semibold text-slate-100 hover:text-accent"
-          >
+          <Link to={`/fund/${fund.code}`} className="font-mono text-[13px] font-semibold text-slate-100 hover:text-accent">
             {fund.code}
           </Link>
         </div>
@@ -407,20 +358,14 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
       <td className="hidden sm:table-cell px-2 py-2">
         <div className="flex items-center gap-1.5">
           {fund.category && (
-            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">
-              {fund.category}
-            </span>
+            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">{fund.category}</span>
           )}
-          <span className="truncate text-[11px] text-slate-400 max-w-[200px]">
-            {fund.name}
-          </span>
+          <span className="truncate text-[11px] text-slate-400 max-w-[200px]">{fund.name}</span>
         </div>
       </td>
       <td className="hidden md:table-cell px-2 py-2 text-center">
         {fund.tefas ? (
-          <span className="inline-block rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
-            ✓
-          </span>
+          <span className="inline-block rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">✓</span>
         ) : (
           <span className="text-slate-600">—</span>
         )}
@@ -438,11 +383,7 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
 
 function PerfCell({ value }: { value: number | undefined }) {
   if (value == null || !Number.isFinite(value)) {
-    return (
-      <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">
-        —
-      </td>
-    );
+    return <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">—</td>;
   }
   const tone = value >= 0 ? 'text-success' : 'text-danger';
   return (
@@ -451,5 +392,3 @@ function PerfCell({ value }: { value: number | undefined }) {
     </td>
   );
 }
-
-// AddFundForm fonksiyonu kaldırıldı — kullanıcı talebi

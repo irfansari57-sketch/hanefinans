@@ -323,22 +323,39 @@ export function UsMarketsPage() {
           <div className="space-y-2">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="rect" height={56} />)}
           </div>
+        ) : visibleStocks.length === 0 ? (
+          <div className="rounded-lg border border-border bg-bg-soft py-6 text-center text-xs text-slate-500">
+            Filtreyle eşleşen hisse yok.
+          </div>
         ) : (
-          <div className="space-y-1.5">
-            {visibleStocks.map((s, i) => (
-              <UsStockRowItem
-                key={s.sym}
-                rec={s}
-                rank={i + 1}
-                watched={watchlistHas(s.sym)}
-                onToggle={() => toggleWatch(s.sym)}
-              />
-            ))}
-            {visibleStocks.length === 0 && (
-              <div className="rounded-lg border border-border bg-bg-soft py-6 text-center text-xs text-slate-500">
-                Filtreyle eşleşen hisse yok.
-              </div>
-            )}
+          <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
+                  <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
+                  <th className="px-2 py-2.5 text-left hidden sm:table-cell">Ad / Sektör</th>
+                  <th className="px-2 py-2.5 text-left hidden md:table-cell">Borsa</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">Fiyat</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">Gün %</th>
+                  <th className="px-2 py-2.5 text-center hidden lg:table-cell">1S</th>
+                  <th className="px-2 py-2.5 text-center hidden lg:table-cell">4S</th>
+                  <th className="px-2 py-2.5 text-center hidden lg:table-cell">1G</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap">★</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleStocks.map((s, i) => (
+                  <UsStockTableRow
+                    key={s.sym}
+                    rec={s}
+                    rank={i + 1}
+                    watched={watchlistHas(s.sym)}
+                    onToggle={() => toggleWatch(s.sym)}
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
@@ -475,85 +492,60 @@ function TimeframeBoxSmall({ label, ta }: { label: string; ta: TimeframeAnalysis
 /**
  * ABD hisseleri için kompakt akordeon satır. Summary'de özet + expanded UsStockCard.
  */
-function UsStockRowItem({ rec, rank, watched, onToggle }: {
-  rec: UsStockRec;
-  rank: number;
-  watched: boolean;
-  onToggle: () => void;
-}) {
+function UsStockTableRow({ rec, rank, watched, onToggle }: { rec: UsStockRec; rank: number; watched: boolean; onToggle: () => void }) {
   const tone = rec.changePct >= 0 ? 'text-success' : 'text-danger';
   const sign = rec.changePct >= 0 ? '+' : '';
   const longCount = [rec.trend1h, rec.trend4h, rec.trend1d].filter((t) => t?.trend === 'long').length;
   const isLong = longCount >= 2;
-
   return (
-    <details className={cn(
-      'group rounded-lg border transition',
-      isLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
-    )}>
-      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
-        <span className={cn(
-          'grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs',
-          isLong ? 'border-success/40 bg-success/10 text-success' : 'border-accent/30 bg-accent/10 text-accent',
-        )}>
-          {rank}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Link
-              to={`/stock/${rec.sym}`}
-              className="font-mono font-bold text-slate-100 hover:text-accent"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {rec.sym}
-            </Link>
-            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{rec.sector}</span>
-            <span className="rounded bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{rec.exchange}</span>
-            {isLong && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
-                <Zap size={8} />{longCount}/3 Long
-              </span>
-            )}
-            {watched && <Star size={10} className="text-warning" fill="currentColor" />}
-          </div>
-          <div className="truncate text-[10px] text-slate-500">{rec.name}</div>
+    <tr className={cn('border-b border-border/60 transition hover:bg-bg-card', isLong && 'bg-success/5')}>
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{rank}</td>
+      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
+        <Link to={`/stock/${rec.sym}`} className="font-mono text-[13px] font-semibold text-slate-100 hover:text-accent inline-flex items-center gap-1">
+          {rec.sym}
+          {isLong && <Zap size={10} className="text-success" />}
+        </Link>
+      </td>
+      <td className="hidden sm:table-cell px-2 py-2">
+        <div className="flex items-center gap-1.5">
+          <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">{rec.sector}</span>
+          <span className="truncate text-[11px] text-slate-400 max-w-[180px]">{rec.name}</span>
         </div>
-        <div className="hidden lg:flex items-center gap-1 text-[9px]">
-          {(['1h', '4h', '1d'] as const).map((tfKey) => {
-            const t = tfKey === '1h' ? rec.trend1h : tfKey === '4h' ? rec.trend4h : rec.trend1d;
-            const label = tfKey === '1h' ? '1H' : tfKey === '4h' ? '4H' : '1G';
-            if (!t) return <span key={tfKey} className="rounded bg-slate-500/15 px-1 py-0.5 text-slate-500">{label}</span>;
-            const cls = t.trend === 'long' ? 'bg-success/15 text-success' : t.trend === 'short' ? 'bg-danger/15 text-danger' : 'bg-slate-500/15 text-slate-400';
-            return <span key={tfKey} className={cn('rounded px-1 py-0.5 font-mono', cls)}>{label}</span>;
-          })}
-        </div>
-        <div className="w-24 text-right">
-          <div className="text-sm font-bold tabular-nums text-slate-100">${rec.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
-          <div className={cn('text-[10px] font-semibold tabular-nums', tone)}>{sign}{rec.changePct.toFixed(2)}%</div>
-        </div>
-        <ChevronRight size={14} className="shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
-      </summary>
+      </td>
+      <td className="hidden md:table-cell px-2 py-2 text-[10px] text-slate-400">{rec.exchange}</td>
+      <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-200 whitespace-nowrap">
+        ${rec.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+      </td>
+      <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums whitespace-nowrap', tone)}>
+        {sign}{rec.changePct.toFixed(2)}%
+      </td>
+      <TrendCell tf={rec.trend1h} />
+      <TrendCell tf={rec.trend4h} />
+      <TrendCell tf={rec.trend1d} />
+      <td className="px-2 py-2 text-center">
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+          className={cn('transition', watched ? 'text-warning' : 'text-slate-600 hover:text-warning')}
+          title={watched ? 'Watchlist\'ten çıkar' : 'Watchlist\'e ekle'}
+        >
+          <Star size={12} fill={watched ? 'currentColor' : 'none'} />
+        </button>
+      </td>
+    </tr>
+  );
+}
 
-      <div className="border-t border-border bg-bg-card">
-        <UsStockCard rec={rec} rank={rank} />
-        {/* Watchlist toggle */}
-        <div className="border-t border-border px-4 py-2">
-          <button
-            type="button"
-            onClick={onToggle}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition',
-              watched
-                ? 'border-warning/40 bg-warning/10 text-warning'
-                : 'border-border bg-bg-soft text-slate-400 hover:border-warning/30 hover:text-warning',
-            )}
-          >
-            <Star size={11} fill={watched ? 'currentColor' : 'none'} />
-            {watched ? 'Watchlist\'ten çıkar' : 'Watchlist\'e ekle'}
-          </button>
-        </div>
-      </div>
-    </details>
+function TrendCell({ tf }: { tf: TimeframeAnalysis | null }) {
+  if (!tf) {
+    return <td className="hidden lg:table-cell px-2 py-2 text-center text-[10px] text-slate-600">—</td>;
+  }
+  const cls = tf.trend === 'long' ? 'bg-success/15 text-success' : tf.trend === 'short' ? 'bg-danger/15 text-danger' : 'bg-slate-500/15 text-slate-400';
+  const label = tf.trend === 'long' ? 'L' : tf.trend === 'short' ? 'S' : '–';
+  return (
+    <td className="hidden lg:table-cell px-2 py-2 text-center">
+      <span className={cn('inline-block rounded px-1.5 py-0.5 text-[10px] font-bold', cls)}>{label}</span>
+    </td>
   );
 }
 

@@ -146,8 +146,25 @@ export function StocksPage() {
       }
       setReturnsLoading(true);
       const newReturns: Record<string, PeriodReturns> = {};
+
+      // 1. Toplu returns-snapshot endpoint — tek istekte cache'lenmis returns'leri al
+      try {
+        const r = await fetch('/api/yahoo/returns-snapshot');
+        if (r.ok) {
+          const j = await r.json() as { ok: boolean; returns: Record<string, PeriodReturns> };
+          if (j.ok && j.returns) {
+            for (const [ySym, ret] of Object.entries(j.returns)) {
+              const sym = ySym.endsWith('.IS') ? ySym.slice(0, -3) : ySym;
+              newReturns[sym] = ret;
+            }
+            setReturnsMap({ ...newReturns });
+          }
+        }
+      } catch { /* fallback */ }
+
+      // 2. Snapshot'tan gelmeyenleri arka planda batch'lerle yenile
       const topMovers = [...liveStocks]
-        .filter((s) => s.price > 0)
+        .filter((s) => s.price > 0 && !newReturns[s.symbol])
         .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
         .slice(0, 200)
         .map((s) => s.symbol);

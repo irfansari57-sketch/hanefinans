@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Sparkline } from '@/components/ui/Sparkline';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
@@ -47,6 +48,27 @@ const sentimentLabel = {
 
 const AUTO_REFRESH_MS = 30_000;
 
+// Sparkline cache — macro key -> kapanis dizisi (in-memory, sayfa geciSinde persist)
+interface SparklineMemo { fetchedAt: number; data: Record<string, number[]>; }
+const SPARKLINE_TTL_MS = 30 * 60_000; // 30 dakika
+let sparklineMemo: SparklineMemo = { fetchedAt: 0, data: {} };
+
+// Macro key -> Yahoo sembolu (sparkline icin)
+const MACRO_TO_YAHOO: Record<string, string> = {
+  'BIST 100': 'XU100.IS',
+  'BIST 30': 'XU030.IS',
+  'USD/TRY': 'USDTRY=X',
+  'EUR/TRY': 'EURTRY=X',
+  'Gram Altın': 'XAUUSD=X',
+  'Gram Gümüş': 'XAGUSD=X',
+  'Ons Altın': 'XAUUSD=X',
+  'Ons Gümüş': 'XAGUSD=X',
+  'BTC/USD': 'BTC-USD',
+  'ETH/USD': 'ETH-USD',
+  'XRP/USD': 'XRP-USD',
+  'DOGE/USD': 'DOGE-USD',
+};
+
 export function PanelPage() {
   const symbols = useWatchlist((s) => s.symbols);
   // Tüm BIST evreni — top gainers/losers tam kapsamlı hesaplanacak (MOCK 50 değil 270+)
@@ -78,6 +100,8 @@ export function PanelPage() {
   const [stocksReturnsLoading, setStocksReturnsLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [refreshing, setRefreshing] = useState(false);
+  // Mini sparkline serileri — macro key -> son ~30 gunluk kapanis dizisi
+  const [sparklineMap, setSparklineMap] = useState<Record<string, number[]>>(() => sparklineMemo.data);
 
   // Pin'lenebilir bölümler — kullanıcı isterse açık/kapalı durumunu kaydeder.
   // Mobilde default kapalı (kompakt görünüm); desktop'ta default açık.
@@ -129,6 +153,40 @@ export function PanelPage() {
     const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
     return () => clearInterval(id);
   }, [refresh]);
+
+  // Sparkline veri fetch — TTL icinde memo'dan, degilse Yahoo'dan
+  useEffect(() => {
+    const now = Date.now();
+    if (now - sparklineMemo.fetchedAt < SPARKLINE_TTL_MS && Object.keys(sparklineMemo.data).length > 0) {
+      setSparklineMap(sparklineMemo.data);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const result: Record<string, number[]> = {};
+      const keys = Object.keys(MACRO_TO_YAHOO);
+      // 4'lu batchler halinde, 200ms aralikla — proxy rate-limit'i acmadan
+      const BATCH = 4;
+      for (let i = 0; i < keys.length; i += BATCH) {
+        const batch = keys.slice(i, i + BATCH);
+        await Promise.all(batch.map(async (key) => {
+          try {
+            const sym = MACRO_TO_YAHOO[key];
+            const hist = await fetchHistoricalYahoo(sym, '1mo', '1d', { bistSuffix: false });
+            if (hist && hist.bars.length > 0) {
+              result[key] = hist.bars.map((b) => b.close).slice(-30);
+            }
+          } catch { /* sembol hata verirse atla */ }
+        }));
+        if (cancelled) return;
+        if (i + BATCH < keys.length) await new Promise((r) => setTimeout(r, 200));
+      }
+      if (cancelled) return;
+      sparklineMemo = { fetchedAt: Date.now(), data: result };
+      setSparklineMap(result);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const watchlistStocks = useMemo(
     () => symbols.map((sym) => stocks.find((s) => s.symbol === sym)).filter((s): s is Stock => !!s),
@@ -238,11 +296,14 @@ export function PanelPage() {
                   <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                   </div>
-                  {m.changePct != null && (
-                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                    </div>
-                  )}
+                  <div className="mt-1 flex items-end justify-between gap-2">
+                    {m.changePct != null && (
+                      <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                      </div>
+                    )}
+                    <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                  </div>
                 </>
               );
               return route ? (
@@ -266,11 +327,14 @@ export function PanelPage() {
                   <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
                     {m.value.toFixed(2)}
                   </div>
-                  {m.changePct != null && (
-                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                    </div>
-                  )}
+                  <div className="mt-1 flex items-end justify-between gap-2">
+                    {m.changePct != null && (
+                      <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                      </div>
+                    )}
+                    <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                  </div>
                 </>
               );
               return route ? (
@@ -306,11 +370,14 @@ export function PanelPage() {
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: m.value < 100 ? 2 : 0 })}
                     {m.unit && <span className="ml-1 text-[10px] font-medium text-slate-500">{m.unit}</span>}
                   </div>
-                  {m.changePct != null && (
-                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                    </div>
-                  )}
+                  <div className="mt-1 flex items-end justify-between gap-2">
+                    {m.changePct != null && (
+                      <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                      </div>
+                    )}
+                    <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                  </div>
                 </>
               );
               return route ? (
@@ -346,11 +413,14 @@ export function PanelPage() {
                   <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-2xl">
                     ${m.value.toLocaleString('en-US', { maximumFractionDigits: m.value < 10 ? 4 : m.value < 1000 ? 2 : 0 })}
                   </div>
-                  {m.changePct != null && (
-                    <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                      {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                    </div>
-                  )}
+                  <div className="mt-1 flex items-end justify-between gap-2">
+                    {m.changePct != null && (
+                      <div className={cn('text-xs tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
+                      </div>
+                    )}
+                    <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                  </div>
                 </>
               );
               return route ? (

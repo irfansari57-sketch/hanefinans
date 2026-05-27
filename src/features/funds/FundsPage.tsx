@@ -241,7 +241,6 @@ export function FundsPage() {
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <SortableHeader label="Kod" sortKey="code" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />
                   <th className="px-2 py-2.5 text-left hidden sm:table-cell">Şemsiye / Kategori</th>
-                  <th className="px-2 py-2.5 text-center hidden md:table-cell whitespace-nowrap">TEFAS</th>
                   <SortableHeader label="Gün %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="1 Hafta %" sortKey="week" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="1 Ay %" sortKey="month" activeKey={sortKey} dir={sortDir} onClick={setSort} />
@@ -362,13 +361,6 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
           )}
           <span className="truncate text-[11px] text-slate-400 max-w-[200px]">{fund.name}</span>
         </div>
-      </td>
-      <td className="hidden md:table-cell px-2 py-2 text-center">
-        {fund.tefas ? (
-          <span className="inline-block rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">✓</span>
-        ) : (
-          <span className="text-slate-600">—</span>
-        )}
       </td>
       <PerfCell value={fund.day} />
       <PerfCell value={fund.week} />

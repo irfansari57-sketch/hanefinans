@@ -2,27 +2,28 @@ import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SparklineProps {
+  /** Kapanis fiyat dizisi — son nokta en gunceli. */
   data: number[];
   width?: number;
   height?: number;
-  /** Renk yon — pozitifse yesil, negatifse kirmizi (otomatik). Override edilebilir. */
+  /** Ozel renk — verilmezse trend'e gore yesil/kirmizi. */
   color?: string;
-  /** Cizgiye golge (svg filter) ekle. */
+  /** Glow efekti — vurgu icin. */
   glow?: boolean;
   className?: string;
 }
 
 /**
- * Mini sparkline grafik — son N kapanis noktasini gosterir.
- * SVG path olarak render edilir, library bagimliligi yok.
- * Cizgi rengi otomatik: ilk noktadan son noktaya artis varsa yesil, azalis kirmizi.
+ * Mini sparkline cizgi grafigi — saf SVG (kutuphane yok).
+ * Default: trend yukariysa yesil, asagiysa kirmizi.
+ * Alt taraf gradyan dolgu ile vurgulanir.
  */
 export function Sparkline({
   data,
   width = 80,
   height = 28,
   color,
-  glow = false,
+  glow,
   className,
 }: SparklineProps) {
   const { path, areaPath, lineColor } = useMemo(() => {
@@ -32,20 +33,19 @@ export function Sparkline({
     const min = Math.min(...data);
     const max = Math.max(...data);
     const range = max - min || 1;
-    const xStep = width / (data.length - 1);
-    const padTop = 2;
-    const padBot = 2;
-    const innerH = height - padTop - padBot;
+    const stepX = width / (data.length - 1);
 
     const points = data.map((v, i) => {
-      const x = i * xStep;
-      const y = padTop + innerH - ((v - min) / range) * innerH;
+      const x = i * stepX;
+      const y = height - ((v - min) / range) * (height - 2) - 1;
       return [x, y] as const;
     });
 
-    const path = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`).join(' ');
-    // Alan icin alt çizgiyi de tamamla
-    const areaPath = `${path} L ${width.toFixed(2)} ${height} L 0 ${height} Z`;
+    const path = points
+      .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`)
+      .join(' ');
+
+    const areaPath = `${path} L${points[points.length - 1][0].toFixed(2)},${height} L${points[0][0].toFixed(2)},${height} Z`;
 
     const isUp = data[data.length - 1] >= data[0];
     const lineColor = color || (isUp ? '#22c55e' : '#ef4444');
@@ -53,14 +53,13 @@ export function Sparkline({
     return { path, areaPath, lineColor };
   }, [data, width, height, color]);
 
-  if (!data || data.length < 2) {
-    // Veri yok — kesik kesik nokta cizgi placeholder
+  if (!path) {
     return (
       <svg
         viewBox={`0 0 ${width} ${height}`}
         width={width}
         height={height}
-        className={cn('shrink-0', className)}
+        className={cn('shrink-0 opacity-30', className)}
         aria-hidden
       >
         <line
@@ -68,10 +67,9 @@ export function Sparkline({
           y1={height / 2}
           x2={width}
           y2={height / 2}
-          stroke="currentColor"
+          stroke="#94a3b8"
           strokeWidth="1"
-          strokeDasharray="3,3"
-          opacity="0.3"
+          strokeDasharray="2 2"
         />
       </svg>
     );

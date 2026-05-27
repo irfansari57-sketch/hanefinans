@@ -2,10 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import {
-  PiggyBank, Plus, ExternalLink, Search, Info, Star, ChevronRight,
-  ChevronUp, ChevronDown, Trophy, AlertCircle,
+  PiggyBank, Plus, Search, Star, AlertCircle, ArrowUpDown,
 } from 'lucide-react';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { Modal } from '@/components/ui/Modal';
@@ -20,42 +18,7 @@ import { formatRelative } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
-const tefasUrl = (code: string) => `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(code)}`;
-
-type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear' | 'fiveYear'> | 'code';
-
-const SORT_COLUMNS: Array<{ key: SortKey; label: string; short: string }> = [
-  { key: 'code',       label: 'Fon Kodu', short: '#' },
-  { key: 'day',        label: '1 Gün',    short: '1G (%)' },
-  { key: 'week',       label: '1 Hafta',  short: '1H (%)' },
-  { key: 'month',      label: '1 Ay',     short: '1A (%)' },
-  { key: 'threeMonth', label: '3 Ay',     short: '3A (%)' },
-  { key: 'sixMonth',   label: '6 Ay',     short: '6A (%)' },
-  { key: 'ytd',        label: 'Yılbaşı',  short: 'YTD (%)' },
-  { key: 'year',       label: '1 Yıl',    short: '1Y (%)' },
-];
-
-const PERIOD_LABEL: Record<Exclude<SortKey, 'code'>, string> = {
-  day: '1 Gün',
-  week: '1 Hafta',
-  month: '1 Ay',
-  threeMonth: '3 Ay',
-  sixMonth: '6 Ay',
-  ytd: 'Yılbaşı',
-  year: '1 Yıl',
-  threeYear: '3 Yıl',
-  fiveYear: '5 Yıl',
-};
-
-const PRESET_SORTS: Array<{ key: Exclude<SortKey, 'code'>; label: string }> = [
-  { key: 'day',        label: '1 Gün' },
-  { key: 'week',       label: '1 Hafta' },
-  { key: 'month',      label: '1 Ay' },
-  { key: 'threeMonth', label: '3 Ay' },
-  { key: 'sixMonth',   label: '6 Ay' },
-  { key: 'ytd',        label: 'Yılbaşı' },
-  { key: 'year',       label: '1 Yıl' },
-];
+type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year'> | 'code';
 
 const ALL_CATEGORIES: FundCategory[] = [
   'Para Piyasası',
@@ -80,7 +43,7 @@ export function FundsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const PAGE_SIZE = 25;
+  const PAGE_SIZE = 50;
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
   const [feedError, setFeedError] = useState<TefasFeedFetchResult | null>(null);
@@ -126,7 +89,6 @@ export function FundsPage() {
     return source;
   }, [tab, watched, liveFunds]);
 
-  // Universe'taki gerçek kategori değerleri (canlı feed'den dinamik)
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     universe.forEach((f) => {
@@ -158,7 +120,6 @@ export function FundsPage() {
       const vb = (b[sortKey] as number | undefined);
       const aValid = Number.isFinite(va);
       const bValid = Number.isFinite(vb);
-      // Geçersiz değerleri her zaman en alta gönder
       if (!aValid && !bValid) return 0;
       if (!aValid) return 1;
       if (!bValid) return -1;
@@ -167,7 +128,6 @@ export function FundsPage() {
     return arr;
   }, [filtered, sortKey, sortDir]);
 
-  // Pagination
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(currentPage, totalPages);
   const paginated = useMemo(
@@ -178,18 +138,12 @@ export function FundsPage() {
     setCurrentPage(1);
   }, [search, tab, sortKey, sortDir, categoryFilter]);
 
-
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else {
       setSortKey(k);
       setSortDir(k === 'code' ? 'asc' : 'desc');
     }
-  };
-
-  const setPresetSort = (k: Exclude<SortKey, 'code'>) => {
-    setSortKey(k);
-    setSortDir('desc');
   };
 
   const toggleWatch = async (fund: FundPerformance) => {
@@ -203,25 +157,7 @@ export function FundsPage() {
 
   return (
     <>
-      <SeoHead title="TEFAS Fonları" description="TEFAS yatırım fonları — günlük getiri, 1A/3A/YBB performans, kategoriye göre filtreleme. Karşılaştırma ve takip." path="/funds" />
-
-      <PageHeader
-        title="Fonlar"
-        subtitle="TEFAS fonları en yüksek getiriye göre sıralı. Üstteki butonlarla periyodu değiştir; sütunu tıklayarak da sıralayabilirsin."
-        actions={
-          <div className="flex items-center gap-2">
-            {feedUpdatedAt && (
-              <LiveBadge
-                updatedAt={new Date(feedUpdatedAt).getTime()}
-                refreshing={loading}
-              />
-            )}
-            <button className="btn-secondary" onClick={() => setAddOpen(true)}>
-              <Plus size={16} /> Manuel Fon Ekle
-            </button>
-          </div>
-        }
-      />
+      <SeoHead title="TEFAS Fonları" description="TEFAS yatırım fonları — günlük getiri, 1A/3A/YBB performans, kategoriye göre filtreleme. Liste/tablo görünümü." path="/funds" />
 
       {/* Feed yapılandırma uyarısı */}
       {!feedConfigured && (
@@ -232,16 +168,9 @@ export function FundsPage() {
               <h3 className="text-sm font-semibold text-warning">Canlı TEFAS verisi yapılandırılmadı</h3>
               <p className="mt-1 text-xs leading-relaxed text-slate-300">
                 Bu sayfa <strong>yalnızca gerçek TEFAS verisiyle</strong> çalışır. Sahte/demo veri kullanmıyoruz.
-                Kurulum 10 dakika ve tamamen ücretsiz — GitHub Actions saatlik tarayıcı kuruyorsun, jsDelivr CDN üzerinden uygulamaya akıyor.
               </p>
-              <ol className="mt-2 list-decimal pl-5 text-xs text-slate-400 space-y-0.5">
-                <li>GitHub'da public bir <code className="rounded bg-bg-card px-1 font-mono">hanefinans-data</code> reposu aç</li>
-                <li>Proje kökündeki <code className="rounded bg-bg-card px-1 font-mono">github-data-repo/</code> dosyalarını oraya yükle</li>
-                <li>Actions sekmesinde workflow'u manuel tetikle (~3 dk)</li>
-                <li><code className="rounded bg-bg-card px-1 font-mono">.env.local</code> dosyasına jsDelivr URL'i ekle</li>
-              </ol>
               <p className="mt-2 text-[11px] text-slate-500">
-                Detaylı adım adım rehber için proje kökündeki <code className="rounded bg-bg-card px-1 font-mono">SETUP_GITHUB_TEFAS.md</code> dosyasına bak.
+                Detaylı kurulum rehberi için proje kökündeki <code className="rounded bg-bg-card px-1 font-mono">SETUP_GITHUB_TEFAS.md</code> dosyasına bak.
               </p>
             </div>
           </div>
@@ -260,24 +189,7 @@ export function FundsPage() {
                 <dd className="font-mono">{feedError.status}</dd>
               </>
             )}
-            {feedError.url && (
-              <>
-                <dt className="font-semibold text-slate-400">URL:</dt>
-                <dd className="font-mono text-slate-400 break-all">
-                  <a href={feedError.url} target="_blank" rel="noreferrer" className="text-accent underline">{feedError.url}</a>
-                </dd>
-              </>
-            )}
-            {feedError.preview && (
-              <>
-                <dt className="font-semibold text-slate-400">İlk yanıt:</dt>
-                <dd className="font-mono text-slate-500 break-all max-h-24 overflow-y-auto">{feedError.preview}</dd>
-              </>
-            )}
           </dl>
-          <p className="mt-3 text-[10px] text-slate-500">
-            <strong>Yaygın sebepler:</strong> (1) GitHub Actions workflow henüz çalışmadı → repoda Actions sekmesi → "Run workflow" tetikle. (2) jsDelivr CDN cache 10 dk sürer → URL sonuna <code className="rounded bg-bg-card px-1">?v=123</code> ekleyip test et. (3) Workflow log'unda Python scraper hata vermiş olabilir → repoda Actions → son run → logları aç.
-          </p>
         </div>
       )}
 
@@ -305,6 +217,12 @@ export function FundsPage() {
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {feedUpdatedAt && (
+            <LiveBadge
+              updatedAt={new Date(feedUpdatedAt).getTime()}
+              refreshing={loading}
+            />
+          )}
           {availableCategories.length > 0 && (
             <select
               value={categoryFilter}
@@ -327,34 +245,11 @@ export function FundsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <button className="btn-secondary" onClick={() => setAddOpen(true)}>
+            <Plus size={14} /> Manuel Ekle
+          </button>
         </div>
-
       </div>
-
-      {/* Hızlı sıralama presetleri */}
-      {hasLiveData && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 p-2.5">
-          <span className="ml-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-accent">
-            <Trophy size={12} /> En Yüksek Getiri
-          </span>
-          {PRESET_SORTS.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setPresetSort(p.key)}
-              className={cn(
-                'rounded-md px-2.5 py-1 text-xs font-medium transition',
-                sortKey === p.key && sortDir === 'desc'
-                  ? 'bg-accent text-accent-fg shadow-sm shadow-accent/30'
-                  : 'bg-bg-soft text-slate-300 hover:bg-bg-card hover:text-slate-100',
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
-          <span className="ml-auto text-[10px] text-slate-500">{sorted.length} fon</span>
-        </div>
-      )}
-
 
       {sorted.length === 0 ? (
         <EmptyState
@@ -372,43 +267,71 @@ export function FundsPage() {
         />
       ) : (
         <>
-        <div className="mb-3">
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={sorted.length}
-            pageSize={PAGE_SIZE}
-            onPageChange={setCurrentPage}
-          />
-        </div>
-        {/* Hem "Tüm Fonlar" hem "Takipte" — akordeon satır liste (Trend Fonlar stili) */}
-        <div className="space-y-1.5">
-          {paginated.map((f, i) => (
-            <WatchedFundRow
-              key={f.code}
-              fund={f}
-              rank={(safePage - 1) * PAGE_SIZE + i + 1}
-              sortKey={sortKey}
-              isWatched={watchedCodes.has(f.code)}
-              onToggle={() => toggleWatch(f)}
+          <div className="mb-3">
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={sorted.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setCurrentPage}
             />
-          ))}
-        </div>
-        <div className="mt-3">
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={sorted.length}
-            pageSize={PAGE_SIZE}
-            onPageChange={setCurrentPage}
-          />
-        </div>
+          </div>
+
+          {/* Fintables-stili tablo */}
+          <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
+                  <SortableHeader
+                    label="Kod"
+                    sortKey="code"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onClick={setSort}
+                    align="left"
+                    className="sticky left-8 z-20 bg-bg-soft"
+                  />
+                  <th className="px-2 py-2.5 text-left hidden sm:table-cell">Şemsiye / Kategori</th>
+                  <th className="px-2 py-2.5 text-center hidden md:table-cell whitespace-nowrap">TEFAS</th>
+                  <SortableHeader label="Gün %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="1 Hafta %" sortKey="week" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="1 Ay %" sortKey="month" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="3 Ay %" sortKey="threeMonth" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="6 Ay %" sortKey="sixMonth" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="YTD %" sortKey="ytd" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="1 Yıl %" sortKey="year" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                </tr>
+              </thead>
+              <tbody>
+                {paginated.map((f, i) => (
+                  <FundTableRow
+                    key={f.code}
+                    fund={f}
+                    rank={(safePage - 1) * PAGE_SIZE + i + 1}
+                    isWatched={watchedCodes.has(f.code)}
+                    onToggle={() => toggleWatch(f)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3">
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={sorted.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </>
       )}
 
       {feedUpdatedAt && hasLiveData && (
         <p className="mt-3 text-[11px] text-slate-500">
-          Toplam {sorted.length} fon. Veri güncelleme: {formatRelative(feedUpdatedAt)}. Sembole tıklayarak detay sayfasına, yıldıza basarak takibe ekle.
+          Toplam {sorted.length} fon. Veri güncelleme: {formatRelative(feedUpdatedAt)}. Kodu tıklayarak detay sayfasına, yıldıza basarak takibe ekle.
         </p>
       )}
 
@@ -432,188 +355,119 @@ export function FundsPage() {
   );
 }
 
-function PerfCell({ value, hideOnMobile }: { value?: number; hideOnMobile?: boolean }) {
-  const baseClass = cn('px-3 py-2.5 text-right tabular-nums whitespace-nowrap', hideOnMobile && 'hidden md:table-cell');
-  if (value == null || !Number.isFinite(value)) {
-    return <td className={cn(baseClass, 'text-slate-600')}>—</td>;
-  }
-  const tone = value >= 0 ? 'text-success' : 'text-danger';
+interface SortableHeaderProps {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  dir: 'asc' | 'desc';
+  onClick: (k: SortKey) => void;
+  align?: 'left' | 'right';
+  className?: string;
+}
+
+function SortableHeader({ label, sortKey, activeKey, dir, onClick, align = 'right', className }: SortableHeaderProps) {
+  const active = activeKey === sortKey;
   return (
-    <td className={cn(baseClass, tone)}>
-      % {value.toFixed(2).replace('.', ',')}
-    </td>
+    <th
+      className={cn(
+        'cursor-pointer select-none whitespace-nowrap px-2 py-2.5 transition hover:text-slate-200',
+        align === 'right' ? 'text-right' : 'text-left',
+        active && 'text-accent',
+        className,
+      )}
+      onClick={() => onClick(sortKey)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (
+          <span className="text-[9px]">{dir === 'asc' ? '▲' : '▼'}</span>
+        ) : (
+          <ArrowUpDown size={10} className="opacity-30" />
+        )}
+      </span>
+    </th>
   );
 }
 
-interface WatchedFundRowProps {
+interface FundTableRowProps {
   fund: FundPerformance;
   rank: number;
-  sortKey: SortKey;
   isWatched: boolean;
   onToggle: () => void;
 }
 
-/**
- * Takipteki fon akordeon satırı — Öneriler sayfasındaki Trend Fonlar tarzı.
- * Summary: sıra rozeti, kod + kategori + TEFAS rozeti, ad, 3 mini chip (active hariç),
- * seçili döneme göre büyük getiri.
- * Açılınca: 7 dönem mini grid + Detay/TEFAS/Fintables butonları + Takipten çıkar.
- */
-function WatchedFundRow({ fund, rank, sortKey, isWatched, onToggle }: WatchedFundRowProps) {
-  const activeKey: Exclude<SortKey, 'code'> = sortKey === 'code' ? 'year' : sortKey;
-  const activeLabel = PERIOD_LABEL[activeKey];
-  const activeValue = fund[activeKey] as number | undefined;
-  const activeValid = activeValue != null && Number.isFinite(activeValue);
-  const activeTone = !activeValid ? 'text-slate-500' : (activeValue as number) >= 0 ? 'text-success' : 'text-danger';
-  const isLong = activeValid && (activeValue as number) > 0;
-
-  // Summary mini chip'leri — 3 yaygın dönem (active hariç)
-  const microKeys: Array<Exclude<SortKey, 'code'>> = (['month', 'threeMonth', 'ytd', 'year'] as const)
-    .filter((k) => k !== activeKey)
-    .slice(0, 3);
-
+function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
   return (
-    <details className={cn(
-      'group rounded-lg border transition',
-      isLong ? 'border-success/40 bg-success/5' : 'border-border bg-bg-soft hover:border-accent/40',
-    )}>
-      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm select-none [&::-webkit-details-marker]:hidden">
-        <span className={cn(
-          'grid h-7 w-7 shrink-0 place-items-center rounded-md border font-bold text-xs',
-          isLong ? 'border-success/40 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning',
-        )}>
-          {rank}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Link to={`/fund/${fund.code}`} className="font-mono font-bold text-slate-100 hover:text-accent" onClick={(e) => e.stopPropagation()}>
-              {fund.code}
-            </Link>
-            {isWatched && <Star size={10} className="text-warning" fill="currentColor" />}
-            {fund.category && (
-              <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400">{fund.category}</span>
-            )}
-            {fund.tefas && (
-              <span className="rounded bg-success/15 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">TEFAS</span>
-            )}
-          </div>
-          {fund.name && fund.name !== fund.code && (
-            <div className="truncate text-[10px] text-slate-500">{fund.name}</div>
-          )}
-        </div>
-        <div className="hidden md:flex items-center gap-1 text-[9px]">
-          {microKeys.map((k) => (
-            <PerfMicro key={k} label={shortLabel(k)} value={fund[k] as number} />
-          ))}
-        </div>
-        <div className="w-24 text-right">
-          <div className="text-[9px] uppercase tracking-wider text-slate-500">{activeLabel}</div>
-          {activeValid ? (
-            <div className={cn('text-sm font-bold tabular-nums', activeTone)}>
-              {(activeValue as number) >= 0 ? '+' : ''}{(activeValue as number).toFixed(2)}%
-            </div>
-          ) : (
-            <div className="text-sm font-bold tabular-nums text-slate-600">—</div>
-          )}
-        </div>
-        <ChevronRight size={14} className="shrink-0 text-slate-500 transition-transform group-open:rotate-90" />
-      </summary>
-
-      <div className="border-t border-border bg-bg-card p-4">
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-7">
-          <PerfMini label="1 Gün"   value={fund.day} />
-          <PerfMini label="1 Hafta" value={fund.week} />
-          <PerfMini label="1 Ay"    value={fund.month} />
-          <PerfMini label="3 Ay"    value={fund.threeMonth} />
-          <PerfMini label="6 Ay"    value={fund.sixMonth} />
-          <PerfMini label="YTD"     value={fund.ytd} />
-          <PerfMini label="1 Yıl"   value={fund.year} />
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link to={`/fund/${fund.code}`} className="btn-primary">
-            Detay <ChevronRight size={14} />
-          </Link>
-          <a
-            href={tefasUrl(fund.code)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20"
-          >
-            TEFAS <ExternalLink size={11} />
-          </a>
-          <a
-            href={`https://fintables.com/fonlar/${fund.code}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20"
-          >
-            Fintables <ExternalLink size={11} />
-          </a>
+    <tr className="border-b border-border/60 transition hover:bg-bg-card">
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">
+        {rank}
+      </td>
+      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
             className={cn(
-              'ml-auto inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium transition',
-              isWatched
-                ? 'border-danger/30 bg-danger/10 text-danger hover:bg-danger/20'
-                : 'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20',
+              'shrink-0 transition',
+              isWatched ? 'text-warning' : 'text-slate-600 hover:text-warning',
             )}
             title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
           >
-            <Star size={11} fill={isWatched ? 'currentColor' : 'none'} />
-            {isWatched ? 'Takipten çıkar' : 'Takibe al'}
+            <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
           </button>
+          <Link
+            to={`/fund/${fund.code}`}
+            className="font-mono text-[13px] font-semibold text-slate-100 hover:text-accent"
+          >
+            {fund.code}
+          </Link>
         </div>
-      </div>
-    </details>
+      </td>
+      <td className="hidden sm:table-cell px-2 py-2">
+        <div className="flex items-center gap-1.5">
+          {fund.category && (
+            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">
+              {fund.category}
+            </span>
+          )}
+          <span className="truncate text-[11px] text-slate-400 max-w-[200px]">
+            {fund.name}
+          </span>
+        </div>
+      </td>
+      <td className="hidden md:table-cell px-2 py-2 text-center">
+        {fund.tefas ? (
+          <span className="inline-block rounded bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+            ✓
+          </span>
+        ) : (
+          <span className="text-slate-600">—</span>
+        )}
+      </td>
+      <PerfCell value={fund.day} />
+      <PerfCell value={fund.week} />
+      <PerfCell value={fund.month} />
+      <PerfCell value={fund.threeMonth} />
+      <PerfCell value={fund.sixMonth} />
+      <PerfCell value={fund.ytd} />
+      <PerfCell value={fund.year} />
+    </tr>
   );
 }
 
-function shortLabel(k: Exclude<SortKey, 'code'>): string {
-  switch (k) {
-    case 'day': return '1G';
-    case 'week': return '1H';
-    case 'month': return '1A';
-    case 'threeMonth': return '3A';
-    case 'sixMonth': return '6A';
-    case 'ytd': return 'YTD';
-    case 'year': return '1Y';
-    case 'threeYear': return '3Y';
-    case 'fiveYear': return '5Y';
-  }
-}
-
-/** Summary'de compact mini perf chip — Trend Fonlar'daki PerfMicro ile aynı. */
-function PerfMicro({ label, value }: { label: string; value: number | undefined }) {
-  if (value == null || !Number.isFinite(value)) {
-    return <span className="rounded bg-bg-card px-1 py-0.5 text-slate-500">{label} —</span>;
-  }
-  const tone = value >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger';
-  return (
-    <span className={cn('rounded px-1 py-0.5 font-mono tabular-nums', tone)}>
-      {label} {value >= 0 ? '+' : ''}{value.toFixed(1)}
-    </span>
-  );
-}
-
-function PerfMini({ label, value }: { label: string; value: number | undefined }) {
+function PerfCell({ value }: { value: number | undefined }) {
   if (value == null || !Number.isFinite(value)) {
     return (
-      <div className="rounded bg-bg-card px-2 py-1.5">
-        <div className="text-[10px] text-slate-500">{label}</div>
-        <div className="tabular-nums text-slate-600">—</div>
-      </div>
+      <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">
+        —
+      </td>
     );
   }
   const tone = value >= 0 ? 'text-success' : 'text-danger';
   return (
-    <div className="rounded bg-bg-card px-2 py-1.5">
-      <div className="text-[10px] text-slate-500">{label}</div>
-      <div className={cn('text-sm font-medium tabular-nums', tone)}>
-        {value >= 0 ? '+' : ''}{value.toFixed(2)}%
-      </div>
-    </div>
+    <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums whitespace-nowrap', tone)}>
+      {value >= 0 ? '+' : ''}{value.toFixed(2)}%
+    </td>
   );
 }
 

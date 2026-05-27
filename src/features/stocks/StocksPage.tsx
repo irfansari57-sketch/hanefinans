@@ -37,11 +37,15 @@ function readReturnsCache(): Record<string, PeriodReturns> | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ReturnsCache;
     if (Date.now() - parsed.fetchedAt > STOCK_RETURNS_TTL_MS) return null;
+    // Bos cache poison'u onle: payload {} ise null don, refetch tetiklensin
+    if (!parsed.data || Object.keys(parsed.data).length === 0) return null;
     return parsed.data;
   } catch { return null; }
 }
 
 function writeReturnsCache(data: Record<string, PeriodReturns>) {
+  // Bos data localStorage'a yazilmasin, sonraki yuklemede gercek bir fetch'i blok'lar
+  if (!data || Object.keys(data).length === 0) return;
   try {
     localStorage.setItem(STOCK_RETURNS_CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), data }));
   } catch { /* ignore */ }

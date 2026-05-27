@@ -51,6 +51,18 @@
 /manifest.webmanifest
   Cache-Control: public, max-age=3600
 
+# === index.html — ASLA cache'leme ===
+# Vite her build'de assets/*'da hash değiştirir, ama index.html bu yeni hash'i gösterir.
+# Eğer index.html cache'lenirse tarayıcı eski JS bundle adını yüklemeye devam eder
+# ve kullanıcılar deploy'dan sonra eski sürümü görür (Ctrl+Shift+R gerekene kadar).
+# no-cache = her ziyaret CDN'e revalidate eder; içerik değişmemişse 304 döner (hızlı),
+# değişmişse anında yeni sürüm gelir.
+/
+  Cache-Control: no-cache, must-revalidate
+
+/index.html
+  Cache-Control: no-cache, must-revalidate
+
 # === Hashed asset'ler — uzun süre cache ===
 # Vite hashed isim üretiyor (index-DNVJkOUV.js), içerik değişince hash de değişir.
 /assets/*

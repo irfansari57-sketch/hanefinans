@@ -18,7 +18,8 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
   const dim = size === 'sm' ? 'h-8 w-16' : 'h-9 w-20';
   const knob = size === 'sm' ? 'h-6 w-6' : 'h-7 w-7';
   const iconSize = size === 'sm' ? 13 : 15;
-  const knobOffset = size === 'sm' ? '0.25rem' : '0.25rem';
+  const knobOffset = '0.25rem';
+  const knobWidth = size === 'sm' ? '1.5rem' : '1.75rem';
 
   return (
     <button
@@ -41,7 +42,7 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
       {/* Sol arkaplan icon — light hedef gosterimi */}
       <span
         className={cn(
-          'absolute left-1.5 flex items-center justify-center transition-opacity',
+          'absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center transition-opacity',
           isDark ? 'opacity-70 text-warning' : 'opacity-0',
         )}
         aria-hidden
@@ -51,14 +52,14 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
       {/* Sag arkaplan icon — dark hedef gosterimi */}
       <span
         className={cn(
-          'absolute right-1.5 flex items-center justify-center transition-opacity',
+          'absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center transition-opacity',
           isDark ? 'opacity-0' : 'opacity-70 text-accent',
         )}
         aria-hidden
       >
         <Moon size={iconSize} />
       </span>
-      {/* Knob — surukli */}
+      {/* Knob — dikeyde her zaman tam ortali (border-2 hesabini bertaraf eder) */}
       <span
         className={cn(
           'absolute grid place-items-center rounded-full shadow-lg ring-1 transition-all duration-300',
@@ -68,8 +69,9 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
             : 'bg-gradient-to-br from-accent to-sky-600 text-white ring-accent/40',
         )}
         style={{
-          top: knobOffset,
-          left: isDark ? knobOffset : `calc(100% - ${size === 'sm' ? '1.5rem' : '1.75rem'} - ${knobOffset})`,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          left: isDark ? knobOffset : `calc(100% - ${knobWidth} - ${knobOffset})`,
         }}
       >
         {isDark ? <Moon size={iconSize} /> : <Sun size={iconSize} />}

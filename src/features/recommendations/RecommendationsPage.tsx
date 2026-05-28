@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { PiggyBank, RefreshCw, Zap, Briefcase, PieChart, Bell, BellOff } from 'lucide-react';
+import { PiggyBank, RefreshCw, Zap, Briefcase, PieChart, Bell, BellOff, TrendingUp } from 'lucide-react';
 import { BrokerRecommendations } from '@/components/domain/BrokerRecommendations';
 import { BrokerPortfolios } from '@/components/domain/BrokerPortfolios';
 import { RecPoolStats } from '@/components/domain/RecPoolStats';
@@ -35,6 +35,7 @@ import { ScalpPoolStats } from './sections/ScalpPoolStats';
 import { ScalpRowItem } from './sections/ScalpRowItem';
 import { FundConsensusStrip, computeFundPoolStats } from './sections/FundConsensusStrip';
 import { FundAccordionItem } from './sections/FundAccordionItem';
+import { StrongBuyTab } from './sections/StrongBuyTab';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 const BROKER_COUNT = BROKER_RECOMMENDATIONS.length;
@@ -54,7 +55,7 @@ interface RecsMemo {
 let recsMemo: RecsMemo | null = null;
 
 export function RecommendationsPage() {
-  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds'>('scalp');
+  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds' | 'strongbuy'>('scalp');
   const [scalpFilter, setScalpFilter] = useState<'all' | 'longonly' | 'watchlist'>('all');
   const [selectedTf, setSelectedTf] = useState<ScalpTf>('5m');
   const [searchQuery, setSearchQuery] = useState('');
@@ -380,10 +381,20 @@ export function RecommendationsPage() {
         >
           <PiggyBank size={14} /> Trend Fonlar ({topFunds.length})
         </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
+            tab === 'strongbuy' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setTab('strongbuy')}
+        >
+          <TrendingUp size={14} /> Güçlü Al Havuzu
+        </button>
       </div>
 
       {tab === 'broker' && <BrokerRecommendations />}
       {tab === 'portfolio' && <BrokerPortfolios />}
+      {tab === 'strongbuy' && <StrongBuyTab />}
 
       {tab === 'scalp' && (
         <>

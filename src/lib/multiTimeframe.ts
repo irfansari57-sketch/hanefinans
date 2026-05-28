@@ -244,19 +244,20 @@ function shortCrossLine(ta: TimeframeAnalysis, tfLabel: string): string {
 
   // Fresh bull cross — bugün yukarı kesişti, güçlü LONG sinyali
   if (above && wasBelow) {
-    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ÜSTÜNE KESTİ — kısa vade güçlü LONG sinyali, momentum yukarı dönüyor.`;
+    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ÜSTÜNE KESTİ — kısa vade GÜÇLÜ LONG sinyali, kısa periyot pozisyon için uygun pencere açıldı.`;
   }
 
   // Fresh bear cross — bugün aşağı kesişti, güçlü SHORT sinyali
   if (!above && wasAbove) {
-    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ALTINA KESTİ — kısa vade güçlü SHORT sinyali, momentum aşağı dönüyor.`;
+    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ALTINA KESTİ — kısa vade GÜÇLÜ SHORT sinyali, long pozisyonlardan çıkış uyarısı; momentum aşağı dönüyor.`;
   }
 
   // Position only (no fresh cross)
   if (above) {
-    return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) üstünde — kısa vade yukarı momentum sürüyor; aşağı kesişime kadar long taraf bozulmadı.`;
+    return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) üstünde — kısa vade yukarı momentum sürüyor, mevcut long taraf korunuyor; aşağı kesişim olmadan trend bozulmaz.`;
   }
-  return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) altında — kısa vade aşağı momentum sürüyor; yukarı kesişim olmadan kalıcı long beklenmez.`;
+  // EMA 5 EMA 8 altında — aktif düşüş trendinde kullanıcıyı net uyar
+  return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) ALTINDA — kısa vade aşağı trend aktif. ⚠️ Long pozisyon için günlük EMA 5'in EMA 8 üstüne kesişimi beklenmeli; bu pencerede long açmak yatırımcıyı zarara sokabilir.`;
 }
 
 /** Günün hareket büyüklüğüne göre karakter notu. */
@@ -364,7 +365,15 @@ export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   const regime: MarketRegime = r.marketRegime ?? computeMarketRegime(r.price, r.tf1d?.emaValues[200]);
   const trend: PriceTrend = r.priceTrend ?? computePriceTrend(r.price, r.tf1d?.emaValues[55]);
 
-  // 1) ANA YÖN — en önemli bilgi başta
+  // 1) EMA 5/8 KESİŞİM SİNYALİ — kısa vade yön belirleyici, EN BAŞTA gelir (kullanıcı pozisyon kararını ilk burada görsün)
+  const focusTf = r.tf1d ?? r.tf4h ?? r.tf1h;
+  const focusLabel = r.tf1d ? 'Günlük' : r.tf4h ? '4 saatlik' : '1 saatlik';
+  if (focusTf) {
+    const cross = shortCrossLine(focusTf, focusLabel);
+    if (cross) parts.push(cross);
+  }
+
+  // 2) ANA YÖN — Boğa/Ayı + Yükseliş/Düşüş bağlamı
   const main = mainDirectionLine(
     r.price,
     regime,
@@ -374,27 +383,19 @@ export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   );
   parts.push(main);
 
-  // 2) Büyük oyuncu
+  // 3) Büyük oyuncu
   parts.push(bigPlayerLine(r.bigPlayerLean));
 
-  // 3) Gün hareketi
+  // 4) Gün hareketi
   const move = dailyMoveLine(r.changePct);
   if (move) parts.push(move);
 
-  // 4) TF coherence
+  // 5) TF coherence
   const coherence = trendCoherenceLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend);
   if (coherence) parts.push(coherence);
 
-  // 5) Aksiyon
+  // 6) Aksiyon önerisi — kombinasyonlara göre net giriş/çıkış ipucu
   parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
-
-  // 6) EMA 5/8 kesişim sinyali — kısa vade yön belirleyicisi
-  const focusTf = r.tf1d ?? r.tf4h ?? r.tf1h;
-  const focusLabel = r.tf1d ? 'Günlük' : r.tf4h ? '4 saatlik' : '1 saatlik';
-  if (focusTf) {
-    const cross = shortCrossLine(focusTf, focusLabel);
-    if (cross) parts.push(cross);
-  }
 
   return parts.join(' ');
 }

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, ExternalLink, Lock, Star, Zap } from 'lucide-react';
-import { useAuth, isPro } from '@/store/auth';
+import { ChevronRight, ExternalLink, Star, Zap } from 'lucide-react';
 import { ChartButton } from '@/components/domain/ChartButton';
 import { AlertButton } from '@/components/domain/AlertButton';
 import { NoteButton } from '@/components/domain/NoteButton';
@@ -9,14 +8,13 @@ import { cn } from '@/lib/utils';
 import type { TimeframeAnalysis } from '@/lib/multiTimeframe';
 import type { ScalpRec } from './types';
 
+// Kullanıcı talebi ile PRO kilitleri kaldırıldı — TF, Büyük Oyuncu, Yorum, EMA herkese açık.
 export function ScalpCard({ rec, rank, watched, onToggle }: {
   rec: ScalpRec;
   rank: number;
   watched: boolean;
   onToggle: () => void;
 }) {
-  const user = useAuth((s) => s.user);
-  const proUser = isPro(user);
   const { stock } = rec;
   const tone = stock.changePct >= 0 ? 'text-success' : 'text-danger';
   const sign = stock.changePct >= 0 ? '+' : '';
@@ -62,89 +60,52 @@ export function ScalpCard({ rec, rank, watched, onToggle }: {
         </div>
       </div>
 
-      {/* Multi-timeframe trend — 1H açık, 4H/1D PRO */}
+      {/* Multi-timeframe trend — artık tamamı herkese açık */}
       <div className="mt-3 grid grid-cols-3 gap-2">
         <TfBox label="1 SAATLİK" ta={rec.trend1h} />
-        {proUser ? <TfBox label="4 SAATLİK" ta={rec.trend4h} /> : <LockedTfBox label="4 SAATLİK" />}
-        {proUser ? <TfBox label="GÜNLÜK" ta={rec.trend1d} /> : <LockedTfBox label="GÜNLÜK" />}
+        <TfBox label="4 SAATLİK" ta={rec.trend4h} />
+        <TfBox label="GÜNLÜK" ta={rec.trend1d} />
       </div>
 
-      {/* Büyük Oyuncu Eğilimi — PRO */}
-      {proUser ? (
-        <div className={cn('mt-3 rounded-lg border px-3 py-2 text-xs', leanColor)}>
-          <div className="flex items-center justify-between">
-            <span className="font-semibold uppercase tracking-wider text-[10px]">Büyük Oyuncu Eğilimi</span>
-            <span className="font-bold uppercase">
-              {rec.bigPlayerLean === 'alıcı' ? '↑ ALICI BASKIN' : rec.bigPlayerLean === 'satıcı' ? '↓ SATICI BASKIN' : '↔ KARARSIZ'}
-            </span>
+      {/* Büyük Oyuncu Eğilimi — artık herkese açık */}
+      <div className={cn('mt-3 rounded-lg border px-3 py-2 text-xs', leanColor)}>
+        <div className="flex items-center justify-between">
+          <span className="font-semibold uppercase tracking-wider text-[10px]">Büyük Oyuncu Eğilimi</span>
+          <span className="font-bold uppercase">
+            {rec.bigPlayerLean === 'alıcı' ? '↑ ALICI BASKIN' : rec.bigPlayerLean === 'satıcı' ? '↓ SATICI BASKIN' : '↔ KARARSIZ'}
+          </span>
+        </div>
+      </div>
+
+      {/* Algoritmik Yorum — artık herkese açık */}
+      {rec.verdict && (
+        <div className="mt-3 rounded-lg border border-border bg-bg-soft p-3 text-xs leading-relaxed text-slate-300">
+          <strong className="text-accent">Algoritmik Yorum: </strong>
+          {rec.verdict}
+        </div>
+      )}
+
+      {/* EMA Fiyatları — artık herkese açık (sadece detay) */}
+      {rec.emas.length > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">EMA Fiyatları (günlük) — kısa vade momentum nüansı</div>
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+            {rec.emas.map((e) => {
+              const above = stock.price >= e.value;
+              return (
+                <div key={e.period} className={cn(
+                  'rounded border px-2 py-1 text-center',
+                  above ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5',
+                )}>
+                  <div className="text-[9px] text-slate-500">EMA {e.period}</div>
+                  <div className={cn('text-xs font-bold tabular-nums', above ? 'text-success' : 'text-danger')}>
+                    {formatMoney(e.value)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      ) : (
-        <Link
-          to="/uyelik"
-          className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning transition hover:bg-warning/15"
-        >
-          <span className="flex items-center gap-2">
-            <Lock size={11} />
-            <span className="font-semibold uppercase tracking-wider text-[10px]">Büyük Oyuncu Eğilimi</span>
-          </span>
-          <span className="font-bold uppercase">🔒 PRO</span>
-        </Link>
-      )}
-
-      {/* Algoritmik Yorum — PRO */}
-      {rec.verdict && (
-        proUser ? (
-          <div className="mt-3 rounded-lg border border-border bg-bg-soft p-3 text-xs leading-relaxed text-slate-300">
-            <strong className="text-accent">Algoritmik Yorum: </strong>
-            {rec.verdict}
-          </div>
-        ) : (
-          <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-slate-400">
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5">
-                <Lock size={11} className="text-warning" />
-                <strong className="text-warning">Algoritmik Yorum</strong> — 4H + Günlük + büyük oyuncu analizini içerir
-              </span>
-              <Link to="/uyelik" className="rounded-md bg-warning/20 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-warning hover:bg-warning/30">
-                PRO'ya Geç →
-              </Link>
-            </div>
-          </div>
-        )
-      )}
-
-      {/* EMA Fiyatları — PRO */}
-      {rec.emas.length > 0 && (
-        proUser ? (
-          <div className="mt-3">
-            <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">EMA Fiyatları (günlük)</div>
-            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
-              {rec.emas.map((e) => {
-                const above = stock.price >= e.value;
-                return (
-                  <div key={e.period} className={cn(
-                    'rounded border px-2 py-1 text-center',
-                    above ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5',
-                  )}>
-                    <div className="text-[9px] text-slate-500">EMA {e.period}</div>
-                    <div className={cn('text-xs font-bold tabular-nums', above ? 'text-success' : 'text-danger')}>
-                      {formatMoney(e.value)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <Link to="/uyelik" className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning hover:bg-warning/10">
-            <span className="flex items-center gap-1.5">
-              <Lock size={11} />
-              <span className="font-semibold uppercase tracking-wider text-[10px]">EMA Pozisyonları (Günlük)</span>
-            </span>
-            <span className="text-[10px] font-bold uppercase">🔒 PRO</span>
-          </Link>
-        )
       )}
 
       {/* Actions */}
@@ -174,23 +135,7 @@ export function ScalpCard({ rec, rank, watched, onToggle }: {
   );
 }
 
-function LockedTfBox({ label }: { label: string }) {
-  return (
-    <Link
-      to="/uyelik"
-      className="group relative rounded border border-warning/30 bg-warning/5 p-2 text-center transition hover:bg-warning/10"
-      title="PRO/ELITE üyelere özel — Yükselt"
-    >
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-      <div className="mt-1 flex items-center justify-center gap-1 text-sm font-bold text-warning">
-        <Lock size={11} /> PRO
-      </div>
-      <div className="mt-0.5 text-[9px] text-warning/80 group-hover:underline">
-        Yükselt →
-      </div>
-    </Link>
-  );
-}
+// LockedTfBox kaldırıldı — TF kutuları artık herkese açık.
 
 function TfBox({ label, ta }: { label: string; ta: TimeframeAnalysis | null }) {
   if (!ta) {

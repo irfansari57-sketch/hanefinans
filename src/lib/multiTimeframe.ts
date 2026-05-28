@@ -10,6 +10,12 @@ import type { OhlcvBar } from '@/data/api/yahoo';
 
 export type Trend = 'long' | 'short' | 'neutral';
 
+/** Genel piyasa rejimi — Fiyatın Günlük EMA 200'e göre konumu */
+export type MarketRegime = 'bull' | 'bear' | 'unknown';
+
+/** Ana yön — Fiyatın Günlük EMA 55'e göre konumu (kısa-orta vade) */
+export type PriceTrend = 'up' | 'down' | 'sideways';
+
 export interface TimeframeAnalysis {
   trend: Trend;
   /** EMA dizilim notu (kaç EMA üstte) */
@@ -31,7 +37,44 @@ export interface MultiTimeframeResult {
   tf4h: TimeframeAnalysis | null;
   tf1d: TimeframeAnalysis | null;
   bigPlayerLean: 'alıcı' | 'satıcı' | 'kararsız';
+  /** EMA 200 üstü → bull, altı → bear (Günlük). Verilmezse buildVerdict günlük EMA'lardan otomatik türetir. */
+  marketRegime?: MarketRegime;
+  /** EMA 55 üstü → up, altı → down (Günlük). Verilmezse buildVerdict günlük EMA'lardan otomatik türetir. */
+  priceTrend?: PriceTrend;
   verdict: string;
+}
+
+/**
+ * Günlük EMA 200'e göre boğa/ayı piyasası belirle.
+ * Sade ve net — kullanıcıya "ana yönde" ne olduğunu anında bildirir.
+ */
+export function computeMarketRegime(price: number, ema200Daily: number | undefined): MarketRegime {
+  if (!Number.isFinite(ema200Daily) || !Number.isFinite(price)) return 'unknown';
+  // EMA 200'e %0.5'ten yakınsa "unknown" — çok marjinal pozisyon karışıklık yaratır
+  const margin = (ema200Daily as number) * 0.005;
+  if (price > (ema200Daily as number) + margin) return 'bull';
+  if (price < (ema200Daily as number) - margin) return 'bear';
+  return 'unknown';
+}
+
+/**
+ * Günlük EMA 55'e göre kısa-orta vade trend belirle.
+ * up: fiyat 55 EMA üstünde, down: altında, sideways: marjinal yakın.
+ */
+export function computePriceTrend(price: number, ema55Daily: number | undefined): PriceTrend {
+  if (!Number.isFinite(ema55Daily) || !Number.isFinite(price)) return 'sideways';
+  const margin = (ema55Daily as number) * 0.005;
+  if (price > (ema55Daily as number) + margin) return 'up';
+  if (price < (ema55Daily as number) - margin) return 'down';
+  return 'sideways';
+}
+
+/** Kullanıcıya görünür sade etiketler — buildVerdict ve kart için. */
+export function regimeLabel(r: MarketRegime): string {
+  return r === 'bull' ? 'Boğa Piyasası' : r === 'bear' ? 'Ayı Piyasası' : 'Belirsiz Piyasa';
+}
+export function trendLabel(t: PriceTrend): string {
+  return t === 'up' ? 'Yükseliş Trendi' : t === 'down' ? 'Düşüş Trendi' : 'Yatay Seyir';
 }
 
 /** 1h barlardan 4h barlar üret (4 bar = 1 4h bar). */
@@ -208,11 +251,47 @@ function dailyMoveLine(changePct: number): string {
   return `Bugünkü değişim ${sign}${changePct.toFixed(2)}% — agresif ${word} dalgası, volatilite yüksek; ani tersine dönüşlere dikkat.`;
 }
 
-/** Büyük oyuncu eğilimini açıkla. */
+/** Büyük oyuncu eğilimini açıkla — sade, net yön. */
 function bigPlayerLine(lean: 'alıcı' | 'satıcı' | 'kararsız'): string {
-  if (lean === 'alıcı')   return 'Büyük oyuncular ALICI tarafta (fiyat EMA 200 üstünde + MACD pozitif) — kurumsal birikim sinyali, dipler korunuyor.';
-  if (lean === 'satıcı') return 'Büyük oyuncular SATICI tarafta (fiyat EMA 200 altında + MACD negatif) — pozisyon küçültme / dağıtım eğilimi, tepe satışları gözleniyor.';
-  return 'Kurumsal eğilim kararsız — büyük oyuncu net pozisyon almıyor, gözlem modu.';
+  if (lean === 'alıcı')   return 'Büyük oyuncular ALICI tarafta — kurumsal birikim sinyali.';
+  if (lean === 'satıcı') return 'Büyük oyuncular SATICI tarafta — dağıtım / pozisyon küçültme eğilimi.';
+  return 'Kurumsal taraf net pozisyon almıyor — yön belirsiz.';
+}
+
+/**
+ * Ana yön özeti: Boğa/Ayı + Yükseliş/Düşüş + dayanak EMA seviyeleri.
+ * En önemli cümle — en başta gelir, kullanıcı tek bakışta yön bilgisini alır.
+ */
+function mainDirectionLine(
+  price: number,
+  regime: MarketRegime,
+  trend: PriceTrend,
+  ema200?: number,
+  ema55?: number,
+): string {
+  const ema200Str = Number.isFinite(ema200) ? fmtPrice(ema200 as number) : null;
+  const ema55Str = Number.isFinite(ema55) ? fmtPrice(ema55 as number) : null;
+
+  const regimePart = regime === 'bull'
+    ? `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} üstünde — **BOĞA PİYASASI** içindeyiz`
+    : regime === 'bear'
+      ? `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} altında — **AYI PİYASASI** içindeyiz`
+      : `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} civarında — piyasa rejimi belirsiz`;
+
+  const trendPart = trend === 'up'
+    ? `ve EMA 55${ema55Str ? ` (${ema55Str})` : ''} üstünde olduğu için **YÜKSELİŞ TRENDİ** sürüyor.`
+    : trend === 'down'
+      ? `ve EMA 55${ema55Str ? ` (${ema55Str})` : ''} altında olduğu için **DÜŞÜŞ TRENDİ** baskın.`
+      : `, EMA 55${ema55Str ? ` (${ema55Str})` : ''} civarında yatay seyir.`;
+
+  // Çelişki: bull ama down? Bunu da yumuşat
+  if (regime === 'bull' && trend === 'down') {
+    return `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} üstünde — uzun vadeli **BOĞA PİYASASI** korunuyor, ama EMA 55${ema55Str ? ` (${ema55Str})` : ''} altına sarkma var — kısa vadeli **düzeltme** dalgası.`;
+  }
+  if (regime === 'bear' && trend === 'up') {
+    return `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} altında — **AYI PİYASASI** sürüyor, ama EMA 55${ema55Str ? ` (${ema55Str})` : ''} üstüne çıkış var — kısa vadeli **toparlanma** denemesi.`;
+  }
+  return `${regimePart} ${trendPart}`.replace(/\s+/g, ' ');
 }
 
 /** Trend + büyük oyuncu kombinasyonuna göre net aksiyon ipucu. */
@@ -249,21 +328,46 @@ function actionHintLine(
 /**
  * Multi-timeframe sonucundan zengin Türkçe verdict üret.
  *
- * 5 cümle: (1) trend coherence (2) gün hareketi karakteri
- * (3) büyük oyuncu yorumu (4) net aksiyon ipucu (5) günlük EMA dizilimi detayı (sonda).
+ * Sıralama (önemden niceliğe):
+ *   1) ANA YÖN — Boğa/Ayı + Yükseliş/Düşüş (EMA 200 + EMA 55 odaklı)
+ *   2) Büyük oyuncu özeti
+ *   3) Gün hareketi karakteri
+ *   4) Zaman dilimi tutarlılığı (1H/4H/Günlük long-short uyum)
+ *   5) Net aksiyon ipucu
+ *   6) EMA 5/8/13/21 detayı — yalnızca momentum nüansı için, sonda
  */
 export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   const parts: string[] = [];
 
-  const coherence = trendCoherenceLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend);
-  if (coherence) parts.push(coherence);
+  // marketRegime/priceTrend verilmemişse günlük EMA'lardan otomatik türet — eski çağrı yerleri bozulmasın
+  const regime: MarketRegime = r.marketRegime ?? computeMarketRegime(r.price, r.tf1d?.emaValues[200]);
+  const trend: PriceTrend = r.priceTrend ?? computePriceTrend(r.price, r.tf1d?.emaValues[55]);
 
+  // 1) ANA YÖN — en önemli bilgi başta
+  const main = mainDirectionLine(
+    r.price,
+    regime,
+    trend,
+    r.tf1d?.emaValues[200],
+    r.tf1d?.emaValues[55],
+  );
+  parts.push(main);
+
+  // 2) Büyük oyuncu
+  parts.push(bigPlayerLine(r.bigPlayerLean));
+
+  // 3) Gün hareketi
   const move = dailyMoveLine(r.changePct);
   if (move) parts.push(move);
 
-  parts.push(bigPlayerLine(r.bigPlayerLean));
+  // 4) TF coherence
+  const coherence = trendCoherenceLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend);
+  if (coherence) parts.push(coherence);
+
+  // 5) Aksiyon
   parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
 
+  // 6) EMA 5/8/13/21 detayı — sonda, sade kalsın
   const focusTf = r.tf1d ?? r.tf4h ?? r.tf1h;
   const focusLabel = r.tf1d ? 'Günlük' : r.tf4h ? '4 saatlik' : '1 saatlik';
   if (focusTf) {

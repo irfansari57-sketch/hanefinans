@@ -47,7 +47,7 @@ export function WatchlistPage() {
   const focusRef = useRef<HTMLTableRowElement | null>(null);
   const [kind, setKind] = useState<'stocks' | 'funds'>('stocks');
   const [tefasFunds, setTefasFunds] = useState<TefasFundData[] | null>(null);
-  const [stockPeriod, setStockPeriod] = useState<StockPeriod>('1g');
+  const [stockPeriod, setStockPeriod] = useState<StockPeriod>('1h');
 
   // ----- Watchlist hisse dönem getirileri (TanStack Query) -----
   // 22 farklı yerde tekrarlanan Yahoo batch fetch artık tek hook.
@@ -500,7 +500,7 @@ const FUND_PERIOD_MAP: Record<StockPeriod, FundPeriodKey> = {
 };
 
 function FundsTab({ watchedFundsWithData }: FundsTabProps) {
-  const [fundPeriod, setFundPeriod] = useState<StockPeriod>('1g');
+  const [fundPeriod, setFundPeriod] = useState<StockPeriod>('1h');
 
   const fmtPct = (v: number | null | undefined) => {
     if (v == null || !Number.isFinite(v)) return '—';

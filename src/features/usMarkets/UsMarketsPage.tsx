@@ -4,7 +4,7 @@ import { Flag, RefreshCw, ChevronRight, Lock, Sparkles, Star, Zap, ArrowUpDown }
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { fetchIndexYahoo, fetchHistoricalYahoo } from '@/data/api/yahoo';
+import { fetchIndexYahoo, fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { ema, type OHLC } from '@/lib/indicators';
 import { US_STOCKS } from '@/data/usStocks';
@@ -34,6 +34,7 @@ interface UsStockRec {
   trend4h: TimeframeAnalysis | null;
   trend1d: TimeframeAnalysis | null;
   emas?: { period: number; value: number }[];
+  returns?: PeriodReturns;  // 1g/1h/1a/3a/6a/1y period getirileri (hist1d'den hesaplanır)
   longScore: number; // sıralama için
 }
 
@@ -136,6 +137,7 @@ export function UsMarketsPage() {
           tf1h = analyzeTimeframe(hist1h.bars.map((b) => b.close), [5, 8, 13, 21, 55]);
           tf4h = analyzeTimeframe(aggregateTo4h(hist1h.bars).map((b) => b.close), [5, 8, 13, 21]);
         }
+        let returns: PeriodReturns | undefined;
         if (hist1d && hist1d.bars.length > 0) {
           const closes1d = hist1d.bars.map((b) => b.close);
           tf1d = analyzeTimeframe(closes1d, [5, 8, 13, 21, 55, 200]);
@@ -143,6 +145,9 @@ export function UsMarketsPage() {
             const v = ema(closes1d, p).at(-1);
             if (Number.isFinite(v)) emas.push({ period: p, value: v as number });
           });
+          // Period getirileri — 1g/1h/1a/3a/6a/1y
+          const closesForPeriod = hist1d.bars.map((b) => ({ date: b.time * 1000, close: b.close }));
+          returns = computePeriodReturns(closesForPeriod);
         }
 
         // Long score: 1h+4h+1d long sayısı
@@ -150,7 +155,7 @@ export function UsMarketsPage() {
         const shortCount = [tf1h, tf4h, tf1d].filter((t) => t?.trend === 'short').length;
         const longScore = longCount * 3 - shortCount * 2 + changePct * 0.5;
 
-        return { sym, name, sector, exchange, price, changePct, trend1h: tf1h, trend4h: tf4h, trend1d: tf1d, emas, longScore };
+        return { sym, name, sector, exchange, price, changePct, trend1h: tf1h, trend4h: tf4h, trend1d: tf1d, emas, returns, longScore };
       });
       const stockRes = await Promise.all(stockPromises);
       stockRes.sort((a, b) => b.longScore - a.longScore);
@@ -338,9 +343,12 @@ export function UsMarketsPage() {
                   <th className="px-2 py-2.5 text-left hidden md:table-cell">Borsa</th>
                   <th className="px-2 py-2.5 text-right whitespace-nowrap">Fiyat</th>
                   <th className="px-2 py-2.5 text-right whitespace-nowrap">Gün %</th>
-                  <th className="px-2 py-2.5 text-center hidden lg:table-cell">1S</th>
-                  <th className="px-2 py-2.5 text-center hidden lg:table-cell">4S</th>
-                  <th className="px-2 py-2.5 text-center hidden lg:table-cell">1G</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">1 Hafta %</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap hidden lg:table-cell">1 Ay %</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">3 Ay %</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap hidden lg:table-cell">6 Ay %</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap hidden xl:table-cell">YTD %</th>
+                  <th className="px-2 py-2.5 text-right whitespace-nowrap">1 Yıl %</th>
                   <th className="px-2 py-2.5 text-center whitespace-nowrap">★</th>
                 </tr>
               </thead>
@@ -519,9 +527,12 @@ function UsStockTableRow({ rec, rank, watched, onToggle }: { rec: UsStockRec; ra
       <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums whitespace-nowrap', tone)}>
         {sign}{rec.changePct.toFixed(2)}%
       </td>
-      <TrendCell tf={rec.trend1h} />
-      <TrendCell tf={rec.trend4h} />
-      <TrendCell tf={rec.trend1d} />
+      <PerfCellRow value={rec.returns?.['1h']} />
+      <PerfCellRow value={rec.returns?.['1a']} hideUntil="lg" />
+      <PerfCellRow value={rec.returns?.['3a']} />
+      <PerfCellRow value={rec.returns?.['6a']} hideUntil="lg" />
+      <PerfCellRow value={rec.returns?.['1y']} hideUntil="xl" />
+      <PerfCellRow value={rec.returns?.['1y']} />
       <td className="px-2 py-2 text-center">
         <button
           type="button"
@@ -536,6 +547,25 @@ function UsStockTableRow({ rec, rank, watched, onToggle }: { rec: UsStockRec; ra
   );
 }
 
+function PerfCellRow({ value, hideUntil }: { value: number | undefined; hideUntil?: 'sm' | 'md' | 'lg' | 'xl' }) {
+  const hideClass = hideUntil === 'sm' ? 'hidden sm:table-cell'
+    : hideUntil === 'md' ? 'hidden md:table-cell'
+    : hideUntil === 'lg' ? 'hidden lg:table-cell'
+    : hideUntil === 'xl' ? 'hidden xl:table-cell'
+    : '';
+  if (value == null || !Number.isFinite(value)) {
+    return <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap', hideClass)}>—</td>;
+  }
+  const tone = value >= 0 ? 'text-success' : 'text-danger';
+  return (
+    <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums whitespace-nowrap', tone, hideClass)}>
+      {value >= 0 ? '+' : ''}{value.toFixed(2)}%
+    </td>
+  );
+}
+
+// Eski TF trend bilgisi rozeti — sadece kart detayında (UsStockCard) kullanılır,
+// tablo satırında PerfCellRow ile period yüzdesi gösterilir.
 function TrendCell({ tf }: { tf: TimeframeAnalysis | null }) {
   if (!tf) {
     return <td className="hidden lg:table-cell px-2 py-2 text-center text-[10px] text-slate-600">—</td>;

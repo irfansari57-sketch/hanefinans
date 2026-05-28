@@ -216,6 +216,48 @@ export function FundsPage() {
         </div>
       </div>
 
+      {/* Takipte tab — özet kartlar (haftalık varsayılan): toplam / yeşil-kırmızı / ortalama */}
+      {tab === 'watched' && sorted.length > 0 && (() => {
+        let positives = 0;
+        let negatives = 0;
+        let sum = 0;
+        let count = 0;
+        for (const f of sorted) {
+          const v = f.week;
+          if (!Number.isFinite(v)) continue;
+          if (v > 0) positives += 1;
+          else if (v < 0) negatives += 1;
+          sum += v;
+          count += 1;
+        }
+        const avg = count > 0 ? sum / count : 0;
+        return (
+          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-bg-soft p-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">Takipte</div>
+              <div className="mt-1 text-xl font-semibold">{sorted.length}</div>
+            </div>
+            <div className="rounded-xl border border-border bg-bg-soft p-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">1 Hafta Yeşil / Kırmızı</div>
+              <div className="mt-1 text-xl font-semibold">
+                <span className="text-success">{positives}</span>
+                <span className="mx-1 text-slate-600">/</span>
+                <span className="text-danger">{negatives}</span>
+                {count < sorted.length && (
+                  <span className="ml-2 text-[10px] font-normal text-slate-500">({count}/{sorted.length})</span>
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-bg-soft p-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">Ortalama Değişim · 1 Hafta</div>
+              <div className={cn('mt-1 text-xl font-semibold', avg >= 0 ? 'text-success' : 'text-danger')}>
+                {count === 0 ? <span className="text-slate-500">—</span> : (<>{avg >= 0 ? '+' : ''}{avg.toFixed(2)}%</>)}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {sorted.length === 0 ? (
         <EmptyState
           icon={<PiggyBank size={28} />}

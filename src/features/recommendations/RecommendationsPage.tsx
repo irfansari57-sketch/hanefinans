@@ -38,6 +38,10 @@ import { FundConsensusStrip, computeFundPoolStats } from './sections/FundConsens
 import { FundAccordionItem } from './sections/FundAccordionItem';
 import { StrongBuyTab } from './sections/StrongBuyTab';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+
+type TrendFundSortKey = 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year';
+type AlgoSortKey = 'price' | 'changePct';
 
 const BROKER_COUNT = BROKER_RECOMMENDATIONS.length;
 const PORTFOLIO_COUNT = BROKER_PORTFOLIOS.length;
@@ -57,6 +61,20 @@ let recsMemo: RecsMemo | null = null;
 
 export function RecommendationsPage() {
   const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds' | 'strongbuy'>('scalp');
+  // Trend Fonlar tab sort
+  const [tfSortKey, setTfSortKey] = useState<TrendFundSortKey>('year');
+  const [tfSortDir, setTfSortDir] = useState<'asc' | 'desc'>('desc');
+  const setTfSort = (k: TrendFundSortKey) => {
+    if (k === tfSortKey) setTfSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setTfSortKey(k); setTfSortDir('desc'); }
+  };
+  // Algoritmik tab sort (Fiyat / Gün %); null = default heuristic sort (TAZE > Long > Score)
+  const [algoSortKey, setAlgoSortKey] = useState<AlgoSortKey | null>(null);
+  const [algoSortDir, setAlgoSortDir] = useState<'asc' | 'desc'>('desc');
+  const setAlgoSort = (k: AlgoSortKey) => {
+    if (k === algoSortKey) setAlgoSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setAlgoSortKey(k); setAlgoSortDir('desc'); }
+  };
   const [scalpFilter, setScalpFilter] = useState<'all' | 'longonly' | 'watchlist'>('all');
   const [selectedTf, setSelectedTf] = useState<ScalpTf>('5m');
   const [searchQuery, setSearchQuery] = useState('');
@@ -487,8 +505,8 @@ export function RecommendationsPage() {
                     <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                     <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
                     <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
-                    <th className="px-2 py-2.5 text-right">Fiyat</th>
-                    <th className="px-2 py-2.5 text-right">Gün %</th>
+                    <SortableHeader label="Fiyat" sortKey="price" activeKey={algoSortKey ?? ''} dir={algoSortDir} onClick={setAlgoSort} />
+                    <SortableHeader label="Gün %" sortKey="changePct" activeKey={algoSortKey ?? ''} dir={algoSortDir} onClick={setAlgoSort} />
                     <th className="px-2 py-2.5 text-center hidden lg:table-cell">1H</th>
                     <th className="px-2 py-2.5 text-center hidden lg:table-cell">4H</th>
                     <th className="px-2 py-2.5 text-center hidden lg:table-cell">1G</th>
@@ -498,7 +516,14 @@ export function RecommendationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedRecs
+                  {(algoSortKey == null
+                    ? sortedRecs
+                    : [...sortedRecs].sort((a, b) => {
+                        const va = algoSortKey === 'price' ? a.stock.price : a.stock.changePct;
+                        const vb = algoSortKey === 'price' ? b.stock.price : b.stock.changePct;
+                        return algoSortDir === 'asc' ? va - vb : vb - va;
+                      })
+                  )
                     .filter((rec) => {
                       if (scalpFilter === 'longonly' && !isLongForTf(rec, selectedTf)) return false;
                       if (scalpFilter === 'watchlist' && !watchlistHas(rec.stock.symbol)) return false;
@@ -549,7 +574,7 @@ export function RecommendationsPage() {
 
               {/* Trend Fonlar üst özet bloğu (havuz istatistikleri + strip) kullanıcı talebi ile kaldırıldı. */}
 
-              {/* Fonlar sayfası tarzı: sticky kolonlar + min-w + responsive hide */}
+              {/* Fonlar sayfası tarzı: sticky kolonlar + min-w + responsive hide + sortable headers */}
               <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
                 <table className="w-full min-w-[860px] text-xs">
                   <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
@@ -557,18 +582,24 @@ export function RecommendationsPage() {
                       <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                       <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Kod</th>
                       <th className="px-2 py-2.5 text-left hidden md:table-cell">Ad / Kategori</th>
-                      <th className="px-2 py-2.5 text-right">Gün %</th>
-                      <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
-                      <th className="px-2 py-2.5 text-right">1 Ay %</th>
-                      <th className="px-2 py-2.5 text-right">3 Ay %</th>
-                      <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
-                      <th className="px-2 py-2.5 text-right hidden xl:table-cell">YTD %</th>
-                      <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+                      <SortableHeader label="Gün %" sortKey="day" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
+                      <SortableHeader label="1 Hafta %" sortKey="week" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} className="hidden lg:table-cell" />
+                      <SortableHeader label="1 Ay %" sortKey="month" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
+                      <SortableHeader label="3 Ay %" sortKey="threeMonth" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
+                      <SortableHeader label="6 Ay %" sortKey="sixMonth" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} className="hidden lg:table-cell" />
+                      <SortableHeader label="YTD %" sortKey="ytd" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} className="hidden xl:table-cell" />
+                      <SortableHeader label="1 Yıl %" sortKey="year" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
                       <th className="px-2 py-2.5 text-center w-24">İşlem</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {topFunds.map((fund, i) => (
+                    {[...topFunds].sort((a, b) => {
+                      const va = a[tfSortKey];
+                      const vb = b[tfSortKey];
+                      const an = Number.isFinite(va) ? va : -Infinity;
+                      const bn = Number.isFinite(vb) ? vb : -Infinity;
+                      return tfSortDir === 'asc' ? an - bn : bn - an;
+                    }).map((fund, i) => (
                       <TrendFundRow key={fund.code} fund={fund} rank={i + 1} />
                     ))}
                   </tbody>

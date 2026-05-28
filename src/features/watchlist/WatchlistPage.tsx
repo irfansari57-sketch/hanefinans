@@ -17,6 +17,9 @@ import { useWatchlist } from '@/store/watchlist';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+
+type WlSortKey = 'price' | 'changePct' | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'r1y';
 
 type StockPeriod = '1g' | '1h' | '1a' | '3a' | '6a' | '1y';
 const PERIOD_LABELS: Record<StockPeriod, string> = {
@@ -48,6 +51,20 @@ export function WatchlistPage() {
   const [kind, setKind] = useState<'stocks' | 'funds'>('stocks');
   const [tefasFunds, setTefasFunds] = useState<TefasFundData[] | null>(null);
   const [stockPeriod, setStockPeriod] = useState<StockPeriod>('1h');
+  const [wlSortKey, setWlSortKey] = useState<WlSortKey>('r1h');
+  const [wlSortDir, setWlSortDir] = useState<'asc' | 'desc'>('desc');
+  // Dönem seçici değişince sort key'i ona uydur
+  useEffect(() => {
+    const map: Record<StockPeriod, WlSortKey> = {
+      '1g': 'changePct', '1h': 'r1h', '1a': 'r1a', '3a': 'r3a', '6a': 'r6a', '1y': 'r1y',
+    };
+    setWlSortKey(map[stockPeriod]);
+    setWlSortDir('desc');
+  }, [stockPeriod]);
+  const setWlSort = (k: WlSortKey) => {
+    if (k === wlSortKey) setWlSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setWlSortKey(k); setWlSortDir('desc'); }
+  };
 
   // ----- Watchlist hisse dönem getirileri (TanStack Query) -----
   // 22 farklı yerde tekrarlanan Yahoo batch fetch artık tek hook.
@@ -350,25 +367,33 @@ export function WatchlistPage() {
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
                   <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
-                  <th className="px-2 py-2.5 text-right">Fiyat</th>
-                  <th className="px-2 py-2.5 text-right">Gün %</th>
-                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
-                  <th className="px-2 py-2.5 text-right">1 Ay %</th>
-                  <th className="px-2 py-2.5 text-right">3 Ay %</th>
-                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
-                  <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+                  <SortableHeader label="Fiyat" sortKey="price" activeKey={wlSortKey} dir={wlSortDir} onClick={setWlSort} />
+                  <SortableHeader label="Gün %" sortKey="changePct" activeKey={wlSortKey} dir={wlSortDir} onClick={setWlSort} />
+                  <SortableHeader label="1 Hafta %" sortKey="r1h" activeKey={wlSortKey} dir={wlSortDir} onClick={setWlSort} className="hidden lg:table-cell" />
+                  <SortableHeader label="1 Ay %" sortKey="r1a" activeKey={wlSortKey} dir={wlSortDir} onClick={setWlSort} />
+                  <SortableHeader label="3 Ay %" sortKey="r3a" activeKey={wlSortKey} dir={wlSortDir} onClick={setWlSort} />
+                  <SortableHeader label="6 Ay %" sortKey="r6a" activeKey={wlSortKey} dir={wlSortDir} onClick={setWlSort} className="hidden lg:table-cell" />
+                  <SortableHeader label="1 Yıl %" sortKey="r1y" activeKey={wlSortKey} dir={wlSortDir} onClick={setWlSort} />
                   <th className="px-2 py-2.5 text-center w-12">İşlem</th>
                 </tr>
               </thead>
               <tbody>
                 {[...watched]
                   .sort((a, b) => {
-                    const av = stockReturns[a.symbol]?.[stockPeriod];
-                    const bv = stockReturns[b.symbol]?.[stockPeriod];
-                    if (av == null && bv == null) return 0;
-                    if (av == null) return 1;
-                    if (bv == null) return -1;
-                    return bv - av;
+                    const getVal = (s: Stock): number => {
+                      switch (wlSortKey) {
+                        case 'price':     return s.price;
+                        case 'changePct': return s.changePct;
+                        case 'r1h':       return stockReturns[s.symbol]?.['1h'] ?? -Infinity;
+                        case 'r1a':       return stockReturns[s.symbol]?.['1a'] ?? -Infinity;
+                        case 'r3a':       return stockReturns[s.symbol]?.['3a'] ?? -Infinity;
+                        case 'r6a':       return stockReturns[s.symbol]?.['6a'] ?? -Infinity;
+                        case 'r1y':       return stockReturns[s.symbol]?.['1y'] ?? -Infinity;
+                      }
+                    };
+                    const av = getVal(a);
+                    const bv = getVal(b);
+                    return wlSortDir === 'asc' ? av - bv : bv - av;
                   })
                   .map((s, i) => (
                     <WatchlistStockRow
@@ -499,8 +524,26 @@ const FUND_PERIOD_MAP: Record<StockPeriod, FundPeriodKey> = {
   '1y': '1y',
 };
 
+type FundSortKey = 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'year';
+
 function FundsTab({ watchedFundsWithData }: FundsTabProps) {
   const [fundPeriod, setFundPeriod] = useState<StockPeriod>('1h');
+  const [fSortKey, setFSortKey] = useState<FundSortKey>('week');
+  const [fSortDir, setFSortDir] = useState<'asc' | 'desc'>('desc');
+  useEffect(() => {
+    const map: Record<StockPeriod, FundSortKey> = {
+      '1g': 'day', '1h': 'week', '1a': 'month', '3a': 'threeMonth', '6a': 'sixMonth', '1y': 'year',
+    };
+    setFSortKey(map[fundPeriod]);
+    setFSortDir('desc');
+  }, [fundPeriod]);
+  const setFSort = (k: FundSortKey) => {
+    if (k === fSortKey) setFSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setFSortKey(k); setFSortDir('desc'); }
+  };
+  const fundKeyToReturnsField: Record<FundSortKey, FundPeriodKey> = {
+    day: '1d', week: '1w', month: '1m', threeMonth: '3m', sixMonth: '6m', year: '1y',
+  };
 
   const fmtPct = (v: number | null | undefined) => {
     if (v == null || !Number.isFinite(v)) return '—';
@@ -545,14 +588,14 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
 
   const apiKey = FUND_PERIOD_MAP[fundPeriod];
 
-  // Seçili döneme göre sıralı liste — en iyi getiri en üstte
+  // Seçili kolon başlığına göre sıralı liste
+  const sortField = fundKeyToReturnsField[fSortKey];
   const sortedFunds = [...watchedFundsWithData].sort((a, b) => {
-    const av = a.tefas?.returns?.[apiKey];
-    const bv = b.tefas?.returns?.[apiKey];
-    if (av == null && bv == null) return 0;
-    if (av == null) return 1;
-    if (bv == null) return -1;
-    return bv - av;
+    const av = a.tefas?.returns?.[sortField];
+    const bv = b.tefas?.returns?.[sortField];
+    const an = av == null || !Number.isFinite(av) ? -Infinity : av;
+    const bn = bv == null || !Number.isFinite(bv) ? -Infinity : bv;
+    return fSortDir === 'asc' ? an - bn : bn - an;
   });
 
   return (
@@ -623,12 +666,12 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
               <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Kod</th>
               <th className="px-2 py-2.5 text-left hidden md:table-cell">Ad / Kategori</th>
               <th className="px-2 py-2.5 text-right">NAV (TL)</th>
-              <th className="px-2 py-2.5 text-right">Gün %</th>
-              <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
-              <th className="px-2 py-2.5 text-right">1 Ay %</th>
-              <th className="px-2 py-2.5 text-right">3 Ay %</th>
-              <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
-              <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+              <SortableHeader label="Gün %" sortKey="day" activeKey={fSortKey} dir={fSortDir} onClick={setFSort} />
+              <SortableHeader label="1 Hafta %" sortKey="week" activeKey={fSortKey} dir={fSortDir} onClick={setFSort} className="hidden lg:table-cell" />
+              <SortableHeader label="1 Ay %" sortKey="month" activeKey={fSortKey} dir={fSortDir} onClick={setFSort} />
+              <SortableHeader label="3 Ay %" sortKey="threeMonth" activeKey={fSortKey} dir={fSortDir} onClick={setFSort} />
+              <SortableHeader label="6 Ay %" sortKey="sixMonth" activeKey={fSortKey} dir={fSortDir} onClick={setFSort} className="hidden lg:table-cell" />
+              <SortableHeader label="1 Yıl %" sortKey="year" activeKey={fSortKey} dir={fSortDir} onClick={setFSort} />
               <th className="px-2 py-2.5 text-center w-24">İşlem</th>
             </tr>
           </thead>

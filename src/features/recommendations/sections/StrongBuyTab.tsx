@@ -10,6 +10,9 @@ import type { PeriodReturns } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { Pagination } from '@/components/ui/Pagination';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+
+type SbSortKey = 'score' | 'price' | 'changePct' | 'r1a' | 'r3a' | 'r1y' | 'potential';
 
 const PAGE_SIZE = 50;
 
@@ -104,6 +107,12 @@ export function StrongBuyTab() {
   const [query, setQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'broker' | 'technical'>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SbSortKey>('score');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const setSort = (k: SbSortKey) => {
+    if (k === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(k); setSortDir('desc'); }
+  };
 
   // Filter veya arama degisince ilk sayfaya don
   useEffect(() => { setCurrentPage(1); }, [query, sourceFilter]);
@@ -277,8 +286,22 @@ export function StrongBuyTab() {
         a.name.toLowerCase().includes(q),
       );
     }
-    return list.sort((a, b) => b.score - a.score);
-  }, [aggregated, query, sourceFilter]);
+    const sorted = [...list].sort((a, b) => {
+      let va: number, vb: number;
+      switch (sortKey) {
+        case 'price':      va = a.price; vb = b.price; break;
+        case 'changePct':  va = a.changePct; vb = b.changePct; break;
+        case 'r1a':        va = a.returns?.['1a'] ?? -Infinity; vb = b.returns?.['1a'] ?? -Infinity; break;
+        case 'r3a':        va = a.returns?.['3a'] ?? -Infinity; vb = b.returns?.['3a'] ?? -Infinity; break;
+        case 'r1y':        va = a.returns?.['1y'] ?? -Infinity; vb = b.returns?.['1y'] ?? -Infinity; break;
+        case 'potential':  va = a.potentialPct ?? -Infinity; vb = b.potentialPct ?? -Infinity; break;
+        case 'score':
+        default:           va = a.score; vb = b.score;
+      }
+      return sortDir === 'asc' ? va - vb : vb - va;
+    });
+    return sorted;
+  }, [aggregated, query, sourceFilter, sortKey, sortDir]);
 
   const brokerCount = aggregated.filter((a) => a.source === 'broker').length;
   const technicalCount = aggregated.filter((a) => a.source === 'technical').length;
@@ -385,15 +408,15 @@ export function StrongBuyTab() {
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
                   <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
-                  <th className="px-2 py-2.5 text-right">Fiyat</th>
-                  <th className="px-2 py-2.5 text-right">Gün %</th>
-                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">1A %</th>
-                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">3A %</th>
-                  <th className="px-2 py-2.5 text-right hidden xl:table-cell">1Y %</th>
+                  <SortableHeader label="Fiyat" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="Gün %" sortKey="changePct" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="1A %" sortKey="r1a" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
+                  <SortableHeader label="3A %" sortKey="r3a" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
+                  <SortableHeader label="1Y %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden xl:table-cell" />
                   <th className="px-2 py-2.5 text-center hidden xl:table-cell">AL/TUT</th>
                   <th className="px-2 py-2.5 text-right hidden lg:table-cell">Hedef</th>
-                  <th className="px-2 py-2.5 text-right">Potans.</th>
-                  <th className="px-2 py-2.5 text-right">Skor</th>
+                  <SortableHeader label="Potans." sortKey="potential" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader label="Skor" sortKey="score" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <th className="px-2 py-2.5 text-center">Tavsiye</th>
                 </tr>
               </thead>

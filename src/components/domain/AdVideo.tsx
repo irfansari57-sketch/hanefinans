@@ -7,7 +7,7 @@ interface AdVideoProps {
   className?: string;
 }
 
-const VIDEO_SRC = '/HaneFinans_FinancialIntelligence.mp4';
+const VIDEO_SRC = '/0528.mp4';
 
 /**
  * HaneFinans reklam videosu — autoplay muted + tikla unmute.

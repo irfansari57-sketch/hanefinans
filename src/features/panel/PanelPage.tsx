@@ -283,7 +283,7 @@ export function PanelPage() {
         iconColorClass="bg-accent/15 text-accent"
         defaultOpen
       >
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-4 gap-1 sm:gap-3">
           {macro
             .filter((m) => m.key === 'BIST 100' || m.key === 'BIST 30')
             .map((m) => {
@@ -291,14 +291,14 @@ export function PanelPage() {
               const card = (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-base font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-2">
                     {m.changePct != null && (
-                      <div className={cn('text-[10px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
@@ -309,11 +309,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-2 transition hover:border-accent/40 sm:p-4">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-4">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-2 sm:p-4">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-4">{card}</div>
               );
             })}
           {/* USD/TRY ve EUR/TRY de BIST'le birlikte göster */}
@@ -324,14 +324,14 @@ export function PanelPage() {
               const card = (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-base font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
                     {m.value.toFixed(2)}
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-2">
                     {m.changePct != null && (
-                      <div className={cn('text-[10px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
@@ -342,11 +342,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-2 transition hover:border-accent/40 sm:p-4">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-4">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-2 sm:p-4">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-4">{card}</div>
               );
             })}
         </div>
@@ -360,7 +360,7 @@ export function PanelPage() {
         iconColorClass="bg-warning/15 text-warning"
         defaultOpen
       >
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-4 gap-1 sm:gap-3">
           {macro
             .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Ons Altın', 'Ons Gümüş'].includes(m.key))
             .map((m) => {
@@ -368,15 +368,15 @@ export function PanelPage() {
               const card = (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-base font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: m.value < 100 ? 2 : 0 })}
                     {m.unit && <span className="ml-1 text-[10px] font-medium text-slate-500">{m.unit}</span>}
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-2">
                     {m.changePct != null && (
-                      <div className={cn('text-[10px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
@@ -387,11 +387,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-2 transition hover:border-accent/40 sm:p-4">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-4">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-2 sm:p-4">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-4">{card}</div>
               );
             })}
         </div>
@@ -405,7 +405,7 @@ export function PanelPage() {
         iconColorClass="bg-warning/15 text-warning"
         defaultOpen
       >
-        <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-4 gap-1 sm:gap-3">
           {['BTC/USD', 'ETH/USD', 'XRP/USD', 'DOGE/USD']
             .map((k) => macro.find((m) => m.key === k))
             .filter((m): m is MacroIndicator => !!m)
@@ -414,14 +414,14 @@ export function PanelPage() {
               const card = (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-base font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-2xl">
                     ${m.value.toLocaleString('en-US', { maximumFractionDigits: m.value < 10 ? 4 : m.value < 1000 ? 2 : 0 })}
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-2">
                     {m.changePct != null && (
-                      <div className={cn('text-[10px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
+                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
@@ -432,11 +432,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-2 transition hover:border-accent/40 sm:p-4">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-4">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-2 sm:p-4">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-4">{card}</div>
               );
             })}
         </div>

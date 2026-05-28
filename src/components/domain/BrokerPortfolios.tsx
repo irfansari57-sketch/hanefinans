@@ -64,11 +64,7 @@ export function BrokerPortfolios() {
         </p>
       </div>
 
-      {/* Havuz istatistikleri */}
-      <RecPoolStats boxes={stats} />
-
-      {/* Top/Bottom konsensüs ağırlık */}
-      <PortfolioConsensusStrip portfolios={filtered} />
+      {/* Üst özet bloğu (havuz istatistikleri + konsensüs ağırlık) kullanıcı talebi ile kaldırıldı. */}
 
       {/* Broker filter chip'leri */}
       <div className="mb-3 flex flex-wrap gap-1.5">

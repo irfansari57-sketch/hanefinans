@@ -262,8 +262,8 @@ export function UsMarketsPage() {
           🚀 Top 20 Gelecek Vaad Eden ABD Hisseleri
         </h2>
 
-        {stockRecs.length > 0 && <RecPoolStats boxes={computeUsStockPoolStats(stockRecs)} />}
-        {stockRecs.length > 0 && <UsStockConsensusStrip stocks={stockRecs} />}
+        {/* Üst özet bloğu (Toplam / Multi-TF Long / Ort. Değişim / Pozitif Oran / Lider / Borsa Dağılımı
+           + Top 3 Yükselen / Düşen) kullanıcı talebi ile kaldırıldı — bilgiler zaten tabloda var. */}
 
         {/* Sort + Filter + Search */}
         {stockRecs.length > 0 && (

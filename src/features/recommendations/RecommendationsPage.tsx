@@ -408,7 +408,7 @@ export function RecommendationsPage() {
 
           {sortedRecs.length > 0 && <HistoricalPerformanceCard recs={sortedRecs} />}
 
-          {sortedRecs.length > 0 && <ScalpPoolStats recs={sortedRecs} selectedTf={selectedTf} />}
+          {/* Algoritmik tab üst özet bloğu (ScalpPoolStats) kullanıcı talebi ile kaldırıldı. */}
 
           {sortedRecs.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -529,11 +529,7 @@ export function RecommendationsPage() {
                 Yıllık getirisi en yüksek 10 fon (canlı TEFAS). Satıra tıklayıp açın, detay için TEFAS/Fintables linklerini kullan.
               </p>
 
-              {/* Havuz istatistikleri */}
-              <RecPoolStats boxes={computeFundPoolStats(topFunds)} />
-
-              {/* Top/Bottom strip */}
-              <FundConsensusStrip funds={topFunds} />
+              {/* Trend Fonlar üst özet bloğu (havuz istatistikleri + strip) kullanıcı talebi ile kaldırıldı. */}
 
               {/* Akordeon liste */}
               <div className="space-y-1.5">

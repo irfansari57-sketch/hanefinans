@@ -237,8 +237,10 @@ function shortCrossLine(ta: TimeframeAnalysis, tfLabel: string): string {
   const ema5Str = fmtPrice(e5);
   const ema8Str = fmtPrice(e8);
   const above = e5 > e8;
-  const wasAbove = Number.isFinite(e5p) && Number.isFinite(e8p) && e5p > e8p;
-  const wasBelow = Number.isFinite(e5p) && Number.isFinite(e8p) && e5p < e8p;
+  // e5p/e8p number | undefined olabilir; once tanımlı + finite kontrolü, sonra karşılaştırma
+  const hasPrev = typeof e5p === 'number' && Number.isFinite(e5p) && typeof e8p === 'number' && Number.isFinite(e8p);
+  const wasAbove = hasPrev && (e5p as number) > (e8p as number);
+  const wasBelow = hasPrev && (e5p as number) < (e8p as number);
 
   // Fresh bull cross — bugün yukarı kesişti, güçlü LONG sinyali
   if (above && wasBelow) {

@@ -44,7 +44,7 @@ export function WatchlistPage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
-  const focusRef = useRef<HTMLDivElement | null>(null);
+  const focusRef = useRef<HTMLTableRowElement | null>(null);
   const [kind, setKind] = useState<'stocks' | 'funds'>('stocks');
   const [tefasFunds, setTefasFunds] = useState<TefasFundData[] | null>(null);
   const [stockPeriod, setStockPeriod] = useState<StockPeriod>('1g');
@@ -343,31 +343,47 @@ export function WatchlistPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {[...watched]
-              .sort((a, b) => {
-                const av = stockReturns[a.symbol]?.[stockPeriod];
-                const bv = stockReturns[b.symbol]?.[stockPeriod];
-                if (av == null && bv == null) return 0;
-                if (av == null) return 1;
-                if (bv == null) return -1;
-                return bv - av;
-              })
-              .map((s) => (
-                <div
-                  key={s.symbol}
-                  ref={focusSymbol === s.symbol ? focusRef : undefined}
-                  className={cn(focusSymbol === s.symbol && 'rounded-xl ring-2 ring-accent/50')}
-                >
-                  <WatchlistStockCard
-                    stock={s}
-                    period={stockPeriod}
-                    periodLabel={PERIOD_LABELS[stockPeriod]}
-                    returns={stockReturns[s.symbol]}
-                    onRemove={() => remove(s.symbol)}
-                  />
-                </div>
-              ))}
+          <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+            <table className="w-full min-w-[860px] text-xs">
+              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
+                  <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
+                  <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
+                  <th className="px-2 py-2.5 text-right">Fiyat</th>
+                  <th className="px-2 py-2.5 text-right">Gün %</th>
+                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
+                  <th className="px-2 py-2.5 text-right">1 Ay %</th>
+                  <th className="px-2 py-2.5 text-right">3 Ay %</th>
+                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
+                  <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+                  <th className="px-2 py-2.5 text-center w-12">İşlem</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...watched]
+                  .sort((a, b) => {
+                    const av = stockReturns[a.symbol]?.[stockPeriod];
+                    const bv = stockReturns[b.symbol]?.[stockPeriod];
+                    if (av == null && bv == null) return 0;
+                    if (av == null) return 1;
+                    if (bv == null) return -1;
+                    return bv - av;
+                  })
+                  .map((s, i) => (
+                    <WatchlistStockRow
+                      key={s.symbol}
+                      stock={s}
+                      rank={i + 1}
+                      period={stockPeriod}
+                      returns={stockReturns[s.symbol]}
+                      onRemove={() => remove(s.symbol)}
+                      isFocused={focusSymbol === s.symbol}
+                      focusRef={focusSymbol === s.symbol ? focusRef : undefined}
+                    />
+                  ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}
@@ -383,77 +399,85 @@ export function WatchlistPage() {
   );
 }
 
-interface WatchlistStockCardProps {
+interface WatchlistStockRowProps {
   stock: Stock;
+  rank: number;
   period: StockPeriod;
-  periodLabel: string;
   returns: PeriodReturns | undefined;
   onRemove: () => void;
+  isFocused?: boolean;
+  focusRef?: React.RefObject<HTMLTableRowElement> | undefined;
 }
 
 /**
- * Watchlist hisse performans kartı — seçili döneme göre büyük getiri yüzdesi
- * + fiyat + günlük değişim + hızlı aksiyonlar.
- *
- * Öneriler sayfasının kart stiline benzer ama daha kompakt; her hisse 1 kart,
- * mobile'da tek sütun, sm 2 sütun, lg 3 sütun.
+ * Watchlist hisse tablo satırı — Fonlar sayfasındaki düzen ile uyumlu:
+ * Sticky # ve Sembol kolonları, min-w korunur, çok kolon mobile'da gizlenir.
  */
-function WatchlistStockCard({ stock, period, periodLabel, returns, onRemove }: WatchlistStockCardProps) {
+function WatchlistStockRow({ stock, rank, period, returns, onRemove, isFocused, focusRef }: WatchlistStockRowProps) {
   const dayChange = stock.changePct;
-  const periodReturn = returns?.[period];
-  const periodTone = periodReturn == null
-    ? 'text-slate-500'
-    : periodReturn >= 0 ? 'text-success' : 'text-danger';
   const dayTone = dayChange >= 0 ? 'text-success' : 'text-danger';
   const sign = (v: number) => (v >= 0 ? '+' : '');
+  const returnsTone = (v: number | undefined) =>
+    v == null ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
+  const fmtReturn = (v: number | undefined) =>
+    v == null ? '—' : `${sign(v)}${v.toFixed(2)}%`;
+
+  // Seçili dönem highlight: arka plana hafif tint
+  const highlightCell = (key: StockPeriod) => period === key ? 'bg-accent/5' : '';
 
   return (
-    <div className="group glass-card relative overflow-hidden p-3 transition hover:border-accent/40">
-      {/* Sağ üstte çıkar butonu */}
-      <button
-        type="button"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
-        title="Takipten çıkar"
-        className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-bg-soft/80 text-slate-500 opacity-0 transition hover:bg-danger/15 hover:text-danger group-hover:opacity-100"
-      >
-        <X size={12} />
-      </button>
-
-      <Link to={`/stock/${stock.symbol}`} className="block">
-        <div className="flex items-start gap-2 pr-6">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono text-base font-bold text-accent">{stock.symbol}</span>
-              {stock.sector && (
-                <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[9px] text-slate-400">
-                  {stock.sector}
-                </span>
-              )}
-            </div>
-            <div className="mt-0.5 truncate text-[11px] text-slate-400">{stock.name}</div>
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <div className="text-xl font-bold tabular-nums text-slate-100">{formatMoney(stock.price)}</div>
-            <div className={cn('text-xs font-semibold tabular-nums', dayTone)}>
-              {sign(dayChange)}{dayChange.toFixed(2)}% <span className="text-[10px] text-slate-500">bugün</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">{periodLabel}</div>
-            {periodReturn == null ? (
-              <div className="text-base font-bold tabular-nums text-slate-600">—</div>
-            ) : (
-              <div className={cn('text-lg font-bold tabular-nums', periodTone)}>
-                {sign(periodReturn)}{periodReturn.toFixed(2)}%
-              </div>
-            )}
-          </div>
-        </div>
-      </Link>
-    </div>
+    <tr
+      ref={focusRef as React.RefObject<HTMLTableRowElement>}
+      className={cn(
+        'group border-b border-border/60 transition hover:bg-bg-card',
+        isFocused && 'ring-2 ring-inset ring-accent/40',
+      )}
+    >
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-left text-[11px] text-slate-500 tabular-nums">{rank}</td>
+      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2 text-left">
+        <Link
+          to={`/stock/${stock.symbol}`}
+          className="font-mono text-[13px] font-semibold text-accent hover:underline"
+        >
+          {stock.symbol}
+        </Link>
+      </td>
+      <td className="px-2 py-2 text-left hidden md:table-cell">
+        <div className="truncate max-w-[200px] text-slate-200">{stock.name}</div>
+        {stock.sector && (
+          <div className="mt-0.5 text-[9px] text-slate-500">{stock.sector}</div>
+        )}
+      </td>
+      <td className="px-2 py-2 text-right tabular-nums text-slate-100">{formatMoney(stock.price)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums font-medium', dayTone, highlightCell('1g'))}>
+        {sign(dayChange)}{dayChange.toFixed(2)}%
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(returns?.['1h']), highlightCell('1h'))}>
+        {fmtReturn(returns?.['1h'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(returns?.['1a']), highlightCell('1a'))}>
+        {fmtReturn(returns?.['1a'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(returns?.['3a']), highlightCell('3a'))}>
+        {fmtReturn(returns?.['3a'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(returns?.['6a']), highlightCell('6a'))}>
+        {fmtReturn(returns?.['6a'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(returns?.['1y']), highlightCell('1y'))}>
+        {fmtReturn(returns?.['1y'])}
+      </td>
+      <td className="px-2 py-2 text-center">
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+          title="Takipten çıkar"
+          className="grid h-6 w-6 place-items-center rounded-md text-slate-500 transition hover:bg-danger/15 hover:text-danger"
+        >
+          <X size={12} />
+        </button>
+      </td>
+    </tr>
   );
 }
 
@@ -591,119 +615,128 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {sortedFunds.map(({ entry, tefas }) => (
-          <WatchlistFundCard
-            key={entry.code}
-            entry={entry}
-            tefas={tefas}
-            period={fundPeriod}
-            periodLabel={PERIOD_LABELS[fundPeriod]}
-            apiKey={apiKey}
-            fmtPct={fmtPct}
-            onRemove={() => remove(entry.id)}
-          />
-        ))}
+      <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+        <table className="w-full min-w-[860px] text-xs">
+          <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
+              <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Kod</th>
+              <th className="px-2 py-2.5 text-left hidden md:table-cell">Ad / Kategori</th>
+              <th className="px-2 py-2.5 text-right">NAV (TL)</th>
+              <th className="px-2 py-2.5 text-right">Gün %</th>
+              <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
+              <th className="px-2 py-2.5 text-right">1 Ay %</th>
+              <th className="px-2 py-2.5 text-right">3 Ay %</th>
+              <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
+              <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+              <th className="px-2 py-2.5 text-center w-24">İşlem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedFunds.map(({ entry, tefas }, i) => (
+              <WatchlistFundRow
+                key={entry.code}
+                entry={entry}
+                tefas={tefas}
+                rank={i + 1}
+                period={fundPeriod}
+                fmtPct={fmtPct}
+                onRemove={() => remove(entry.id)}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );
 }
 
-interface WatchlistFundCardProps {
+interface WatchlistFundRowProps {
   entry: { id?: number; code: string; name?: string; category?: string };
   tefas: TefasFundData | undefined;
+  rank: number;
   period: StockPeriod;
-  periodLabel: string;
-  apiKey: FundPeriodKey;
   fmtPct: (v: number | null | undefined) => string;
   onRemove: () => void;
 }
 
 /**
- * Watchlist fon performans kartı — hisse kartının fon eşdeğeri.
- * Sol üstte kod + kategori, sol altta NAV + 1G değişim, sağ altta seçili dönem getirisi.
- * Sağ üstte takipten çıkarma butonu, alt bantta TEFAS dış bağlantısı.
+ * Watchlist fon tablo satırı — Fonlar sayfasındaki düzenle uyumlu:
+ * Sticky # ve Kod kolonları, min-w korunur, çok kolon mobile'da gizlenir.
+ * TEFAS dış bağlantısı + çıkar butonu sağ aksiyon alanında.
  */
-function WatchlistFundCard({ entry, tefas, period, periodLabel, apiKey, fmtPct, onRemove }: WatchlistFundCardProps) {
-  const dayChange = tefas?.returns?.['1d'];
-  // 1G seçiliyse büyük yüzde de günlük; tekrar göstermeyelim — diğer dönemlerde alt+büyük ayrı
-  const periodReturn = tefas?.returns?.[apiKey];
-  const periodTone = periodReturn == null || !Number.isFinite(periodReturn)
-    ? 'text-slate-500'
-    : periodReturn >= 0 ? 'text-success' : 'text-danger';
-  const dayTone = dayChange == null || !Number.isFinite(dayChange)
-    ? 'text-slate-500'
-    : dayChange >= 0 ? 'text-success' : 'text-danger';
+function WatchlistFundRow({ entry, tefas, rank, period, fmtPct, onRemove }: WatchlistFundRowProps) {
   const sign = (v: number) => (v >= 0 ? '+' : '');
+  const returnsTone = (v: number | null | undefined) =>
+    v == null || !Number.isFinite(v) ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
   const displayName = tefas?.name ?? entry.name;
   const displayCategory = tefas?.category ?? entry.category;
+  const navStr = tefas?.nav != null
+    ? `₺${tefas.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}`
+    : '—';
+
+  // Seçili dönem highlight
+  const highlightCell = (key: StockPeriod) => period === key ? 'bg-accent/5' : '';
 
   return (
-    <div className="group glass-card relative overflow-hidden p-3 transition hover:border-accent/40">
-      {/* Sağ üstte çıkar butonu */}
-      <button
-        type="button"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
-        title="Takipten çıkar"
-        className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-bg-soft/80 text-slate-500 opacity-0 transition hover:bg-danger/15 hover:text-danger group-hover:opacity-100"
-      >
-        <X size={12} />
-      </button>
-
-      <Link to={`/fund/${entry.code}`} className="block">
-        <div className="flex items-start gap-2 pr-6">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono text-base font-bold text-accent">{entry.code}</span>
-              {displayCategory && (
-                <span className="rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[9px] text-slate-400">
-                  {displayCategory}
-                </span>
-              )}
-            </div>
-            {displayName && (
-              <div className="mt-0.5 truncate text-[11px] text-slate-400">{displayName}</div>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <div className="text-xl font-bold tabular-nums text-slate-100">
-              {tefas?.nav != null
-                ? `₺${tefas.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}`
-                : '—'}
-            </div>
-            <div className={cn('text-xs font-semibold tabular-nums', dayTone)}>
-              {dayChange == null || !Number.isFinite(dayChange)
-                ? '—'
-                : `${sign(dayChange)}${dayChange.toFixed(2)}%`} <span className="text-[10px] text-slate-500">bugün</span>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">{periodLabel}</div>
-            {periodReturn == null || !Number.isFinite(periodReturn) ? (
-              <div className="text-base font-bold tabular-nums text-slate-600">—</div>
-            ) : (
-              <div className={cn('text-lg font-bold tabular-nums', periodTone)}>
-                {sign(periodReturn)}{periodReturn.toFixed(2)}%
-              </div>
-            )}
-          </div>
-        </div>
-      </Link>
-
-      {/* Alt bant: TEFAS dış bağlantı */}
-      <div className="mt-2 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
-        <a
-          href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(entry.code)}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success hover:bg-success/20"
+    <tr className="group border-b border-border/60 transition hover:bg-bg-card">
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-left text-[11px] text-slate-500 tabular-nums">{rank}</td>
+      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2 text-left">
+        <Link
+          to={`/fund/${entry.code}`}
+          className="font-mono text-[13px] font-semibold text-accent hover:underline"
         >
-          TEFAS <ExternalLink size={9} />
-        </a>
-      </div>
-    </div>
+          {entry.code}
+        </Link>
+      </td>
+      <td className="px-2 py-2 text-left hidden md:table-cell">
+        {displayName && <div className="truncate max-w-[260px] text-slate-200">{displayName}</div>}
+        {displayCategory && (
+          <span className="mt-0.5 inline-block rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+            {displayCategory}
+          </span>
+        )}
+      </td>
+      <td className="px-2 py-2 text-right tabular-nums text-slate-100">{navStr}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(tefas?.returns?.['1d']), highlightCell('1g'))}>
+        {fmtPct(tefas?.returns?.['1d'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(tefas?.returns?.['1w']), highlightCell('1h'))}>
+        {fmtPct(tefas?.returns?.['1w'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(tefas?.returns?.['1m']), highlightCell('1a'))}>
+        {fmtPct(tefas?.returns?.['1m'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(tefas?.returns?.['3m']), highlightCell('3a'))}>
+        {fmtPct(tefas?.returns?.['3m'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(tefas?.returns?.['6m']), highlightCell('6a'))}>
+        {fmtPct(tefas?.returns?.['6m'])}
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(tefas?.returns?.['1y']), highlightCell('1y'))}>
+        {fmtPct(tefas?.returns?.['1y'])}
+      </td>
+      <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="inline-flex items-center gap-1">
+          <a
+            href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(entry.code)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-0.5 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[9px] font-medium text-success hover:bg-success/20"
+            title="TEFAS'ta aç"
+          >
+            TEFAS <ExternalLink size={8} />
+          </a>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+            title="Takipten çıkar"
+            className="grid h-6 w-6 place-items-center rounded-md text-slate-500 transition hover:bg-danger/15 hover:text-danger"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }

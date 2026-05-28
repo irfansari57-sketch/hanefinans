@@ -50,9 +50,9 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-# Push
+# Push — gc.auto=0 ile auto-gc'yi kapatip Windows dosya kilidi loop'unu onler
 Write-Host "[PUSH] Pushing..." -ForegroundColor Cyan
-& git push
+& git -c gc.auto=0 -c gc.autoDetach=false push
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[HATA] Push basarisiz (kod $LASTEXITCODE)" -ForegroundColor Red
     Write-Host "       Tek tekrar dene: git push" -ForegroundColor Yellow

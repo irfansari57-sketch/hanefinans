@@ -16,12 +16,16 @@ import { persist } from 'zustand/middleware';
 interface SiteSettingsState {
   /** AdBanner (genel sponsor reklam) global görünürlüğü. */
   adBannerEnabled: boolean;
+  /** Sağ üstteki HaneFinans tanıtım videosu görünürlüğü (default: false — kapalı). */
+  adVideoEnabled: boolean;
   setAdBannerEnabled: (v: boolean) => void;
+  setAdVideoEnabled: (v: boolean) => void;
   resetToDefaults: () => void;
 }
 
-const DEFAULTS: Omit<SiteSettingsState, 'setAdBannerEnabled' | 'resetToDefaults'> = {
+const DEFAULTS: Omit<SiteSettingsState, 'setAdBannerEnabled' | 'setAdVideoEnabled' | 'resetToDefaults'> = {
   adBannerEnabled: false,
+  adVideoEnabled: false,
 };
 
 export const useSiteSettings = create<SiteSettingsState>()(
@@ -29,6 +33,7 @@ export const useSiteSettings = create<SiteSettingsState>()(
     (set) => ({
       ...DEFAULTS,
       setAdBannerEnabled: (v) => set({ adBannerEnabled: !!v }),
+      setAdVideoEnabled: (v) => set({ adVideoEnabled: !!v }),
       resetToDefaults: () => set(DEFAULTS),
     }),
     {

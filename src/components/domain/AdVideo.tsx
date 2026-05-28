@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Volume2, VolumeX, Maximize2, X, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSiteSettings } from '@/store/siteSettings';
 
 interface AdVideoProps {
   className?: string;
@@ -15,7 +16,10 @@ const VIDEO_SRC = '/0528.mp4';
  * ile body'ye render edilir, ata containing block sorunlari onlenir).
  */
 export function AdVideo({ className }: AdVideoProps) {
+  // Default: kapalı. Kullanıcı Ayarlar > Site Görünürlüğü'nden açabilir.
+  const enabled = useSiteSettings((s) => s.adVideoEnabled);
   const inlineRef = useRef<HTMLVideoElement>(null);
+  if (!enabled) return null;
   const [muted, setMuted] = useState(true);
   const [open, setOpen] = useState(false);
   const [playing, setPlaying] = useState(true);

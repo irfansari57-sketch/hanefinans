@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Volume2, VolumeX, Maximize2, X } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, X, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AdVideoProps {
@@ -18,13 +18,44 @@ export function AdVideo({ className }: AdVideoProps) {
   const inlineRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [open, setOpen] = useState(false);
+  const [playing, setPlaying] = useState(true);
+
+  // Video element'in gercek durum'unu (play/pause/ended) UI'a yansit.
+  // loop kaldirildi: video bir kez oynar, biter, durur. CPU/bandwidth bos durur.
+  useEffect(() => {
+    const v = inlineRef.current;
+    if (!v) return;
+    const onPlay = () => setPlaying(true);
+    const onPauseOrEnd = () => setPlaying(false);
+    v.addEventListener('play', onPlay);
+    v.addEventListener('pause', onPauseOrEnd);
+    v.addEventListener('ended', onPauseOrEnd);
+    return () => {
+      v.removeEventListener('play', onPlay);
+      v.removeEventListener('pause', onPauseOrEnd);
+      v.removeEventListener('ended', onPauseOrEnd);
+    };
+  }, []);
+
+  const togglePlay = () => {
+    const v = inlineRef.current;
+    if (!v) return;
+    if (v.paused || v.ended) {
+      // Bittiyse en bastan baslat
+      if (v.ended) v.currentTime = 0;
+      v.play().catch(() => { /* sessizce */ });
+    } else {
+      v.pause();
+    }
+  };
 
   const toggleMute = () => {
     const v = inlineRef.current;
     if (!v) return;
     const next = !muted;
     v.muted = next;
-    if (!next) {
+    if (!next && (v.paused || v.ended)) {
+      if (v.ended) v.currentTime = 0;
       v.play().catch(() => { /* sessizce */ });
     }
     setMuted(next);
@@ -37,7 +68,7 @@ export function AdVideo({ className }: AdVideoProps) {
 
   const closeModal = () => {
     setOpen(false);
-    inlineRef.current?.play().catch(() => { /* sessizce */ });
+    // Modal kapaninca otomatik tekrar baslatma — kullanici isterse butona basar
   };
 
   useEffect(() => {
@@ -68,13 +99,22 @@ export function AdVideo({ className }: AdVideoProps) {
           src={VIDEO_SRC}
           autoPlay
           muted={muted}
-          loop
           playsInline
           preload="auto"
           className="absolute inset-0 h-full w-full cursor-pointer object-cover"
           aria-label="HaneFinans reklam videosu"
-          onClick={toggleMute}
+          onClick={togglePlay}
         />
+
+        <button
+          type="button"
+          onClick={togglePlay}
+          className="absolute bottom-2 right-[7.25rem] grid h-9 w-9 place-items-center rounded-full bg-black/70 text-white backdrop-blur-sm transition hover:bg-black/85 active:scale-95"
+          aria-label={playing ? 'Durdur' : 'Oynat'}
+          title={playing ? 'Durdur' : 'Oynat'}
+        >
+          {playing ? <Pause size={16} /> : <Play size={16} />}
+        </button>
 
         <button
           type="button"
@@ -96,7 +136,7 @@ export function AdVideo({ className }: AdVideoProps) {
           <Maximize2 size={15} />
         </button>
 
-        {muted && (
+        {muted && playing && (
           <div className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
             Tikla sesi ac
           </div>
@@ -120,7 +160,6 @@ export function AdVideo({ className }: AdVideoProps) {
                 src={VIDEO_SRC}
                 autoPlay
                 controls
-                loop
                 playsInline
                 preload="auto"
                 className="block w-full rounded-lg bg-black shadow-2xl"

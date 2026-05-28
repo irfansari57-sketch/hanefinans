@@ -9,6 +9,9 @@ import type { Stock } from '@/data/types';
 import type { PeriodReturns } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
+import { Pagination } from '@/components/ui/Pagination';
+
+const PAGE_SIZE = 50;
 
 /**
  * Güçlü Al Havuzu — tüm BIST evrenini (700+) tarayan kazanç potansiyeli filtresi.
@@ -100,6 +103,10 @@ export function StrongBuyTab() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [query, setQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'broker' | 'technical'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Filter veya arama degisince ilk sayfaya don
+  useEffect(() => { setCurrentPage(1); }, [query, sourceFilter]);
 
   // --- Universe: MOCK_STOCKS + BIST_UNIQUE birleşik (700+) ---
   const universe = useMemo(() => {
@@ -361,36 +368,63 @@ export function StrongBuyTab() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-          <table className="min-w-full text-xs">
-            <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
-              <tr>
-                <th className="px-3 py-2.5 text-left">#</th>
-                <th className="px-3 py-2.5 text-left">Sembol</th>
-                <th className="px-3 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
-                <th className="px-3 py-2.5 text-right">Fiyat</th>
-                <th className="px-3 py-2.5 text-right">Gün %</th>
-                <th className="px-3 py-2.5 text-right hidden lg:table-cell">1A %</th>
-                <th className="px-3 py-2.5 text-right hidden lg:table-cell">3A %</th>
-                <th className="px-3 py-2.5 text-right hidden xl:table-cell">1Y %</th>
-                <th className="px-3 py-2.5 text-center hidden md:table-cell">Analist (AL/TUT)</th>
-                <th className="px-3 py-2.5 text-right hidden md:table-cell">Hedef</th>
-                <th className="px-3 py-2.5 text-right">Potansiyel</th>
-                <th className="px-3 py-2.5 text-right">Skor</th>
-                <th className="px-3 py-2.5 text-center">Tavsiye</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((r, i) => (
-                <StrongBuyRow key={r.symbol} rec={r} rank={i + 1} />
-              ))}
-            </tbody>
-          </table>
-          <div className="border-t border-border bg-bg-card/40 px-3 py-2 text-[10px] text-slate-500">
+        <>
+          {/* Ust pagination */}
+          <Pagination
+            currentPage={Math.min(currentPage, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))}
+            totalPages={Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))}
+            totalItems={filtered.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+
+          <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+            <table className="w-full min-w-[860px] text-xs">
+              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
+                  <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
+                  <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
+                  <th className="px-2 py-2.5 text-right">Fiyat</th>
+                  <th className="px-2 py-2.5 text-right">Gün %</th>
+                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">1A %</th>
+                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">3A %</th>
+                  <th className="px-2 py-2.5 text-right hidden xl:table-cell">1Y %</th>
+                  <th className="px-2 py-2.5 text-center hidden xl:table-cell">AL/TUT</th>
+                  <th className="px-2 py-2.5 text-right hidden lg:table-cell">Hedef</th>
+                  <th className="px-2 py-2.5 text-right">Potans.</th>
+                  <th className="px-2 py-2.5 text-right">Skor</th>
+                  <th className="px-2 py-2.5 text-center">Tavsiye</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered
+                  .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+                  .map((r, i) => (
+                    <StrongBuyRow
+                      key={r.symbol}
+                      rec={r}
+                      rank={(currentPage - 1) * PAGE_SIZE + i + 1}
+                    />
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Alt pagination */}
+          <Pagination
+            currentPage={Math.min(currentPage, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)))}
+            totalPages={Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))}
+            totalItems={filtered.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+
+          <div className="rounded-xl border border-border bg-bg-card/40 px-3 py-2 text-[10px] text-slate-500">
             Skor: broker-onaylı için 0.40 × analist + 0.30 × hedef + 0.30 × momentum; teknik için sadece momentum (pozitif dönem oranı).
             Bu havuz yatırım tavsiyesi değildir.
           </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -418,37 +452,37 @@ function StrongBuyRow({ rec, rank }: StrongBuyRowProps) {
       : 'text-slate-200';
 
   return (
-    <tr className="group transition-colors hover:bg-bg-card">
-      <td className="px-3 py-2.5 text-left text-[10px] text-slate-500 tabular-nums">{rank}</td>
-      <td className="px-3 py-2.5 text-left whitespace-nowrap">
+    <tr className="group border-b border-border/60 transition hover:bg-bg-card">
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-left text-[11px] text-slate-500 tabular-nums">{rank}</td>
+      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2 text-left whitespace-nowrap">
         <Link
           to={`/stock/${rec.symbol}`}
-          className="inline-flex items-center gap-1.5 font-mono font-semibold text-accent hover:underline"
+          className="inline-flex items-center gap-1 font-mono text-[13px] font-semibold text-accent hover:underline"
         >
           {rec.symbol}
           <ChevronRight size={10} className="opacity-0 transition group-hover:opacity-100" />
         </Link>
       </td>
-      <td className="px-3 py-2.5 text-left hidden md:table-cell">
-        <div className="truncate max-w-[200px] text-slate-200">{rec.name}</div>
+      <td className="px-2 py-2 text-left hidden md:table-cell">
+        <div className="truncate max-w-[180px] text-slate-200">{rec.name}</div>
         {rec.sector && (
           <div className="mt-0.5 text-[9px] text-slate-500">{rec.sector}</div>
         )}
       </td>
-      <td className="px-3 py-2.5 text-right tabular-nums text-slate-100">{formatMoney(rec.price)}</td>
-      <td className={cn('px-3 py-2.5 text-right tabular-nums font-medium', dayTone)}>
+      <td className="px-2 py-2 text-right tabular-nums text-slate-100">{formatMoney(rec.price)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums font-medium', dayTone)}>
         {sign(rec.changePct)}{rec.changePct.toFixed(2)}%
       </td>
-      <td className={cn('px-3 py-2.5 text-right tabular-nums hidden lg:table-cell', returnsTone(rec.returns?.['1a']))}>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(rec.returns?.['1a']))}>
         {fmtReturn(rec.returns?.['1a'])}
       </td>
-      <td className={cn('px-3 py-2.5 text-right tabular-nums hidden lg:table-cell', returnsTone(rec.returns?.['3a']))}>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(rec.returns?.['3a']))}>
         {fmtReturn(rec.returns?.['3a'])}
       </td>
-      <td className={cn('px-3 py-2.5 text-right tabular-nums hidden xl:table-cell', returnsTone(rec.returns?.['1y']))}>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden xl:table-cell', returnsTone(rec.returns?.['1y']))}>
         {fmtReturn(rec.returns?.['1y'])}
       </td>
-      <td className="px-3 py-2.5 text-center text-[11px] tabular-nums hidden md:table-cell">
+      <td className="px-2 py-2 text-center text-[11px] tabular-nums hidden xl:table-cell">
         {rec.source === 'broker' ? (
           <>
             <span className="text-success font-semibold">{rec.alCount}</span>
@@ -459,18 +493,18 @@ function StrongBuyRow({ rec, rank }: StrongBuyRowProps) {
           <span className="text-slate-600">—</span>
         )}
       </td>
-      <td className="px-3 py-2.5 text-right tabular-nums hidden md:table-cell text-slate-200">
+      <td className="px-2 py-2 text-right tabular-nums hidden lg:table-cell text-slate-200">
         {rec.avgTarget == null ? '—' : formatMoney(rec.avgTarget)}
       </td>
-      <td className={cn('px-3 py-2.5 text-right tabular-nums font-medium', potentialTone)}>
+      <td className={cn('px-2 py-2 text-right tabular-nums font-medium', potentialTone)}>
         {rec.potentialPct == null
           ? '—'
           : `${sign(rec.potentialPct)}${rec.potentialPct.toFixed(1)}%`}
       </td>
-      <td className={cn('px-3 py-2.5 text-right tabular-nums', scoreColor)}>
+      <td className={cn('px-2 py-2 text-right tabular-nums', scoreColor)}>
         {rec.score.toFixed(3)}
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="px-2 py-2 text-center">
         {rec.source === 'broker' ? (
           <span
             className="inline-flex items-center gap-1 rounded-md border border-success/40 bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success"

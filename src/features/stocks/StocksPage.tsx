@@ -31,21 +31,27 @@ interface ReturnsCache {
   data: Record<string, PeriodReturns>;
 }
 
+// Cache yeterince dolu degilse (ornek: 50'den az hisse) stale sayilir — yeni
+// snapshot endpoint'i ~600 hisse donduruyor, eski cache'ler bunu yakalamali.
+const STOCK_RETURNS_MIN_ENTRIES = 100;
+
 function readReturnsCache(): Record<string, PeriodReturns> | null {
   try {
     const raw = localStorage.getItem(STOCK_RETURNS_CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ReturnsCache;
     if (Date.now() - parsed.fetchedAt > STOCK_RETURNS_TTL_MS) return null;
-    // Bos cache poison'u onle: payload {} ise null don, refetch tetiklensin
-    if (!parsed.data || Object.keys(parsed.data).length === 0) return null;
+    if (!parsed.data) return null;
+    const count = Object.keys(parsed.data).length;
+    // Bos veya yetersiz cache: refetch tetiklensin
+    if (count < STOCK_RETURNS_MIN_ENTRIES) return null;
     return parsed.data;
   } catch { return null; }
 }
 
 function writeReturnsCache(data: Record<string, PeriodReturns>) {
-  // Bos data localStorage'a yazilmasin, sonraki yuklemede gercek bir fetch'i blok'lar
-  if (!data || Object.keys(data).length === 0) return;
+  // Yetersiz dolu data localStorage'a yazilmasin, sonraki yuklemeyi blok'lar
+  if (!data || Object.keys(data).length < STOCK_RETURNS_MIN_ENTRIES) return;
   try {
     localStorage.setItem(STOCK_RETURNS_CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), data }));
   } catch { /* ignore */ }

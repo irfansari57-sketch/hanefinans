@@ -26,6 +26,8 @@ export interface TimeframeAnalysis {
   emasBelow: number[];
   /** Her EMA periyodunun son fiyat değeri (period -> value). */
   emaValues: Record<number, number>;
+  /** Bir önceki barın EMA değerleri — kesişim algılaması için. */
+  emaValuesPrev: Record<number, number>;
 }
 
 export interface MultiTimeframeResult {
@@ -107,10 +109,14 @@ export function analyzeTimeframe(
   if (closes.length < Math.max(...periods)) return null;
   const last = closes[closes.length - 1];
 
-  const emaValues = periods.map((p) => ({
-    period: p,
-    value: ema(closes, p).at(-1) ?? NaN,
-  }));
+  const emaValues = periods.map((p) => {
+    const series = ema(closes, p);
+    return {
+      period: p,
+      value: series.at(-1) ?? NaN,
+      prev: series.at(-2) ?? NaN,
+    };
+  });
 
   const validEmas = emaValues.filter((e) => Number.isFinite(e.value));
   if (validEmas.length === 0) return null;
@@ -128,8 +134,12 @@ export function analyzeTimeframe(
   else if (score <= 0.2) trend = 'short';
 
   const valuesMap: Record<number, number> = {};
-  for (const e of validEmas) valuesMap[e.period] = e.value;
-  return { trend, emaScore: emasAbove.length, emasAbove, emasBelow, emaValues: valuesMap };
+  const prevMap: Record<number, number> = {};
+  for (const e of validEmas) {
+    valuesMap[e.period] = e.value;
+    prevMap[e.period] = e.prev;
+  }
+  return { trend, emaScore: emasAbove.length, emasAbove, emasBelow, emaValues: valuesMap, emaValuesPrev: prevMap };
 }
 
 /**
@@ -206,36 +216,42 @@ function fmtPrice(n: number): string {
 }
 
 /**
- * EMA dizilimi okuması: hangi periyotlar üstte/altta + bunun anlamı.
+ * Kısa vade kesişim sinyali — günlükte EMA 5 ile EMA 8'in pozisyonu kısa vade
+ * yön belirleyicisidir. Fresh cross (bir önceki barda diğer taraftaydı, bugün
+ * tersine geçti) çok güçlü bir sinyal; sade pozisyon ise momentum bilgisi.
+ *
+ * - EMA 5 yukarı kesişim → güçlü LONG sinyali (20 Kasım, 6 Ocak gibi noktalar)
+ * - EMA 5 aşağı kesişim  → güçlü SHORT sinyali
  */
-function emaStructureLine(ta: TimeframeAnalysis, tfLabel: string): string {
-  const total = ta.emasAbove.length + ta.emasBelow.length;
-  if (total === 0) return '';
-  const aboveStr = ta.emasAbove.length > 0 ? ta.emasAbove.join('/') : '—';
-  const belowStr = ta.emasBelow.length > 0 ? ta.emasBelow.join('/') : '—';
+function shortCrossLine(ta: TimeframeAnalysis, tfLabel: string): string {
+  const e5 = ta.emaValues[5];
+  const e8 = ta.emaValues[8];
+  const e5p = ta.emaValuesPrev[5];
+  const e8p = ta.emaValuesPrev[8];
 
-  // Kritik seviyeleri (EMA 55, EMA 200) parantez içinde fiyatla göster
-  const critical = [55, 200]
-    .filter((p) => Number.isFinite(ta.emaValues[p]))
-    .map((p) => `EMA ${p}: ${fmtPrice(ta.emaValues[p])}`)
-    .join('; ');
-  const seviye = critical ? ` Kritik seviyeler — ${critical}.` : '';
+  if (!Number.isFinite(e5) || !Number.isFinite(e8)) return '';
 
-  if (ta.trend === 'long') {
-    if (ta.emasBelow.length === 0) {
-      return `${tfLabel} EMA dizilimi: fiyat tüm EMA'ların (${aboveStr}) üzerinde — destek katmanları sağlam, dip kademesi geniş.${seviye}`;
-    }
-    return `${tfLabel} EMA dizilimi: fiyat ${ta.emasAbove.length}/${total} EMA'nın üstünde (üstte: ${aboveStr}; altta: ${belowStr}) — yukarı yönlü baskın ama tam dizilim henüz oturmamış.${seviye}`;
+  const ema5Str = fmtPrice(e5);
+  const ema8Str = fmtPrice(e8);
+  const above = e5 > e8;
+  const wasAbove = Number.isFinite(e5p) && Number.isFinite(e8p) && e5p > e8p;
+  const wasBelow = Number.isFinite(e5p) && Number.isFinite(e8p) && e5p < e8p;
+
+  // Fresh bull cross — bugün yukarı kesişti, güçlü LONG sinyali
+  if (above && wasBelow) {
+    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ÜSTÜNE KESTİ — kısa vade güçlü LONG sinyali, momentum yukarı dönüyor.`;
   }
 
-  if (ta.trend === 'short') {
-    if (ta.emasAbove.length === 0) {
-      return `${tfLabel} EMA dizilimi: fiyat tüm EMA'ların (${belowStr}) altında — direnç katmanları üst üste, toparlanmaya geçilemiyor.${seviye}`;
-    }
-    return `${tfLabel} EMA dizilimi: fiyat ${ta.emasBelow.length}/${total} EMA'nın altında (altta: ${belowStr}; üstte: ${aboveStr}) — aşağı yönlü baskı; sadece kısa EMA'lar üstte kaldığı için kalıcı dönüş için daha güç gerek.${seviye}`;
+  // Fresh bear cross — bugün aşağı kesişti, güçlü SHORT sinyali
+  if (!above && wasAbove) {
+    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ALTINA KESTİ — kısa vade güçlü SHORT sinyali, momentum aşağı dönüyor.`;
   }
 
-  return `${tfLabel} EMA dizilimi karışık (üstte EMA ${aboveStr}, altta ${belowStr}) — kümeleşme yok, net trend yok.${seviye}`;
+  // Position only (no fresh cross)
+  if (above) {
+    return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) üstünde — kısa vade yukarı momentum sürüyor; aşağı kesişime kadar long taraf bozulmadı.`;
+  }
+  return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) altında — kısa vade aşağı momentum sürüyor; yukarı kesişim olmadan kalıcı long beklenmez.`;
 }
 
 /** Günün hareket büyüklüğüne göre karakter notu. */
@@ -367,12 +383,12 @@ export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   // 5) Aksiyon
   parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
 
-  // 6) EMA 5/8/13/21 detayı — sonda, sade kalsın
+  // 6) EMA 5/8 kesişim sinyali — kısa vade yön belirleyicisi
   const focusTf = r.tf1d ?? r.tf4h ?? r.tf1h;
   const focusLabel = r.tf1d ? 'Günlük' : r.tf4h ? '4 saatlik' : '1 saatlik';
   if (focusTf) {
-    const ema = emaStructureLine(focusTf, focusLabel);
-    if (ema) parts.push(ema);
+    const cross = shortCrossLine(focusTf, focusLabel);
+    if (cross) parts.push(cross);
   }
 
   return parts.join(' ');

@@ -86,14 +86,14 @@ describe('buildVerdict', () => {
     expect(v.length).toBeGreaterThan(0);
   });
 
-  it('EMA dizilim cümlesi yorumun SONUNDA gelir (sabah raporu/günlük analiz isteği)', () => {
+  it('EMA 5/8 kesişim cümlesi yorumun SONUNDA gelir', () => {
     const closes = Array.from({ length: 250 }, (_, i) => 100 + i); // long trend
     const tf1d = analyzeTimeframe(closes, [5, 8, 13, 21, 55, 200]);
     expect(tf1d).not.toBeNull();
     const v = buildVerdict({ ...baseResult, tf1d, changePct: 0.5 });
-    const idx = v.indexOf('EMA dizilimi');
+    const idx = v.indexOf('EMA 5');
     expect(idx).toBeGreaterThan(0);
-    // EMA cümlesi son cümle olmalı → "Aksiyon önerisi" kelimesi EMA'dan ÖNCE gelir.
+    // EMA 5/8 cümlesi son cümle olmalı → "Aksiyon önerisi" kelimesi ondan ÖNCE gelir.
     expect(v.indexOf('Aksiyon önerisi')).toBeLessThan(idx);
   });
 });

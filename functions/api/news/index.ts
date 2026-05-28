@@ -31,6 +31,7 @@ interface RssSource {
 }
 
 const SOURCES: RssSource[] = [
+  // === Türkçe finans kaynakları ===
   // Anadolu Ajansı — ekonomi
   { name: 'AA Ekonomi',     url: 'https://www.aa.com.tr/tr/rss/default?cat=ekonomi' },
   // BloombergHT — finans
@@ -47,6 +48,18 @@ const SOURCES: RssSource[] = [
   { name: 'Sabah',          url: 'https://www.sabah.com.tr/rss/ekonomi.xml' },
   // Dünya Gazetesi (finansal)
   { name: 'Dünya Gazetesi', url: 'https://www.dunya.com/rss?xml=ekonomi' },
+
+  // === Global / İngilizce kaynaklar — TR piyasasını etkileyebilecek makro/jeopolitik ===
+  // Investing.com — genel piyasa haberleri
+  { name: 'Investing',      url: 'https://www.investing.com/rss/news.rss' },
+  // Investing.com — döviz/forex
+  { name: 'Investing FX',   url: 'https://www.investing.com/rss/news_1.rss' },
+  // Investing.com — emtia (altın/petrol/gümüş)
+  { name: 'Investing Emtia', url: 'https://www.investing.com/rss/news_11.rss' },
+  // Reuters Business (Google News mirror — Reuters RSS doğrudan kapalı)
+  { name: 'Reuters',        url: 'https://news.google.com/rss/search?q=site%3Areuters.com+business&hl=en-US&gl=US&ceid=US:en' },
+  // Financial Times — piyasa
+  { name: 'FT',             url: 'https://www.ft.com/markets?format=rss' },
 ];
 
 // Basit BIST sembol algılayıcı
@@ -161,11 +174,35 @@ function detectSymbols(text: string): string[] {
 function scoreImportance(title: string, summary: string): number {
   const text = `${title} ${summary}`.toLowerCase();
   let score = 4;
-  if (/i̇halesi|sözleşme|anlaşma|imzala|imzalan/.test(text)) score += 2;
-  if (/milyar|büyük|kapasite|yatırım|fabrika/.test(text)) score += 1;
-  if (/iflas|kayıp|zarar|açıklama|skandal/.test(text)) score += 2;
-  if (/merkez bankası|tcmb|faiz kararı|enflasyon/.test(text)) score += 2;
-  if (/bist|borsa istanbul|kap/.test(text)) score += 1;
+
+  // --- Yuksek etkili global makro (piyasa hareket ettirir) ---
+  if (/\b(fed|fomc|powell|jerome powell|ecb|lagarde|boj|boe|pboc)\b/.test(text)) score += 3;
+  if (/(faiz karari|faiz indirim|faiz artis|interest rate decision|rate cut|rate hike)/.test(text)) score += 3;
+  if (/(enflasyon|cpi|ppi|nfp|non.?farm|payroll|gdp|gsyih|issizlik|jobs report)/.test(text)) score += 2;
+
+  // --- Yuksek etkili lokal makro ---
+  if (/(merkez bankasi|tcmb|ppk|para politikasi kurulu)/.test(text)) score += 3;
+  if (/(kapasite kullanim|sanayi uretim|imalat pmi|tuik|bist 100|xu100)/.test(text)) score += 1;
+
+  // --- Doviz / emtia / piyasa hareketi ---
+  if (/\b(dolar\/tl|usd\/try|euro\/tl|eur\/try|kur|swap|cds|risk primi)\b/.test(text)) score += 2;
+  if (/(altin|gold|gumus|silver|brent|wti|petrol|natural gas|dogalgaz|bakir|copper)/.test(text)) score += 2;
+  if (/(vix|volatility|panik|sert dusus|sert yukselis|cokus|rally|all.?time high|rekor)/.test(text)) score += 2;
+
+  // --- Sirket / piyasa olayi ---
+  if (/(ihale|sozlesme|anlasma|imzala|imzalan|m&a|satin alma|birlesme|takeover)/.test(text)) score += 2;
+  if (/(milyar|big deal|kapasite|yatirim|fabrika|tahvil ihraci|bono ihraci|ipo|halka arz)/.test(text)) score += 1;
+  if (/(iflas|kayip|zarar|skandal|bankruptcy|profit warning|kar uyari|temettu)/.test(text)) score += 2;
+  if (/(downgrade|upgrade|rating|moody|fitch|s&p|kredi notu|nota indir|nota yukselt)/.test(text)) score += 2;
+  if (/(spk|sermaye piyasasi|kap|bist|borsa istanbul|kar payi|kar paylasimi)/.test(text)) score += 1;
+
+  // --- Jeopolitik / kriz (yuksek volatilite tetikleyici) ---
+  if (/(savas|war|saldiri|attack|kriz|crisis|yaptirim|sanction|tariff|gumruk vergisi|trade war)/.test(text)) score += 2;
+  if (/(opec|opec\+|enerji krizi|energy crisis|durgunluk|resesyon|recession)/.test(text)) score += 2;
+
+  // --- Acil son dakika sinyali ---
+  if (/(son dakika|breaking|flash|acil|urgent)/.test(text)) score += 2;
+
   return Math.min(10, score);
 }
 

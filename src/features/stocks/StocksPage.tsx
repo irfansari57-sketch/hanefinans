@@ -127,6 +127,36 @@ export function StocksPage() {
       });
       setStocks(placeholderStocks);
 
+      // === Snapshot fetch'i PARALLEL baslat — stocks batch loop'unu beklemesin ===
+      // Eskiden snapshot sirali idi: 819 hisse batch'i (~30sn) bittikten sonra fetch.
+      // Bu sirada period kolonlari hep "—" idi. Simdi: snapshot fetch hemen baslar,
+      // stocks loop ile yarisir; 1-2sn icinde period verisi ekrana duser.
+      const cached = forceReturns ? null : readReturnsCache();
+      let snapshotPromise: Promise<Record<string, PeriodReturns> | 'cached'>;
+      if (cached) {
+        setReturnsMap(cached);
+        snapshotPromise = Promise.resolve('cached' as const);
+      } else {
+        setReturnsLoading(true);
+        snapshotPromise = (async () => {
+          const newReturns: Record<string, PeriodReturns> = {};
+          try {
+            const r = await fetch('/api/yahoo/returns-snapshot');
+            if (r.ok) {
+              const j = await r.json() as { ok: boolean; returns: Record<string, PeriodReturns> };
+              if (j.ok && j.returns) {
+                for (const [ySym, ret] of Object.entries(j.returns)) {
+                  const sym = ySym.endsWith('.IS') ? ySym.slice(0, -3) : ySym;
+                  newReturns[sym] = ret;
+                }
+                setReturnsMap({ ...newReturns });
+              }
+            }
+          } catch { /* fallback ileride topMovers ile */ }
+          return newReturns;
+        })();
+      }
+
       const BATCH_SIZE = 50;
       const BATCH_DELAY_MS = 1500;
       const liveStocks: Stock[] = [];
@@ -143,30 +173,12 @@ export function StocksPage() {
       }
       setUpdatedAt(Date.now());
 
-      const cached = forceReturns ? null : readReturnsCache();
-      if (cached) {
-        setReturnsMap(cached);
-        return;
-      }
-      setReturnsLoading(true);
-      const newReturns: Record<string, PeriodReturns> = {};
+      // Snapshot bu noktada coktan tamamlanmis olmali (~30sn batch loop'u beklerken).
+      const snapResult = await snapshotPromise;
+      if (snapResult === 'cached') return; // cache yolu — topMovers fallback'i atla
+      const newReturns = snapResult;
 
-      // 1. Toplu returns-snapshot endpoint — tek istekte cache'lenmis returns'leri al
-      try {
-        const r = await fetch('/api/yahoo/returns-snapshot');
-        if (r.ok) {
-          const j = await r.json() as { ok: boolean; returns: Record<string, PeriodReturns> };
-          if (j.ok && j.returns) {
-            for (const [ySym, ret] of Object.entries(j.returns)) {
-              const sym = ySym.endsWith('.IS') ? ySym.slice(0, -3) : ySym;
-              newReturns[sym] = ret;
-            }
-            setReturnsMap({ ...newReturns });
-          }
-        }
-      } catch { /* fallback */ }
-
-      // 2. Snapshot'tan gelmeyenleri arka planda batch'lerle yenile
+      // Snapshot'tan gelmeyenleri arka planda batch'lerle yenile
       const topMovers = [...liveStocks]
         .filter((s) => s.price > 0 && !newReturns[s.symbol])
         .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))

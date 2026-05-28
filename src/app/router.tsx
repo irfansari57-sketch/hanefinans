@@ -18,12 +18,18 @@ function lazyWithRetry<T extends ComponentType<unknown>>(factory: () => Promise<
         msg.includes('Importing a module script failed') ||
         msg.includes('error loading dynamically imported module');
       if (isChunkError && typeof window !== 'undefined') {
-        const last = sessionStorage.getItem('fa.lastChunkReload');
+        // Reload sayacini sayfa-route-sayisina baglama, kullanici ust uste sayfa
+        // gezerken her stale chunk hatasinda toplu cache temizleyip yeniden yukle.
+        // Sayac: 5 dk icinde max 3 reload — sonsuz dongu korumasi.
+        const RAW = sessionStorage.getItem('fa.chunkReloadHistory') ?? '[]';
+        let history: number[] = [];
+        try { history = JSON.parse(RAW) as number[]; } catch { history = []; }
         const now = Date.now();
-        // 30 saniye debounce — sonsuz reload döngüsünü engelle
-        if (!last || now - parseInt(last, 10) > 30_000) {
-          sessionStorage.setItem('fa.lastChunkReload', String(now));
-          // Service worker'i temizle — eski cached index.html eski chunk hash'lerine referans verir
+        const recent = history.filter((t) => now - t < 5 * 60_000);
+        if (recent.length < 3) {
+          recent.push(now);
+          sessionStorage.setItem('fa.chunkReloadHistory', JSON.stringify(recent));
+          // SW + caches temizle — eski index.html cache'i bunlardan biri olabilir
           try {
             if ('serviceWorker' in navigator) {
               const regs = await navigator.serviceWorker.getRegistrations();
@@ -37,9 +43,9 @@ function lazyWithRetry<T extends ComponentType<unknown>>(factory: () => Promise<
             /* SW temizlenemediyse sessizce gec — reload yine de denenir */
           }
           window.location.reload();
-          // Reload tetiklendi; geri dönüş yapma
           return new Promise<{ default: T }>(() => {});
         }
+        // 3'ten fazla reload denedik — error boundary'e dus, kullanici manuel halletsin
       }
       throw err;
     }),

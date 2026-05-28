@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { PiggyBank, RefreshCw, Zap, Briefcase, PieChart, Bell, BellOff, TrendingUp } from 'lucide-react';
+import { PiggyBank, RefreshCw, Zap, Briefcase, PieChart, Bell, BellOff, TrendingUp, Star, ExternalLink } from 'lucide-react';
 import { BrokerRecommendations } from '@/components/domain/BrokerRecommendations';
 import { BrokerPortfolios } from '@/components/domain/BrokerPortfolios';
 import { RecPoolStats } from '@/components/domain/RecPoolStats';
@@ -20,6 +20,7 @@ import { sendTelegram, getTelegramChatId } from '@/lib/telegram';
 import { MOCK_STOCKS } from '@/data/mock';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import type { Stock, FundPerformance } from '@/data/types';
+import { formatMoney } from '@/lib/format';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 
@@ -479,31 +480,48 @@ export function RecommendationsPage() {
               {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="rect" height={56} />)}
             </div>
           ) : (
-            <div className="space-y-1.5">
-              {sortedRecs
-                .filter((rec) => {
-                  // Filter chip
-                  if (scalpFilter === 'longonly' && !isLongForTf(rec, selectedTf)) return false;
-                  if (scalpFilter === 'watchlist' && !watchlistHas(rec.stock.symbol)) return false;
-                  // Search query
-                  const q = searchQuery.trim().toUpperCase();
-                  if (q.length > 0) {
-                    const sym = rec.stock.symbol.toUpperCase();
-                    const name = (rec.stock.name ?? '').toUpperCase();
-                    if (!sym.includes(q) && !name.includes(q)) return false;
-                  }
-                  return true;
-                })
-                .map((rec, i) => (
-                  <ScalpRowItem
-                    key={rec.stock.symbol}
-                    rec={rec}
-                    rank={i + 1}
-                    selectedTf={selectedTf}
-                    watched={watchlistHas(rec.stock.symbol)}
-                    onToggle={() => toggleWatch(rec.stock.symbol)}
-                  />
-                ))}
+            <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+              <table className="w-full min-w-[860px] text-xs">
+                <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
+                    <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
+                    <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
+                    <th className="px-2 py-2.5 text-right">Fiyat</th>
+                    <th className="px-2 py-2.5 text-right">Gün %</th>
+                    <th className="px-2 py-2.5 text-center hidden lg:table-cell">1H</th>
+                    <th className="px-2 py-2.5 text-center hidden lg:table-cell">4H</th>
+                    <th className="px-2 py-2.5 text-center hidden lg:table-cell">1G</th>
+                    <th className="px-2 py-2.5 text-center hidden md:table-cell">Yön</th>
+                    <th className="px-2 py-2.5 text-center">Durum</th>
+                    <th className="px-2 py-2.5 text-center w-12">⭐</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedRecs
+                    .filter((rec) => {
+                      if (scalpFilter === 'longonly' && !isLongForTf(rec, selectedTf)) return false;
+                      if (scalpFilter === 'watchlist' && !watchlistHas(rec.stock.symbol)) return false;
+                      const q = searchQuery.trim().toUpperCase();
+                      if (q.length > 0) {
+                        const sym = rec.stock.symbol.toUpperCase();
+                        const name = (rec.stock.name ?? '').toUpperCase();
+                        if (!sym.includes(q) && !name.includes(q)) return false;
+                      }
+                      return true;
+                    })
+                    .map((rec, i) => (
+                      <ScalpTableRow
+                        key={rec.stock.symbol}
+                        rec={rec}
+                        rank={i + 1}
+                        selectedTf={selectedTf}
+                        watched={watchlistHas(rec.stock.symbol)}
+                        onToggle={() => toggleWatch(rec.stock.symbol)}
+                      />
+                    ))}
+                </tbody>
+              </table>
             </div>
           )}
           <p className="mt-3 text-[11px] text-slate-500">
@@ -531,16 +549,177 @@ export function RecommendationsPage() {
 
               {/* Trend Fonlar üst özet bloğu (havuz istatistikleri + strip) kullanıcı talebi ile kaldırıldı. */}
 
-              {/* Akordeon liste */}
-              <div className="space-y-1.5">
-                {topFunds.map((fund, i) => (
-                  <FundAccordionItem key={fund.code} fund={fund} rank={i + 1} />
-                ))}
+              {/* Fonlar sayfası tarzı: sticky kolonlar + min-w + responsive hide */}
+              <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+                <table className="w-full min-w-[860px] text-xs">
+                  <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+                    <tr>
+                      <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
+                      <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Kod</th>
+                      <th className="px-2 py-2.5 text-left hidden md:table-cell">Ad / Kategori</th>
+                      <th className="px-2 py-2.5 text-right">Gün %</th>
+                      <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
+                      <th className="px-2 py-2.5 text-right">1 Ay %</th>
+                      <th className="px-2 py-2.5 text-right">3 Ay %</th>
+                      <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
+                      <th className="px-2 py-2.5 text-right hidden xl:table-cell">YTD %</th>
+                      <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+                      <th className="px-2 py-2.5 text-center w-24">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topFunds.map((fund, i) => (
+                      <TrendFundRow key={fund.code} fund={fund} rank={i + 1} />
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </>
           )}
         </div>
       )}
     </>
+  );
+}
+
+// ============================================================================
+// Trend Fonlar tablo satırı — Fonlar sayfası düzeniyle uyumlu
+// ============================================================================
+function TrendFundRow({ fund, rank }: { fund: FundPerformance; rank: number }) {
+  const sign = (v: number) => (v >= 0 ? '+' : '');
+  const tone = (v: number | undefined) =>
+    v == null || !Number.isFinite(v) ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
+  const fmt = (v: number | undefined) =>
+    v == null || !Number.isFinite(v) ? '—' : `${sign(v)}${v.toFixed(2)}%`;
+
+  return (
+    <tr className="group border-b border-border/60 transition hover:bg-bg-card">
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-left text-[11px] text-slate-500 tabular-nums">{rank}</td>
+      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2 text-left">
+        <Link
+          to={`/fund/${fund.code}`}
+          className="font-mono text-[13px] font-semibold text-accent hover:underline"
+        >
+          {fund.code}
+        </Link>
+      </td>
+      <td className="px-2 py-2 text-left hidden md:table-cell">
+        {fund.name && <div className="truncate max-w-[260px] text-slate-200">{fund.name}</div>}
+        <span className="mt-0.5 inline-block rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-medium text-accent">
+          {fund.category}
+        </span>
+      </td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', tone(fund.day))}>{fmt(fund.day)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', tone(fund.week))}>{fmt(fund.week)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', tone(fund.month))}>{fmt(fund.month)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums', tone(fund.threeMonth))}>{fmt(fund.threeMonth)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', tone(fund.sixMonth))}>{fmt(fund.sixMonth)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums hidden xl:table-cell', tone(fund.ytd))}>{fmt(fund.ytd)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums font-semibold', tone(fund.year))}>{fmt(fund.year)}</td>
+      <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+        <a
+          href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(fund.code)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-0.5 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[9px] font-medium text-success hover:bg-success/20"
+          title="TEFAS'ta aç"
+        >
+          TEFAS <ExternalLink size={8} />
+        </a>
+      </td>
+    </tr>
+  );
+}
+
+// ============================================================================
+// Algoritmik Scalp tablo satırı — Fonlar sayfası düzeniyle uyumlu
+// ============================================================================
+function ScalpTableRow({ rec, rank, selectedTf, watched, onToggle }: {
+  rec: ScalpRec;
+  rank: number;
+  selectedTf: ScalpTf;
+  watched: boolean;
+  onToggle: () => void;
+}) {
+  const { stock } = rec;
+  const isLong = isLongForTf(rec, selectedTf);
+  const dayTone = stock.changePct >= 0 ? 'text-success' : 'text-danger';
+  const daySign = stock.changePct >= 0 ? '+' : '';
+  const leanColor = rec.bigPlayerLean === 'alıcı' ? 'text-success'
+    : rec.bigPlayerLean === 'satıcı' ? 'text-danger'
+    : 'text-slate-400';
+  const leanLabel = rec.bigPlayerLean === 'alıcı' ? 'Alıcı'
+    : rec.bigPlayerLean === 'satıcı' ? 'Satıcı'
+    : 'Kararsız';
+  const isFresh = (selectedTf === '5m' && rec.scalp5mFreshCross)
+    || (selectedTf === '15m' && rec.scalp15mFreshCross);
+
+  // TF mini-trend hücresi (1H / 4H / 1G)
+  const tfCell = (t: { trend: 'long' | 'short' | 'flat' } | null | undefined, label: string) => {
+    if (!t) return <span className="rounded bg-slate-500/15 px-1.5 py-0.5 text-[9px] font-mono text-slate-500">{label}</span>;
+    const cls = t.trend === 'long' ? 'bg-success/15 text-success'
+      : t.trend === 'short' ? 'bg-danger/15 text-danger'
+      : 'bg-slate-500/15 text-slate-400';
+    return <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-mono font-semibold', cls)}>{label}</span>;
+  };
+
+  return (
+    <tr className={cn(
+      'group border-b border-border/60 transition hover:bg-bg-card',
+      isLong && 'bg-success/5',
+    )}>
+      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-left text-[11px] text-slate-500 tabular-nums">{rank}</td>
+      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2 text-left">
+        <Link
+          to={`/stock/${stock.symbol}`}
+          className="font-mono text-[13px] font-semibold text-accent hover:underline"
+        >
+          {stock.symbol}
+        </Link>
+      </td>
+      <td className="px-2 py-2 text-left hidden md:table-cell">
+        {stock.name && <div className="truncate max-w-[180px] text-slate-200">{stock.name}</div>}
+        {stock.sector && (
+          <div className="mt-0.5 text-[9px] text-slate-500">{stock.sector}</div>
+        )}
+      </td>
+      <td className="px-2 py-2 text-right tabular-nums text-slate-100">{formatMoney(stock.price)}</td>
+      <td className={cn('px-2 py-2 text-right tabular-nums font-medium', dayTone)}>
+        {daySign}{stock.changePct.toFixed(2)}%
+      </td>
+      <td className="px-2 py-2 text-center hidden lg:table-cell">{tfCell(rec.trend1h, '1H')}</td>
+      <td className="px-2 py-2 text-center hidden lg:table-cell">{tfCell(rec.trend4h, '4H')}</td>
+      <td className="px-2 py-2 text-center hidden lg:table-cell">{tfCell(rec.trend1d, '1G')}</td>
+      <td className={cn('px-2 py-2 text-center text-[10px] font-semibold hidden md:table-cell', leanColor)}>
+        {leanLabel}
+      </td>
+      <td className="px-2 py-2 text-center">
+        <div className="inline-flex items-center gap-1">
+          {isLong && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+              <Zap size={8} /> GC
+            </span>
+          )}
+          {isFresh && (
+            <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
+              TAZE
+            </span>
+          )}
+          {!isLong && !isFresh && (
+            <span className="text-[9px] text-slate-500">—</span>
+          )}
+        </div>
+      </td>
+      <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+          className={cn('transition', watched ? 'text-warning' : 'text-slate-600 hover:text-warning')}
+          title={watched ? 'Takipten çıkar' : 'Takibe al'}
+        >
+          <Star size={12} fill={watched ? 'currentColor' : 'none'} />
+        </button>
+      </td>
+    </tr>
   );
 }

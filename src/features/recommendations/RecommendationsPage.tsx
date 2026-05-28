@@ -654,8 +654,8 @@ function ScalpTableRow({ rec, rank, selectedTf, watched, onToggle }: {
   const isFresh = (selectedTf === '5m' && rec.scalp5mFreshCross)
     || (selectedTf === '15m' && rec.scalp15mFreshCross);
 
-  // TF mini-trend hücresi (1H / 4H / 1G)
-  const tfCell = (t: { trend: 'long' | 'short' | 'flat' } | null | undefined, label: string) => {
+  // TF mini-trend hücresi (1H / 4H / 1G) — TimeframeAnalysis.trend = 'long' | 'short' | 'neutral'
+  const tfCell = (t: TimeframeAnalysis | null | undefined, label: string) => {
     if (!t) return <span className="rounded bg-slate-500/15 px-1.5 py-0.5 text-[9px] font-mono text-slate-500">{label}</span>;
     const cls = t.trend === 'long' ? 'bg-success/15 text-success'
       : t.trend === 'short' ? 'bg-danger/15 text-danger'

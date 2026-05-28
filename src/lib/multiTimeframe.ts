@@ -26,8 +26,11 @@ export interface TimeframeAnalysis {
   emasBelow: number[];
   /** Her EMA periyodunun son fiyat değeri (period -> value). */
   emaValues: Record<number, number>;
-  /** Bir önceki barın EMA değerleri — kesişim algılaması için. */
-  emaValuesPrev: Record<number, number>;
+  /**
+   * Bir önceki barın EMA değerleri — kesişim algılaması için.
+   * Optional: eski cache'lenmiş datada olmayabilir, kullanım yerinde null-safe oku.
+   */
+  emaValuesPrev?: Record<number, number>;
 }
 
 export interface MultiTimeframeResult {
@@ -224,10 +227,10 @@ function fmtPrice(n: number): string {
  * - EMA 5 aşağı kesişim  → güçlü SHORT sinyali
  */
 function shortCrossLine(ta: TimeframeAnalysis, tfLabel: string): string {
-  const e5 = ta.emaValues[5];
-  const e8 = ta.emaValues[8];
-  const e5p = ta.emaValuesPrev[5];
-  const e8p = ta.emaValuesPrev[8];
+  const e5 = ta.emaValues?.[5];
+  const e8 = ta.emaValues?.[8];
+  const e5p = ta.emaValuesPrev?.[5];
+  const e8p = ta.emaValuesPrev?.[8];
 
   if (!Number.isFinite(e5) || !Number.isFinite(e8)) return '';
 

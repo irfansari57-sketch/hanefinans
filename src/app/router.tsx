@@ -85,6 +85,7 @@ const SignupPage            = lazyWithRetry(() => import('@/features/auth/AuthPa
 const ForgotPasswordPage    = lazyWithRetry(() => import('@/features/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage     = lazyWithRetry(() => import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const SmartSearchPage       = lazyWithRetry(() => import('@/features/smartSearch/SmartSearchPage').then((m) => ({ default: m.SmartSearchPage })));
+const ScreenerPage          = lazyWithRetry(() => import('@/features/screener/ScreenerPage').then((m) => ({ default: m.ScreenerPage })));
 const FinancialLiteracyPage = lazyWithRetry(() => import('@/features/literacy/FinancialLiteracyPage').then((m) => ({ default: m.FinancialLiteracyPage })));
 const MembershipPage        = lazyWithRetry(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
 const SettingsPage          = lazyWithRetry(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
@@ -132,6 +133,7 @@ export const router = createBrowserRouter([
       { path: 'fund/:code', element: withSuspense(<FundDetailPage />) },
       { path: 'history', element: withSuspense(<HistoryPage />) },
       { path: 'smart-search', element: withSuspense(<SmartSearchPage />) },
+      { path: 'sorgu', element: withSuspense(<ScreenerPage />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
       { path: 'preview/ad-banner', element: withSuspense(<AdBannerPreviewPage />) },
       { path: 'auth/login', element: withSuspense(<LoginPage />) },

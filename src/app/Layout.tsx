@@ -24,6 +24,7 @@ import {
   Grid3x3,
   Globe,
   Coins,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
@@ -64,6 +65,7 @@ const navGroups: NavGroup[] = [
       { to: '/panel', label: 'Panel', icon: LayoutDashboard },
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
+      { to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles },
     ],
   },
   {

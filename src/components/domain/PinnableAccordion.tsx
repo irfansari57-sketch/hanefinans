@@ -69,13 +69,13 @@ export function PinnableAccordion({
   return (
     <details
       className={cn(
-        'mb-2 sm:mb-3 overflow-hidden rounded-xl border bg-bg-soft transition',
+        'mb-2 sm:mb-2 overflow-hidden rounded-xl border bg-bg-soft transition',
         pinned ? 'border-warning/30' : 'border-border',
       )}
       open={open}
       onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
     >
-      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
+      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
         {icon && (
           <span className={cn('grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg', iconColorClass)}>
             {icon}
@@ -114,7 +114,7 @@ export function PinnableAccordion({
           className={cn('shrink-0 text-slate-500 transition-transform', open && 'rotate-90')}
         />
       </summary>
-      <div className="border-t border-border bg-bg-card p-2 sm:p-4">
+      <div className="border-t border-border bg-bg-card p-2 sm:p-3">
         {children}
       </div>
     </details>

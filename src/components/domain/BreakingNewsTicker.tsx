@@ -23,7 +23,7 @@ interface BreakingNewsTickerProps {
 }
 
 const DEFAULT_REFRESH_MS = 60_000;
-const SCROLL_TICK_MS = 30; // her tick'te scrollLeft'i guncelle
+// (SCROLL_TICK_MS kaldırıldı — requestAnimationFrame ile native 60fps tick)
 const ITEM_STEP_PX = 320;  // prev/next adim mesafesi (yaklasik 1 haber genisligi)
 
 /**
@@ -44,7 +44,8 @@ export function BreakingNewsTicker({
   const [news, setNews] = useState<NewsItem[]>(fallback ?? []);
   const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const offsetRef = useRef<number>(0);
 
   // --- Canli haber fetch ---
   useEffect(() => {
@@ -80,35 +81,46 @@ export function BreakingNewsTicker({
       .slice(0, 12);
   }, [news, minImportance, maxAgeHours]);
 
-  // --- Auto-scroll engine: hover'da veya pause'da durur, sonsuza dek akar ---
+  // --- Auto-scroll engine: requestAnimationFrame + transform (60fps GPU) ---
+  // Eskiden setInterval+scrollLeft idi → ~33fps, gözle teklerdi. Şimdi rAF +
+  // translateX kompozitor seviyesinde çalıştığından akıcı.
   useEffect(() => {
-    if (paused || hovered) return;
-    if (breaking.length === 0) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const pxPerTick = (speed * SCROLL_TICK_MS) / 1000;
-    const id = setInterval(() => {
-      // Yariya gelince basa atla — icerigi 2 kere koydugumuz icin gorunmez
-      const half = el.scrollWidth / 2;
-      if (el.scrollLeft >= half) {
-        el.scrollLeft = el.scrollLeft - half;
+    if (paused || hovered || breaking.length === 0) return;
+    const track = trackRef.current;
+    if (!track) return;
+    let rafId = 0;
+    let lastTime = performance.now();
+    let halfWidth = 0;
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - lastTime) / 1000); // saniye, max 50ms (tab arka planda iken atlamalar)
+      lastTime = now;
+      offsetRef.current += speed * dt;
+      // İçerik 2x duplike — yarıyı geçince başa atla (görünmez)
+      if (halfWidth === 0) halfWidth = track.scrollWidth / 2;
+      if (offsetRef.current >= halfWidth && halfWidth > 0) {
+        offsetRef.current -= halfWidth;
       }
-      el.scrollLeft += pxPerTick;
-    }, SCROLL_TICK_MS);
-    return () => clearInterval(id);
+      track.style.transform = `translate3d(-${offsetRef.current}px, 0, 0)`;
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [paused, hovered, breaking.length, speed]);
 
-  const handlePrev = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: -ITEM_STEP_PX, behavior: 'smooth' });
+  // Prev/Next: smooth transition ile offset'i ayarla, sonra transition sıfırla
+  const jumpBy = (delta: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    offsetRef.current = Math.max(0, offsetRef.current + delta);
+    track.style.transition = 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)';
+    track.style.transform = `translate3d(-${offsetRef.current}px, 0, 0)`;
+    window.setTimeout(() => {
+      if (trackRef.current) trackRef.current.style.transition = '';
+    }, 270);
   };
-
-  const handleNext = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: ITEM_STEP_PX, behavior: 'smooth' });
-  };
+  const handlePrev = () => jumpBy(-ITEM_STEP_PX);
+  const handleNext = () => jumpBy(ITEM_STEP_PX);
 
   const togglePause = () => setPaused((p) => !p);
 
@@ -167,11 +179,13 @@ export function BreakingNewsTicker({
       {/* Sol fade — etiketten icerige gecisi yumusatir */}
       <div className="pointer-events-none absolute inset-y-0 left-[120px] z-10 w-8 bg-gradient-to-r from-danger/15 to-transparent sm:left-[136px]" />
 
-      {/* Akan icerik — JS scroll, scrollbar gizli */}
-      <div
-        ref={scrollRef}
-        className="ticker-scroll flex items-center gap-8 overflow-x-hidden py-1.5 pl-[132px] pr-24 sm:pl-[148px]"
-      >
+      {/* Outer: clipping + padding. Inner: translate3d ile akar (GPU-accelerated 60fps). */}
+      <div className="overflow-x-hidden py-1.5 pl-[132px] pr-24 sm:pl-[148px]">
+        <div
+          ref={trackRef}
+          className="flex items-center gap-8 will-change-transform"
+          style={{ transform: 'translate3d(0, 0, 0)' }}
+        >
         {repeated.map((n, i) => {
           const importanceTone =
             n.importance >= 9 ? 'text-danger' :
@@ -211,6 +225,7 @@ export function BreakingNewsTicker({
             <span key={`${n.id}-${i}`} className="shrink-0">{content}</span>
           );
         })}
+        </div>
       </div>
     </div>
   );

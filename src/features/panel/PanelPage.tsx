@@ -251,7 +251,7 @@ export function PanelPage() {
 
       {/* Live ticker — sayfanın en üstünde */}
       <div className="mb-3">
-        <Ticker stocks={tickerStocks} speed={55} />
+        <Ticker stocks={tickerStocks} speed={65} />
       </div>
 
       {/* Son Dakika haber bandı — önem >= 5 ve son 48 saatteki haberler.

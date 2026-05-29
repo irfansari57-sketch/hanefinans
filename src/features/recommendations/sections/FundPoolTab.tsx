@@ -6,13 +6,15 @@ import { cn } from '@/lib/utils';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 
 /**
- * Fon Havuzu — kullanıcının seçtiği fon kategorilerinden en iyi N fon.
+ * Fon Havuzu — kullanıcının seçtiği fon kategorisinin en iyi N fonu.
  *
- * Varsayılan: Katılım kategorisinde 1 Yıl getiriye göre top 10.
- * Kullanıcı çoklu kategori seçebilir, top N (5/10/20/30) ayarlayabilir,
- * sıralama metriğini değiştirebilir (Gün / 1H / 1A / 3A / 6A / YTD / 1Y).
+ * Kategori SINGLE-SELECT (her seferinde tek kategori). Başka kategoriye tıklarsan
+ * yenisi seçilir, eskisi otomatik kalkar.
  *
- * Premium-fokus yapı taşı: ileride "havuzunu kaydet", "yeni fon eklenince
+ * Üstte özet kartlar: havuzun günlük/haftalık/aylık ortalama performansı —
+ * Watchlist'teki "Ortalama Değişim" kutuları ile aynı pattern.
+ *
+ * Premium-fokus yapı taşı: ileride "havuzumu kaydet", "yeni fon eklenince
  * bildirim" gibi özelliklere açık.
  */
 
@@ -41,29 +43,18 @@ interface FundPoolTabProps {
 }
 
 export function FundPoolTab({ allFunds }: FundPoolTabProps) {
-  // Varsayılan: sadece Katılım seçili
-  const [selected, setSelected] = useState<Set<string>>(new Set(['Katılım']));
+  // SINGLE-SELECT — varsayılan Katılım
+  const [selectedCategory, setSelectedCategory] = useState<string>('Katılım');
   const [topN, setTopN] = useState<5 | 10 | 20 | 30>(10);
   const [sortKey, setSortKey] = useState<PoolSortKey>('year');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
-  const toggleCat = (c: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(c)) next.delete(c);
-      else next.add(c);
-      // En az 1 kategori zorunlu
-      if (next.size === 0) next.add(c);
-      return next;
-    });
-  };
 
   const setSort = (k: PoolSortKey) => {
     if (k === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(k); setSortDir('desc'); }
   };
 
-  // Veri setinde gerçekten bulunan kategoriler (sıralı + birinci başında Katılım)
+  // Veri setinde gerçekten bulunan kategoriler (Katılım en başta sabit)
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     for (const f of allFunds) {
@@ -76,8 +67,9 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
     });
   }, [allFunds]);
 
+  // Seçili kategoriden top N
   const pool = useMemo(() => {
-    const filtered = allFunds.filter((f) => selected.has(f.category as string));
+    const filtered = allFunds.filter((f) => f.category === selectedCategory);
     const sorted = [...filtered].sort((a, b) => {
       const va = a[sortKey];
       const vb = b[sortKey];
@@ -86,7 +78,32 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
       return sortDir === 'asc' ? an - bn : bn - an;
     });
     return sorted.slice(0, topN);
-  }, [allFunds, selected, sortKey, sortDir, topN]);
+  }, [allFunds, selectedCategory, sortKey, sortDir, topN]);
+
+  // Havuzun ortalama performansı — Watchlist'teki summary pattern'i
+  const summary = useMemo(() => {
+    if (pool.length === 0) return null;
+    const calc = (field: PoolSortKey) => {
+      let sum = 0, count = 0, positives = 0, negatives = 0;
+      for (const f of pool) {
+        const v = f[field];
+        if (!Number.isFinite(v)) continue;
+        sum += v as number;
+        count += 1;
+        if ((v as number) > 0) positives += 1;
+        else if ((v as number) < 0) negatives += 1;
+      }
+      return { avg: count > 0 ? sum / count : 0, count, positives, negatives };
+    };
+    return {
+      day: calc('day'),
+      week: calc('week'),
+      month: calc('month'),
+      threeMonth: calc('threeMonth'),
+      year: calc('year'),
+      total: pool.length,
+    };
+  }, [pool]);
 
   if (allFunds.length === 0) {
     return (
@@ -100,41 +117,42 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
     );
   }
 
+  const catLabel = SHORT_LABEL[selectedCategory] ?? selectedCategory;
+
   return (
     <div className="space-y-3">
-      {/* Üst kontrol bandı: kategori seçimi + top N + açıklama */}
+      {/* Üst kontrol bandı: tek kategori seçimi + top N */}
       <div className="rounded-xl border border-border bg-bg-soft p-3">
         <div className="flex items-start gap-2">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent">
             <Layers size={16} />
           </span>
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-slate-100">Fon Havuzu</h3>
+            <h3 className="text-sm font-semibold text-slate-100">Fon Havuzu — {catLabel}</h3>
             <p className="text-[11px] text-slate-400">
-              Seçtiğin fon kategorilerinden en iyi {topN} fonu listeler.
-              Varsayılan: <span className="text-accent">Katılım</span> · <span className="text-accent">1 Yıl getirisi</span>.
-              Birden fazla kategori seçerek karma havuz oluşturabilirsin.
+              Seçili kategoride <span className="text-accent">{SORT_LABELS[sortKey]}</span> sıralı en iyi {topN} fon.
+              Aşağıdan kategori değiştirerek yeni havuz görebilirsin.
             </p>
           </div>
         </div>
 
-        {/* Kategori chip'leri */}
+        {/* Kategori chip'leri — SINGLE SELECT (radio mantığı) */}
         <div className="mt-3 flex flex-wrap gap-1.5">
           {availableCategories.map((c) => {
-            const isOn = selected.has(c);
+            const isActive = selectedCategory === c;
             const label = SHORT_LABEL[c] ?? c;
             return (
               <button
                 key={c}
                 type="button"
-                onClick={() => toggleCat(c)}
+                onClick={() => setSelectedCategory(c)}
                 className={cn(
                   'rounded-full border px-2.5 py-1 text-[10px] font-medium transition',
-                  isOn
+                  isActive
                     ? 'border-accent/50 bg-accent/15 text-accent'
                     : 'border-border bg-bg-card text-slate-400 hover:border-accent/30 hover:text-slate-200',
                 )}
-                aria-pressed={isOn}
+                aria-pressed={isActive}
               >
                 {label}
               </button>
@@ -177,13 +195,24 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
         </div>
       </div>
 
+      {/* Özet performans kartları — havuzun ortalama dönemsel getirisi */}
+      {summary && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <SummaryCard label="Havuzdaki Fon" mainValue={`${summary.total}`} sub={catLabel} tone="neutral" />
+          <SummaryCard label="Ortalama Gün %" mainValue={fmtAvg(summary.day.avg, summary.day.count)} sub={fmtRatio(summary.day)} tone={summary.day.avg >= 0 ? 'pos' : 'neg'} />
+          <SummaryCard label="Ortalama 1 Hafta %" mainValue={fmtAvg(summary.week.avg, summary.week.count)} sub={fmtRatio(summary.week)} tone={summary.week.avg >= 0 ? 'pos' : 'neg'} />
+          <SummaryCard label="Ortalama 1 Ay %" mainValue={fmtAvg(summary.month.avg, summary.month.count)} sub={fmtRatio(summary.month)} tone={summary.month.avg >= 0 ? 'pos' : 'neg'} />
+          <SummaryCard label="Ortalama 1 Yıl %" mainValue={fmtAvg(summary.year.avg, summary.year.count)} sub={fmtRatio(summary.year)} tone={summary.year.avg >= 0 ? 'pos' : 'neg'} />
+        </div>
+      )}
+
       {/* Sonuç tablosu — Fonlar düzeniyle uyumlu */}
       {pool.length === 0 ? (
         <div className="rounded-xl border border-border bg-bg-soft p-6 text-center">
           <Sparkles size={28} className="mx-auto text-slate-600" />
-          <p className="mt-2 text-sm text-slate-300">Seçtiğin kriterlerde fon bulunamadı.</p>
+          <p className="mt-2 text-sm text-slate-300">Seçtiğin kategoride fon bulunamadı.</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Daha fazla kategori seç veya sıralama metriğini değiştir.
+            Farklı bir kategori seç veya verinin yüklenmesini bekle.
           </p>
         </div>
       ) : (
@@ -214,9 +243,38 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
       )}
 
       <p className="text-[10px] text-slate-500">
-        Bu havuz seçili kategorilerdeki canlı TEFAS verisine göre dinamik olarak
+        Bu havuz seçili kategorideki canlı TEFAS verisine göre dinamik olarak
         yeniden hesaplanır. Yatırım tavsiyesi değildir.
       </p>
+    </div>
+  );
+}
+
+// --- Yardımcı bileşenler & formatlama ---
+
+function fmtAvg(v: number, count: number): string {
+  if (count === 0) return '—';
+  const sign = v >= 0 ? '+' : '';
+  return `${sign}${v.toFixed(2)}%`;
+}
+
+function fmtRatio(s: { positives: number; negatives: number; count: number }): string {
+  if (s.count === 0) return '—';
+  return `${s.positives} ▲ / ${s.negatives} ▼`;
+}
+
+function SummaryCard({ label, mainValue, sub, tone }: {
+  label: string;
+  mainValue: string;
+  sub: string;
+  tone: 'pos' | 'neg' | 'neutral';
+}) {
+  const toneClass = tone === 'pos' ? 'text-success' : tone === 'neg' ? 'text-danger' : 'text-slate-100';
+  return (
+    <div className="rounded-xl border border-border bg-bg-soft p-3">
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={cn('mt-1 text-base font-bold tabular-nums', toneClass)}>{mainValue}</div>
+      <div className="mt-0.5 text-[10px] text-slate-500">{sub}</div>
     </div>
   );
 }

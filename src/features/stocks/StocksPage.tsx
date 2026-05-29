@@ -242,13 +242,22 @@ export function StocksPage() {
     const q = search.trim().toLowerCase();
     const sectorAllowList = indexFilter === 'all' ? null : new Set(INDEX_TO_SECTORS.get(indexFilter) ?? []);
     return rows.filter((s) => {
-      // Çöp hisseleri ele: fiyatı 0 OLAN ve hiçbir tarihsel getirisi olmayanlar
-      // (delisted, suspended, hiç işlem görmemiş). Watchlist sekmesinde gizleme
-      // çünkü kullanıcı bilerek eklemiş — sadece "Tüm Hisseler"de süz.
+      // Çöp / delisted / suspended hisseleri "Tüm Hisseler" sekmesinde ele.
+      // Watchlist'te bilerek tutulanları göster.
+      //
+      // Üç durum:
+      //   A) Fiyatı 0 + getirisi yok        → hiç fiyatlanmamış, sil
+      //   B) Fiyatı var + Gün %=0 + getirisi yok → KOZAA/IPEKE gibi borsa
+      //      kotesinden çıkarılmış (fiyat MOCK'tan sabit kalmış, hareket yok), sil
       if (tab === 'all') {
-        const hasPrice = s.price > 0;
         const hasReturns = s.returns && Object.values(s.returns).some((v) => v != null && Number.isFinite(v));
+        const hasPrice = s.price > 0;
+        const hasDailyMove = Number.isFinite(s.changePct) && s.changePct !== 0;
+
+        // A) Tamamen ölü
         if (!hasPrice && !hasReturns) return false;
+        // B) Fiyatlı ama hareket de yok, getiri de yok → delisted
+        if (hasPrice && !hasDailyMove && !hasReturns) return false;
       }
       if (sectorAllowList && !sectorAllowList.has(s.sector ?? '')) return false;
       if (q) {

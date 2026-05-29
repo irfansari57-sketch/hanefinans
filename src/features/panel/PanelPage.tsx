@@ -293,7 +293,7 @@ export function PanelPage() {
                   <div className="flex items-center justify-between">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-2">
@@ -309,11 +309,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2.5">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2.5">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
               );
             })}
           {/* USD/TRY ve EUR/TRY de BIST'le birlikte göster */}
@@ -326,7 +326,7 @@ export function PanelPage() {
                   <div className="flex items-center justify-between">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
                     {m.value.toFixed(2)}
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-2">
@@ -342,11 +342,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2.5">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2.5">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
               );
             })}
         </div>
@@ -370,7 +370,7 @@ export function PanelPage() {
                   <div className="flex items-center justify-between">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
                     {m.value.toLocaleString('tr-TR', { maximumFractionDigits: m.value < 100 ? 2 : 0 })}
                     {m.unit && <span className="ml-1 text-[10px] font-medium text-slate-500">{m.unit}</span>}
                   </div>
@@ -387,11 +387,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2.5">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2.5">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
               );
             })}
         </div>
@@ -416,7 +416,7 @@ export function PanelPage() {
                   <div className="flex items-center justify-between">
                   <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
                   </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-1 sm:text-xl">
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
                     ${m.value.toLocaleString('en-US', { maximumFractionDigits: m.value < 10 ? 4 : m.value < 1000 ? 2 : 0 })}
                   </div>
                   <div className="mt-1 flex items-end justify-between gap-2">
@@ -432,11 +432,11 @@ export function PanelPage() {
                 </>
               );
               return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2.5">
+                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
                   {card}
                 </Link>
               ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2.5">{card}</div>
+                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
               );
             })}
         </div>

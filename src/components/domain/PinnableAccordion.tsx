@@ -77,7 +77,7 @@ export function PinnableAccordion({
     >
       <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
         {icon && (
-          <span className={cn('grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg', iconColorClass)}>
+          <span className={cn('grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-lg', iconColorClass)}>
             {icon}
           </span>
         )}

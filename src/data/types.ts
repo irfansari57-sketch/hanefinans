@@ -80,7 +80,16 @@ export type FundCategory =
   | 'Fon Sepeti'
   | 'Kıymetli Madenler'
   | 'Borçlanma Araçları'
-  | 'Katılım';
+  | 'Katılım'
+  // Aşağıdakiler TEFAS feed'inden geliyor — sözel olarak yukarıdakilerden ayrı,
+  // ekran ve filtre tarafında ayrı kategori olarak gösterilir.
+  | 'Altın'
+  | 'Gümüş'
+  | 'Karma'
+  | 'Döviz'
+  | 'Emtia'
+  | 'Kıymetli Maden'
+  | 'Diğer';
 
 export interface FundPerformance {
   code: string;

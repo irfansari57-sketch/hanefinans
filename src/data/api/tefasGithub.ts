@@ -128,12 +128,44 @@ export async function fetchTefasFundByCode(code: string): Promise<TefasFundData 
   return feed.funds.find((f) => f.code === code.toUpperCase()) ?? null;
 }
 
+/**
+ * TEFAS scraper'ı bazı fonları yanlış kategorize ediyor — adında "ALTINCI",
+ * "ONALTINCI", "YİRMİALTINCI" (sıra sayıları) geçen Serbest fonları
+ * "Altın" kategorisine alıyor. Benzer şekilde "Gümüş" için de "GÜMÜŞ"
+ * tam kelime olarak olmalı. Bu fonksiyon kategoriyi adın doğrulanmasıyla düzeltir.
+ */
+function normalizeFundCategory(rawCategory: string, name: string): FundCategory {
+  const cat = (rawCategory || '').trim();
+  const nameUpper = (name || '').toUpperCase();
+
+  if (cat === 'Altın') {
+    // "ALTIN" kelime sınırlı geçiyor mu? ALTINCI / ONALTINCI / YİRMİALTINCI
+    // (sıra sayıları) "ALTIN" prefix'i içerdiği için \b ile filtrele.
+    // "ALTIN FONU", "PORTFÖY ALTIN", "ALTIN KATILIM" hepsi \bALTIN\b ile eşleşir.
+    const hasRealGold = /\bALTIN\b/.test(nameUpper);
+    if (!hasRealGold) {
+      // Gerçek altın değil — adındaki diğer ipuçlarına göre yeniden kategorize et
+      if (/KATILIM/.test(nameUpper)) return 'Katılım';
+      if (/HİSSE SENEDİ/.test(nameUpper)) return 'Hisse Senedi';
+      return 'Serbest';
+    }
+    return 'Altın';
+  }
+  if (cat === 'Gümüş') {
+    if (!/\bGÜMÜŞ\b/.test(nameUpper)) {
+      return 'Serbest';
+    }
+    return 'Gümüş';
+  }
+  return (cat || 'Serbest') as FundCategory;
+}
+
 /** Feed verisini FundPerformance şemasına maple (FundsPage / Panel / Recs ortak kullanır). */
 export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[] {
   return funds.map((f) => ({
     code: f.code,
     name: f.name,
-    category: (f.category || 'Serbest') as FundCategory,
+    category: normalizeFundCategory(f.category, f.name),
     tefas: true,
     day: f.returns['1d'] ?? 0,
     week: f.returns['1w'] ?? 0,

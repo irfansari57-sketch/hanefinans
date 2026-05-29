@@ -37,6 +37,7 @@ import { ScalpRowItem } from './sections/ScalpRowItem';
 import { FundConsensusStrip, computeFundPoolStats } from './sections/FundConsensusStrip';
 import { FundAccordionItem } from './sections/FundAccordionItem';
 import { StrongBuyTab } from './sections/StrongBuyTab';
+import { FundPoolTab } from './sections/FundPoolTab';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 
@@ -60,7 +61,7 @@ interface RecsMemo {
 let recsMemo: RecsMemo | null = null;
 
 export function RecommendationsPage() {
-  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds' | 'strongbuy'>('scalp');
+  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds' | 'fundpool' | 'strongbuy'>('scalp');
   // Trend Fonlar tab sort
   const [tfSortKey, setTfSortKey] = useState<TrendFundSortKey>('year');
   const [tfSortDir, setTfSortDir] = useState<'asc' | 'desc'>('desc');
@@ -325,6 +326,9 @@ export function RecommendationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fon Havuzu için TÜM fonları sakla; Trend Fonlar için ilk 10'u türet
+  const [allFunds, setAllFunds] = useState<FundPerformance[]>([]);
+
   useEffect(() => {
     if (recsMemo && (recsMemo.topFunds.length > 0 || !recsMemo.fundsConfigured)) return;
     let alive = true;
@@ -333,8 +337,10 @@ export function RecommendationsPage() {
       if (!r) {
         setFundsConfigured(false);
         setTopFunds([]);
+        setAllFunds([]);
         return;
       }
+      setAllFunds(r.funds);
       const top = [...r.funds]
         .filter((f) => Number.isFinite(f.year))
         .sort((a, b) => (b.year as number) - (a.year as number))
@@ -403,6 +409,15 @@ export function RecommendationsPage() {
         <button
           className={cn(
             'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
+            tab === 'fundpool' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setTab('fundpool')}
+        >
+          <PiggyBank size={14} /> Fon Havuzu
+        </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
             tab === 'strongbuy' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
           )}
           onClick={() => setTab('strongbuy')}
@@ -414,6 +429,7 @@ export function RecommendationsPage() {
       {tab === 'broker' && <BrokerRecommendations />}
       {tab === 'portfolio' && <BrokerPortfolios />}
       {tab === 'strongbuy' && <StrongBuyTab />}
+      {tab === 'fundpool' && <FundPoolTab allFunds={allFunds} />}
 
       {tab === 'scalp' && (
         <>

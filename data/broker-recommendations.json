@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-05-27T21:07:12.317100+00:00",
+  "fetchedAt": "2026-05-28T21:23:10.328893+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -8,7 +8,7 @@
       "initials": "İY",
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
-      "lastUpdate": "2026-05-27",
+      "lastUpdate": "2026-05-28",
       "recommendations": [
         {
           "symbol": "MPARK",
@@ -117,7 +117,7 @@
       "initials": "OY",
       "colorSeed": "#10b981",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "lastUpdate": "2026-05-27",
+      "lastUpdate": "2026-05-28",
       "recommendations": [],
       "ok": false,
       "debugLog": [
@@ -135,7 +135,7 @@
       "initials": "KT",
       "colorSeed": "#ec4899",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
-      "lastUpdate": "2026-05-27",
+      "lastUpdate": "2026-05-28",
       "recommendations": [],
       "portfolio": [],
       "ok": false,

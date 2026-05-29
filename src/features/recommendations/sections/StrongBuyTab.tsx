@@ -363,7 +363,7 @@ export function StrongBuyTab() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-          <table className="w-full min-w-[860px] text-xs">
+          <table className="w-full min-w-[720px] text-xs">
             <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
@@ -372,12 +372,8 @@ export function StrongBuyTab() {
                 <SortableHeader label="Fiyat" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                 <SortableHeader label="Gün %" sortKey="changePct" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                 <SortableHeader label="1A %" sortKey="r1a" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
-                <SortableHeader label="3A %" sortKey="r3a" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
-                <SortableHeader label="1Y %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden xl:table-cell" />
-                <th className="px-2 py-2.5 text-center hidden xl:table-cell">AL/TUT</th>
-                <th className="px-2 py-2.5 text-right hidden lg:table-cell">Hedef</th>
-                <SortableHeader label="Potans." sortKey="potential" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                <SortableHeader label="Skor" sortKey="score" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                <SortableHeader label="3A %" sortKey="r3a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                <SortableHeader label="1Y %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                 <th className="px-2 py-2.5 text-center">Tavsiye</th>
               </tr>
             </thead>
@@ -456,14 +452,6 @@ function StrongBuyRow({ rec, rank }: StrongBuyRowProps) {
     v == null ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
   const fmtReturn = (v: number | undefined) =>
     v == null ? '—' : `${sign(v)}${v.toFixed(2)}%`;
-  const potentialTone = rec.potentialPct == null
-    ? 'text-slate-500'
-    : rec.potentialPct >= 15 ? 'text-success' : rec.potentialPct >= 0 ? 'text-slate-200' : 'text-danger';
-  const scoreColor = rec.score >= 0.80
-    ? 'text-success font-bold'
-    : rec.score >= 0.65
-      ? 'text-success'
-      : 'text-slate-200';
 
   return (
     <tr className="group border-b border-border/60 transition hover:bg-bg-card">
@@ -485,30 +473,12 @@ function StrongBuyRow({ rec, rank }: StrongBuyRowProps) {
       <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(rec.returns?.['1a']))}>
         {fmtReturn(rec.returns?.['1a'])}
       </td>
-      <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', returnsTone(rec.returns?.['3a']))}>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(rec.returns?.['3a']))}>
         {fmtReturn(rec.returns?.['3a'])}
       </td>
-      <td className={cn('px-2 py-2 text-right tabular-nums hidden xl:table-cell', returnsTone(rec.returns?.['1y']))}>
+      <td className={cn('px-2 py-2 text-right tabular-nums', returnsTone(rec.returns?.['1y']))}>
         {fmtReturn(rec.returns?.['1y'])}
       </td>
-      <td className="px-2 py-2 text-center text-[11px] tabular-nums hidden xl:table-cell">
-        {rec.source === 'broker' ? (
-          <>
-            <span className="text-success font-semibold">{rec.alCount}</span>
-            <span className="mx-0.5 text-slate-600">/</span>
-            <span className="text-slate-300">{rec.tutCount}</span>
-          </>
-        ) : (
-          <span className="text-slate-600">—</span>
-        )}
-      </td>
-      <td className="px-2 py-2 text-right tabular-nums hidden lg:table-cell text-slate-200">
-        {rec.avgTarget == null ? '—' : formatMoney(rec.avgTarget)}
-      </td>
-      <td className={cn('px-2 py-2 text-right tabular-nums font-medium', potentialTone)}>
-        {rec.potentialPct == null ? '—' : `${sign(rec.potentialPct)}${rec.potentialPct.toFixed(1)}%`}
-      </td>
-      <td className={cn('px-2 py-2 text-right tabular-nums', scoreColor)}>{rec.score.toFixed(3)}</td>
       <td className="px-2 py-2 text-center">
         {rec.source === 'broker' ? (
           <span

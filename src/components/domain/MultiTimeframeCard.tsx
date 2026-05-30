@@ -1,6 +1,7 @@
 import { Zap, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { MultiTimeframeResult, TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { computeMarketRegime, computePriceTrend, regimeLabel, trendLabel } from '@/lib/multiTimeframe';
+import { PremiumGate } from '@/components/auth/PremiumGate';
 import { cn } from '@/lib/utils';
 
 interface MultiTimeframeCardProps {
@@ -12,13 +13,26 @@ interface MultiTimeframeCardProps {
 }
 
 /**
- * Multi-Timeframe analiz kartı.
+ * Multi-Timeframe analiz kartı — PRO/Elite üyelere özel.
  *
- * KULLANICI TALEBİ İLE PRO KİLİTLERİ KALDIRILDI — Büyük oyuncu eğilimi, yorum
- * ve tüm zaman dilimi kutuları artık herkese açık. Üst kısımda EMA 200 (Boğa/Ayı)
- * ve EMA 55 (Yükseliş/Düşüş) odaklı, sade ana yön rozetleri öne çıkar.
+ * Free üyeler "preview" modunda blur'lu içerik + paywall promp'u görür.
+ * Yatırım kararı veren kullanıcı için en güçlü teknik analiz aracı — paywall'un
+ * arkasında olması mantıklı (monetization hook).
  */
 export function MultiTimeframeCard({ r, currency = '₺', hideHeader }: MultiTimeframeCardProps) {
+  return (
+    <PremiumGate
+      tier="pro"
+      title="Multi-Timeframe Analiz"
+      description="1s + 4s + 1g zaman dilimlerinde EMA pozisyonları, büyük oyuncu eğilimi, hacim teyidi ve AI yorumu — Pro üyeliğe özel"
+      mode="preview"
+    >
+      <MultiTimeframeCardInner r={r} currency={currency} hideHeader={hideHeader} />
+    </PremiumGate>
+  );
+}
+
+function MultiTimeframeCardInner({ r, currency = '₺', hideHeader }: MultiTimeframeCardProps) {
   const changeTone = r.changePct >= 0 ? 'text-success' : 'text-danger';
   const leanColor = r.bigPlayerLean === 'alıcı' ? 'border-success/40 bg-success/10 text-success'
     : r.bigPlayerLean === 'satıcı' ? 'border-danger/40 bg-danger/10 text-danger'

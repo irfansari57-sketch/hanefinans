@@ -281,7 +281,3 @@ export function computePeriodReturns(closes: { date: number; close: number }[]):
   if (closes.length > 1) r['1y'] = pct(closes[0].close);
   return r;
 }
- pct(days180.close);
-  if (closes.length > 1) r['1y'] = pct(closes[0].close);
-  return r;
-}

@@ -48,6 +48,7 @@ import { LegalLinksBlock } from '@/components/domain/LegalLinksBlock';
 import { CookieConsent } from '@/components/domain/CookieConsent';
 import { OnboardingTour } from '@/components/domain/OnboardingTour';
 import { PwaInstallBanner } from '@/components/domain/PwaInstallBanner';
+import { StreakBadge } from '@/components/domain/StreakBadge';
 import { AlertWatcher } from '@/components/domain/AlertWatcher';
 import { NewsWatcher } from '@/components/domain/NewsWatcher';
 // EmailVerifyBanner: feature flag kapalı (FEATURES.emailVerification = false)
@@ -66,6 +67,7 @@ const navGroups: NavGroup[] = [
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
       { to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles },
+      { to: '/tahmin', label: 'Tahmin Oyunu', icon: Sparkles },
     ],
   },
   {
@@ -376,6 +378,7 @@ export function Layout() {
               </span>
               {isMockMode ? 'Mock akış' : 'Canlı akış'}
             </span>
+            <StreakBadge variant="compact" className="hidden sm:inline-flex" />
             <ThemeToggle size="sm" />
             <button
               type="button"
@@ -550,8 +553,6 @@ export function Layout() {
 
       {/* PWA "Ana ekrana ekle" banner — beforeinstallprompt + iOS Safari manuel */}
       <PwaInstallBanner />
-
-      {/* Arka planda fiyat alarmı izleyici — Telegram + browser bildirimi tetikler */}
       <AlertWatcher />
       <NewsWatcher />
     </div>

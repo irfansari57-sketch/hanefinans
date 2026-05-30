@@ -90,6 +90,7 @@ const FinancialLiteracyPage = lazyWithRetry(() => import('@/features/literacy/Fi
 const MembershipPage        = lazyWithRetry(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
 const SettingsPage          = lazyWithRetry(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const AlertsPage            = lazyWithRetry(() => import('@/features/alerts/AlertsPage').then((m) => ({ default: m.AlertsPage })));
+const PredictionsPage       = lazyWithRetry(() => import('@/features/predictions/PredictionsPage').then((m) => ({ default: m.PredictionsPage })));
 const AdBannerPreviewPage   = lazyWithRetry(() => import('@/features/preview/AdBannerPreviewPage').then((m) => ({ default: m.AdBannerPreviewPage })));
 
 const withSuspense = (node: React.ReactNode) => (
@@ -113,6 +114,7 @@ export const router = createBrowserRouter([
       { path: 'macro/:symbol', element: withSuspense(<MacroDetailPage />) },
       { path: 'watchlist', element: withSuspense(<WatchlistPage />) },
       { path: 'alarmlar', element: withSuspense(<AlertsPage />) },
+      { path: 'tahmin', element: withSuspense(<PredictionsPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },
       { path: 'emtia', element: withSuspense(<CommoditiesPage />) },

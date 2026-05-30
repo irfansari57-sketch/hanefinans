@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Smartphone, Share, PlusSquare, CheckCircle2 } from 'lucide-react';
+import { Download, Share, PlusSquare, CheckCircle2 } from 'lucide-react';
 import { getPwaInstallState, subscribePwaInstall, tryInstall, type PwaInstallState } from '@/lib/pwaInstall';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -38,10 +38,7 @@ export function PwaInstallSection() {
   };
 
   return (
-    <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 lg:col-span-2">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-accent">
-        <Smartphone size={14} /> Uygulama Olarak Yükle
-      </h2>
+    <>
       <p className="text-xs leading-relaxed text-slate-400">
         Hane Finans'ı bilgisayar/telefon ana ekranına ekle. Tarayıcı çubuğu olmaz,
         tam ekran çalışır, ileride push bildirim için temel altyapı kurulur.
@@ -96,6 +93,6 @@ export function PwaInstallSection() {
           </p>
         </div>
       )}
-    </div>
+    </>
   );
 }

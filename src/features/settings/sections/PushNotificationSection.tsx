@@ -149,11 +149,8 @@ export function PushNotificationSection() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-bg-soft p-4">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
-        <Bell size={14} className="text-accent" /> Push Bildirimleri
-        {statusBadge}
-      </h2>
+    <>
+      <div className="mb-1 flex items-center gap-2">{statusBadge}</div>
       <p className="text-xs leading-relaxed text-slate-400">
         Tarayıcı bildirim sisteminin üstünde Service Worker tabanlı push.
         Sekme arka plandayken bile fiyat alarmlarının görünür.
@@ -259,6 +256,6 @@ export function PushNotificationSection() {
           </label>
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -48,10 +48,7 @@ export function DeleteAccountSection() {
   };
 
   return (
-    <div className="rounded-xl border border-danger/30 bg-danger/5 p-4 lg:col-span-2">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-danger">
-        <X size={14} /> Hesabımı Sil
-      </h2>
+    <>
       <p className="text-xs leading-relaxed text-slate-400">
         Hesabını kalıcı olarak silmek istiyorsan aşağıdan onaylayabilirsin. Hesap silindikten sonra geri alınamaz; oturumun
         kapanır ve <strong className="text-slate-200">{user?.email}</strong> ile bağlı tüm veriler (üyelik, ödeme geçmişi)
@@ -94,6 +91,6 @@ export function DeleteAccountSection() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

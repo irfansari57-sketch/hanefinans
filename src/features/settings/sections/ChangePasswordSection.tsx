@@ -60,10 +60,7 @@ export function ChangePasswordSection() {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-bg-card p-4">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
-        <KeyRound size={14} className="text-accent" /> Şifre değiştir
-      </h2>
+    <>
       <p className="text-xs leading-relaxed text-slate-400">
         Mevcut şifreni onaylayarak yeni bir şifre belirleyebilirsin. Şifre en az 8 karakter olmalı.
       </p>
@@ -134,6 +131,6 @@ export function ChangePasswordSection() {
           </div>
         </form>
       )}
-    </div>
+    </>
   );
 }

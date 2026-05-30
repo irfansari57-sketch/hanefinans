@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Crown, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 
@@ -129,14 +129,10 @@ export function UserAdminSection() {
   };
 
   return (
-    <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 lg:col-span-2">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
-        <Crown size={14} /> Üye Yönetimi
-        <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Admin</span>
-        <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-success">
-          <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> CLOUD
-        </span>
-      </h2>
+    <>
+      <div className="mb-2 inline-flex items-center gap-1 text-[10px] text-success">
+        <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> CLOUD
+      </div>
       <p className="text-xs text-slate-400">
         Cloudflare D1 üzerinden tüm kullanıcılar — tüm cihazlardan kayıt olanlar burada görünür.
       </p>
@@ -298,7 +294,7 @@ export function UserAdminSection() {
       <p className="mt-2 text-[10px] text-slate-500">
         ℹ️ Veriler tarayıcı yerel veritabanında (IndexedDB). Server-side hesap senkronizasyonu için Supabase Auth / Firebase entegrasyonu gerekir.
       </p>
-    </div>
+    </>
   );
 }
 

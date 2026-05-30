@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { getTelegramChatId, setTelegramChatId, sendTelegram } from '@/lib/telegram';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -34,10 +34,7 @@ export function TelegramSection() {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
-        <Bell size={14} className="text-accent" /> Telegram Bildirimleri
-      </h2>
+    <>
       <p className="text-xs leading-relaxed text-slate-400">
         Fiyat alarmı tetiklendiğinde, AI analizi hazır olduğunda Telegram'a bildirim al.
         Önce Telegram'da <code className="rounded bg-bg-card px-1 text-accent">@HaneFinansBot</code> botuyla
@@ -71,6 +68,6 @@ export function TelegramSection() {
           {result.msg}
         </div>
       )}
-    </div>
+    </>
   );
 }

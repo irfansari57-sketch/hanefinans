@@ -1,4 +1,3 @@
-import { Megaphone } from 'lucide-react';
 import { useSiteSettings } from '@/store/siteSettings';
 import { cn } from '@/lib/utils';
 
@@ -13,11 +12,7 @@ export function SiteVisibilitySection() {
   const setAdVideoEnabled = useSiteSettings((s) => s.setAdVideoEnabled);
 
   return (
-    <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 lg:col-span-2">
-      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
-        <Megaphone size={14} /> Site Görünümü
-        <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Admin</span>
-      </h2>
+    <>
       <p className="text-xs leading-relaxed text-slate-400">
         Reklam banner'ı ve tanıtım videosu görünürlüğünü buradan açıp kapatabilirsin.
         PRO/ELITE üyeler banner'dan etkilenmez. YouTube sponsoru ve diğer içerikler
@@ -75,6 +70,6 @@ export function SiteVisibilitySection() {
           />
         </button>
       </label>
-    </div>
+    </>
   );
 }

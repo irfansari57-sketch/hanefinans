@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import {
   Info, RotateCcw, Cpu, Activity, Newspaper, MessageSquare, Globe, KeyRound,
-  Database, Send, Percent, Crown, Shield,
+  Database, Send, Percent, Crown, Shield, Bell, Smartphone, X, Megaphone, Bookmark,
 } from 'lucide-react';
 import { resetOnboarding } from '@/components/domain/OnboardingTour';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { useAgents } from '@/store/agents';
 import { useWatchlist } from '@/store/watchlist';
 import { useAuth, isAdmin } from '@/store/auth';
@@ -125,214 +126,49 @@ export function SettingsPage() {
     <>
       <PageHeader title="Ayarlar" subtitle="API anahtarları, agent durumu, veritabanı ve uygulama bilgileri." />
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        {/* API connections — admin only */}
-        {admin && (
-        <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <KeyRound size={14} /> API Bağlantıları
-            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
-          </h2>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {API_STATUS.filter((s) => !s.optional).map((s) => (
-              <ApiCard key={s.service} s={s} />
-            ))}
-          </div>
-          {API_STATUS.some((s) => s.optional) && (
-            <details className="mt-3 rounded-lg border border-border bg-bg-card p-3 text-xs text-slate-400">
-              <summary className="cursor-pointer text-slate-300">Opsiyonel (Hafta 2)</summary>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {API_STATUS.filter((s) => s.optional).map((s) => (
-                  <ApiCard key={s.service} s={s} />
-                ))}
-              </div>
-            </details>
-          )}
-        </div>
-        )}
+      <div className="mx-auto max-w-3xl">
+        {/* ============ KULLANICI BÖLÜMLERİ ============ */}
 
-        {/* Telegram bildirimleri */}
-        <TelegramSection />
+        {/* Push bildirimleri — default open (sık erişim) */}
+        <PinnableAccordion
+          id="settings-push"
+          title="Push Bildirimleri"
+          description="Sekme arka plandayken bile fiyat alarmı + KAP haberleri"
+          icon={<Bell size={14} />}
+          defaultOpen={true}
+        >
+          <PushNotificationSection />
+        </PinnableAccordion>
 
-        {/* PWA — uygulamayı ana ekrana yükle (manuel tetikleyici) */}
-        <PwaInstallSection />
+        {/* Telegram */}
+        <PinnableAccordion
+          id="settings-telegram"
+          title="Telegram Bildirimleri"
+          description="chat_id ile kişisel Telegram bildirimleri"
+          icon={<Send size={14} />}
+        >
+          <TelegramSection />
+        </PinnableAccordion>
 
-        {/* Push bildirimleri (SW tabanlı, sekme arka plandayken de çalışır) */}
-        <PushNotificationSection />
+        {/* PWA Install */}
+        <PinnableAccordion
+          id="settings-pwa"
+          title="Uygulama Olarak Yükle"
+          description="Bilgisayar/telefon ana ekranına ekle"
+          icon={<Smartphone size={14} />}
+          iconColorClass="bg-accent/15 text-accent"
+        >
+          <PwaInstallSection />
+        </PinnableAccordion>
 
-        {/* Onboarding turunu tekrar göster */}
-        <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
-          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Info size={14} className="text-accent" /> Tanıtım Turu
-          </h2>
-          <p className="text-xs leading-relaxed text-slate-400">
-            5 adımlık tanıtım turunu (Panel, Takip Listem, Alarmlar, BES Hesaplayıcı) tekrar görmek için aşağıdaki butona bas.
-          </p>
-          <button onClick={resetOnboarding} className="btn-secondary mt-3 text-xs">
-            <RotateCcw size={12} /> Tanıtım turunu tekrar başlat
-          </button>
-        </div>
-
-        {/* Şifre değiştir — login olmuş tüm kullanıcılar için (#Ö1) */}
-        {user && <ChangePasswordSection />}
-
-        {/* Hesap silme — admin olmayan kullanıcılar için (kendi hesabını sil) */}
-        {user && !admin && <DeleteAccountSection />}
-
-        {/* Admin: Üye Yönetimi */}
-        {admin && <UserAdminSection />}
-
-        {/* Admin: Site Görünümü (reklam alanı toggle) */}
-        {admin && <SiteVisibilitySection />}
-
-        {/* Admin: Üyelik Ücretleri */}
-        {admin && (
-          <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 lg:col-span-2">
-            <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-warning">
-              <Crown size={14} /> Üyelik Ücretleri <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">Admin</span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              MembershipPage'deki fiyatlar burada yönetilir. Değer girdiğin an MembershipPage anında günceller (Zustand persist).
-            </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <PriceField
-                label="PRO Aylık"
-                icon={Crown}
-                value={pricing.proMonthly}
-                onChange={(v) => { pricing.setProMonthly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
-              />
-              <PriceField
-                label="PRO Yıllık"
-                icon={Crown}
-                value={pricing.proYearly}
-                onChange={(v) => { pricing.setProYearly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
-              />
-              <PriceField
-                label="ELITE Aylık"
-                icon={Shield}
-                value={pricing.eliteMonthly}
-                onChange={(v) => { pricing.setEliteMonthly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
-              />
-              <PriceField
-                label="ELITE Yıllık"
-                icon={Shield}
-                value={pricing.eliteYearly}
-                onChange={(v) => { pricing.setEliteYearly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
-              />
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                className="btn-secondary text-xs"
-                onClick={() => { pricing.resetToDefaults(); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}
-              >
-                <RotateCcw size={12} /> Varsayılana sıfırla (99/999/299/2999₺)
-              </button>
-              {pricingSaved && <span className="text-xs text-success">✓ Kaydedildi</span>}
-            </div>
-          </div>
-        )}
-
-        {/* Politika Faizi manuel override — admin only */}
-        {admin && (
-        <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
-          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Percent size={14} /> Politika Faizi (Manuel)
-            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
-          </h2>
-          <p className="text-xs text-slate-500">
-            TCMB EVDS canlı çekemediğimiz için bu değeri elle giriyorsun. Politika faizi nadiren değişir,
-            karar olunca güncelle. Boş bırakırsan mock değer gösterilir.
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              className="input max-w-[160px]"
-              placeholder="ör. 50.00"
-              value={policyRate}
-              onChange={(e) => setPolicyRate(e.target.value)}
-            />
-            <span className="text-sm text-slate-400">%</span>
-            <button className="btn-primary" onClick={savePolicyRate}>
-              Kaydet
-            </button>
-            {policySaved && (
-              <span className="text-xs text-success">✓ Kaydedildi (Makro'yu yenile)</span>
-            )}
-          </div>
-        </div>
-        )}
-
-        {/* Admin: Telegram Test (admin-bound, env chat_id) */}
-        {admin && (
-        <div className="rounded-xl border border-border bg-bg-soft p-4">
-          <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Send size={14} /> Telegram Test (Admin Botu)
-            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
-          </h2>
-          <p className="text-xs text-slate-500">
-            Admin bot bağlantısı doğru mu? Aşağıya bas, sana mesaj atsın.
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              className="btn-primary"
-              onClick={testTelegram}
-              disabled={tgTesting || !API_KEYS.telegramChatId}
-            >
-              <Send size={14} /> {tgTesting ? 'Gönderiliyor…' : 'Test mesajı yolla'}
-            </button>
-            {tgResult && (
-              <span
-                className={cn(
-                  'rounded-md px-2 py-1 text-xs',
-                  tgResult.ok ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger',
-                )}
-              >
-                {tgResult.msg}
-              </span>
-            )}
-          </div>
-          {!API_KEYS.telegramChatId && (
-            <p className="mt-2 text-[11px] text-warning">VITE_TELEGRAM_CHAT_ID eksik.</p>
-          )}
-        </div>
-        )}
-
-        {/* Agents — admin only */}
-        {admin && (
-        <div className="rounded-xl border border-border bg-bg-soft p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Cpu size={14} /> Agent Durumu
-            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span>
-          </h2>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {agents.map((a) => {
-              const Icon = agentIcon[a.key];
-              return (
-                <div key={a.key} className="rounded-lg border border-border bg-bg-card p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon size={14} className="text-accent" />
-                      <span className="text-sm font-medium text-slate-100">{a.label}</span>
-                    </div>
-                    <span className={cn('rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider', stateTone[a.state])}>
-                      {stateLabel[a.state]}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        )}
-
-        {/* Database stats */}
-        <div className="rounded-xl border border-border bg-bg-soft p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Database size={14} /> Yerel Veritabanı (IndexedDB)
-          </h2>
-          <dl className="grid grid-cols-2 gap-2 text-xs">
+        {/* Yerel Veritabanı */}
+        <PinnableAccordion
+          id="settings-localdb"
+          title="Yerel Veritabanı (IndexedDB)"
+          description={`${counts.activity} aktivite • ${counts.alerts} alarm • ${counts.bookmarks} haber`}
+          icon={<Database size={14} />}
+        >
+          <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
             <Stat label="Aktivite kaydı" value={counts.activity} />
             <Stat label="Not" value={counts.notes} />
             <Stat label="Alarm" value={counts.alerts} />
@@ -344,11 +180,15 @@ export function SettingsPage() {
           <button className="btn-danger mt-3" onClick={() => setConfirmDbReset(true)}>
             <RotateCcw size={14} /> Veritabanını sıfırla
           </button>
-        </div>
+        </PinnableAccordion>
 
-        {/* Watchlist + LocalStorage reset */}
-        <div className="rounded-xl border border-border bg-bg-soft p-4">
-          <h2 className="text-sm font-semibold text-slate-200">Takip Listem</h2>
+        {/* Takip Listem */}
+        <PinnableAccordion
+          id="settings-watchlist"
+          title="Takip Listem"
+          description={`${symbols.length} hisse takipte`}
+          icon={<Bookmark size={14} />}
+        >
           <p className="text-xs text-slate-500">{symbols.length} hisse takipte. LocalStorage'da saklanır.</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {symbols.map((s) => (
@@ -361,23 +201,243 @@ export function SettingsPage() {
           <button className="btn-danger mt-3" onClick={() => setConfirmReset(true)}>
             <RotateCcw size={14} /> Önbellek + watchlist sıfırla
           </button>
-        </div>
+        </PinnableAccordion>
 
-        {/* Admin: sistem versiyonu + altyapı bilgisi (kullanıcı için gereksiz) */}
+        {/* Şifre değiştir */}
+        {user && (
+          <PinnableAccordion
+            id="settings-password"
+            title="Şifre Değiştir"
+            description="Mevcut şifreni onaylayarak yeni şifre belirle"
+            icon={<KeyRound size={14} />}
+          >
+            <ChangePasswordSection />
+          </PinnableAccordion>
+        )}
+
+        {/* Hesap silme — sadece non-admin */}
+        {user && !admin && (
+          <PinnableAccordion
+            id="settings-delete-account"
+            title="Hesabımı Sil"
+            description="Hesap kalıcı olarak silinir, geri alınamaz"
+            icon={<X size={14} />}
+            iconColorClass="bg-danger/15 text-danger"
+          >
+            <DeleteAccountSection />
+          </PinnableAccordion>
+        )}
+
+        {/* Onboarding turunu tekrar göster */}
+        <PinnableAccordion
+          id="settings-tour"
+          title="Tanıtım Turu"
+          description="5 adımlık uygulama turunu tekrar başlat"
+          icon={<Info size={14} />}
+        >
+          <p className="text-xs leading-relaxed text-slate-400">
+            5 adımlık tanıtım turunu (Panel, Takip Listem, Alarmlar, BES Hesaplayıcı) tekrar görmek için aşağıdaki butona bas.
+          </p>
+          <button onClick={resetOnboarding} className="btn-secondary mt-3 text-xs">
+            <RotateCcw size={12} /> Tanıtım turunu tekrar başlat
+          </button>
+        </PinnableAccordion>
+
+        {/* ============ ADMIN BÖLÜMLERİ ============ */}
         {admin && (
-        <div className="rounded-xl border border-border bg-bg-soft p-4 lg:col-span-2">
-          <div className="flex items-start gap-3">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-bg-card text-accent">
-              <Info size={14} />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold">Hane Finans <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">Admin</span></h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Sürüm 0.1 • Cloud auth (Cloudflare D1) + GitHub Actions TEFAS feed + Pages Functions backend.
-              </p>
-            </div>
+          <div className="mt-6 mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-warning">
+            <Shield size={12} /> Admin Paneli
+            <div className="flex-1 border-t border-warning/20" />
           </div>
-        </div>
+        )}
+
+        {/* Admin: Üye Yönetimi */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-users"
+            title="Üye Yönetimi"
+            description="Cloudflare D1 — tüm kullanıcılar + analitik"
+            icon={<Crown size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <UserAdminSection />
+          </PinnableAccordion>
+        )}
+
+        {/* Admin: Üyelik Ücretleri */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-pricing"
+            title="Üyelik Ücretleri"
+            description="PRO / ELITE aylık + yıllık fiyatları"
+            icon={<Crown size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <p className="text-xs text-slate-400">
+              MembershipPage'deki fiyatlar burada yönetilir. Değer girdiğin an MembershipPage anında günceller (Zustand persist).
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <PriceField label="PRO Aylık" icon={Crown} value={pricing.proMonthly}
+                onChange={(v) => { pricing.setProMonthly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }} />
+              <PriceField label="PRO Yıllık" icon={Crown} value={pricing.proYearly}
+                onChange={(v) => { pricing.setProYearly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }} />
+              <PriceField label="ELITE Aylık" icon={Shield} value={pricing.eliteMonthly}
+                onChange={(v) => { pricing.setEliteMonthly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }} />
+              <PriceField label="ELITE Yıllık" icon={Shield} value={pricing.eliteYearly}
+                onChange={(v) => { pricing.setEliteYearly(v); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }} />
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <button className="btn-secondary text-xs"
+                onClick={() => { pricing.resetToDefaults(); setPricingSaved(true); setTimeout(() => setPricingSaved(false), 1500); }}>
+                <RotateCcw size={12} /> Varsayılana sıfırla (99/999/299/2999₺)
+              </button>
+              {pricingSaved && <span className="text-xs text-success">✓ Kaydedildi</span>}
+            </div>
+          </PinnableAccordion>
+        )}
+
+        {/* Admin: Site Görünümü */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-visibility"
+            title="Site Görünümü"
+            description="Reklam banner + tanıtım videosu toggle"
+            icon={<Megaphone size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <SiteVisibilitySection />
+          </PinnableAccordion>
+        )}
+
+        {/* Admin: API Bağlantıları */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-api"
+            title="API Bağlantıları"
+            description="Yahoo, TEFAS, TCMB, Anthropic ve diğer entegrasyonlar"
+            icon={<KeyRound size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {API_STATUS.filter((s) => !s.optional).map((s) => (
+                <ApiCard key={s.service} s={s} />
+              ))}
+            </div>
+            {API_STATUS.some((s) => s.optional) && (
+              <details className="mt-3 rounded-lg border border-border bg-bg-card p-3 text-xs text-slate-400">
+                <summary className="cursor-pointer text-slate-300">Opsiyonel (Hafta 2)</summary>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {API_STATUS.filter((s) => s.optional).map((s) => (
+                    <ApiCard key={s.service} s={s} />
+                  ))}
+                </div>
+              </details>
+            )}
+          </PinnableAccordion>
+        )}
+
+        {/* Admin: Politika Faizi */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-policy-rate"
+            title="Politika Faizi (Manuel)"
+            description="TCMB politika faizi override değeri"
+            icon={<Percent size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <p className="text-xs text-slate-500">
+              TCMB EVDS canlı çekemediğimiz için bu değeri elle giriyorsun. Politika faizi nadiren değişir,
+              karar olunca güncelle. Boş bırakırsan mock değer gösterilir.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                className="input max-w-[160px]"
+                placeholder="ör. 50.00"
+                value={policyRate}
+                onChange={(e) => setPolicyRate(e.target.value)}
+              />
+              <span className="text-sm text-slate-400">%</span>
+              <button className="btn-primary" onClick={savePolicyRate}>Kaydet</button>
+              {policySaved && <span className="text-xs text-success">✓ Kaydedildi (Makro'yu yenile)</span>}
+            </div>
+          </PinnableAccordion>
+        )}
+
+        {/* Admin: Telegram Test */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-telegram-test"
+            title="Telegram Test (Admin Botu)"
+            description="Admin bot bağlantı kontrolü"
+            icon={<Send size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <p className="text-xs text-slate-500">
+              Admin bot bağlantısı doğru mu? Aşağıya bas, sana mesaj atsın.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button className="btn-primary" onClick={testTelegram} disabled={tgTesting || !API_KEYS.telegramChatId}>
+                <Send size={14} /> {tgTesting ? 'Gönderiliyor…' : 'Test mesajı yolla'}
+              </button>
+              {tgResult && (
+                <span className={cn('rounded-md px-2 py-1 text-xs',
+                  tgResult.ok ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger')}>
+                  {tgResult.msg}
+                </span>
+              )}
+            </div>
+            {!API_KEYS.telegramChatId && (
+              <p className="mt-2 text-[11px] text-warning">VITE_TELEGRAM_CHAT_ID eksik.</p>
+            )}
+          </PinnableAccordion>
+        )}
+
+        {/* Admin: Agent Durumu */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-agents"
+            title="Agent Durumu"
+            description="News, Sentiment, Indicator, Macro agent durumları"
+            icon={<Cpu size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              {agents.map((a) => {
+                const Icon = agentIcon[a.key];
+                return (
+                  <div key={a.key} className="rounded-lg border border-border bg-bg-card p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon size={14} className="text-accent" />
+                        <span className="text-sm font-medium text-slate-100">{a.label}</span>
+                      </div>
+                      <span className={cn('rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider', stateTone[a.state])}>
+                        {stateLabel[a.state]}
+                      </span>
+                    </div>
+                                   </div>
+                );
+              })}
+            </div>
+          </PinnableAccordion>
+        )}
+
+        {/* Admin: Sistem Bilgisi */}
+        {admin && (
+          <PinnableAccordion
+            id="settings-admin-info"
+            title="Hane Finans — Sistem"
+            description="Sürüm, altyapı ve build bilgisi"
+            icon={<Info size={14} />}
+            iconColorClass="bg-warning/15 text-warning"
+          >
+            <p className="text-xs text-slate-500">
+              Sürüm 0.1 • Cloud auth (Cloudflare D1) + GitHub Actions TEFAS feed + Pages Functions backend.
+            </p>
+          </PinnableAccordion>
         )}
       </div>
 

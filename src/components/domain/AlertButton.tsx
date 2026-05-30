@@ -3,6 +3,9 @@ import { Bell } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { alertsRepo } from '@/data/repositories';
+import { createAlert } from '@/data/api/alertsClient';
+import { useAuth } from '@/store/auth';
+import { toast } from '@/components/ui/Toast';
 import type { Stock } from '@/data/types';
 
 interface AlertButtonProps {
@@ -13,11 +16,13 @@ interface AlertButtonProps {
 }
 
 export function AlertButton({ stock, fund, size = 13 }: AlertButtonProps) {
+  const user = useAuth((s) => s.user);
   const [open, setOpen] = useState(false);
   const [direction, setDirection] = useState<'above' | 'below'>('above');
   const [threshold, setThreshold] = useState<string>('');
   const [note, setNote] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isFund = !!fund;
   const symbol = stock?.symbol ?? fund?.code ?? '';
@@ -28,14 +33,33 @@ export function AlertButton({ stock, fund, size = 13 }: AlertButtonProps) {
     const v = parseFloat(threshold.replace(',', '.'));
     if (!Number.isFinite(v) || v <= 0) return;
     setSaving(true);
+    setError(null);
     try {
-      await alertsRepo.add({
-        symbol,
-        assetType: isFund ? 'fund' : 'stock',
-        direction,
-        threshold: v,
-        note: note.trim() || undefined,
-      });
+      // Server-side D1 alarm (push tabanlı)
+      if (user) {
+        const r = await createAlert({
+          symbol,
+          assetType: isFund ? 'fund' : 'stock',
+          direction,
+          threshold: v,
+          note: note.trim() || undefined,
+        });
+        if (!r.ok) {
+          setError(r.error ?? 'Kayıt başarısız');
+          return;
+        }
+        toast.success('Alarm kuruldu', 'Tetiklenince push bildirim alacaksın.');
+      } else {
+        // Anonim kullanıcı — sadece local IndexedDB (legacy fallback)
+        await alertsRepo.add({
+          symbol,
+          assetType: isFund ? 'fund' : 'stock',
+          direction,
+          threshold: v,
+          note: note.trim() || undefined,
+        });
+        toast.info('Alarm yerel kaydedildi', 'Push bildirim için giriş yap.');
+      }
       setThreshold('');
       setNote('');
       setOpen(false);
@@ -104,8 +128,15 @@ export function AlertButton({ stock, fund, size = 13 }: AlertButtonProps) {
             />
           </Field>
         </div>
+        {error && (
+          <p className="mt-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+            ⚠ {error}
+          </p>
+        )}
         <p className="mt-3 text-xs text-slate-500">
-          Alarmlar şu an yalnızca kayıt edilir; canlı fiyat akışı bağlandığında (Hafta 2) otomatik tetiklenecektir.
+          {user
+            ? 'Alarm tetiklendiğinde push bildirim alacaksın. Server-side cron her 5 dk kontrol eder.'
+            : 'Push bildirim için giriş yap. Anonim modda alarm yerel cihazda kalır (sekme açıkken çalışır).'}
         </p>
         <div className="mt-4 flex justify-end gap-2">
           <button className="btn-secondary" onClick={() => setOpen(false)}>

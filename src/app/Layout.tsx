@@ -73,6 +73,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
       { to: '/watchlist', label: 'Takip Listem', icon: Star },
+      { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
       { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
@@ -552,7 +553,6 @@ export function Layout() {
 
       {/* Arka planda fiyat alarmı izleyici — Telegram + browser bildirimi tetikler */}
       <AlertWatcher />
-      {/* Arka planda son dakika haber izleyici — push bildirimi tetikler (kullanıcı izniyle) */}
       <NewsWatcher />
     </div>
   );

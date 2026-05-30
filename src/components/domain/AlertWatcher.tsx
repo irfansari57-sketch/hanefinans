@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/Toast';
 import { notifyPriceAlert, getTelegramChatId } from '@/lib/telegram';
 import { showSwNotification } from '@/lib/pushNotifications';
 import { isPushPrefEnabled } from '@/lib/notificationPrefs';
+import { useAuth } from '@/store/auth';
 
 /**
  * Arka planda fiyat alarmlarını izleyen görünmez bileşen.
@@ -30,9 +31,16 @@ const CHECK_INTERVAL_MS = 60_000; // 1 dakika
 const NOTIF_PERMISSION_ASKED_KEY = 'fa.notif.permissionAsked';
 
 export function AlertWatcher() {
+  const user = useAuth((s) => s.user);
+
+  // Server-side cron (D1 + push) login olmuş kullanıcılar için devreye girer
+  // → bu legacy client-side watcher SADECE anonim kullanıcılar için aktif.
   const activeAlerts = useLiveQuery(
-    async () => (await alertsRepo.list()).filter((a) => a.enabled === 1),
-    [],
+    async () => {
+      if (user) return []; // logged-in users use server-side alarms
+      return (await alertsRepo.list()).filter((a) => a.enabled === 1);
+    },
+    [user?.id],
   ) ?? [];
 
   const lastCheckRef = useRef<number>(0);

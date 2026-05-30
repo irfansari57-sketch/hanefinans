@@ -1,0 +1,38 @@
+name: Check Price Alerts
+
+# Her 5 dk fiyat alarmlarını kontrol et + tetiklenenler için push gönder
+on:
+  schedule:
+    # Cloudflare cron syntax: dakika saat gün ay haftaGünü
+    # */5 * * * * = her 5 dk
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    # Manuel tetikleme için (debug)
+
+permissions:
+  contents: read
+
+jobs:
+  check-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call check-alerts endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET secret not set in repo settings — abort"
+            exit 1
+          fi
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -H "Accept: application/json" \
+            "https://hanefinans.net/api/cron/check-alerts")
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP $code"
+          echo "$body" | head -200
+          if [ "$code" -ne 200 ]; then
+            echo "::error::Endpoint returned $code"
+            exit 1
+          fi

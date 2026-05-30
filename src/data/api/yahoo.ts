@@ -33,8 +33,9 @@ function toBISTSymbol(s: string): string {
 
 async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct: number; name?: string; updatedAt: string } | null> {
   try {
-    // range=5d → tatil/hafta sonu dahil son 2 islem gunu kapanislarini yakala
-    const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
+    // range=10d → hafta sonu + tatil + uzun bayram sonrasi son 2 islem gununu garanti
+    // (BIST'te 5d bazen 3-4 trading day veriyor; bayram sonrasi 1-2'ye düşebilir)
+    const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=10d`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as YahooChartResult;
@@ -42,7 +43,7 @@ async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct
     const meta = result?.meta;
     if (!meta) return null;
 
-    // Closes dizisinden valid kapanislari sondan basa sus — son 2 kapanis
+    // Closes dizisinden valid kapanislari sondan basa süs — son 2 trading day kapanisi
     const closes = result?.indicators?.quote?.[0]?.close ?? [];
     const validCloses: number[] = [];
     for (let i = closes.length - 1; i >= 0; i--) {
@@ -55,16 +56,29 @@ async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct
     if (price == null && validCloses.length > 0) price = validCloses[0];
     if (price == null || !Number.isFinite(price) || price <= 0) return null;
 
-    // Tatil/hafta sonu: price === validCloses[0] => prev = validCloses[1]
-    // Piyasa acik: prev = validCloses[0] (bugunku kapanisin onceki gunu)
-    let prev: number;
+    // Prev seçim mantığı (#Ö BIST weekend bug fix):
+    // 1) İdeal: validCloses[1] varsa kullan (son işlem gününden önceki kapanış)
+    // 2) Yahoo bazen XU100.IS'de previousClose === regularMarketPrice (her ikisi
+    //    de Cuma kapanışı). Bu durumda changePct = 0 olur — yanlış. validCloses[1]
+    //    daima güvenilir bir prev verir.
+    // 3) validCloses 2'den az ise meta.previousClose'a düş, ama price'tan FARKLI ise
+    //    (aynıysa 0 gelecek, mock'a düşmek daha iyi)
+    let prev: number = NaN;
     if (validCloses.length >= 2) {
       const lastClose = validCloses[0];
       const beforeClose = validCloses[1];
-      prev = Math.abs(price - lastClose) < 0.0001 ? beforeClose : lastClose;
-    } else {
-      prev = meta.previousClose ?? meta.chartPreviousClose ?? price;
+      // Eğer price çok yakın lastClose'a (= piyasa kapalı, gösterilen son kapanış),
+      // önceki gün kapanışını prev al → gerçek günlük değişim hesaplanır
+      // Eğer price ≠ lastClose (= intraday quote), lastClose prev olur
+      prev = Math.abs(price - lastClose) < 0.01 ? beforeClose : lastClose;
     }
+    if (!Number.isFinite(prev) || prev <= 0) {
+      const candidates = [meta.previousClose, meta.chartPreviousClose].filter(
+        (v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && Math.abs(v - price) > 0.01,
+      );
+      if (candidates.length > 0) prev = candidates[0];
+    }
+    if (!Number.isFinite(prev) || prev <= 0) prev = price; // → changePct=0 fallback
     const changePct = prev > 0 ? ((price - prev) / prev) * 100 : 0;
     const updatedAt = meta.regularMarketTime
       ? new Date(meta.regularMarketTime * 1000).toISOString()

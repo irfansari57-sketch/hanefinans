@@ -1,7 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/store/auth';
-import { checkSupport, askPermission, getPermission, showSwNotification } from '@/lib/pushNotifications';
+import {
+  checkSupport,
+  askPermission,
+  getPermission,
+  isPushBackendConfigured,
+  subscribeAndRegister,
+  unsubscribeAll,
+  sendTestPushFromServer,
+  getExistingSubscription,
+} from '@/lib/pushNotifications';
 import { getPushPref, setPushPref } from '@/lib/notificationPrefs';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -19,12 +28,18 @@ export function PushNotificationSection() {
   const [testing, setTesting] = useState(false);
   const [prefAlerts, setPrefAlerts] = useState<boolean>(true);
   const [prefNews, setPrefNews] = useState<boolean>(false);
+  const [backendReady] = useState(isPushBackendConfigured());
+  const [serverSubscribed, setServerSubscribed] = useState(false);
 
   useEffect(() => {
     setSupport(checkSupport());
     setPerm(getPermission());
     setPrefAlerts(getPushPref('alerts', userId));
     setPrefNews(getPushPref('news', userId));
+    // Mevcut subscription var mı kontrol et
+    getExistingSubscription()
+      .then((sub) => setServerSubscribed(!!sub))
+      .catch(() => setServerSubscribed(false));
   }, [userId]);
 
   const toggleAlerts = () => {
@@ -46,6 +61,35 @@ export function PushNotificationSection() {
     try {
       const next = await askPermission();
       setPerm(next);
+      if (next !== 'granted') return;
+
+      // İzin verildi — backend'e subscription'ı kaydet
+      if (!user) {
+        toast.error('Önce giriş yap', 'Push bildirimleri için hesap gerekli.');
+        return;
+      }
+      if (!backendReady) {
+        toast.error('Backend hazır değil', 'VAPID public key tanımlı değil. Cloudflare Pages env\'lerini kontrol et.');
+        return;
+      }
+      const r = await subscribeAndRegister();
+      if (r.ok) {
+        setServerSubscribed(true);
+        toast.success('Bildirimler aktif', 'Test bildirimi göndererek doğrulayabilirsin.');
+      } else {
+        toast.error('Subscription kaydedilemedi', r.error ?? 'Bilinmeyen hata');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disable = async () => {
+    setBusy(true);
+    try {
+      await unsubscribeAll();
+      setServerSubscribed(false);
+      toast.success('Bildirimler kapatıldı');
     } finally {
       setBusy(false);
     }
@@ -54,14 +98,23 @@ export function PushNotificationSection() {
   const testNotification = async () => {
     setTesting(true);
     try {
-      const ok = await showSwNotification({
-        title: 'Hane Finans bildirimi',
-        body: 'Bildirimler çalışıyor! Alarmların burada görünecek.',
-        url: '/panel',
-        tag: 'test-' + Date.now(),
-      });
-      if (!ok) {
-        toast.error('Bildirim gösterilemedi', 'Service worker hazır değil olabilir, sayfayı yenile ve tekrar dene.');
+      const r = await sendTestPushFromServer();
+      if (r.ok && (r.sent ?? 0) > 0) {
+        toast.success(
+          'Test bildirimi gönderildi',
+          `${r.sent} cihaz/tarayıcıya yollandı. Birkaç saniye içinde bildirim görmelisin.`,
+        );
+      } else if (r.expired && r.expired > 0) {
+        setServerSubscribed(false);
+        toast.error(
+          'Subscription geçersiz',
+          'Tarayıcı subscription\'ı silmiş — tekrar "Bildirimleri Aç"a bas.',
+        );
+      } else {
+        toast.error(
+          'Test gönderilemedi',
+          r.error ?? `Gönderim başarısız (${r.failed ?? 0} hata)`,
+        );
       }
     } finally {
       setTesting(false);
@@ -121,16 +174,35 @@ export function PushNotificationSection() {
         </p>
       )}
 
+      {supported && backendReady === false && (
+        <p className="mt-3 rounded-md bg-warning/10 px-3 py-2 text-[11px] text-warning">
+          Push backend yapılandırılmamış (VAPID public key eksik). Yöneticiyle iletişime geç.
+        </p>
+      )}
+
       <div className="mt-3 flex flex-wrap gap-2">
         {supported && !granted && perm !== 'denied' && (
-          <button onClick={enable} disabled={busy} className="btn-primary text-xs">
-            <Bell size={12} /> Bildirimleri Aç
+          <button onClick={enable} disabled={busy || !user} className="btn-primary text-xs">
+            <Bell size={12} /> {busy ? 'Açılıyor...' : 'Bildirimleri Aç'}
           </button>
         )}
-        {supported && granted && (
-          <button onClick={testNotification} disabled={testing} className="btn-secondary text-xs">
-            <Bell size={12} /> Test Bildirimi Gönder
+        {supported && granted && !serverSubscribed && (
+          <button onClick={enable} disabled={busy || !user || !backendReady} className="btn-primary text-xs">
+            <Bell size={12} /> {busy ? 'Bağlanıyor...' : 'Sunucuya Bağla'}
           </button>
+        )}
+        {supported && granted && serverSubscribed && (
+          <>
+            <button onClick={testNotification} disabled={testing} className="btn-secondary text-xs">
+              <Bell size={12} /> {testing ? 'Gönderiliyor...' : 'Test Bildirimi Gönder'}
+            </button>
+            <button onClick={disable} disabled={busy} className="btn-ghost text-xs">
+              Bildirimleri Kapat
+            </button>
+          </>
+        )}
+        {supported && granted && !user && (
+          <p className="text-[11px] text-warning">Push bildirimleri için önce giriş yap.</p>
         )}
       </div>
 

@@ -15,7 +15,8 @@
  */
 
 const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env;
-const VAPID_PUBLIC_KEY = (env.VITE_PUSH_VAPID_PUBLIC_KEY ?? '').trim();
+// VITE_VAPID_PUBLIC_KEY tercih edilir; eski VITE_PUSH_VAPID_PUBLIC_KEY backward-compat.
+const VAPID_PUBLIC_KEY = (env.VITE_VAPID_PUBLIC_KEY ?? env.VITE_PUSH_VAPID_PUBLIC_KEY ?? '').trim();
 
 export type NotifSupport = 'supported' | 'no-sw' | 'no-notif' | 'no-push';
 
@@ -152,5 +153,104 @@ export async function unsubscribePush(): Promise<boolean> {
     return await sub.unsubscribe();
   } catch {
     return false;
+  }
+}
+
+// ============= Backend bağlantısı (server-driven push) =============
+
+interface SubscribeResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Subscription'ı backend'e kaydet. Çağırmadan önce subscribePush() ile
+ * browser subscription'ı oluşturulmuş olmalı.
+ */
+export async function registerSubscription(sub: PushSubscription): Promise<SubscribeResult> {
+  try {
+    const json = sub.toJSON() as {
+      endpoint?: string;
+      keys?: { p256dh?: string; auth?: string };
+    };
+    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+      return { ok: false, error: 'Subscription objesi eksik' };
+    }
+    const r = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        endpoint: json.endpoint,
+        keys: json.keys,
+        userAgent: navigator.userAgent,
+      }),
+    });
+    const data = await r.json().catch(() => ({ ok: false })) as SubscribeResult;
+    return data;
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/** Backend'den subscription'ı sil. */
+export async function removeSubscriptionFromServer(endpoint: string): Promise<boolean> {
+  try {
+    const r = await fetch('/api/push/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ endpoint }),
+    });
+    const data = await r.json().catch(() => ({ ok: false })) as { ok: boolean };
+    return data.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Tek-shot: browser subscribe + server'a kaydet. */
+export async function subscribeAndRegister(): Promise<SubscribeResult> {
+  if (!isPushBackendConfigured()) {
+    return { ok: false, error: 'VAPID public key tanımlı değil (VITE_VAPID_PUBLIC_KEY env eksik)' };
+  }
+  const browserSub = await subscribePush();
+  if (!browserSub) {
+    return { ok: false, error: 'Tarayıcı push aboneliği oluşturamadı' };
+  }
+  return registerSubscription(browserSub);
+}
+
+/** Tek-shot: server unsubscribe + browser unsubscribe. */
+export async function unsubscribeAll(): Promise<boolean> {
+  const sub = await getExistingSubscription();
+  if (sub) {
+    await removeSubscriptionFromServer(sub.endpoint).catch(() => null);
+    await unsubscribePush().catch(() => null);
+  }
+  return true;
+}
+
+interface TestPushResult {
+  ok: boolean;
+  sent?: number;
+  failed?: number;
+  expired?: number;
+  total?: number;
+  error?: string;
+}
+
+/** Server'dan kendine test bildirim gönder. */
+export async function sendTestPushFromServer(): Promise<TestPushResult> {
+  try {
+    const r = await fetch('/api/push/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({}),
+    });
+    return await r.json() as TestPushResult;
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
   }
 }

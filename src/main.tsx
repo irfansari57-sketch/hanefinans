@@ -29,6 +29,9 @@ if ('serviceWorker' in navigator) {
 // PWA install singleton — beforeinstallprompt event'ini app seviyesinde yakala
 import('./lib/pwaInstall').then((m) => m.initPwaInstall()).catch(() => { /* */ });
 
+// Telemetri — anonim event tracking (Premium dönüşüm + UX ölçümü için)
+import('./lib/telemetry').then((m) => m.initTelemetry()).catch(() => { /* */ });
+
 initDb()
   .catch((err) => {
     console.error('Veritabanı başlatılamadı:', err);

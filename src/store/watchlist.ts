@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { activityRepo } from '@/data/repositories';
+import { track } from '@/lib/telemetry';
 
 interface WatchlistState {
   symbols: string[];
@@ -22,12 +23,14 @@ export const useWatchlist = create<WatchlistState>()(
         if (!s || get().symbols.includes(s)) return;
         set({ symbols: [...get().symbols, s] });
         activityRepo.log({ type: 'watchlist-add', symbol: s }).catch(() => {});
+        track('watchlist.add', { symbol: s });
       },
       remove: (symbol) => {
         const s = symbol.trim().toUpperCase();
         if (!get().symbols.includes(s)) return;
         set({ symbols: get().symbols.filter((x) => x !== s) });
         activityRepo.log({ type: 'watchlist-remove', symbol: s }).catch(() => {});
+        track('watchlist.remove', { symbol: s });
       },
       toggle: (symbol) => {
         const s = symbol.trim().toUpperCase();
@@ -36,10 +39,12 @@ export const useWatchlist = create<WatchlistState>()(
         if (exists) {
           set({ symbols: get().symbols.filter((x) => x !== s) });
           activityRepo.log({ type: 'watchlist-remove', symbol: s }).catch(() => {});
+        track('watchlist.remove', { symbol: s });
           return false;
         }
         set({ symbols: [...get().symbols, s] });
         activityRepo.log({ type: 'watchlist-add', symbol: s }).catch(() => {});
+        track('watchlist.add', { symbol: s });
         return true;
       },
       reorder: (next) => set({ symbols: [...next] }),

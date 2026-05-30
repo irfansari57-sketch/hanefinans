@@ -11,6 +11,7 @@ import type { PeriodReturns } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { track } from '@/lib/telemetry';
 
 /**
  * Doğal Dil Hisse/Fon Sorgusu — kullanıcı Türkçe doğal dilde sorgu yazar,
@@ -131,17 +132,22 @@ export function ScreenerPage() {
       const r = await fetchScreenerSpec(userQ);
       if (!r || !r.ok || !r.spec) {
         setError(r?.error ?? 'AI sorgu çözümlemedi.');
+        track('screener.fail', { len: userQ.length, error: r?.error ?? 'unknown' });
         return;
       }
       setSpec(r.spec);
       setDatasetUsed(r.spec.dataset);
+      let resultCount = 0;
       if (r.spec.dataset === 'stocks') {
         const filtered = applySpec(allStocks as unknown as Record<string, unknown>[], r.spec) as unknown as EnrichedStock[];
         setResultsStocks(filtered);
+        resultCount = filtered.length;
       } else {
         const filtered = applySpec(allFunds as unknown as Record<string, unknown>[], r.spec) as unknown as FundPerformance[];
         setResultsFunds(filtered);
+        resultCount = filtered.length;
       }
+      track('screener.query', { len: userQ.length, dataset: r.spec.dataset, results: resultCount, filters: r.spec.filters.length });
     } finally {
       setLoading(false);
     }

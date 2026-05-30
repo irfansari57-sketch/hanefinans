@@ -8,7 +8,7 @@ import { BROKER_RECOMMENDATIONS } from '@/data/brokerRecommendations';
 import { BROKER_PORTFOLIOS } from '@/data/brokerPortfolios';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { LiveBadge } from '@/components/domain/LiveBadge';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton';
 import { loadStocks, clearServiceCaches } from '@/data/services';
 import { fetchHistoricalYahoo, fetchIndexYahoo } from '@/data/api/yahoo';
 import { ema, type OHLC } from '@/lib/indicators';
@@ -510,9 +510,7 @@ export function RecommendationsPage() {
           )}
 
           {loading && sortedRecs.length === 0 ? (
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} variant="rect" height={56} />)}
-            </div>
+            <TableSkeleton rows={10} cols={9} />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
               <table className="w-full min-w-[860px] text-xs">

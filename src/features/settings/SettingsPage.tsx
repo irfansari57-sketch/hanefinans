@@ -22,6 +22,7 @@ import { ApiCard, Stat } from './sections/ApiCard';
 import { TelegramSection } from './sections/TelegramSection';
 import { PushNotificationSection } from './sections/PushNotificationSection';
 import { SiteVisibilitySection } from './sections/SiteVisibilitySection';
+import { PwaInstallSection } from './sections/PwaInstallSection';
 import { PriceField } from './sections/PriceField';
 import { DeleteAccountSection } from './sections/DeleteAccountSection';
 import { ChangePasswordSection } from './sections/ChangePasswordSection';
@@ -152,6 +153,9 @@ export function SettingsPage() {
 
         {/* Telegram bildirimleri */}
         <TelegramSection />
+
+        {/* PWA — uygulamayı ana ekrana yükle (manuel tetikleyici) */}
+        <PwaInstallSection />
 
         {/* Push bildirimleri (SW tabanlı, sekme arka plandayken de çalışır) */}
         <PushNotificationSection />

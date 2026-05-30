@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Download, X, Smartphone } from 'lucide-react';
+import { getPwaInstallState, subscribePwaInstall, tryInstall, type PwaInstallState } from '@/lib/pwaInstall';
 
 const DISMISSED_KEY = 'fa.pwaInstall.dismissedAt';
 const DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 gün
 const VISIT_KEY = 'fa.pwaInstall.visitCount';
 const MIN_VISITS = 2; // Kullanıcı en az 2 sayfa gezene kadar gösterme
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
 
 /**
  * PWA "Ana ekrana ekle" banner — beforeinstallprompt event yakalanır.
@@ -19,10 +15,15 @@ interface BeforeInstallPromptEvent extends Event {
  */
 export function PwaInstallBanner() {
   const location = useLocation();
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [pwaState, setPwaState] = useState<PwaInstallState>(getPwaInstallState());
   const [visible, setVisible] = useState(false);
-  const [isIos, setIsIos] = useState(false);
   const [thresholdMet, setThresholdMet] = useState(false);
+
+  // Global pwaInstall singleton'a abone ol — main.tsx'de capture edilmiş event'i takip et
+  useEffect(() => {
+    const unsub = subscribePwaInstall(setPwaState);
+    return unsub;
+  }, []);
 
   // Her route değişikliğinde ziyaret sayacını artır (SPA'de Layout unmount olmaz)
   useEffect(() => {
@@ -36,38 +37,22 @@ export function PwaInstallBanner() {
 
   useEffect(() => {
     if (!thresholdMet) return;
-
+    // Standalone'da zaten kurulu — banner gösterme
+    if (pwaState.isStandalone) return;
+    // Dismiss snooze kontrolü
     const dismissedAt = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
     if (Date.now() - dismissedAt < DISMISS_TTL_MS) return;
 
-    // Standalone modda zaten kurulu — banner gösterme
-    if (window.matchMedia('(display-mode: standalone)').matches) return;
-    if ((navigator as Navigator & { standalone?: boolean }).standalone) return;
-
-    const ua = navigator.userAgent.toLowerCase();
-    const iosLike = /iphone|ipad|ipod/.test(ua) && !/crios|fxios/.test(ua);
-    setIsIos(iosLike);
-    if (iosLike) {
-      // iOS Safari — manuel talimatlı banner
+    if (pwaState.isIos) {
+      // iOS Safari — manuel talimatlı banner, 4 saniye gecikme
       const t = setTimeout(() => setVisible(true), 4000);
       return () => clearTimeout(t);
     }
-
-    // Chromium tarayıcılarda Chrome heuristiği gerek — biz önceden yakalamış
-    // olabiliriz (deferredPrompt). Eğer event henüz gelmediyse bekle.
-    if (deferredPrompt) {
+    // Chromium: event yakalandıysa göster
+    if (pwaState.canInstallNative) {
       setVisible(true);
-      return;
     }
-
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setVisible(true);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, [thresholdMet, deferredPrompt]);
+  }, [thresholdMet, pwaState]);
 
   const dismiss = () => {
     localStorage.setItem(DISMISSED_KEY, String(Date.now()));
@@ -75,14 +60,13 @@ export function PwaInstallBanner() {
   };
 
   const install = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
+    const result = await tryInstall();
+    if (result === 'accepted' || result === 'dismissed') {
       setVisible(false);
     }
-    setDeferredPrompt(null);
   };
+
+  const isIos = pwaState.isIos;
 
   if (!visible) return null;
 

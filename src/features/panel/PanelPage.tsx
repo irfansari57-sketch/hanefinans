@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Sparkline } from '@/components/ui/Sparkline';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
@@ -18,7 +17,7 @@ import { NewsAgentCard } from '@/components/domain/NewsAgentCard';
 import { MacroAgentCard } from '@/components/domain/MacroAgentCard';
 import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
-import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff } from 'lucide-react';
+import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { usePinnedSection } from '@/lib/usePinnedSection';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
@@ -302,8 +301,16 @@ export function PanelPage() {
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
-                    <span className="hidden sm:inline-block">
-                      <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                    <span className="inline-flex items-center">
+                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
+                        <Minus size={20} className="text-slate-500" />
+                      ) : m.changePct > 0 ? (
+                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
+                      ) : m.changePct < 0 ? (
+                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
+                      ) : (
+                        <Minus size={20} className="text-slate-500" />
+                      )}
                     </span>
                   </div>
                 </>
@@ -335,8 +342,16 @@ export function PanelPage() {
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
-                    <span className="hidden sm:inline-block">
-                      <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                    <span className="inline-flex items-center">
+                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
+                        <Minus size={20} className="text-slate-500" />
+                      ) : m.changePct > 0 ? (
+                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
+                      ) : m.changePct < 0 ? (
+                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
+                      ) : (
+                        <Minus size={20} className="text-slate-500" />
+                      )}
                     </span>
                   </div>
                 </>
@@ -380,8 +395,16 @@ export function PanelPage() {
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
-                    <span className="hidden sm:inline-block">
-                      <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                    <span className="inline-flex items-center">
+                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
+                        <Minus size={20} className="text-slate-500" />
+                      ) : m.changePct > 0 ? (
+                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
+                      ) : m.changePct < 0 ? (
+                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
+                      ) : (
+                        <Minus size={20} className="text-slate-500" />
+                      )}
                     </span>
                   </div>
                 </>
@@ -425,8 +448,16 @@ export function PanelPage() {
                         {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
                       </div>
                     )}
-                    <span className="hidden sm:inline-block">
-                      <Sparkline data={sparklineMap[m.key] ?? []} width={70} height={26} />
+                    <span className="inline-flex items-center">
+                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
+                        <Minus size={20} className="text-slate-500" />
+                      ) : m.changePct > 0 ? (
+                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
+                      ) : m.changePct < 0 ? (
+                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
+                      ) : (
+                        <Minus size={20} className="text-slate-500" />
+                      )}
                     </span>
                   </div>
                 </>

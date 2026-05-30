@@ -6,12 +6,10 @@ import { getPwaInstallState, subscribePwaInstall, tryInstall, type PwaInstallSta
 const DISMISSED_KEY = 'fa.pwaInstall.dismissedAt';
 const DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 gün
 const VISIT_KEY = 'fa.pwaInstall.visitCount';
-const MIN_VISITS = 2; // Kullanıcı en az 2 sayfa gezene kadar gösterme
+const MIN_VISITS = 2;
 
 /**
- * PWA "Ana ekrana ekle" banner — beforeinstallprompt event yakalanır.
- * Kullanıcı 7 gün dismiss ettikten sonra tekrar gösterilir.
- * iOS Safari için ayrı talimat kartı (Safari beforeinstallprompt yayınlamaz).
+ * PWA "Ana ekrana ekle" banner.
  */
 export function PwaInstallBanner() {
   const location = useLocation();
@@ -19,13 +17,11 @@ export function PwaInstallBanner() {
   const [visible, setVisible] = useState(false);
   const [thresholdMet, setThresholdMet] = useState(false);
 
-  // Global pwaInstall singleton'a abone ol — main.tsx'de capture edilmiş event'i takip et
   useEffect(() => {
     const unsub = subscribePwaInstall(setPwaState);
     return unsub;
   }, []);
 
-  // Her route değişikliğinde ziyaret sayacını artır (SPA'de Layout unmount olmaz)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(VISIT_KEY);
@@ -37,18 +33,14 @@ export function PwaInstallBanner() {
 
   useEffect(() => {
     if (!thresholdMet) return;
-    // Standalone'da zaten kurulu — banner gösterme
     if (pwaState.isStandalone) return;
-    // Dismiss snooze kontrolü
     const dismissedAt = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
     if (Date.now() - dismissedAt < DISMISS_TTL_MS) return;
 
     if (pwaState.isIos) {
-      // iOS Safari — manuel talimatlı banner, 4 saniye gecikme
       const t = setTimeout(() => setVisible(true), 4000);
       return () => clearTimeout(t);
     }
-    // Chromium: event yakalandıysa göster
     if (pwaState.canInstallNative) {
       setVisible(true);
     }
@@ -77,11 +69,11 @@ export function PwaInstallBanner() {
           <Smartphone size={16} />
         </span>
         <div className="flex-1">
-          <div className="text-sm font-semibold text-slate-100">Hane Finans uygulamasını yükle</div>
+          <div className="text-sm font-semibold text-slate-100">Hane Finans uygulamasini yukle</div>
           <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
             {isIos
-              ? 'Safari\'de paylaş ikonuna ▸ Ana Ekrana Ekle\'ye dokun. Tam ekran ve hızlı erişim.'
-              : 'Ana ekranına ekle — tarayıcıdan bağımsız tam ekran, daha hızlı açılış.'}
+              ? 'Safari de paylas ikonuna - Ana Ekrana Ekle ye dokun.'
+              : 'Ana ekranina ekle - tarayicidan bagimsiz tam ekran.'}
           </p>
           <div className="mt-2.5 flex items-center gap-2">
             {!isIos && (
@@ -89,14 +81,14 @@ export function PwaInstallBanner() {
                 onClick={install}
                 className="inline-flex items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent/20"
               >
-                <Download size={11} /> Yükle
+                <Download size={11} /> Yukle
               </button>
             )}
             <button
               onClick={dismiss}
               className="text-[11px] text-slate-500 hover:text-slate-300"
             >
-              {isIos ? 'Tamam' : '7 gün gizle'}
+              {isIos ? 'Tamam' : '7 gun gizle'}
             </button>
           </div>
         </div>

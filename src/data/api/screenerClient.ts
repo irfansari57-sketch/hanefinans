@@ -18,12 +18,32 @@ export interface ScreenerSpec {
   explanation: string;
 }
 
+export type QuotaTier = 'anon' | 'free' | 'pro' | 'elite';
+
+export interface QuotaInfo {
+  tier: QuotaTier;
+  /** Tier'a göre günlük max sorgu. */
+  limit: number;
+  /** Bu pencerede kullanılmış sorgu (bu istek dahil). */
+  used: number;
+  /** Geriye kalan sorgu (≥0). */
+  remaining: number;
+  /** Pencerenin sıfırlanacağı unix saniye. */
+  resetAt: number;
+  /** Pencere genişliği (saniye). 86400 = 24 saat. */
+  windowSec: number;
+}
+
 export interface ScreenerResponse {
   ok: boolean;
   spec?: ScreenerSpec;
   error?: string;
+  /** 'QUOTA_EXCEEDED' → kullanıcı tier limitine takıldı. */
+  code?: 'QUOTA_EXCEEDED' | string;
   model?: string;
   raw?: string;
+  quota?: QuotaInfo;
+  retryAfter?: number;
 }
 
 export async function fetchScreenerSpec(query: string, datasetHint?: 'stocks' | 'funds'): Promise<ScreenerResponse | null> {
@@ -33,7 +53,8 @@ export async function fetchScreenerSpec(query: string, datasetHint?: 'stocks' | 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, dataset: datasetHint }),
     });
-    if (!r.ok && r.status !== 502) {
+    // 429 (quota) ve 502 (LLM hata) durumlarında body içinde anlamlı bilgi var — parse et.
+    if (!r.ok && r.status !== 429 && r.status !== 502) {
       const errText = await r.text().catch(() => '');
       return { ok: false, error: `HTTP ${r.status}: ${errText.slice(0, 120)}` };
     }

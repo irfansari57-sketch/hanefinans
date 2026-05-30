@@ -86,6 +86,31 @@ export async function rateLimitCheck(
 }
 
 /**
+ * Tier-aware quota check + increment. rateLimitCheck ile aynı table'ı kullanır
+ * ama farklı bucket prefix'i ile — IP-level rate limit'ten ayrı sayaç tutar.
+ *
+ * Tipik kullanım: /api/ai/screener gibi premium-tier'a göre farklı limit isteyen
+ * endpoint'ler için. Anonymous ise IP, login ise userId identifier olur.
+ *
+ * @param db        D1 binding
+ * @param feature   Özellik adı, ör: "screener", "portfolio"
+ * @param tier      "anon" | "free" | "pro" | "elite"
+ * @param identifier  IP veya user id — tier içinde unique
+ * @param limit     windowSec içinde izin verilen max istek (tier'a göre)
+ * @param windowSec Pencere genişliği (saniye). Genelde günlük: 86400.
+ */
+export async function quotaCheck(
+  db: D1Database,
+  feature: string,
+  tier: string,
+  identifier: string,
+  limit: number,
+  windowSec: number,
+): Promise<RateLimitResult> {
+  return rateLimitCheck(db, `q:${feature}:${tier}`, identifier, limit, windowSec);
+}
+
+/**
  * Bir Request'ten istemci kimliğini (IP) çıkar. Cloudflare CDN'i
  * `CF-Connecting-IP` header'ını set eder; fallback olarak XFF kullan.
  */
@@ -102,7 +127,9 @@ export function getClientIp(req: Request): string {
  * Path'ten endpoint sınıfını (bucket) ve limit'i çıkar.
  *
  * - auth   (login/signup/send-code/verify-code/delete-account) — 10 req/dk
- * - ai     (/api/ai/* + /api/agents/*) — 30 req/saat (pahalı AI çağrıları)
+ * - ai     (/api/ai/* + /api/agents/*) — 60 req/saat (pahalı AI çağrıları için IP cap'i)
+ *          NOT: /api/ai/screener tier-aware quota'ya tabi (handler içinde) — burada
+ *          sadece dakika başına IP burst protection için default'a düşürüyoruz.
  * - default — 60 req/dk (genel API, /api/auth/me dahil)
  *
  * Sayıları artırmak/azaltmak için sadece bu tabloyu değiştir.
@@ -116,8 +143,13 @@ export function classifyRoute(path: string): { bucket: string; limit: number; wi
     // /api/auth/me her sayfa yüklenmesinde çağrılır — default yeterli
     return { bucket: 'default', limit: 60, windowSec: 60 };
   }
+  // /api/ai/screener — tier-aware quota handler içinde uygulanır.
+  // Burada sadece IP burst protection: dakikada 20 (yanlışlıkla butona spam atan kullanıcı).
+  if (path === '/api/ai/screener' || path === '/api/ai/screener/') {
+    return { bucket: 'screener-burst', limit: 20, windowSec: 60 };
+  }
   if (path.startsWith('/api/ai/') || path.startsWith('/api/agents/')) {
-    return { bucket: 'ai', limit: 30, windowSec: 60 * 60 };
+    return { bucket: 'ai', limit: 60, windowSec: 60 * 60 };
   }
   // Public data proxy'leri — Yahoo, TCMB, news, twelvedata, goldapi, vb.
   // Tek sayfa açılışında 100+ paralel istek olabiliyor (örn. /stocks 270 sembol).

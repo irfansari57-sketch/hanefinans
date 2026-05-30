@@ -3,15 +3,29 @@
  *
  * POST /api/ai/screener
  * Body: { query: string, dataset?: 'stocks' | 'funds' }
- * Response: { ok: true, spec: ScreenerSpec, explanation: string, model: string }
+ * Response: {
+ *   ok: true, spec: ScreenerSpec, explanation: string, model: string,
+ *   quota: { tier, limit, used, remaining, resetAt, windowSec }
+ * }
  *
  * Kullanıcının "BIST'te son 1 ayda %5+ getirili bankacılık hisseleri" gibi
  * doğal dil sorgusunu yapılandırılmış filtre objesine çevirir.
  * Frontend bu filtreyi lokal hisse/fon datasine uygular — hızlı, ucuz.
+ *
+ * Tier-aware kota (#Ö pricing): Her tier'ın günlük sorgu hakkı farklı —
+ *   anon (login değil)  → 1 deneme/gün/IP
+ *   free                → 3 sorgu/gün/kullanıcı
+ *   pro                 → 30 sorgu/gün/kullanıcı
+ *   elite               → 150 sorgu/gün/kullanıcı
+ * Limit aşılırsa 429 + JSON içinde quota bilgisi → frontend upgrade prompt gösterir.
  */
 
-interface Env {
+import { quotaCheck, getClientIp } from '../../_rate-limit';
+import { getAuthedUser, type Env as AuthEnv } from '../auth/_utils';
+
+interface Env extends AuthEnv {
   ANTHROPIC_API_KEY?: string;
+  DB: D1Database;
 }
 
 type Op = '>' | '>=' | '<' | '<=' | '=' | '!=' | 'includes' | 'in';
@@ -33,6 +47,22 @@ interface ScreenerSpec {
 interface AnthropicResponse {
   content: Array<{ text: string; type: string }>;
 }
+
+type Tier = 'anon' | 'free' | 'pro' | 'elite';
+
+interface TierQuotaConfig {
+  /** Günlük max sorgu sayısı. */
+  limit: number;
+  /** Pencere genişliği (saniye) — varsayılan 24 saat. */
+  windowSec: number;
+}
+
+const TIER_QUOTAS: Record<Tier, TierQuotaConfig> = {
+  anon:  { limit: 1,   windowSec: 60 * 60 * 24 },
+  free:  { limit: 3,   windowSec: 60 * 60 * 24 },
+  pro:   { limit: 30,  windowSec: 60 * 60 * 24 },
+  elite: { limit: 150, windowSec: 60 * 60 * 24 },
+};
 
 const STOCK_FIELDS = `
 HİSSE ALANLARI (dataset='stocks'):
@@ -85,6 +115,22 @@ KURALLAR:
 ÇIKTI: SADECE geçerli JSON, başka metin yok. Örnek:
 {"dataset":"stocks","filters":[{"field":"sector","op":"includes","value":"Bankacılık"},{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"explanation":"Son 1 ayda %5+ getirili bankacılık hisseleri"}`;
 
+function tierFromUser(user: { tier?: 'free' | 'pro' | 'elite' } | null): Tier {
+  if (!user) return 'anon';
+  return user.tier ?? 'free';
+}
+
+function quotaPayload(tier: Tier, used: number, resetAt: number, config: TierQuotaConfig) {
+  return {
+    tier,
+    limit: config.limit,
+    used,
+    remaining: Math.max(0, config.limit - used),
+    resetAt,
+    windowSec: config.windowSec,
+  };
+}
+
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.ANTHROPIC_API_KEY) {
     return new Response(JSON.stringify({ ok: false, error: 'ANTHROPIC_API_KEY not set' }), {
@@ -111,6 +157,59 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 
+  // --- Tier-aware quota: auth varsa user, yoksa IP key'i kullan ---
+  const auth = await getAuthedUser(request, env).catch(() => null);
+  const tier: Tier = tierFromUser(auth?.user ?? null);
+  const identifier = auth?.user ? `u:${auth.user.id}` : `ip:${getClientIp(request)}`;
+  const quotaConfig = TIER_QUOTAS[tier];
+
+  // D1 yoksa fail-open (dev/preview) — middleware zaten production'da fail-closed yapıyor.
+  let quotaInfo;
+  if (env.DB) {
+    const check = await quotaCheck(
+      env.DB,
+      'screener',
+      tier,
+      identifier,
+      quotaConfig.limit,
+      quotaConfig.windowSec,
+    );
+    quotaInfo = quotaPayload(tier, check.count, check.resetAt, quotaConfig);
+
+    if (!check.allowed) {
+      const errorMsg =
+        tier === 'anon'
+          ? 'Ücretsiz deneme hakkın bitti. Üye ol, günlük 3 sorgu hakkı kazan.'
+          : tier === 'free'
+          ? `Günlük ${quotaConfig.limit} sorgu hakkın doldu. Pro\'ya geç, günlük ${TIER_QUOTAS.pro.limit} sorgu kullan.`
+          : tier === 'pro'
+          ? `Günlük ${quotaConfig.limit} sorgu hakkın doldu. Elite\'a geç, günlük ${TIER_QUOTAS.elite.limit} sorgu kullan.`
+          : `Günlük ${quotaConfig.limit} sorgu hakkın doldu. ${formatResetHint(check.resetAt)} sonra yenilenir.`;
+
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: errorMsg,
+          code: 'QUOTA_EXCEEDED',
+          quota: quotaInfo,
+          retryAfter: check.retryAfter,
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+            'Retry-After': String(check.retryAfter),
+            'X-Quota-Tier': tier,
+            'X-Quota-Limit': String(quotaConfig.limit),
+            'X-Quota-Used': String(check.count),
+            'X-Quota-Reset': String(check.resetAt),
+          },
+        },
+      );
+    }
+  }
+
   // Çok uzun sorguları kes (prompt injection + maliyet kontrolü)
   const safeQuery = userQuery.slice(0, 500);
   const datasetHint = body.dataset ? `\n\n(Kullanıcı ipucu: dataset='${body.dataset}' olmalı.)` : '';
@@ -135,7 +234,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!r.ok) {
       const errText = await r.text();
-      return new Response(JSON.stringify({ ok: false, error: `Anthropic ${r.status}: ${errText.slice(0, 200)}` }), {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: `Anthropic ${r.status}: ${errText.slice(0, 200)}`,
+        quota: quotaInfo,
+      }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -163,6 +266,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         ok: false,
         error: 'LLM JSON parse hatası',
         raw: raw.slice(0, 300),
+        quota: quotaInfo,
       }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +275,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     // Güvenlik: spec sanity check
     if (!spec.dataset || !Array.isArray(spec.filters)) {
-      return new Response(JSON.stringify({ ok: false, error: 'Geçersiz spec yapısı', spec }), {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: 'Geçersiz spec yapısı',
+        spec,
+        quota: quotaInfo,
+      }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -185,20 +294,39 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       ok: true,
       spec,
       model: 'claude-haiku-4-5',
+      quota: quotaInfo,
     }), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
+        ...(quotaInfo
+          ? {
+              'X-Quota-Tier': quotaInfo.tier,
+              'X-Quota-Limit': String(quotaInfo.limit),
+              'X-Quota-Used': String(quotaInfo.used),
+              'X-Quota-Reset': String(quotaInfo.resetAt),
+            }
+          : {}),
       },
     });
   } catch (e) {
     return new Response(JSON.stringify({
       ok: false,
       error: `Network error: ${(e as Error).message}`,
+      quota: quotaInfo,
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 };
+
+/** "3 saat", "23 dk", "12 sn" gibi insancıl reset ipucu üretir. */
+function formatResetHint(resetAtSec: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const secs = Math.max(0, resetAtSec - now);
+  if (secs >= 3600) return `${Math.ceil(secs / 3600)} saat`;
+  if (secs >= 60) return `${Math.ceil(secs / 60)} dk`;
+  return `${secs} sn`;
+}

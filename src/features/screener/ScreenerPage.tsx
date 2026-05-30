@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Send, AlertCircle, Info, RefreshCw, ChevronRight, ExternalLink } from 'lucide-react';
+import { Sparkles, Send, AlertCircle, Info, RefreshCw, ChevronRight, ExternalLink, Crown, Zap, Lock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { fetchScreenerSpec, applySpec, type ScreenerSpec } from '@/data/api/screenerClient';
+import { fetchScreenerSpec, applySpec, type ScreenerSpec, type QuotaInfo } from '@/data/api/screenerClient';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import type { FundPerformance, Stock } from '@/data/types';
 import { MOCK_STOCKS } from '@/data/mock';
@@ -57,6 +57,8 @@ export function ScreenerPage() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const [spec, setSpec] = useState<ScreenerSpec | null>(null);
   const [resultsStocks, setResultsStocks] = useState<EnrichedStock[]>([]);
   const [resultsFunds, setResultsFunds] = useState<FundPerformance[]>([]);
@@ -142,15 +144,22 @@ export function ScreenerPage() {
     if (!userQ) return;
     setLoading(true);
     setError(null);
+    setQuotaExceeded(false);
     setSpec(null);
     setResultsStocks([]);
     setResultsFunds([]);
     setDatasetUsed(null);
     try {
       const r = await fetchScreenerSpec(userQ);
+      if (r?.quota) setQuota(r.quota);
       if (!r || !r.ok || !r.spec) {
         setError(r?.error ?? 'AI sorgu çözümlemedi.');
-        track('screener.fail', { len: userQ.length, error: r?.error ?? 'unknown' });
+        if (r?.code === 'QUOTA_EXCEEDED') {
+          setQuotaExceeded(true);
+          track('screener.quota_blocked', { tier: r.quota?.tier ?? 'unknown', limit: r.quota?.limit ?? 0 });
+        } else {
+          track('screener.fail', { len: userQ.length, error: r?.error ?? 'unknown' });
+        }
         return;
       }
       setSpec(r.spec);
@@ -189,12 +198,13 @@ export function ScreenerPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
-            disabled={loading}
+            disabled={loading || (quota?.remaining === 0)}
           />
           <button
             onClick={() => submit()}
-            disabled={!query.trim() || loading || !allReady}
+            disabled={!query.trim() || loading || !allReady || (quota?.remaining === 0)}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-bg-card disabled:opacity-40"
+            title={quota?.remaining === 0 ? 'Günlük sorgu hakkı bitti' : undefined}
           >
             {loading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
             Sorgula
@@ -207,6 +217,8 @@ export function ScreenerPage() {
             Veri yükleniyor… ({datasetsReady.stocks ? '✓' : '·'} Hisse · {datasetsReady.funds ? '✓' : '·'} Fon)
           </div>
         )}
+
+        {quota && <QuotaBadge quota={quota} />}
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           <span className="text-[10px] uppercase tracking-wider text-slate-500">Örnek:</span>
@@ -223,11 +235,15 @@ export function ScreenerPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-3 flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs">
-          <AlertCircle size={14} className="mt-0.5 shrink-0 text-danger" />
-          <span className="text-slate-300">{error}</span>
-        </div>
+      {quotaExceeded && quota ? (
+        <QuotaExceededCard quota={quota} message={error ?? ''} />
+      ) : (
+        error && (
+          <div className="mb-3 flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs">
+            <AlertCircle size={14} className="mt-0.5 shrink-0 text-danger" />
+            <span className="text-slate-300">{error}</span>
+          </div>
+        )
       )}
 
       {spec && (
@@ -484,6 +500,163 @@ function StockSummary({ rows }: { rows: EnrichedStock[] }) {
       <SummaryCard label="Ortalama 1 Ay %" mainValue={fmtAvg(r1a.avg, r1a.count)} sub={fmtRatio(r1a)} tone={r1a.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 3 Ay %" mainValue={fmtAvg(r3a.avg, r3a.count)} sub={fmtRatio(r3a)} tone={r3a.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 1 Yıl %" mainValue={fmtAvg(r1y.avg, r1y.count)} sub={fmtRatio(r1y)} tone={r1y.avg >= 0 ? 'pos' : 'neg'} />
+    </div>
+  );
+}
+
+// --- Quota UI: kullanım rozeti + limit aşıldığında upgrade kartı ---
+
+const TIER_LABEL: Record<QuotaInfo['tier'], string> = {
+  anon: 'Ücretsiz Deneme',
+  free: 'Ücretsiz',
+  pro: 'Pro',
+  elite: 'Elite',
+};
+
+function formatResetIn(resetAtSec: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const secs = Math.max(0, resetAtSec - now);
+  if (secs >= 3600) return `${Math.ceil(secs / 3600)} saat`;
+  if (secs >= 60) return `${Math.ceil(secs / 60)} dk`;
+  return `${secs} sn`;
+}
+
+function QuotaBadge({ quota }: { quota: QuotaInfo }) {
+  const pct = Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100);
+  const danger = quota.remaining === 0;
+  const warn = !danger && quota.remaining <= 1;
+  const tone = danger
+    ? 'border-danger/40 bg-danger/10 text-danger'
+    : warn
+    ? 'border-warning/40 bg-warning/10 text-warning'
+    : 'border-border bg-bg-card text-slate-400';
+  const Icon = quota.tier === 'elite' ? Crown : quota.tier === 'pro' ? Zap : Lock;
+  return (
+    <div className={cn('mt-2 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px]', tone)}>
+      <Icon size={11} />
+      <span className="font-semibold">{TIER_LABEL[quota.tier]}</span>
+      <span className="opacity-60">·</span>
+      <span className="tabular-nums">
+        Bugün <strong>{quota.used}/{quota.limit}</strong> sorgu
+      </span>
+      <span className="opacity-60">·</span>
+      <span>{formatResetIn(quota.resetAt)} sonra yenilenir</span>
+      <span className="ml-1 h-1 w-12 overflow-hidden rounded-full bg-bg-soft">
+        <span
+          className={cn(
+            'block h-full rounded-full transition-all',
+            danger ? 'bg-danger' : warn ? 'bg-warning' : 'bg-accent',
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+    </div>
+  );
+}
+
+function QuotaExceededCard({ quota, message }: { quota: QuotaInfo; message: string }) {
+  const isAnon = quota.tier === 'anon';
+  const isFree = quota.tier === 'free';
+  const isPro = quota.tier === 'pro';
+  const isElite = quota.tier === 'elite';
+
+  return (
+    <div className="mb-3 rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/10 to-accent/5 p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15">
+          {isElite ? <Crown size={16} className="text-accent" /> : <Zap size={16} className="text-accent" />}
+        </div>
+        <div className="flex-1">
+          <div className="text-sm font-semibold text-slate-100">
+            {isAnon ? 'Ücretsiz deneme hakkın bitti' : 'Günlük sorgu hakkın doldu'}
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">{message}</p>
+
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <TierCard
+              tier="free"
+              limit={3}
+              current={isFree}
+              cta={isAnon ? 'Üye ol' : undefined}
+              ctaLink={isAnon ? '/uyelik' : undefined}
+            />
+            <TierCard
+              tier="pro"
+              limit={30}
+              current={isPro}
+              cta={!isPro && !isElite ? "Pro'ya geç" : undefined}
+              ctaLink="/uyelik"
+              highlighted={isFree || isAnon}
+            />
+            <TierCard
+              tier="elite"
+              limit={150}
+              current={isElite}
+              cta={isElite ? undefined : "Elite'a geç"}
+              ctaLink="/uyelik"
+              highlighted={isPro}
+            />
+          </div>
+
+          <p className="mt-3 text-[10px] text-slate-500">
+            Kotalar <strong>{formatResetIn(quota.resetAt)}</strong> sonra yenilenir.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TierCard({
+  tier,
+  limit,
+  current,
+  cta,
+  ctaLink,
+  highlighted,
+}: {
+  tier: 'free' | 'pro' | 'elite';
+  limit: number;
+  current: boolean;
+  cta?: string;
+  ctaLink?: string;
+  highlighted?: boolean;
+}) {
+  const Icon = tier === 'elite' ? Crown : tier === 'pro' ? Zap : Lock;
+  return (
+    <div
+      className={cn(
+        'rounded-xl border p-2.5 transition',
+        current
+          ? 'border-accent/50 bg-accent/10'
+          : highlighted
+          ? 'border-accent/30 bg-bg-card hover:border-accent/50'
+          : 'border-border bg-bg-card',
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <Icon size={12} className={current ? 'text-accent' : 'text-slate-400'} />
+        <span className={cn('text-[11px] font-semibold uppercase tracking-wider', current ? 'text-accent' : 'text-slate-300')}>
+          {TIER_LABEL[tier]}
+        </span>
+        {current && <span className="ml-auto text-[9px] text-accent/80">Mevcut</span>}
+      </div>
+      <div className="mt-1 text-base font-bold text-slate-100 tabular-nums">
+        {limit}<span className="ml-1 text-[10px] font-normal text-slate-500">sorgu/gün</span>
+      </div>
+      {cta && ctaLink && (
+        <Link
+          to={ctaLink}
+          className={cn(
+            'mt-2 inline-flex w-full items-center justify-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition',
+            highlighted
+              ? 'bg-accent text-bg-card hover:bg-accent/90'
+              : 'border border-accent/30 text-accent hover:bg-accent/10',
+          )}
+        >
+          {cta} <ChevronRight size={10} />
+        </Link>
+      )}
     </div>
   );
 }

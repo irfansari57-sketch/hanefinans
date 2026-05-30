@@ -54,10 +54,13 @@ html.light {
   }
   body {
     @apply bg-bg text-slate-100 antialiased;
-    /* Premium sistem font stack — Apple SF Pro, Windows Segoe UI Variable,
-       Android Roboto. CDN fetch yok, native + native = en hızlı + en premium. */
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    /* Premium tipografi — Inter primary (cross-platform marka tutarlılığı +
+       tabular nums finansal tablolar için kritik); system stack fallback
+       (Inter yüklenene kadar FOIT yok, sonrasında progressive enhancement). */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* cv02/03/04: Inter alternatif harf formları, cv11: alt-form 1 (kuyruksuz),
+       ss01: stilistik set, tnum: TABULAR NUMS — sayı kolonu hizalama. */
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'tnum';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -475,6 +478,38 @@ html.light .logo-text-3d {
 main {
   animation: page-fade-in 280ms ease-out;
 }
+
+/* ========== List stagger (Apple App Store benzeri sıralı belirme) ==========
+   Kullanım: parent'a .stagger-rows ekle, child <tr> veya .stagger-item
+   sınıflı elementler 30ms gecikme ile sırayla belirir. Max 12 item animate
+   olur; sonrası direkt görünür (uzun listelerde gözle algılanmaz zaten).
+   prefers-reduced-motion'da otomatik kapalı. */
+@keyframes row-fade-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stagger-rows > tr,
+.stagger-rows > .stagger-item {
+  animation: row-fade-up 320ms ease-out both;
+  animation-delay: 0ms;
+}
+.stagger-rows > tr:nth-child(2),  .stagger-rows > .stagger-item:nth-child(2)  { animation-delay:  30ms; }
+.stagger-rows > tr:nth-child(3),  .stagger-rows > .stagger-item:nth-child(3)  { animation-delay:  60ms; }
+.stagger-rows > tr:nth-child(4),  .stagger-rows > .stagger-item:nth-child(4)  { animation-delay:  90ms; }
+.stagger-rows > tr:nth-child(5),  .stagger-rows > .stagger-item:nth-child(5)  { animation-delay: 120ms; }
+.stagger-rows > tr:nth-child(6),  .stagger-rows > .stagger-item:nth-child(6)  { animation-delay: 150ms; }
+.stagger-rows > tr:nth-child(7),  .stagger-rows > .stagger-item:nth-child(7)  { animation-delay: 180ms; }
+.stagger-rows > tr:nth-child(8),  .stagger-rows > .stagger-item:nth-child(8)  { animation-delay: 210ms; }
+.stagger-rows > tr:nth-child(9),  .stagger-rows > .stagger-item:nth-child(9)  { animation-delay: 240ms; }
+.stagger-rows > tr:nth-child(10), .stagger-rows > .stagger-item:nth-child(10) { animation-delay: 270ms; }
+.stagger-rows > tr:nth-child(11), .stagger-rows > .stagger-item:nth-child(11) { animation-delay: 300ms; }
+.stagger-rows > tr:nth-child(12), .stagger-rows > .stagger-item:nth-child(12) { animation-delay: 330ms; }
+/* 13+ direkt göster — kullanıcı zaten scroll etmeden göremez */
+.stagger-rows > tr:nth-child(n+13),
+.stagger-rows > .stagger-item:nth-child(n+13) {
+  animation: none;
+}
+
 
 /* ========== Skeleton loader ========== */
 @keyframes skeleton-shimmer {

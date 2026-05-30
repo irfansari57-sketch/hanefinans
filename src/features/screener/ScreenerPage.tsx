@@ -384,7 +384,7 @@ function ScreenerStocksTable({
             <SortableHeader label="1 Yıl %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} />
           </tr>
         </thead>
-        <tbody>
+        <tbody className="stagger-rows">
           {rows.map((s, i) => (
             <tr key={s.symbol} className="group border-b border-border/60 transition hover:bg-bg-card">
               <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-left text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
@@ -444,7 +444,7 @@ function ScreenerFundsTable({
             <th className="px-2 py-2.5 text-center w-24">İşlem</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="stagger-rows">
           {rows.map((f, i) => (
             <tr key={f.code} className="group border-b border-border/60 transition hover:bg-bg-card">
               <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-left text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
@@ -712,6 +712,10 @@ function FundSummary({ rows }: { rows: FundPerformance[] }) {
       <SummaryCard label="Ortalama 1 Hafta %" mainValue={fmtAvg(week.avg, week.count)} sub={fmtRatio(week)} tone={week.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 1 Ay %" mainValue={fmtAvg(month.avg, month.count)} sub={fmtRatio(month)} tone={month.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 1 Yıl %" mainValue={fmtAvg(year.avg, year.count)} sub={fmtRatio(year)} tone={year.avg >= 0 ? 'pos' : 'neg'} />
+    </div>
+  );
+}
+ar.avg >= 0 ? 'pos' : 'neg'} />
     </div>
   );
 }

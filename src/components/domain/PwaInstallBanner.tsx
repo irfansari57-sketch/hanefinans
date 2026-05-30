@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Download, X, Smartphone } from 'lucide-react';
 
 const DISMISSED_KEY = 'fa.pwaInstall.dismissedAt';
@@ -17,28 +18,31 @@ interface BeforeInstallPromptEvent extends Event {
  * iOS Safari için ayrı talimat kartı (Safari beforeinstallprompt yayınlamaz).
  */
 export function PwaInstallBanner() {
+  const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [isIos, setIsIos] = useState(false);
+  const [thresholdMet, setThresholdMet] = useState(false);
+
+  // Her route değişikliğinde ziyaret sayacını artır (SPA'de Layout unmount olmaz)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(VISIT_KEY);
+      const visits = (raw ? parseInt(raw, 10) : 0) + 1;
+      localStorage.setItem(VISIT_KEY, String(visits));
+      if (visits >= MIN_VISITS) setThresholdMet(true);
+    } catch { /* localStorage yoksa */ }
+  }, [location.pathname]);
 
   useEffect(() => {
+    if (!thresholdMet) return;
+
     const dismissedAt = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
     if (Date.now() - dismissedAt < DISMISS_TTL_MS) return;
 
     // Standalone modda zaten kurulu — banner gösterme
     if (window.matchMedia('(display-mode: standalone)').matches) return;
-    // Safari: navigator.standalone === true
     if ((navigator as Navigator & { standalone?: boolean }).standalone) return;
-
-    // Ziyaret sayısı eşiği — her sayfa açılışında +1, MIN_VISITS'a ulaşmadan
-    // kullanıcıyı rahatsız etme. "Sevimsiz baskıcı prompt" hissi olmasın.
-    let visits = 0;
-    try {
-      const raw = localStorage.getItem(VISIT_KEY);
-      visits = (raw ? parseInt(raw, 10) : 0) + 1;
-      localStorage.setItem(VISIT_KEY, String(visits));
-    } catch { /* localStorage yoksa olduğu gibi devam */ }
-    if (visits < MIN_VISITS) return;
 
     const ua = navigator.userAgent.toLowerCase();
     const iosLike = /iphone|ipad|ipod/.test(ua) && !/crios|fxios/.test(ua);
@@ -49,6 +53,13 @@ export function PwaInstallBanner() {
       return () => clearTimeout(t);
     }
 
+    // Chromium tarayıcılarda Chrome heuristiği gerek — biz önceden yakalamış
+    // olabiliriz (deferredPrompt). Eğer event henüz gelmediyse bekle.
+    if (deferredPrompt) {
+      setVisible(true);
+      return;
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -56,7 +67,7 @@ export function PwaInstallBanner() {
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [thresholdMet, deferredPrompt]);
 
   const dismiss = () => {
     localStorage.setItem(DISMISSED_KEY, String(Date.now()));

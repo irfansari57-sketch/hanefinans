@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, Send, AlertCircle, Info, RefreshCw, ChevronRight, ExternalLink, Crown, Zap, Lock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -18,26 +18,26 @@ type StockSortKey = 'price' | 'r1g' | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'r1y';
 type FundSortKey = 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'year';
 
 /**
- * DoÄŸal Dil Hisse/Fon Sorgusu â€” kullanÄ±cÄ± TÃ¼rkÃ§e doÄŸal dilde sorgu yazar,
- * Claude Haiku sorguyu yapÄ±landÄ±rÄ±lmÄ±ÅŸ filtreye Ã§evirir, lokal data Ã¼zerinde
- * uygulanÄ±p sonuÃ§ tablolarÄ± sunulur.
+ * Doğal Dil Hisse/Fon Sorgusu — kullanıcı Türkçe doğal dilde sorgu yazar,
+ * Claude Haiku sorguyu yapılandırılmış filtreye çevirir, lokal data üzerinde
+ * uygulanıp sonuç tabloları sunulur.
  *
- * Ã–rnek sorgular:
- *  - "Son 1 ayda %5+ getirili bankacÄ±lÄ±k hisseleri"
- *  - "KatÄ±lÄ±m fonlarÄ±nda 1 yÄ±l en iyi 10"
- *  - "Holding sektÃ¶rÃ¼nde gÃ¼nlÃ¼k %2+ artanlar"
+ * Örnek sorgular:
+ *  - "Son 1 ayda %5+ getirili bankacılık hisseleri"
+ *  - "Katılım fonlarında 1 yıl en iyi 10"
+ *  - "Holding sektöründe günlük %2+ artanlar"
  *  - "Hisse Senedi fonu, 3 ayda %10'dan fazla"
  */
 
 const EXAMPLES = [
-  'Son 1 ayda %5+ getirili bankacÄ±lÄ±k hisseleri',
-  'Holding sektÃ¶rÃ¼nde yÄ±llÄ±k en iyi 20',
-  'KatÄ±lÄ±m fonlarÄ±nda 1 yÄ±l en iyi 10',
+  'Son 1 ayda %5+ getirili bankacılık hisseleri',
+  'Holding sektöründe yıllık en iyi 20',
+  'Katılım fonlarında 1 yıl en iyi 10',
   'Hisse senedi fonu, 3 ayda %15+ getirili',
-  'Savunma sektÃ¶rÃ¼, 3 ayda en yÃ¼ksek 10',
+  'Savunma sektörü, 3 ayda en yüksek 10',
 ];
 
-// Filter spec'e geÃ§mek iÃ§in zenginleÅŸtirilmiÅŸ hisse satÄ±rÄ±
+// Filter spec'e geçmek için zenginleştirilmiş hisse satırı
 interface EnrichedStock {
   symbol: string;
   name: string;
@@ -64,12 +64,12 @@ export function ScreenerPage() {
   const [resultsFunds, setResultsFunds] = useState<FundPerformance[]>([]);
   const [datasetUsed, setDatasetUsed] = useState<'stocks' | 'funds' | null>(null);
 
-  // Veri setleri (Ã¶nceden yÃ¼klenir, sorgu hÄ±zlÄ± Ã§alÄ±ÅŸsÄ±n diye)
+  // Veri setleri (önceden yüklenir, sorgu hızlı çalışsın diye)
   const [allStocks, setAllStocks] = useState<EnrichedStock[]>([]);
   const [allFunds, setAllFunds] = useState<FundPerformance[]>([]);
   const [datasetsReady, setDatasetsReady] = useState({ stocks: false, funds: false });
 
-  // SÄ±ralama state'leri (hisse + fon ayrÄ±)
+  // Sıralama state'leri (hisse + fon ayrı)
   const [stockSortKey, setStockSortKey] = useState<StockSortKey>('r3a');
   const [stockSortDir, setStockSortDir] = useState<'asc' | 'desc'>('desc');
   const setStockSort = (k: StockSortKey) => {
@@ -83,12 +83,12 @@ export function ScreenerPage() {
     else { setFundSortKey(k); setFundSortDir('desc'); }
   };
 
-  // Hisse + returns + quote snapshot â€” paralel prefetch
+  // Hisse + returns + quote snapshot — paralel prefetch
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        // Returns (period %) + quote (price + gÃ¼nlÃ¼k changePct) paralel
+        // Returns (period %) + quote (price + günlük changePct) paralel
         const [retRes, quoteRes] = await Promise.all([
           fetch('/api/yahoo/returns-snapshot').catch(() => null),
           fetch('/api/yahoo/snapshot').catch(() => null),
@@ -122,7 +122,7 @@ export function ScreenerPage() {
 
         if (!alive) return;
 
-        // BIST_UNIQUE + MOCK_STOCKS birleÅŸtir â€” quote varsa onu Ã¶ne al
+        // BIST_UNIQUE + MOCK_STOCKS birleştir — quote varsa onu öne al
         const seen = new Set<string>();
         const enriched: EnrichedStock[] = [];
         const consume = (sym: string, name: string, sector: string, fallbackPrice: number, fallbackChange: number) => {
@@ -130,7 +130,7 @@ export function ScreenerPage() {
           seen.add(sym);
           const ret = returnsMap[sym] ?? {};
           const q = quoteMap[sym];
-          // Snapshot quote varsa fiyat ve gÃ¼n% onu kullan, yoksa MOCK fallback
+          // Snapshot quote varsa fiyat ve gün% onu kullan, yoksa MOCK fallback
           const price = q && Number.isFinite(q.price) && q.price > 0 ? q.price : fallbackPrice;
           const changePct = q && Number.isFinite(q.changePct) ? q.changePct : fallbackChange;
           enriched.push({
@@ -154,7 +154,7 @@ export function ScreenerPage() {
     return () => { alive = false; };
   }, []);
 
-  // Fonlar â€” TEFAS feed
+  // Fonlar — TEFAS feed
   useEffect(() => {
     let alive = true;
     loadFundsAsPerformance().then((r) => {
@@ -181,7 +181,7 @@ export function ScreenerPage() {
       const r = await fetchScreenerSpec(userQ);
       if (r?.quota) setQuota(r.quota);
       if (!r || !r.ok || !r.spec) {
-        setError(r?.error ?? 'AI sorgu Ã§Ã¶zÃ¼mlemedi.');
+        setError(r?.error ?? 'AI sorgu çözümlemedi.');
         if (r?.code === 'QUOTA_EXCEEDED') {
           setQuotaExceeded(true);
           track('screener.quota_blocked', { tier: r.quota?.tier ?? 'unknown', limit: r.quota?.limit ?? 0 });
@@ -210,11 +210,11 @@ export function ScreenerPage() {
 
   return (
     <>
-      <SeoHead title="AkÄ±llÄ± Sorgu" description="DoÄŸal dil ile BIST hisse ve TEFAS fon sorgulamasÄ±. AI tabanlÄ± screener â€” kendi kriterlerinle hisse ve fon bul." path="/sorgu" />
+      <SeoHead title="Akıllı Sorgu" description="Doğal dil ile BIST hisse ve TEFAS fon sorgulaması. AI tabanlı screener — kendi kriterlerinle hisse ve fon bul." path="/sorgu" />
 
       <PageHeader
-        title="AkÄ±llÄ± Sorgu"
-        subtitle="DoÄŸal dilde yaz, AI sorguyu filtreye Ã§evirsin, hisse ve fon ara."
+        title="Akıllı Sorgu"
+        subtitle="Doğal dilde yaz, AI sorguyu filtreye çevirsin, hisse ve fon ara."
       />
 
       <div className="mb-4 rounded-xl border border-border bg-bg-soft p-3">
@@ -222,7 +222,7 @@ export function ScreenerPage() {
           <Sparkles size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-accent" />
           <input
             className="input pl-8 pr-24"
-            placeholder='Ã–rn: "son 1 ayda %5+ getirili bankacÄ±lÄ±k hisseleri"'
+            placeholder='Örn: "son 1 ayda %5+ getirili bankacılık hisseleri"'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
@@ -232,7 +232,7 @@ export function ScreenerPage() {
             onClick={() => submit()}
             disabled={!query.trim() || loading || !allReady || (quota?.remaining === 0)}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-bg-card disabled:opacity-40"
-            title={quota?.remaining === 0 ? 'GÃ¼nlÃ¼k sorgu hakkÄ± bitti' : undefined}
+            title={quota?.remaining === 0 ? 'Günlük sorgu hakkı bitti' : undefined}
           >
             {loading ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
             Sorgula
@@ -242,14 +242,14 @@ export function ScreenerPage() {
         {!allReady && (
           <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-slate-500">
             <RefreshCw size={10} className="animate-spin text-accent" />
-            Veri yÃ¼kleniyorâ€¦ ({datasetsReady.stocks ? 'âœ“' : 'Â·'} Hisse Â· {datasetsReady.funds ? 'âœ“' : 'Â·'} Fon)
+            Veri yükleniyor… ({datasetsReady.stocks ? '✓' : '·'} Hisse · {datasetsReady.funds ? '✓' : '·'} Fon)
           </div>
         )}
 
         {quota && <QuotaBadge quota={quota} />}
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500">Ã–rnek:</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500">Örnek:</span>
           {EXAMPLES.map((ex) => (
             <button
               key={ex}
@@ -290,7 +290,7 @@ export function ScreenerPage() {
                 ))}
                 {spec.sort && (
                   <span className="rounded bg-bg-card px-1.5 py-0.5">
-                    sÄ±rala: {spec.sort.field} {spec.sort.dir === 'asc' ? 'â†‘' : 'â†“'}
+                    sırala: {spec.sort.field} {spec.sort.dir === 'asc' ? '↑' : '↓'}
                   </span>
                 )}
                 <span className="rounded bg-bg-card px-1.5 py-0.5">limit: {spec.limit}</span>
@@ -300,7 +300,7 @@ export function ScreenerPage() {
         </div>
       )}
 
-      {/* Hisse sonuÃ§larÄ± */}
+      {/* Hisse sonuçları */}
       {datasetUsed === 'stocks' && resultsStocks.length > 0 && (
         <>
           <StockSummary rows={resultsStocks} />
@@ -319,7 +319,7 @@ export function ScreenerPage() {
         </>
       )}
 
-      {/* Fon sonuÃ§larÄ± */}
+      {/* Fon sonuçları */}
       {datasetUsed === 'funds' && resultsFunds.length > 0 && (
         <>
           <FundSummary rows={resultsFunds} />
@@ -341,13 +341,13 @@ export function ScreenerPage() {
       {datasetUsed && (datasetUsed === 'stocks' ? resultsStocks : resultsFunds).length === 0 && !loading && (
         <div className="rounded-xl border border-border bg-bg-soft p-6 text-center">
           <Sparkles size={28} className="mx-auto text-slate-600" />
-          <p className="mt-2 text-sm text-slate-300">Bu kriterlere uyan sonuÃ§ yok.</p>
-          <p className="mt-1 text-[11px] text-slate-500">Filtreyi gevÅŸet veya farklÄ± sorgu dene.</p>
+          <p className="mt-2 text-sm text-slate-300">Bu kriterlere uyan sonuç yok.</p>
+          <p className="mt-1 text-[11px] text-slate-500">Filtreyi gevşet veya farklı sorgu dene.</p>
         </div>
       )}
 
       <p className="mt-4 text-[10px] text-slate-500">
-        âš ï¸ Bu sayfa AI tabanlÄ± bir araÃ§tÄ±r; Ã§Ä±ktÄ±larÄ± yatÄ±rÄ±m tavsiyesi deÄŸildir. Verilerin doÄŸruluÄŸunu baÄŸÄ±msÄ±z teyit et.
+        ⚠️ Bu sayfa AI tabanlı bir araçtır; çıktıları yatırım tavsiyesi değildir. Verilerin doğruluğunu bağımsız teyit et.
       </p>
     </>
   );
@@ -365,7 +365,7 @@ function ScreenerStocksTable({
   const sign = (v: number | undefined) => (v != null && v >= 0 ? '+' : '');
   const tone = (v: number | undefined) =>
     v == null || !Number.isFinite(v) ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
-  const fmt = (v: number | undefined) => v == null || !Number.isFinite(v) ? 'â€”' : `${sign(v)}${v.toFixed(2)}%`;
+  const fmt = (v: number | undefined) => v == null || !Number.isFinite(v) ? '—' : `${sign(v)}${v.toFixed(2)}%`;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
@@ -374,14 +374,14 @@ function ScreenerStocksTable({
           <tr>
             <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
             <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
-            <th className="px-2 py-2.5 text-left hidden md:table-cell">Åžirket / SektÃ¶r</th>
+            <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
             <SortableHeader label="Fiyat" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-            <SortableHeader label="GÃ¼n %" sortKey="r1g" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="Gün %" sortKey="r1g" activeKey={sortKey} dir={sortDir} onClick={setSort} />
             <SortableHeader label="1 Hafta %" sortKey="r1h" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
             <SortableHeader label="1 Ay %" sortKey="r1a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
             <SortableHeader label="3 Ay %" sortKey="r3a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
             <SortableHeader label="6 Ay %" sortKey="r6a" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
-            <SortableHeader label="1 YÄ±l %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="1 Yıl %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} />
           </tr>
         </thead>
         <tbody className="stagger-rows">
@@ -398,7 +398,7 @@ function ScreenerStocksTable({
                 <div className="truncate max-w-[200px] text-slate-200">{s.name}</div>
                 {s.sector && <div className="mt-0.5 text-[9px] text-slate-500">{s.sector}</div>}
               </td>
-              <td className="px-2 py-2 text-right tabular-nums text-slate-100">{s.price > 0 ? formatMoney(s.price) : 'â€”'}</td>
+              <td className="px-2 py-2 text-right tabular-nums text-slate-100">{s.price > 0 ? formatMoney(s.price) : '—'}</td>
               <td className={cn('px-2 py-2 text-right tabular-nums font-medium', tone(s.r1g))}>{fmt(s.r1g)}</td>
               <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', tone(s.r1h))}>{fmt(s.r1h)}</td>
               <td className={cn('px-2 py-2 text-right tabular-nums', tone(s.r1a))}>{fmt(s.r1a)}</td>
@@ -425,7 +425,7 @@ function ScreenerFundsTable({
   const sign = (v: number) => (v >= 0 ? '+' : '');
   const tone = (v: number | undefined) =>
     v == null || !Number.isFinite(v) ? 'text-slate-500' : v >= 0 ? 'text-success' : 'text-danger';
-  const fmt = (v: number | undefined) => v == null || !Number.isFinite(v) ? 'â€”' : `${sign(v)}${v.toFixed(2)}%`;
+  const fmt = (v: number | undefined) => v == null || !Number.isFinite(v) ? '—' : `${sign(v)}${v.toFixed(2)}%`;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
@@ -435,13 +435,13 @@ function ScreenerFundsTable({
             <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
             <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Kod</th>
             <th className="px-2 py-2.5 text-left hidden md:table-cell">Ad / Kategori</th>
-            <SortableHeader label="GÃ¼n %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="Gün %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
             <SortableHeader label="1 Hafta %" sortKey="week" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
             <SortableHeader label="1 Ay %" sortKey="month" activeKey={sortKey} dir={sortDir} onClick={setSort} />
             <SortableHeader label="3 Ay %" sortKey="threeMonth" activeKey={sortKey} dir={sortDir} onClick={setSort} />
             <SortableHeader label="6 Ay %" sortKey="sixMonth" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
-            <SortableHeader label="1 YÄ±l %" sortKey="year" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-            <th className="px-2 py-2.5 text-center w-24">Ä°ÅŸlem</th>
+            <SortableHeader label="1 Yıl %" sortKey="year" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <th className="px-2 py-2.5 text-center w-24">İşlem</th>
           </tr>
         </thead>
         <tbody className="stagger-rows">
@@ -467,7 +467,7 @@ function ScreenerFundsTable({
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-0.5 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[9px] font-medium text-success hover:bg-success/20"
-                  title="TEFAS'ta aÃ§"
+                  title="TEFAS'ta aç"
                 >
                   TEFAS <ExternalLink size={8} />
                 </a>
@@ -480,16 +480,16 @@ function ScreenerFundsTable({
   );
 }
 
-// --- Ã–zet performans kartlarÄ± â€” Strong Buy / Fund Pool ile aynÄ± pattern ---
+// --- Özet performans kartları — Strong Buy / Fund Pool ile aynı pattern ---
 
 function fmtAvg(v: number, count: number): string {
-  if (count === 0) return 'â€”';
+  if (count === 0) return '—';
   const sign = v >= 0 ? '+' : '';
   return `${sign}${v.toFixed(2)}%`;
 }
 function fmtRatio(s: { positives: number; negatives: number; count: number }): string {
-  if (s.count === 0) return 'â€”';
-  return `${s.positives} â–² / ${s.negatives} â–¼`;
+  if (s.count === 0) return '—';
+  return `${s.positives} ▲ / ${s.negatives} ▼`;
 }
 
 function SummaryCard({ label, mainValue, sub, tone }: {
@@ -524,19 +524,19 @@ function StockSummary({ rows }: { rows: EnrichedStock[] }) {
   return (
     <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
       <SummaryCard label="Havuzdaki Hisse" mainValue={`${rows.length}`} sub="Sorgu sonucu" tone="neutral" />
-      <SummaryCard label="Ortalama GÃ¼n %" mainValue={fmtAvg(day.avg, day.count)} sub={fmtRatio(day)} tone={day.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama Gün %" mainValue={fmtAvg(day.avg, day.count)} sub={fmtRatio(day)} tone={day.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 1 Ay %" mainValue={fmtAvg(r1a.avg, r1a.count)} sub={fmtRatio(r1a)} tone={r1a.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 3 Ay %" mainValue={fmtAvg(r3a.avg, r3a.count)} sub={fmtRatio(r3a)} tone={r3a.avg >= 0 ? 'pos' : 'neg'} />
-      <SummaryCard label="Ortalama 1 YÄ±l %" mainValue={fmtAvg(r1y.avg, r1y.count)} sub={fmtRatio(r1y)} tone={r1y.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 1 Yıl %" mainValue={fmtAvg(r1y.avg, r1y.count)} sub={fmtRatio(r1y)} tone={r1y.avg >= 0 ? 'pos' : 'neg'} />
     </div>
   );
 }
 
-// --- Quota UI: kullanÄ±m rozeti + limit aÅŸÄ±ldÄ±ÄŸÄ±nda upgrade kartÄ± ---
+// --- Quota UI: kullanım rozeti + limit aşıldığında upgrade kartı ---
 
 const TIER_LABEL: Record<QuotaInfo['tier'], string> = {
-  anon: 'Ãœcretsiz Deneme',
-  free: 'Ãœcretsiz',
+  anon: 'Ücretsiz Deneme',
+  free: 'Ücretsiz',
   pro: 'Pro',
   elite: 'Elite',
 };
@@ -563,11 +563,11 @@ function QuotaBadge({ quota }: { quota: QuotaInfo }) {
     <div className={cn('mt-2 inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px]', tone)}>
       <Icon size={11} />
       <span className="font-semibold">{TIER_LABEL[quota.tier]}</span>
-      <span className="opacity-60">Â·</span>
+      <span className="opacity-60">·</span>
       <span className="tabular-nums">
-        BugÃ¼n <strong>{quota.used}/{quota.limit}</strong> sorgu
+        Bugün <strong>{quota.used}/{quota.limit}</strong> sorgu
       </span>
-      <span className="opacity-60">Â·</span>
+      <span className="opacity-60">·</span>
       <span>{formatResetIn(quota.resetAt)} sonra yenilenir</span>
       <span className="ml-1 h-1 w-12 overflow-hidden rounded-full bg-bg-soft">
         <span
@@ -596,7 +596,7 @@ function QuotaExceededCard({ quota, message }: { quota: QuotaInfo; message: stri
         </div>
         <div className="flex-1">
           <div className="text-sm font-semibold text-slate-100">
-            {isAnon ? 'Ãœcretsiz deneme hakkÄ±n bitti' : 'GÃ¼nlÃ¼k sorgu hakkÄ±n doldu'}
+            {isAnon ? 'Ücretsiz deneme hakkın bitti' : 'Günlük sorgu hakkın doldu'}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-slate-300">{message}</p>
 
@@ -605,14 +605,14 @@ function QuotaExceededCard({ quota, message }: { quota: QuotaInfo; message: stri
               tier="free"
               limit={3}
               current={isFree}
-              cta={isAnon ? 'Ãœye ol' : undefined}
+              cta={isAnon ? 'Üye ol' : undefined}
               ctaLink={isAnon ? '/uyelik' : undefined}
             />
             <TierCard
               tier="pro"
               limit={30}
               current={isPro}
-              cta={!isPro && !isElite ? "Pro'ya geÃ§" : undefined}
+              cta={!isPro && !isElite ? "Pro'ya geç" : undefined}
               ctaLink="/uyelik"
               highlighted={isFree || isAnon}
             />
@@ -620,7 +620,7 @@ function QuotaExceededCard({ quota, message }: { quota: QuotaInfo; message: stri
               tier="elite"
               limit={150}
               current={isElite}
-              cta={isElite ? undefined : "Elite'a geÃ§"}
+              cta={isElite ? undefined : "Elite'a geç"}
               ctaLink="/uyelik"
               highlighted={isPro}
             />
@@ -670,7 +670,7 @@ function TierCard({
         {current && <span className="ml-auto text-[9px] text-accent/80">Mevcut</span>}
       </div>
       <div className="mt-1 text-base font-bold text-slate-100 tabular-nums">
-        {limit}<span className="ml-1 text-[10px] font-normal text-slate-500">sorgu/gÃ¼n</span>
+        {limit}<span className="ml-1 text-[10px] font-normal text-slate-500">sorgu/gün</span>
       </div>
       {cta && ctaLink && (
         <Link
@@ -708,10 +708,10 @@ function FundSummary({ rows }: { rows: FundPerformance[] }) {
   return (
     <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
       <SummaryCard label="Havuzdaki Fon" mainValue={`${rows.length}`} sub="Sorgu sonucu" tone="neutral" />
-      <SummaryCard label="Ortalama GÃ¼n %" mainValue={fmtAvg(day.avg, day.count)} sub={fmtRatio(day)} tone={day.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama Gün %" mainValue={fmtAvg(day.avg, day.count)} sub={fmtRatio(day)} tone={day.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 1 Hafta %" mainValue={fmtAvg(week.avg, week.count)} sub={fmtRatio(week)} tone={week.avg >= 0 ? 'pos' : 'neg'} />
       <SummaryCard label="Ortalama 1 Ay %" mainValue={fmtAvg(month.avg, month.count)} sub={fmtRatio(month)} tone={month.avg >= 0 ? 'pos' : 'neg'} />
-      <SummaryCard label="Ortalama 1 YÄ±l %" mainValue={fmtAvg(year.avg, year.count)} sub={fmtRatio(year)} tone={year.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 1 Yıl %" mainValue={fmtAvg(year.avg, year.count)} sub={fmtRatio(year)} tone={year.avg >= 0 ? 'pos' : 'neg'} />
     </div>
   );
 }

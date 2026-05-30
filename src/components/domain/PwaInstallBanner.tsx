@@ -3,6 +3,8 @@ import { Download, X, Smartphone } from 'lucide-react';
 
 const DISMISSED_KEY = 'fa.pwaInstall.dismissedAt';
 const DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 gün
+const VISIT_KEY = 'fa.pwaInstall.visitCount';
+const MIN_VISITS = 2; // Kullanıcı en az 2 sayfa gezene kadar gösterme
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -27,6 +29,16 @@ export function PwaInstallBanner() {
     if (window.matchMedia('(display-mode: standalone)').matches) return;
     // Safari: navigator.standalone === true
     if ((navigator as Navigator & { standalone?: boolean }).standalone) return;
+
+    // Ziyaret sayısı eşiği — her sayfa açılışında +1, MIN_VISITS'a ulaşmadan
+    // kullanıcıyı rahatsız etme. "Sevimsiz baskıcı prompt" hissi olmasın.
+    let visits = 0;
+    try {
+      const raw = localStorage.getItem(VISIT_KEY);
+      visits = (raw ? parseInt(raw, 10) : 0) + 1;
+      localStorage.setItem(VISIT_KEY, String(visits));
+    } catch { /* localStorage yoksa olduğu gibi devam */ }
+    if (visits < MIN_VISITS) return;
 
     const ua = navigator.userAgent.toLowerCase();
     const iosLike = /iphone|ipad|ipod/.test(ua) && !/crios|fxios/.test(ua);

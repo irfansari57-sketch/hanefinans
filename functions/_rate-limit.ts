@@ -148,7 +148,13 @@ export function classifyRoute(path: string): { bucket: string; limit: number; wi
   if (path === '/api/ai/screener' || path === '/api/ai/screener/') {
     return { bucket: 'screener-burst', limit: 20, windowSec: 60 };
   }
-  if (path.startsWith('/api/ai/') || path.startsWith('/api/agents/')) {
+  // /api/agents/* — Panel açılışında 4 agent (sentiment/news/macro/indicator) paralel
+  // çağrılır. Aynı içerik tüm kullanıcılara servis edilir → cache'lenir.
+  // Burst protection olarak dakikada 20, saatte 240 IP-level limit.
+  if (path.startsWith('/api/agents/')) {
+    return { bucket: 'agents', limit: 60, windowSec: 60 };
+  }
+  if (path.startsWith('/api/ai/')) {
     return { bucket: 'ai', limit: 60, windowSec: 60 * 60 };
   }
   // Public data proxy'leri — Yahoo, TCMB, news, twelvedata, goldapi, vb.

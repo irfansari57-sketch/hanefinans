@@ -61,7 +61,7 @@ interface RecsMemo {
 let recsMemo: RecsMemo | null = null;
 
 export function RecommendationsPage() {
-  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds' | 'fundpool' | 'strongbuy'>('scalp');
+  const [tab, setTab] = useState<'broker' | 'portfolio' | 'scalp' | 'funds' | 'fundpool' | 'strongbuy'>('fundpool');
   // Trend Fonlar tab sort
   const [tfSortKey, setTfSortKey] = useState<TrendFundSortKey>('year');
   const [tfSortDir, setTfSortDir] = useState<'asc' | 'desc'>('desc');
@@ -373,6 +373,15 @@ export function RecommendationsPage() {
         <button
           className={cn(
             'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
+            tab === 'fundpool' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setTab('fundpool')}
+        >
+          <PiggyBank size={14} /> Fon Havuzu
+        </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
             tab === 'scalp' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
           )}
           onClick={() => setTab('scalp')}
@@ -409,20 +418,11 @@ export function RecommendationsPage() {
         <button
           className={cn(
             'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'fundpool' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('fundpool')}
-        >
-          <PiggyBank size={14} /> Fon Havuzu
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
             tab === 'strongbuy' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
           )}
           onClick={() => setTab('strongbuy')}
         >
-          <TrendingUp size={14} /> Güçlü Al Havuzu
+          <TrendingUp size={14} /> Güçlü Al Hisse Havuzu
         </button>
       </div>
 

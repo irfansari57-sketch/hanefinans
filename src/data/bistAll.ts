@@ -358,7 +358,7 @@ export const BIST_ALL: BistStock[] = [
   { symbol: 'KRPLS', name: 'Karadeniz Polyester', sector: 'Kimya' },
   { symbol: 'KRSTL', name: 'Kristal Kola', sector: 'İçecek' },
   { symbol: 'KRTEK', name: 'Karsu Tekstil', sector: 'Tekstil' },
-  { symbol: 'KTLEV', name: 'Katmerciler Levazımat', sector: 'Savunma' },
+  { symbol: 'KTLEV', name: 'Katılımevim Tasarruf Finansman', sector: 'Finansal Hizmetler' },
   { symbol: 'LIDFA', name: 'Lider Faktoring', sector: 'Finansal' },
   { symbol: 'LIDER', name: 'Lider Holding', sector: 'Holding' },
   { symbol: 'LRSHO', name: 'Larshop Mağazacılık', sector: 'Perakende' },
@@ -400,7 +400,7 @@ export const BIST_ALL: BistStock[] = [
   { symbol: 'SAFKR', name: 'Safkar Ege Soğutmacılık', sector: 'Sanayi' },
   { symbol: 'SANEL', name: 'San-El Mühendislik', sector: 'Mühendislik' },
   { symbol: 'SAYAS', name: 'Say Reklamcılık', sector: 'Çeşitli' },
-  { symbol: 'SDTTR', name: 'SDT Uzay', sector: 'Savunma' },
+  // SDTTR duplikatı kaldırıldı — daha önce satır 57'de tanımlı (SDT Uzay Savunma)
   { symbol: 'SEGYO', name: 'Servet GYO', sector: 'GYO' },
   { symbol: 'SEKFK', name: 'Şeker Factoring', sector: 'Finansal' },
   { symbol: 'SEKUR', name: 'Sekuro Plastik', sector: 'Kimya' },

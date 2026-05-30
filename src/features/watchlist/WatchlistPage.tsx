@@ -18,6 +18,7 @@ import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { optimisticDelete } from '@/lib/optimisticUndo';
 
 type WlSortKey = 'price' | 'changePct' | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'r1y';
 
@@ -251,7 +252,12 @@ export function WatchlistPage() {
                   key={s.symbol}
                   type="button"
                   onClick={() => {
-                    if (watching) remove(s.symbol);
+                    if (watching) optimisticDelete({
+                      itemLabel: s.symbol,
+                      scope: 'Takip Listesi',
+                      onDelete: () => remove(s.symbol),
+                      onUndo:   () => add(s.symbol),
+                    });
                     else add(s.symbol);
                   }}
                   className={cn(
@@ -402,7 +408,12 @@ export function WatchlistPage() {
                       rank={i + 1}
                       period={stockPeriod}
                       returns={stockReturns[s.symbol]}
-                      onRemove={() => remove(s.symbol)}
+                      onRemove={() => optimisticDelete({
+                        itemLabel: s.symbol,
+                        scope: 'Takip Listesi',
+                        onDelete: () => remove(s.symbol),
+                        onUndo:   () => add(s.symbol),
+                      })}
                       isFocused={focusSymbol === s.symbol}
                       focusRef={focusSymbol === s.symbol ? focusRef : undefined}
                     />
@@ -551,9 +562,18 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
     return `${sign}${v.toFixed(2)}%`;
   };
 
-  const remove = async (id?: number) => {
-    if (id == null) return;
-    await fundsRepo.remove(id);
+  const remove = (entry: { id?: number; code: string; name?: string; category?: string }) => {
+    if (entry.id == null) return;
+    const snapshot = entry; // undo için snapshot
+    optimisticDelete({
+      itemLabel: entry.code,
+      scope: 'Takip Listesi',
+      onDelete: () => { fundsRepo.remove(snapshot.id as number).catch(() => {}); },
+      onUndo:   () => {
+        // Yeniden ekle — code/name/category snapshot'tan
+        fundsRepo.add({ code: snapshot.code, name: snapshot.name, category: snapshot.category }).catch(() => {});
+      },
+    });
   };
 
   // Seçili dönem için period-aware özet — hisselerle paralel davranış
@@ -684,7 +704,7 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
                 rank={i + 1}
                 period={fundPeriod}
                 fmtPct={fmtPct}
-                onRemove={() => remove(entry.id)}
+                onRemove={() => remove(entry)}
               />
             ))}
           </tbody>

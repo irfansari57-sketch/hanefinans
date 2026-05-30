@@ -5,17 +5,26 @@ import { cn } from '@/lib/utils';
 
 type ToastKind = 'success' | 'error' | 'info' | 'warning';
 
+interface ToastAction {
+  /** Buton etiketi — örn. "Geri Al" */
+  label: string;
+  /** Tıklayınca çalışacak callback (toast otomatik kapanır) */
+  onClick: () => void;
+}
+
 interface ToastItem {
   id: number;
   kind: ToastKind;
   title: string;
   message?: string;
   ttlMs: number;
+  /** Opsiyonel: sağ tarafta aksiyon butonu (Geri Al, vb.) */
+  action?: ToastAction;
 }
 
 interface ToastState {
   items: ToastItem[];
-  push: (t: Omit<ToastItem, 'id'>) => void;
+  push: (t: Omit<ToastItem, 'id'>) => number;
   dismiss: (id: number) => void;
 }
 
@@ -26,20 +35,28 @@ export const useToast = create<ToastState>((set) => ({
   push: (t) => {
     const id = counter++;
     set((s) => ({ items: [...s.items, { id, ...t }] }));
+    return id;
   },
   dismiss: (id) => set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 }));
 
+interface ToastExtras {
+  ttlMs?: number;
+  action?: ToastAction;
+}
+
 /** Kolaylık fonksiyonları — bileşen dışından çağırılır. */
 export const toast = {
-  success: (title: string, message?: string, ttlMs = 4000) =>
-    useToast.getState().push({ kind: 'success', title, message, ttlMs }),
-  error: (title: string, message?: string, ttlMs = 6000) =>
-    useToast.getState().push({ kind: 'error', title, message, ttlMs }),
-  info: (title: string, message?: string, ttlMs = 4000) =>
-    useToast.getState().push({ kind: 'info', title, message, ttlMs }),
-  warning: (title: string, message?: string, ttlMs = 5000) =>
-    useToast.getState().push({ kind: 'warning', title, message, ttlMs }),
+  success: (title: string, message?: string, extras?: ToastExtras) =>
+    useToast.getState().push({ kind: 'success', title, message, ttlMs: extras?.ttlMs ?? 4000, action: extras?.action }),
+  error: (title: string, message?: string, extras?: ToastExtras) =>
+    useToast.getState().push({ kind: 'error', title, message, ttlMs: extras?.ttlMs ?? 6000, action: extras?.action }),
+  info: (title: string, message?: string, extras?: ToastExtras) =>
+    useToast.getState().push({ kind: 'info', title, message, ttlMs: extras?.ttlMs ?? 4000, action: extras?.action }),
+  warning: (title: string, message?: string, extras?: ToastExtras) =>
+    useToast.getState().push({ kind: 'warning', title, message, ttlMs: extras?.ttlMs ?? 5000, action: extras?.action }),
+  /** Programatik dismiss — push'tan dönen id ile manuel kapatma */
+  dismiss: (id: number) => useToast.getState().dismiss(id),
 };
 
 const ICONS = {
@@ -97,6 +114,19 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
         <div className="text-sm font-semibold text-slate-100">{item.title}</div>
         {item.message && <div className="mt-0.5 text-xs text-slate-300 leading-relaxed">{item.message}</div>}
       </div>
+      {item.action && (
+        <button
+          onClick={() => {
+            try { item.action!.onClick(); } catch { /* */ }
+            setExiting(true);
+            setTimeout(onDismiss, 200);
+          }}
+          className="shrink-0 rounded-md border border-current/30 bg-current/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider transition hover:bg-current/20"
+          style={{ borderColor: 'currentColor' }}
+        >
+          {item.action.label}
+        </button>
+      )}
       <button
         onClick={() => {
           setExiting(true);

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, Send, AlertCircle, Info, RefreshCw, ChevronRight, ExternalLink, Crown, Zap, Lock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { fetchScreenerSpec, applySpec, type ScreenerSpec, type QuotaInfo } from '@/data/api/screenerClient';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
-import type { FundPerformance, Stock } from '@/data/types';
+import type { FundPerformance } from '@/data/types';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
 import type { PeriodReturns } from '@/data/api/yahoo';
@@ -83,27 +83,56 @@ export function ScreenerPage() {
     else { setFundSortKey(k); setFundSortDir('desc'); }
   };
 
-  // Hisse + returns snapshot — sayfa açılır açılmaz prefetch
+  // Hisse + returns + quote snapshot — paralel prefetch
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const r = await fetch('/api/yahoo/returns-snapshot');
-        if (!r.ok) throw new Error('snapshot');
-        const j = await r.json() as { ok: boolean; returns?: Record<string, PeriodReturns> };
-        if (!alive || !j.ok || !j.returns) return;
+        // Returns (period %) + quote (price + günlük changePct) paralel
+        const [retRes, quoteRes] = await Promise.all([
+          fetch('/api/yahoo/returns-snapshot').catch(() => null),
+          fetch('/api/yahoo/snapshot').catch(() => null),
+        ]);
+
         const returnsMap: Record<string, PeriodReturns> = {};
-        for (const [k, v] of Object.entries(j.returns)) {
-          const sym = k.endsWith('.IS') ? k.slice(0, -3) : k;
-          returnsMap[sym] = v;
+        if (retRes?.ok) {
+          const j = (await retRes.json().catch(() => null)) as
+            | { ok: boolean; returns?: Record<string, PeriodReturns> }
+            | null;
+          if (j?.ok && j.returns) {
+            for (const [k, v] of Object.entries(j.returns)) {
+              const sym = k.endsWith('.IS') ? k.slice(0, -3) : k;
+              returnsMap[sym] = v;
+            }
+          }
         }
-        // BIST_UNIQUE + MOCK_STOCKS birleştir
+
+        const quoteMap: Record<string, { price: number; changePct: number }> = {};
+        if (quoteRes?.ok) {
+          const q = (await quoteRes.json().catch(() => null)) as
+            | { ok: boolean; quotes?: Record<string, { price: number; changePct: number }> }
+            | null;
+          if (q?.ok && q.quotes) {
+            for (const [k, v] of Object.entries(q.quotes)) {
+              const sym = k.endsWith('.IS') ? k.slice(0, -3) : k;
+              quoteMap[sym] = { price: v.price, changePct: v.changePct };
+            }
+          }
+        }
+
+        if (!alive) return;
+
+        // BIST_UNIQUE + MOCK_STOCKS birleştir — quote varsa onu öne al
         const seen = new Set<string>();
         const enriched: EnrichedStock[] = [];
-        const consume = (sym: string, name: string, sector: string, price: number, changePct: number) => {
+        const consume = (sym: string, name: string, sector: string, fallbackPrice: number, fallbackChange: number) => {
           if (seen.has(sym)) return;
           seen.add(sym);
           const ret = returnsMap[sym] ?? {};
+          const q = quoteMap[sym];
+          // Snapshot quote varsa fiyat ve gün% onu kullan, yoksa MOCK fallback
+          const price = q && Number.isFinite(q.price) && q.price > 0 ? q.price : fallbackPrice;
+          const changePct = q && Number.isFinite(q.changePct) ? q.changePct : fallbackChange;
           enriched.push({
             symbol: sym, name, sector,
             price, changePct,
@@ -117,10 +146,9 @@ export function ScreenerPage() {
         };
         for (const s of MOCK_STOCKS) consume(s.symbol, s.name, s.sector ?? '', s.price, s.changePct);
         for (const s of BIST_UNIQUE) consume(s.symbol, s.name, s.sector, 0, 0);
-        if (alive) {
-          setAllStocks(enriched);
-          setDatasetsReady((prev) => ({ ...prev, stocks: true }));
-        }
+
+        setAllStocks(enriched);
+        setDatasetsReady((prev) => ({ ...prev, stocks: true }));
       } catch { /* sessizce */ }
     })();
     return () => { alive = false; };

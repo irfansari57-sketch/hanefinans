@@ -10,7 +10,7 @@
  * Otomatik base_value yakalanır (snapshot cache'inden, varsa).
  */
 
-import { getAuthedUser, type Env as AuthEnv, jsonResponse } from '../../auth/_utils';
+import { getAuthedUser, type Env as AuthEnv, jsonResponse } from '../auth/_utils';
 
 interface Env extends AuthEnv {
   DB: D1Database;

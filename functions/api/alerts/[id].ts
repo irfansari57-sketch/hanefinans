@@ -7,7 +7,7 @@
  * Auth zorunlu; user_id mismatch → 403.
  */
 
-import { getAuthedUser, type Env as AuthEnv, jsonResponse } from '../../auth/_utils';
+import { getAuthedUser, type Env as AuthEnv, jsonResponse } from '../auth/_utils';
 
 interface Env extends AuthEnv {
   DB: D1Database;

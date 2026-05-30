@@ -92,6 +92,7 @@ const SettingsPage          = lazyWithRetry(() => import('@/features/settings/Se
 const AlertsPage            = lazyWithRetry(() => import('@/features/alerts/AlertsPage').then((m) => ({ default: m.AlertsPage })));
 const PredictionsPage       = lazyWithRetry(() => import('@/features/predictions/PredictionsPage').then((m) => ({ default: m.PredictionsPage })));
 const AdBannerPreviewPage   = lazyWithRetry(() => import('@/features/preview/AdBannerPreviewPage').then((m) => ({ default: m.AdBannerPreviewPage })));
+const EconomicCalendarPage  = lazyWithRetry(() => import('@/features/calendar/EconomicCalendarPage').then((m) => ({ default: m.EconomicCalendarPage })));
 
 const withSuspense = (node: React.ReactNode) => (
   <Suspense fallback={<PageSkeleton />}>{node}</Suspense>
@@ -115,6 +116,7 @@ export const router = createBrowserRouter([
       { path: 'watchlist', element: withSuspense(<WatchlistPage />) },
       { path: 'alarmlar', element: withSuspense(<AlertsPage />) },
       { path: 'tahmin', element: withSuspense(<PredictionsPage />) },
+      { path: 'takvim', element: withSuspense(<EconomicCalendarPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },
       { path: 'emtia', element: withSuspense(<CommoditiesPage />) },

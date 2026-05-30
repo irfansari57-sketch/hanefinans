@@ -25,6 +25,7 @@ import {
   Globe,
   Coins,
   Sparkles,
+  CalendarClock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/store/agents';
@@ -74,7 +75,7 @@ const navGroups: NavGroup[] = [
     title: 'Piyasalar',
     items: [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
-      { to: '/watchlist', label: 'Takip Listem', icon: Star },
+      { to: '/takvim', label: 'Ekonomik Takvim', icon: CalendarClock },
       { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
       { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },

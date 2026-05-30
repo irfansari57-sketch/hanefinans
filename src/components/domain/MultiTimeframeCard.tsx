@@ -164,4 +164,4 @@ export function MultiTimeframeHeader({ title }: { title?: string }) {
       <Zap size={14} /> {title ?? 'Çoklu Zaman Dilimi Yön Analizi'}
     </h2>
   );
-}
+}

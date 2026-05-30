@@ -2,9 +2,12 @@
  * Ekonomik Takvim Widget — TradingView ücretsiz embed.
  *
  * Importance filter "1" (high) — sadece önemli olayları gösterir.
- * Sticky right column'da kullanılır (Layout veya Panel sağ kolonu).
  *
- * TradingView script dış kaynaktan yüklenir. iframe-content ile sandbox edilir.
+ * Widget script şu HTML yapısını arar:
+ *   <div class="tradingview-widget-container">
+ *     <div class="tradingview-widget-container__widget"></div>
+ *     <script ...>{config}</script>
+ *   </div>
  *
  * KULLANIM:
  *   <EconomicCalendarWidget compact />   // dar/sticky variant
@@ -16,13 +19,9 @@ import { CalendarClock, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
-  /** Sticky/dar kolon için kompakt. */
   compact?: boolean;
-  /** Default 480 (full), compact mode 360. */
   height?: number;
-  /** TradingView importance: '-1' düşük, '0' orta, '1' yüksek (default = '0,1'). */
   importance?: '-1' | '0' | '1' | '0,1' | '-1,0,1';
-  /** Country code'lar: TR (default + ana AB ekonomileri + ABD). */
   countries?: string;
   className?: string;
 }
@@ -38,9 +37,16 @@ export function EconomicCalendarWidget({
   const finalHeight = height ?? (compact ? 360 : 480);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    // Önceki widget temizle
-    containerRef.current.innerHTML = '';
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const inner = document.createElement('div');
+    inner.className = 'tradingview-widget-container__widget';
+    inner.style.height = finalHeight + 'px';
+    inner.style.width = '100%';
+    container.appendChild(inner);
 
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-events.js';
@@ -48,17 +54,17 @@ export function EconomicCalendarWidget({
     script.type = 'text/javascript';
     script.innerHTML = JSON.stringify({
       colorTheme: 'dark',
-      isTransparent: true,
+      isTransparent: false,
       width: '100%',
       height: finalHeight,
       locale: 'tr',
       importanceFilter: importance,
       countryFilter: countries,
     });
-    containerRef.current.appendChild(script);
+    container.appendChild(script);
 
     return () => {
-      if (containerRef.current) containerRef.current.innerHTML = '';
+      container.innerHTML = '';
     };
   }, [finalHeight, importance, countries]);
 
@@ -79,7 +85,11 @@ export function EconomicCalendarWidget({
           Detay <ExternalLink size={8} />
         </a>
       </div>
-      <div ref={containerRef} className="tradingview-widget-container" style={{ minHeight: finalHeight }} />
+      <div
+        ref={containerRef}
+        className="tradingview-widget-container"
+        style={{ minHeight: finalHeight, height: finalHeight }}
+      />
     </div>
   );
 }

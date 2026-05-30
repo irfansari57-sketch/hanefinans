@@ -1,167 +1,166 @@
-# Sonraki Seans — Planlanan İyileştirmeler
+# Sonraki Seans — Hane Finans Yol Haritası
 
-Bu dosya bir sonraki çalışma seansı için bekleyen iş planını tutar.
-Premium-fokus stratejisiyle uyumlu, etki sırasına göre.
-
----
-
-## 1. Animasyonları compositor-only özelliklere geçir
-
-**Durum:** Bu turda news ticker düzeltildi (rAF + translate3d).
-
-**Yapılacak:**
-- AdVideo modal aç/kapa animasyonu — şu an layout-trigger var, transform/opacity'e geç
-- Mobil bottom nav swipe — touch hassasiyeti için transform-based
-- Accordion açılış — height yerine transform/clip-path veya `interpolate-size`
-- Sayfa geçişleri — view transitions API ile fade/slide (Safari/Chrome destekli)
-
-**Hedef:** `transform`, `opacity`, `filter` dışındaki hiçbir animasyon kalmasın.
-Compositor'da çalışan animasyonlar 60fps'te ana thread'i yormaz.
+Bu dosya seanslar arası sürekliliği sağlar. Premium-pozisyon ürün stratejisi.
+Gelir motoru (ödeme) sonraya — şimdi sistem geliştirme + bağlılık + çekicilik.
 
 ---
 
-## 2. Tablo render optimizasyonu — virtualizasyon
+## Aktif Yön: Bağlılık + AI Farklılaştırma + İçerik Kalitesi
 
-**Sorun:** Hisseler sayfası 600+ `<tr>` render ediyor; Fonlar 1500+. Mobilde scroll yavaşlar.
-
-**Yapılacak:**
-- `react-window` veya `@tanstack/react-virtual` kur
-- Hisseler tablosunu virtualize et (sadece görünen ~20 satır render edilir)
-- Fonlar tablosunu virtualize et
-- StrongBuyTab (max 25) ve FundPoolTab (max 30) zaten dar — gerek yok
-- Akıllı Sorgu tablosu — eğer 30+ sonuç gelirse virtualize et
-
-**Hedef:** Mobilde scroll FPS = 60. Bellek ayak izi <50MB.
+Yön A (gelir motoru — iyzico/Stripe) erteleneydi. Sıra B + C + D.
 
 ---
 
-## 3. Mobile-first bundle ince ayar
+## Seans 1 — Push Altyapısı (SIRADA)
 
-**Durum:** Route-split (lazyWithRetry) zaten var.
+**Hazırlık tamam:**
+- ✅ `web-push` npm paketi kuruldu
+- ✅ VAPID keys üretildi
+- ✅ Cloudflare Pages env'lere eklendi:
+  - `VAPID_PUBLIC_KEY` (Production + Preview)
+  - `VAPID_PRIVATE_KEY` (Production + Preview, **encrypted**)
+  - `VAPID_SUBJECT=mailto:haneassistance@gmail.com`
+  - `VITE_VAPID_PUBLIC_KEY` (Vite build için aynı public key)
 
-**Yapılacak:**
-- TradingView widget'ı (en ağır 3rd party JS) — sadece detay sayfasında demand-load
-- AI Screener input bileşeni — `/sorgu` sayfasına özel ayrı chunk
-- MultiTimeframeCard — kullanıldığı sayfalarda demand-load
-- Lucide ikonları — sadece kullanılanları (zaten tree-shake oluyor, doğrula)
-- Recharts yerine daha küçük alternatifler değerlendir (zaten varsa)
+**Seans başında yapılacaklar:**
 
-**Hedef:** Mobile ilk byte → first contentful paint <1.5s.
+1. **D1 migration:** `functions/migrations/005_push_subscriptions.sql`
+   ```sql
+   CREATE TABLE push_subscriptions (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     user_id INTEGER NOT NULL,
+     endpoint TEXT NOT NULL UNIQUE,
+     p256dh TEXT NOT NULL,
+     auth TEXT NOT NULL,
+     user_agent TEXT,
+     created_at INTEGER NOT NULL,
+     last_used_at INTEGER
+   );
+   CREATE INDEX idx_push_user ON push_subscriptions(user_id);
+   ```
+   `npx wrangler d1 execute hanefinans-db --file=functions/migrations/005_push_subscriptions.sql --remote`
 
----
+2. **Backend endpoints:**
+   - `functions/api/push/subscribe.ts` — POST: subscription objesini D1'e kaydet
+   - `functions/api/push/unsubscribe.ts` — DELETE: endpoint ile sil
+   - `functions/api/push/test.ts` — POST: kullanıcıya test bildirim gönder
+   - `functions/_push.ts` — ortak helper: VAPID auth, WebPushError handling
 
-## 4. İçerik-bilinçli skeleton + Suspense
+3. **Service Worker güncellemesi** (`public/sw.js`):
+   - `push` event handler — payload parse → showNotification
+   - `notificationclick` event handler — URL ile open + focus
 
-**Sorun:** "Yükleniyor..." spinner pek bir şey söylemiyor. İçeriğin şeklini taklit eden gri kutular algı süresini azaltır.
+4. **Frontend:**
+   - `src/lib/pushNotifications.ts` — `requestPermission()`, `subscribe()`, `unsubscribe()`
+   - `src/features/settings/sections/PushNotificationSection.tsx` — toggle + test button
 
-**Yapılacak:**
-- `<Skeleton>` bileşenini her sayfada tutarlı kullan (zaten var ama yer yer eksik)
-- Hisseler sayfası iskeleti — 50 satırlık gri grid
-- Fonlar sayfası iskeleti — kategorisi farklı
-- Watchlist iskeleti — özet kartlar + tablo
-- Detay sayfaları (StockDetail, FundDetail) — MultiTimeframeCard, chart skeleton'u
+5. **Migration 004 da deploy** — telemetry events tablosu hâlâ deploy edilmedi, push migration'la birlikte koş.
 
-**Hedef:** Hiçbir sayfada boş ekran/spinner görme. İçerikten önce şekli göster.
-
----
-
-## 5. Optimistic UI — anında tepki hissi
-
-**Sorun:** Watchlist'e ekle / fonu takipten çıkar gibi işlemler "tıkla → bekle → güncellendi" akışı izliyor. Algı yavaş.
-
-**Yapılacak:**
-- Watchlist add/remove — UI hemen güncellenmeli, arka planda persist
-- Hisse yıldız toggle — anında renk değişsin
-- Fon takipten çıkar — satır hemen kaybolsun, undo butonu 3sn göster
-- Hata durumunda geri al + toast bildirim
-- Zustand mutator'larda optimistic pattern
-
-**Hedef:** Tıkla → 0ms tepki. Sunucu sonradan sync olur.
-
----
-
-## 6. PWA + push notification altyapısı 🌟 (Premium-fokus için kritik)
-
-**Durum:** Service worker var ama minimal (push handler import ediyor).
-
-**Yapılacak:**
-- Manifest'i tamamla (zaten var, gözden geçir)
-- Add-to-home prompt'u stratejik göster (kullanıcı 2 sayfa gezdikten sonra)
-- Service worker offline fallback — son cache'lenmiş Watchlist/Panel görünür
-- Push notification akışı:
-  - `/api/push/subscribe` — kullanıcı endpoint kaydet
-  - `/api/push/send` — Cloudflare Workers Cron ile her sabah 08:00
-  - Watchlist sinyali değişince anlık push
-  - Fresh EMA 5/8 cross olunca push
-- Frontend: ayarlar > bildirim tercihleri (saat, semboller)
-
-**Hedef:**
-- %30 DAU artışı (sabah push ile geri çağırma)
-- Premium tier'ı "watchlist alert" üzerinden konumlandır
-
-**Maliyet:** Cloudflare ücretsiz Workers + Web Push API ücretsiz. Sadece kod.
+**Hedef çıktı:** Settings → Bildirimler → "Aç" butonu → tarayıcı izin diyaloğu → "Test bildirim gönder" → push gelir.
 
 ---
 
-## 7. Renk + tipografi pas üzerinden geçiş
+## Seans 2 — Alarm Sistemi
 
-**Yapılacak:**
-- **Font:** Geçerli sans-serif → Inter / Manrope / Geist (premium hissi)
-- **Renkler:** Mevcut paletten daha derin/zengin gri tonlama (Tailwind slate-950 zemin?)
-- **Mikro-animasyon:**
-  - Buton hover'da hafif `translateY(-1px)` + gölge
-  - Kart hover'da `border-accent/30 → border-accent/60` ease
-  - Sayfa geçişlerinde 200ms fade
-- **Spacing:** Daha düzenli 8px grid sistem (Tailwind zaten ondalık, gözden geç)
+Push'un üstüne kurulu fiyat + KAP alarmları.
 
-**Hedef:** "20 yıllık uzmanın geliştirdiği premium araç" hissi. Veriden çok izlenim.
+- D1: `price_alerts` (user_id, symbol, condition, threshold, active, triggered_at)
+- D1: `news_alerts` (user_id, symbol, last_seen_news_id)
+- Hisse detay sayfası: alarm widget'ı ("ASELS 400 TL'yi geçince haber ver")
+- Watchlist'te "Alarmlarım" sekmesi (toplu yönetim)
+- Cloudflare Cron Trigger (5 dk): snapshot fiyatları vs alarmlar → push
+- Cron Trigger (15 dk): KAP haberleri vs news_alerts → push
 
 ---
 
-## 8. Telemetri + A/B test altyapısı
+## Seans 3 — Günlük AI Brief
 
-**Sorun:** Hangi sayfaya tıklandığı bilinmiyor. Premium dönüşüm oranı ölçülemez.
-
-**Yapılacak:**
-- Cloudflare Web Analytics (zaten ücretsiz) — sayfa görüntüleme
-- Custom event tracking (lib/telemetry.ts modülü):
-  - `watchlist.add(symbol)`, `watchlist.remove(symbol)`
-  - `screener.query(text)`, `screener.results(count)`
-  - `pricing.view`, `pricing.upgrade.click`
-  - `notification.subscribe`
-- Event'ları Cloudflare Pages Function üzerinden D1'e yaz
-- Admin dashboard'da haftalık özet (en popüler sorgular, en eklenen hisseler)
-- Sonra: A/B test framework (CTA metni, fiyat sayfası vs.)
-
-**Hedef:**
-- Premium dönüşüm oranını ölç ve haftalık iyileştir
-- Hangi sorgular sık? → onları örnek listesine ekle
-- Hangi sayfa terk ediliyor? → o sayfanın UX'ini düzelt
+- Cron 07:30 (Europe/Istanbul): watchlist + makro takvim + son 24 saat haber → Claude Haiku özet
+- `briefs` D1 tablosu (user_id, date, content_md, sent_at)
+- `/brief` sayfası — bugünkü brief + geçmiş 30 gün
+- Push bildirimi: "Sabah brief'iniz hazır"
 
 ---
 
-## Yan iyileştirmeler — eklemek istenebilecek diğerleri
+## Seans 4 — Hisse Deep-Dive Raporu (Elite hook)
 
-- **Sembol detayında haber sekmesi** — o sembole özel haberleri filtrele
-- **Fon karşılaştırma sayfası** — 2-4 fonu yan yana koy, performans grafiği üst üste
-- **Portföyüm sayfası gerçek hesap entegrasyonu** — manuel giriş yerine Yapı Kredi/Garanti API'leri
-- **Geçmiş simülasyon** — "Bu fonu 2 yıl önce alsaydım ne olurdu?"
-- **Eğitim içeriği** — finansal okuryazarlık sayfası mevcut, derinleştirilebilir
-- **Telegram bot kanal entegrasyonu** — `/hisse THYAO` komutuyla anlık özet
+- Hisse detayında "AI Derin Analiz" butonu — Elite-only veya Pro 2/ay
+- Konteks: hissenin tüm teknik göstergeleri + sektör konumu + son 30 gün haber + makro
+- Claude Sonnet ile 4-5 paragraf yapılandırılmış rapor
+- D1 cache (24 saat), tier kotalı
 
 ---
 
-## Önceliklendirme önerisi
+## Seans 5 — Hane'ye Sor — AI Chat (Elite premium)
 
-Premium-fokus için en yüksek ROI sırası:
+- Sticky chat widget (alt sağ)
+- Konteks: watchlist + portföy + son sorgu/öneri geçmişi
+- Claude Sonnet multi-turn
+- Kota: Elite 50 msg/gün, Pro 10/gün, Free 0
+- D1: `chat_sessions` + `chat_messages`
 
-1. **#6 PWA + push notification** — kullanıcı kazanma + tutma + Premium gerekçesi
-2. **#5 Optimistic UI** — hızlı kazanım, küçük emek
-3. **#4 Skeleton tutarlılığı** — hızlı kazanım
-4. **#8 Telemetri** — neye yatırım yapacağını bilmek için temel
-5. **#2 Virtualizasyon** — mobil performans için
-6. **#7 Renk + tipografi** — marka algısı
-7. **#3 Bundle optimization** — biraz daha sonra
-8. **#1 Compositor animasyonları kalanı** — fine-tuning
+---
 
-Sıralamayı sen belirle, başlangıçta hangisi seni mutlu eder.
+## Seans 6 — KAP + Sektör Analiz Sayfaları
+
+- KAP RSS feed daha derin (şirket bazlı son 30 gün arşiv)
+- `/sektor/bankacilik`, `/sektor/holding`, `/sektor/savunma` vb.
+  - Sektör PE/PD ort, top performer, en kötü
+  - AI sektör yorumu
+- Watchlist'e sektör eklenebilir
+
+---
+
+## Seans 7 — Blog / Öğrenme Alanı (SEO + uzman pozisyonu)
+
+- `/blog/*` MD-bazlı içerik sistemi (frontmatter + lazy import)
+- 10-15 başlangıç içeriği:
+  - TEFAS nedir, fon kategorileri, getiri yorumlama
+  - EMA, MACD, RSI nedir
+  - Makro nasıl okunur (TÜFE, faiz, kurda yansıma)
+  - KAP nasıl yorumlanır
+  - 20 yıllık deneyimden öğrenmeler
+- SEO meta + OG + JSON-LD Article schema
+
+---
+
+## Sonraki (paralel / sıra dışı)
+
+- **Backtest motoru** — strateji belirle, geçmiş verilerle simüle (Elite)
+- **Admin telemetry dashboard** — D1 events görselleştirme
+- **A/B testing infra** — feature flag + variant tracking
+- **Tier upgrade flow** — iyzico/Stripe (gelir motoru — gelecek seans setlerine bırakıldı)
+- **Native mobile wrap** — Capacitor / PWABuilder ile App Store / Play Store
+- **Multi-tenant / Team workspaces** — Elite için
+- **Sentry full wire** — error tracking tam aktif değil
+
+---
+
+## Hatırlatmalar / Teknik notlar
+
+- **Migration 004 (telemetry_events) ve 005 (push_subscriptions) deploy bekliyor.**
+- **Windows PowerShell 5.x encoding tuzağı:** Türkçe karakterli dosyalarda `Get-Content`/`Set-Content` mojibake yapıyor. Dosya operasyonlarında VS Code save'i veya `.NET` API (`[System.IO.File]::WriteAllLines` + `UTF8Encoding($false)`) kullan.
+- **Tier admin:** `haneassistance@gmail.com` D1'de `tier='elite'` — ekrandaki görünüm doğru, UPDATE doğrulandı.
+- **Push notification iOS:** Safari 16.4+ desteklemeye başladı. iOS testleri için en az iOS 16.4 cihaz gerek.
+- **Cron trigger pattern:** `functions/api/cron/daily-report.ts` referans.
+
+---
+
+## Tamamlananlar Özeti (referans)
+
+**Bu seans (Mayıs 30):**
+- Tier-aware screener quota (Free 3 / Pro 30 / Elite 150 günlük)
+- ScreenerPage canlı fiyat + günlük changePct (snapshot hydrate)
+- Inter VF + tabular nums + stagger animasyon
+- PwaInstallBanner + bistAll.ts truncation onarımı
+- UTF-8 mojibake düzeltme (Türkçe karakterler restore)
+
+**Önceki seanslar (özet):**
+- BIST + TEFAS + kripto + döviz + makro veri akışları, snapshot cache
+- Öneriler tabları: Fon Havuzu, Güçlü Al Hisse Havuzu, Algoritmik, Aracı Kurum, Model Portföy, Trend Fonlar
+- Akıllı Sorgu (AI screener) + sıralama + performans kartları
+- Tier sistemi UI + Elite gating
+- Telemetry foundation (events D1 tablosu)
+- Optimistic UI + skeleton + virtualization + bundle splitting
+- PWA Phase 1: install banner + offline fallback
+- Color/typography Wave 3 (premium hissi)

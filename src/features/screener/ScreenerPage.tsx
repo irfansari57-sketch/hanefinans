@@ -12,6 +12,10 @@ import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { track } from '@/lib/telemetry';
+import { SortableHeader } from '@/components/ui/SortableHeader';
+
+type StockSortKey = 'price' | 'r1g' | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'r1y';
+type FundSortKey = 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'year';
 
 /**
  * Doğal Dil Hisse/Fon Sorgusu — kullanıcı Türkçe doğal dilde sorgu yazar,
@@ -62,6 +66,20 @@ export function ScreenerPage() {
   const [allStocks, setAllStocks] = useState<EnrichedStock[]>([]);
   const [allFunds, setAllFunds] = useState<FundPerformance[]>([]);
   const [datasetsReady, setDatasetsReady] = useState({ stocks: false, funds: false });
+
+  // Sıralama state'leri (hisse + fon ayrı)
+  const [stockSortKey, setStockSortKey] = useState<StockSortKey>('r3a');
+  const [stockSortDir, setStockSortDir] = useState<'asc' | 'desc'>('desc');
+  const setStockSort = (k: StockSortKey) => {
+    if (k === stockSortKey) setStockSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setStockSortKey(k); setStockSortDir('desc'); }
+  };
+  const [fundSortKey, setFundSortKey] = useState<FundSortKey>('year');
+  const [fundSortDir, setFundSortDir] = useState<'asc' | 'desc'>('desc');
+  const setFundSort = (k: FundSortKey) => {
+    if (k === fundSortKey) setFundSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setFundSortKey(k); setFundSortDir('desc'); }
+  };
 
   // Hisse + returns snapshot — sayfa açılır açılmaz prefetch
   useEffect(() => {
@@ -239,13 +257,41 @@ export function ScreenerPage() {
       )}
 
       {/* Hisse sonuçları */}
-      {datasetUsed === 'stocks' && (
-        <ScreenerStocksTable rows={resultsStocks} />
+      {datasetUsed === 'stocks' && resultsStocks.length > 0 && (
+        <>
+          <StockSummary rows={resultsStocks} />
+          <ScreenerStocksTable
+            rows={[...resultsStocks].sort((a, b) => {
+              const va = a[stockSortKey];
+              const vb = b[stockSortKey];
+              const an = typeof va === 'number' && Number.isFinite(va) ? va : -Infinity;
+              const bn = typeof vb === 'number' && Number.isFinite(vb) ? vb : -Infinity;
+              return stockSortDir === 'asc' ? an - bn : bn - an;
+            })}
+            sortKey={stockSortKey}
+            sortDir={stockSortDir}
+            setSort={setStockSort}
+          />
+        </>
       )}
 
       {/* Fon sonuçları */}
-      {datasetUsed === 'funds' && (
-        <ScreenerFundsTable rows={resultsFunds} />
+      {datasetUsed === 'funds' && resultsFunds.length > 0 && (
+        <>
+          <FundSummary rows={resultsFunds} />
+          <ScreenerFundsTable
+            rows={[...resultsFunds].sort((a, b) => {
+              const va = a[fundSortKey];
+              const vb = b[fundSortKey];
+              const an = Number.isFinite(va) ? va : -Infinity;
+              const bn = Number.isFinite(vb) ? vb : -Infinity;
+              return fundSortDir === 'asc' ? an - bn : bn - an;
+            })}
+            sortKey={fundSortKey}
+            sortDir={fundSortDir}
+            setSort={setFundSort}
+          />
+        </>
       )}
 
       {datasetUsed && (datasetUsed === 'stocks' ? resultsStocks : resultsFunds).length === 0 && !loading && (
@@ -263,7 +309,14 @@ export function ScreenerPage() {
   );
 }
 
-function ScreenerStocksTable({ rows }: { rows: EnrichedStock[] }) {
+function ScreenerStocksTable({
+  rows, sortKey, sortDir, setSort,
+}: {
+  rows: EnrichedStock[];
+  sortKey: StockSortKey;
+  sortDir: 'asc' | 'desc';
+  setSort: (k: StockSortKey) => void;
+}) {
   if (rows.length === 0) return null;
   const sign = (v: number | undefined) => (v != null && v >= 0 ? '+' : '');
   const tone = (v: number | undefined) =>
@@ -278,13 +331,13 @@ function ScreenerStocksTable({ rows }: { rows: EnrichedStock[] }) {
             <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
             <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Sembol</th>
             <th className="px-2 py-2.5 text-left hidden md:table-cell">Şirket / Sektör</th>
-            <th className="px-2 py-2.5 text-right">Fiyat</th>
-            <th className="px-2 py-2.5 text-right">Gün %</th>
-            <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
-            <th className="px-2 py-2.5 text-right">1 Ay %</th>
-            <th className="px-2 py-2.5 text-right">3 Ay %</th>
-            <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
-            <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+            <SortableHeader label="Fiyat" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="Gün %" sortKey="r1g" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="1 Hafta %" sortKey="r1h" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
+            <SortableHeader label="1 Ay %" sortKey="r1a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="3 Ay %" sortKey="r3a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="6 Ay %" sortKey="r6a" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
+            <SortableHeader label="1 Yıl %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} />
           </tr>
         </thead>
         <tbody>
@@ -316,7 +369,14 @@ function ScreenerStocksTable({ rows }: { rows: EnrichedStock[] }) {
   );
 }
 
-function ScreenerFundsTable({ rows }: { rows: FundPerformance[] }) {
+function ScreenerFundsTable({
+  rows, sortKey, sortDir, setSort,
+}: {
+  rows: FundPerformance[];
+  sortKey: FundSortKey;
+  sortDir: 'asc' | 'desc';
+  setSort: (k: FundSortKey) => void;
+}) {
   if (rows.length === 0) return null;
   const sign = (v: number) => (v >= 0 ? '+' : '');
   const tone = (v: number | undefined) =>
@@ -331,12 +391,12 @@ function ScreenerFundsTable({ rows }: { rows: FundPerformance[] }) {
             <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
             <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Kod</th>
             <th className="px-2 py-2.5 text-left hidden md:table-cell">Ad / Kategori</th>
-            <th className="px-2 py-2.5 text-right">Gün %</th>
-            <th className="px-2 py-2.5 text-right hidden lg:table-cell">1 Hafta %</th>
-            <th className="px-2 py-2.5 text-right">1 Ay %</th>
-            <th className="px-2 py-2.5 text-right">3 Ay %</th>
-            <th className="px-2 py-2.5 text-right hidden lg:table-cell">6 Ay %</th>
-            <th className="px-2 py-2.5 text-right">1 Yıl %</th>
+            <SortableHeader label="Gün %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="1 Hafta %" sortKey="week" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
+            <SortableHeader label="1 Ay %" sortKey="month" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="3 Ay %" sortKey="threeMonth" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+            <SortableHeader label="6 Ay %" sortKey="sixMonth" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
+            <SortableHeader label="1 Yıl %" sortKey="year" activeKey={sortKey} dir={sortDir} onClick={setSort} />
             <th className="px-2 py-2.5 text-center w-24">İşlem</th>
           </tr>
         </thead>
@@ -372,6 +432,85 @@ function ScreenerFundsTable({ rows }: { rows: FundPerformance[] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// --- Özet performans kartları — Strong Buy / Fund Pool ile aynı pattern ---
+
+function fmtAvg(v: number, count: number): string {
+  if (count === 0) return '—';
+  const sign = v >= 0 ? '+' : '';
+  return `${sign}${v.toFixed(2)}%`;
+}
+function fmtRatio(s: { positives: number; negatives: number; count: number }): string {
+  if (s.count === 0) return '—';
+  return `${s.positives} ▲ / ${s.negatives} ▼`;
+}
+
+function SummaryCard({ label, mainValue, sub, tone }: {
+  label: string; mainValue: string; sub: string; tone: 'pos' | 'neg' | 'neutral';
+}) {
+  const toneClass = tone === 'pos' ? 'text-success' : tone === 'neg' ? 'text-danger' : 'text-slate-100';
+  return (
+    <div className="rounded-xl border border-border bg-bg-soft p-3">
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={cn('mt-1 text-base font-bold tabular-nums', toneClass)}>{mainValue}</div>
+      <div className="mt-0.5 text-[10px] text-slate-500">{sub}</div>
+    </div>
+  );
+}
+
+function StockSummary({ rows }: { rows: EnrichedStock[] }) {
+  const calc = (key: 'r1g' | 'r1a' | 'r3a' | 'r1y') => {
+    let sum = 0, count = 0, positives = 0, negatives = 0;
+    for (const r of rows) {
+      const v = r[key];
+      if (v == null || !Number.isFinite(v)) continue;
+      sum += v as number; count += 1;
+      if ((v as number) > 0) positives += 1;
+      else if ((v as number) < 0) negatives += 1;
+    }
+    return { avg: count > 0 ? sum / count : 0, count, positives, negatives };
+  };
+  const day = calc('r1g');
+  const r1a = calc('r1a');
+  const r3a = calc('r3a');
+  const r1y = calc('r1y');
+  return (
+    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <SummaryCard label="Havuzdaki Hisse" mainValue={`${rows.length}`} sub="Sorgu sonucu" tone="neutral" />
+      <SummaryCard label="Ortalama Gün %" mainValue={fmtAvg(day.avg, day.count)} sub={fmtRatio(day)} tone={day.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 1 Ay %" mainValue={fmtAvg(r1a.avg, r1a.count)} sub={fmtRatio(r1a)} tone={r1a.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 3 Ay %" mainValue={fmtAvg(r3a.avg, r3a.count)} sub={fmtRatio(r3a)} tone={r3a.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 1 Yıl %" mainValue={fmtAvg(r1y.avg, r1y.count)} sub={fmtRatio(r1y)} tone={r1y.avg >= 0 ? 'pos' : 'neg'} />
+    </div>
+  );
+}
+
+function FundSummary({ rows }: { rows: FundPerformance[] }) {
+  const calc = (key: 'day' | 'week' | 'month' | 'year') => {
+    let sum = 0, count = 0, positives = 0, negatives = 0;
+    for (const r of rows) {
+      const v = r[key];
+      if (!Number.isFinite(v)) continue;
+      sum += v as number; count += 1;
+      if ((v as number) > 0) positives += 1;
+      else if ((v as number) < 0) negatives += 1;
+    }
+    return { avg: count > 0 ? sum / count : 0, count, positives, negatives };
+  };
+  const day = calc('day');
+  const week = calc('week');
+  const month = calc('month');
+  const year = calc('year');
+  return (
+    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <SummaryCard label="Havuzdaki Fon" mainValue={`${rows.length}`} sub="Sorgu sonucu" tone="neutral" />
+      <SummaryCard label="Ortalama Gün %" mainValue={fmtAvg(day.avg, day.count)} sub={fmtRatio(day)} tone={day.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 1 Hafta %" mainValue={fmtAvg(week.avg, week.count)} sub={fmtRatio(week)} tone={week.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 1 Ay %" mainValue={fmtAvg(month.avg, month.count)} sub={fmtRatio(month)} tone={month.avg >= 0 ? 'pos' : 'neg'} />
+      <SummaryCard label="Ortalama 1 Yıl %" mainValue={fmtAvg(year.avg, year.count)} sub={fmtRatio(year)} tone={year.avg >= 0 ? 'pos' : 'neg'} />
     </div>
   );
 }

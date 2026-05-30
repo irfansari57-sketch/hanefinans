@@ -115,40 +115,75 @@ export function StrongBuyTab() {
     else { setSortKey(k); setSortDir('desc'); }
   };
 
-  const universe = useMemo(() => {
-    const seen = new Set<string>();
-    const out: { symbol: string; name: string; sector: string }[] = [];
+  // BIST evreni: hızlı meta-data lookup için (name + sector)
+  const universeMeta = useMemo(() => {
+    const map = new Map<string, { name: string; sector: string }>();
     for (const s of MOCK_STOCKS) {
-      if (seen.has(s.symbol)) continue;
-      seen.add(s.symbol);
-      out.push({ symbol: s.symbol, name: s.name, sector: s.sector ?? '' });
+      if (map.has(s.symbol)) continue;
+      map.set(s.symbol, { name: s.name, sector: s.sector ?? '' });
     }
     for (const s of BIST_UNIQUE) {
-      if (seen.has(s.symbol)) continue;
-      seen.add(s.symbol);
-      out.push({ symbol: s.symbol, name: s.name, sector: s.sector });
+      if (map.has(s.symbol)) continue;
+      map.set(s.symbol, { name: s.name, sector: s.sector });
     }
-    return out;
+    return map;
   }, []);
 
-  // Stocks fetch — batch
+  // 1) Returns snapshot ÖNCE çek — kapsadığı sembolleri "tradable evren" olarak kullan
+  // Bu sayede borsada işlem görmeyen ~250 çöp sembol elenir → tarama ~%40 hızlanır
   useEffect(() => {
     let cancelled = false;
+    setReturnsLoading(true);
     setLoading(true);
-    const allSymbols = universe.map((u) => u.symbol);
-    setProgress({ done: 0, total: allSymbols.length });
-
-    const placeholder: Stock[] = universe.map((u) => ({
-      symbol: u.symbol, name: u.name, sector: u.sector,
-      price: 0, changePct: 0, updatedAt: new Date().toISOString(),
-    }));
-    setStocks(placeholder);
 
     (async () => {
+      // Snapshot
+      let map: Record<string, PeriodReturns> = {};
+      try {
+        const r = await fetch('/api/yahoo/returns-snapshot');
+        if (r.ok) {
+          const j = await r.json() as { ok: boolean; returns?: Record<string, PeriodReturns> };
+          if (j.ok && j.returns) {
+            for (const [ySym, ret] of Object.entries(j.returns)) {
+              const sym = ySym.endsWith('.IS') ? ySym.slice(0, -3) : ySym;
+              map[sym] = ret;
+            }
+          }
+        }
+      } catch { /* */ }
+      if (cancelled) return;
+      setReturnsMap(map);
+      setReturnsLoading(false);
+
+      // 2) Tarama evreni: snapshot'taki sembol + broker önerilerinin kapsadıkları
+      // (snapshot bazen yeni broker eklenen ama henüz cache'lenmemiş sembolü kaçırabilir)
+      const brokerSyms = new Set<string>();
+      for (const broker of BROKER_RECOMMENDATIONS) {
+        for (const rec of broker.recommendations) brokerSyms.add(rec.symbol);
+      }
+      const tradableSet = new Set<string>([...Object.keys(map), ...brokerSyms]);
+      // BIST evreninde tanımlı olanlarla kesişim al (yabancı sembolleri ele)
+      const finalSymbols: string[] = [];
+      for (const sym of tradableSet) {
+        if (universeMeta.has(sym)) finalSymbols.push(sym);
+      }
+      finalSymbols.sort();
+
+      setProgress({ done: 0, total: finalSymbols.length });
+      const placeholder: Stock[] = finalSymbols.map((sym) => {
+        const meta = universeMeta.get(sym)!;
+        return {
+          symbol: sym, name: meta.name, sector: meta.sector,
+          price: 0, changePct: 0, updatedAt: new Date().toISOString(),
+        };
+      });
+      setStocks(placeholder);
+
+      // 3) Batch live price fetch — sadece tradable evren (~500 sembol)
       const liveAll: Stock[] = [];
-      for (let i = 0; i < allSymbols.length; i += BATCH_SIZE) {
+      for (let i = 0; i < finalSymbols.length; i += BATCH_SIZE) {
         if (cancelled) return;
-        const batch = allSymbols.slice(i, i + BATCH_SIZE);
+        const batch = finalSymbols.slice(i, i + BATCH_SIZE);
         try {
           const { data } = await loadStocks(batch);
           liveAll.push(...data);
@@ -156,37 +191,18 @@ export function StrongBuyTab() {
           const merged = placeholder.map((p) => liveMap.get(p.symbol) ?? p);
           if (!cancelled) {
             setStocks(merged);
-            setProgress({ done: Math.min(i + BATCH_SIZE, allSymbols.length), total: allSymbols.length });
+            setProgress({ done: Math.min(i + BATCH_SIZE, finalSymbols.length), total: finalSymbols.length });
           }
-        } catch { /* devam */ }
-        if (i + BATCH_SIZE < allSymbols.length) {
+        } catch { /* batch hatası — devam */ }
+        if (i + BATCH_SIZE < finalSymbols.length) {
           await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
         }
       }
       if (!cancelled) setLoading(false);
     })();
-    return () => { cancelled = true; };
-  }, [universe]);
 
-  // Returns snapshot
-  useEffect(() => {
-    let cancelled = false;
-    setReturnsLoading(true);
-    fetch('/api/yahoo/returns-snapshot')
-      .then((r) => r.ok ? r.json() : null)
-      .then((j: { ok: boolean; returns?: Record<string, PeriodReturns> } | null) => {
-        if (cancelled || !j?.ok || !j.returns) return;
-        const map: Record<string, PeriodReturns> = {};
-        for (const [ySym, ret] of Object.entries(j.returns)) {
-          const sym = ySym.endsWith('.IS') ? ySym.slice(0, -3) : ySym;
-          map[sym] = ret;
-        }
-        setReturnsMap(map);
-      })
-      .catch(() => { /* */ })
-      .finally(() => { if (!cancelled) setReturnsLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [universeMeta]);
 
   // Aggregate + filter (sıkı kriterler)
   const aggregated = useMemo<AggregatedRec[]>(() => {

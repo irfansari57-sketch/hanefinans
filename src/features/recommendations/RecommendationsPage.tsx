@@ -382,6 +382,15 @@ export function RecommendationsPage() {
         <button
           className={cn(
             'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
+            tab === 'strongbuy' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+          )}
+          onClick={() => setTab('strongbuy')}
+        >
+          <TrendingUp size={14} /> Güçlü Al Hisse Havuzu
+        </button>
+        <button
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
             tab === 'scalp' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
           )}
           onClick={() => setTab('scalp')}
@@ -414,15 +423,6 @@ export function RecommendationsPage() {
           onClick={() => setTab('funds')}
         >
           <PiggyBank size={14} /> Trend Fonlar ({topFunds.length})
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'strongbuy' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('strongbuy')}
-        >
-          <TrendingUp size={14} /> Güçlü Al Hisse Havuzu
         </button>
       </div>
 

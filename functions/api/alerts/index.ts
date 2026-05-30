@@ -36,7 +36,21 @@ interface AlertRow {
   created_at: number;
 }
 
-const MAX_ALERTS_PER_USER = 50;
+/**
+ * Tier-based alarm kotası — kullanıcı tier'ına göre aktif alarm sayısı sınırı.
+ *
+ *   free  → 5 aktif alarm (engagement hook — Pro'ya yönlendirir)
+ *   pro   → 30 aktif alarm (orta yatırımcı için yeterli)
+ *   elite → 100 aktif alarm (profesyonel tarayıcı kullanım)
+ *
+ * Anon (auth yok) zaten 401 dönüyor → endpoint'e ulaşamıyor.
+ */
+const TIER_LIMITS = {
+  free: 5,
+  pro: 30,
+  elite: 100,
+} as const;
+
 const VALID_ASSET_TYPES = ['stock', 'fund', 'crypto', 'fx'] as const;
 const VALID_DIRECTIONS = ['above', 'below'] as const;
 
@@ -111,16 +125,28 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return jsonResponse({ ok: false, error: 'threshold pozitif sayı olmalı' }, 400);
   }
 
-  // Quota check — bir kullanıcı en fazla 50 aktif alarm tutabilir
+  // Tier-aware quota check — kullanıcının paketi kadar aktif alarm
+  const tier = auth.user.tier ?? 'free';
+  const tierLimit = TIER_LIMITS[tier] ?? TIER_LIMITS.free;
   const countRow = await env.DB
     .prepare('SELECT COUNT(*) as c FROM price_alerts WHERE user_id = ? AND active = 1')
     .bind(auth.user.id)
     .first<{ c: number }>();
   const activeCount = countRow?.c ?? 0;
-  if (activeCount >= MAX_ALERTS_PER_USER) {
+  if (activeCount >= tierLimit) {
+    const upgradeMsg =
+      tier === 'free'
+        ? `Ücretsiz üyelikte max ${tierLimit} aktif alarm. Pro'ya geç, ${TIER_LIMITS.pro} alarm kur.`
+        : tier === 'pro'
+        ? `Pro üyelikte max ${tierLimit} aktif alarm. Elite'a geç, ${TIER_LIMITS.elite} alarm kur.`
+        : `Elite üyelikte max ${tierLimit} aktif alarm. Eski alarmlarını sil.`;
     return jsonResponse({
       ok: false,
-      error: `Maksimum ${MAX_ALERTS_PER_USER} aktif alarm. Önce eskisini sil.`,
+      error: upgradeMsg,
+      code: 'TIER_QUOTA_EXCEEDED',
+      tier,
+      limit: tierLimit,
+      used: activeCount,
     }, 400);
   }
 

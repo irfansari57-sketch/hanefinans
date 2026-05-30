@@ -67,14 +67,16 @@ async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct
     if (validCloses.length >= 2) {
       const lastClose = validCloses[0];
       const beforeClose = validCloses[1];
-      // Eğer price çok yakın lastClose'a (= piyasa kapalı, gösterilen son kapanış),
-      // önceki gün kapanışını prev al → gerçek günlük değişim hesaplanır
-      // Eğer price ≠ lastClose (= intraday quote), lastClose prev olur
-      prev = Math.abs(price - lastClose) < 0.01 ? beforeClose : lastClose;
+      // Yüzde-bazlı eşik (#Ö BIST weekend fix v2):
+      // Mutlak eşik (0.01) BIST 100 gibi 13000+ değerlerde Yahoo'nun mikro
+      // rounding'ini "intraday quote" sanıp prev'i yanlış seçiyordu. Şimdi
+      // göreli eşik %0.1: piyasa kapalı + minimal rounding = same close.
+      const pctDiff = Math.abs(price - lastClose) / lastClose;
+      prev = pctDiff < 0.001 ? beforeClose : lastClose;
     }
     if (!Number.isFinite(prev) || prev <= 0) {
       const candidates = [meta.previousClose, meta.chartPreviousClose].filter(
-        (v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && Math.abs(v - price) > 0.01,
+        (v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0 && Math.abs((v - price) / price) > 0.001,
       );
       if (candidates.length > 0) prev = candidates[0];
     }
@@ -276,6 +278,10 @@ export function computePeriodReturns(closes: { date: number; close: number }[]):
   const days30 = findOldest(30); if (days30) r['1a'] = pct(days30.close);
   const days90 = findOldest(90); if (days90) r['3a'] = pct(days90.close);
   const days180 = findOldest(180); if (days180) r['6a'] = pct(days180.close);
+  if (closes.length > 1) r['1y'] = pct(closes[0].close);
+  return r;
+}
+ pct(days180.close);
   if (closes.length > 1) r['1y'] = pct(closes[0].close);
   return r;
 }

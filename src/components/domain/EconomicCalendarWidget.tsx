@@ -88,17 +88,90 @@ function ImpactIcon({ impact, large }: { impact?: CalendarEvent['impact']; large
 }
 
 /** PRO-gated detail panel — bullish/base/bearish + asset impact + watchlist */
-function ProDetailPanel({ event, proUser }: { event: CalendarEvent; proUser: boolean }) {
-  const a = event.proAnalysis;
+/** Kategori bazli default analiz — her olay icin asgari icerik garantisi. */
+function defaultAnalysis(event: CalendarEvent): NonNullable<CalendarEvent['proAnalysis']> {
+  const cat = event.category;
+  const isHigh = event.importance === 'high';
+  const country = event.country;
 
-  if (!a) {
-    // proAnalysis bos — bilgi yetersiz mesaji (paywall degil)
-    return (
-      <div className="rounded-md border border-border bg-bg-card/40 px-3 py-2 text-[11px] text-slate-400">
-        Bu olay icin detayli analiz hazirlik asamasinda. PPK, FOMC, ECB gibi yuksek etki olaylarinda derin analiz mevcut.
-      </div>
-    );
+  if (cat === 'monetary') {
+    return {
+      bullishScenario: 'Guvercin karar / faiz indirimi sinyali — risk varliklar pozitif. BIST + EM hisseler ralisi, USD/TRY indirim alani.',
+      baseScenario: 'Beklenti dahilinde karar — sinirli ilk tepki. Asil hareket forward guidance metnine bagli.',
+      bearishScenario: 'Sahin karar / faiz artisi — risk varliklar satis, USD guclenir, EM hisseler ve TRY zayif.',
+      bistImpact: 'Endekste %1-3 hareket olasi. Banka endeksi (XBANK) ve faiz hassas sektorler (GYO, REIT) en duyarli.',
+      usdtryImpact: 'Karar sonrasi ilk 60 dakikada %0,3-1,5 hareket bekleniyor. Spread genislemesi olasi.',
+      goldImpact: 'Guvercin tonlu kararlar altin icin pozitif. Sahin tonlu kararlar ons altinda baski yaratir.',
+      watchlist: country === 'TR' ? ['XBANK', 'GARAN', 'AKBNK', 'USDTRY', 'TR10Y'] : ['DXY', 'SPY', 'GLD', 'USDTRY', 'XU100'],
+      historicalContext: 'Para politikasi kararlari piyasada en yuksek volatilite yaratan olaylardandir. Karar metnindeki tek bir kelime piyasayi hareket ettirebilir.',
+    };
   }
+
+  if (cat === 'data') {
+    return {
+      bullishScenario: 'Konsensus altinda enflasyon / iyi buyume / guclu istihdam — risk varliklar pozitif, faiz indirim beklentisi artar.',
+      baseScenario: 'Veri konsensus seviyesinde — sinirli piyasa tepkisi, ana hareket sonraki veri/karar setine kalir.',
+      bearishScenario: 'Konsensus ustunde enflasyon / zayif buyume / dusuk istihdam — risk varliklar satis, faiz indirim beklentisi geri itilir.',
+      bistImpact: country === 'TR' ? 'TR verileri BIST 100 endeksinde dogrudan etki yaratir. Enflasyon yuksek gelirse banka satisi, dusuk gelirse rali olasi.' : 'ABD/AB verileri TR borsasini dolayli etkiler — DXY ve risk istahi uzerinden.',
+      usdtryImpact: country === 'TR' ? 'TR verileri TRY uzerinde dogrudan etkili.' : 'ABD verileri DXY uzerinden USD/TRY yonune etki eder.',
+      goldImpact: 'Enflasyon sürprizleri altin icin kritik. Yuksek enflasyon -> altin pozitif; düsük enflasyon -> altin baski.',
+      watchlist: country === 'TR' ? ['XU100', 'XBANK', 'USDTRY', 'Gram Altin'] : ['DXY', 'TLT', 'GLD', 'SPY'],
+      historicalContext: 'Veri aciklamasindan sonra ilk 30 dakikada hacim ve oynaklik en yuksek seviyede. Surpriz veriler trend donusumlerine yol acabilir.',
+    };
+  }
+
+  if (cat === 'political') {
+    return {
+      bullishScenario: 'Belirsizligi azaltan / piyasa dostu karar — risk primi duser, BIST yukseli, TRY pozitif.',
+      baseScenario: 'Karar belirsizlik suresini uzatir — piyasa kararsiz, TRY zayif bias, BIST yatay.',
+      bearishScenario: 'Kriz yaratan / piyasa karsiti karar — derin risk primi yukseli, BIST satis, TRY hizla deger kaybeder.',
+      bistImpact: 'XU100 endeksinde %2-5 hareket araliği. Bankacilik ve buyuk olcekli sanayi en duyarli.',
+      usdtryImpact: 'Siyasi gelismeler TRY oynakligini sert artirir. Stop emirleri ve spread genislemesi olasi.',
+      goldImpact: 'TRY zayiflarsa gram altin guclu. Jeopolitik prim ons altina yansiyabilir.',
+      watchlist: ['XU100', 'XBANK', 'GARAN', 'USDTRY', 'EURTRY', 'Gram Altin'],
+      historicalContext: 'Siyasi olaylarin piyasa etkisi yorum subjektif. Pozisyon almak yerine pozisyonu hafifletme stratejisi daha guvenli.',
+    };
+  }
+
+  if (cat === 'holiday') {
+    return {
+      bullishScenario: 'Tatil sonrasi guclu acilis — birikmis olumlu haberlerin fiyatlanmasi.',
+      baseScenario: 'Tatil oncesi/sonrasi sinirli hareket — likidite dusuk, gercek trend tatil sonrasi 2-3 gunde belli olur.',
+      bearishScenario: 'Tatilde gelisen olumsuz haber/global gelisme — acilista boslukla satis baskisi.',
+      bistImpact: 'Tatil oncesi pozisyon hafifletme egilimi. Tatil donusu acilista volatilite yuksek olabilir.',
+      usdtryImpact: 'TR tatillerinde TRY offshore islemlerle hareket edebilir. Tatil donusu ilk islem gununde fark olusabilir.',
+      goldImpact: 'Tatil donemlerinde fiziki altin talebi etkili olabilir (bayram, dugun donemleri).',
+      watchlist: ['XU100', 'USDTRY', 'Gram Altin'],
+      historicalContext: 'Uzun tatil oncesi pozisyon hafifletme stratejik dogrudur. Gap riski sinirli pozisyonla yonetilebilir.',
+    };
+  }
+
+  if (cat === 'derivatives') {
+    return {
+      bullishScenario: 'Vade sonu yakini squeeze - kisaklamalardan zorla kapama ile spot yukari hareket.',
+      baseScenario: 'Vade sonu yaklasirken volatilite artar, spot fiyat olusumu vadeli pozisyonlarinin etkisinde.',
+      bearishScenario: 'Vadeli uzun pozisyonlar baskili — rollover yapilmadiginda spot da satilir.',
+      bistImpact: 'BIST 30 vade sonunda volatilite artar. Endeks fiyatinda son saatlerde hizli hareket olasi.',
+      usdtryImpact: 'USD/TRY vade sonu offshore baski ile sapma yaratabilir.',
+      goldImpact: 'Altin vadeli ortemler sinirli; spot piyasa eskoritle hareket eder.',
+      watchlist: ['XU30', 'XU100', 'USDTRY', 'F_XU0306'],
+      historicalContext: 'Vade sonu son 30 dakikada islem hacmi katlanir, spread genisler. Vadeli pozisyon kapama icin son hafta tercih edilir.',
+    };
+  }
+
+  // corporate veya bilinmeyen
+  return {
+    bullishScenario: 'Olumlu gelisme — ilgili hisse/sektor pozitif tepki.',
+    baseScenario: 'Beklenti dahili karar — sinirli tepki, ana trend devam eder.',
+    bearishScenario: 'Olumsuz gelisme — ilgili hisse/sektor satis baskisi altinda.',
+    bistImpact: 'Sirket bazli haberler ilgili hissede dogrudan etki yaratir.',
+    watchlist: [],
+    historicalContext: 'Sirket gelismelerinde ilk fiyatlama ozellikle ilk 15-30 dakikada netlesir.',
+  };
+}
+
+function ProDetailPanel({ event, proUser }: { event: CalendarEvent; proUser: boolean }) {
+  const a = event.proAnalysis ?? defaultAnalysis(event);
 
   if (!proUser) {
     // Free user — paywall card
@@ -242,7 +315,7 @@ export function EconomicCalendarWidget({
             <CalendarClock size={15} strokeWidth={2.5} />
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-50 tracking-tight flex items-center gap-1">
+            <div className="text-sm font-semibold text-slate-200 tracking-tight flex items-center gap-1">
               Ekonomik Takvim
               <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-0.5 group-hover:text-accent transition" />
             </div>
@@ -290,14 +363,14 @@ export function EconomicCalendarWidget({
                         'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider',
                         date.isToday && 'bg-accent text-white shadow-[0_0_8px_rgba(56,189,248,0.5)]',
                         date.isTomorrow && 'bg-accent/30 text-accent ring-1 ring-accent/50',
-                        !date.isToday && !date.isTomorrow && 'bg-slate-800/60 text-slate-200 ring-1 ring-border',
+                        !date.isToday && !date.isTomorrow && 'bg-accent/15 text-accent ring-1 ring-accent/30',
                       )}
                     >
                       {date.label}
                     </span>
 
                     {e.time && (
-                      <span className="inline-flex items-center rounded-md bg-slate-900/60 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-300 ring-1 ring-border">
+                      <span className="inline-flex items-center rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-accent ring-1 ring-accent/25">
                         {e.time}
                       </span>
                     )}

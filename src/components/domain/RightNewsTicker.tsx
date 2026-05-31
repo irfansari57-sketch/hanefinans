@@ -90,7 +90,7 @@ export function RightNewsTicker() {
 
       {/* Ekonomik takvim kompakt strip — sıradaki 5 önemli olay */}
       <div className="border-b border-border p-2">
-        <EconomicCalendarWidget compact maxItems={5} daysAhead={14} />
+        <EconomicCalendarWidget compact maxItems={5} daysAhead={14} collapsible />
       </div>
 
       {/* Header — collapse + direction toggle */}

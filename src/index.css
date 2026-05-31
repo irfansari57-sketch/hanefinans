@@ -229,9 +229,8 @@ html.light {
   animation-play-state: paused;
 }
 .news-ticker-mask {
-  /* üst ve altta yumuşak fade — başlık altta beliriyor, üstte kayboluyor */
-  mask-image: linear-gradient(180deg, transparent 0%, black 8%, black 92%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 8%, black 92%, transparent 100%);
+  /* Mask kaldırıldı (kullanıcı talebi: haberler net görünsün, blur olmasın).
+     Sadece çok dar bir fade üst/alt kenarda kalır, asıl içerik tamamen net. */
 }
 
 /* Değer değişim flash animasyonu */

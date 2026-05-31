@@ -39,6 +39,9 @@ interface Props {
   maxItems?: number;
   daysAhead?: number;
   className?: string;
+  /** Akordiyon olarak davranir: header'a tiklayinca acilir/kapanir, /takvim'e gitmez.
+      Sag rail'de kompakt gosterim icin. localStorage'a kaydedilir. */
+  collapsible?: boolean;
 }
 
 const CATEGORY_STYLE: Record<EventCategory, { label: string; cls: string }> = {
@@ -278,12 +281,33 @@ function ProDetailPanel({ event, proUser }: { event: CalendarEvent; proUser: boo
   );
 }
 
+const CALENDAR_COLLAPSE_KEY = 'fa.rightCalendar.collapsed';
+
 export function EconomicCalendarWidget({
   compact = false,
   maxItems,
   daysAhead = 14,
   className,
+  collapsible = false,
 }: Props) {
+  const [calCollapsed, setCalCollapsed] = useState<boolean>(() => {
+    if (!collapsible) return false;
+    try {
+      return localStorage.getItem(CALENDAR_COLLAPSE_KEY) !== '0';  // default kapali
+    } catch {
+      return true;
+    }
+  });
+  const toggleCalCollapsed = (e: React.MouseEvent) => {
+    if (!collapsible) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const next = !calCollapsed;
+    setCalCollapsed(next);
+    try {
+      localStorage.setItem(CALENDAR_COLLAPSE_KEY, next ? '1' : '0');
+    } catch { /* ignore */ }
+  };
   const limit = maxItems ?? (compact ? 5 : 25);
   const events = useMemo(() => {
     const ev = upcomingEvents(new Date(), daysAhead);
@@ -305,11 +329,14 @@ export function EconomicCalendarWidget({
 
   return (
     <div className={cn('rounded-xl border border-border bg-bg-soft overflow-hidden shadow-lg', className)}>
-      {/* HEADER — clickable, /takvim sayfasina gider */}
-      <Link
-        to="/takvim"
-        className="group relative flex items-center justify-between border-b border-border bg-gradient-to-r from-accent/20 via-accent/10 to-transparent px-3 py-2.5 transition hover:from-accent/30 hover:via-accent/15"
-      >
+      {/* HEADER — collapsible ise akordiyon toggle, degilse /takvim'e Link */}
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={toggleCalCollapsed}
+          className="group relative flex w-full items-center justify-between border-b border-border bg-gradient-to-r from-accent/20 via-accent/10 to-transparent px-3 py-2.5 transition hover:from-accent/30 hover:via-accent/15"
+          aria-expanded={!calCollapsed}
+        >
         <div className="flex items-center gap-2">
           <div className="grid h-7 w-7 place-items-center rounded-md bg-warning/20 text-warning shadow-inner group-hover:bg-warning/30 transition">
             <CalendarClock size={15} strokeWidth={2.5} />
@@ -326,9 +353,34 @@ export function EconomicCalendarWidget({
           <Sparkles size={9} />
           Canli
         </div>
-      </Link>
+        </button>
+      ) : (
+        <Link
+          to="/takvim"
+          className="group relative flex items-center justify-between border-b border-border bg-gradient-to-r from-accent/20 via-accent/10 to-transparent px-3 py-2.5 transition hover:from-accent/30 hover:via-accent/15"
+        >
+          <div className="flex items-center gap-2">
+            <div className="grid h-7 w-7 place-items-center rounded-md bg-warning/20 text-warning shadow-inner group-hover:bg-warning/30 transition">
+              <CalendarClock size={15} strokeWidth={2.5} />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-semibold text-slate-200 tracking-tight flex items-center gap-1">
+                Ekonomik Takvim
+                <ChevronDown size={14} className={cn("text-slate-400 transition-transform", calCollapsed && '-rotate-90')} />
+              </div>
+              <div className="text-[10px] text-slate-400 -mt-0.5">{events.length} onemli olay yaklasiyor{calCollapsed ? ' — tikla ac' : ''}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 rounded-md bg-danger/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-danger ring-1 ring-danger/40">
+            <Sparkles size={9} />
+            Canli
+          </div>
+        </Link>
+      )}
 
-      {/* LIST */}
+      {/* LIST — collapsible iken collapsed ise gizle */}
+      {(!collapsible || !calCollapsed) && (
+        <>
       <ul className="divide-y divide-border max-h-[680px] overflow-y-auto">
         {events.map((e) => {
           const imp = IMPORTANCE_STYLE[e.importance];
@@ -464,6 +516,8 @@ export function EconomicCalendarWidget({
           Tum takvim <ArrowUpRight size={10} strokeWidth={2.5} />
         </span>
       </Link>
+        </>
+      )}
     </div>
   );
 }

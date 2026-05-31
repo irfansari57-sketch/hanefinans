@@ -29,6 +29,7 @@ import {
 } from '@/data/api/predictionsClient';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
+import { LeaderGameCard } from './sections/LeaderGameCard';
 
 const BUCKETS: PredictionBucket[] = ['strongUp', 'up', 'flat', 'down', 'strongDown'];
 

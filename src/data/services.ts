@@ -114,8 +114,11 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
     for (const sym of want) {
       const ySym = sym.includes('.') || sym.includes('=') || sym.includes('-') ? sym : `${sym}.IS`;
       const q = snap.quotes[ySym];
-      // STALE FILTER: changePct === 0 && price > 0 -> Yahoo fetchOne fallback'e yonlendir
-      if (q && !(q.changePct === 0 && q.price > 0)) {
+      // Snapshot dondurdu mu? Trust et. Eski STALE FILTER (changePct=0 atla)
+      // kaldirildi cunku snapshot.ts artik deep walk-back yaparak Cuma vs Persembe
+      // (veya daha eski) close'lari karsilastiriyor — 0 dondurmesi cok nadir.
+      // Filtre period kolonlarinin da gozukmemesine yol aciyordu (vicious cycle).
+      if (q) {
         liveMap.set(sym, {
           symbol: sym,
           name: q.name ?? sym,

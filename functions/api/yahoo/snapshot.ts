@@ -49,33 +49,35 @@ function parseYahooBody(body: string): { price: number; changePct: number; prev:
     if (!meta) return null;
 
     const closes = result?.indicators?.quote?.[0]?.close ?? [];
+    // Tum gecerli close'lari topla — son 5 gun (5d:1d range)
     const validCloses: number[] = [];
     for (let i = closes.length - 1; i >= 0; i--) {
       const c = closes[i];
       if (c != null && Number.isFinite(c) && (c as number) > 0) validCloses.push(c as number);
-      if (validCloses.length >= 2) break;
     }
 
     let price: number | undefined = meta.regularMarketPrice;
     if (price == null && validCloses.length > 0) price = validCloses[0];
     if (price == null || !Number.isFinite(price) || price <= 0) return null;
 
-    let prev: number;
-    if (validCloses.length >= 2) {
-      const lastClose = validCloses[0];
-      const beforeClose = validCloses[1];
-      // Percent-based threshold (%0.1) — Yahoo bazen weekend/holiday'de
-      // price === lastClose donduruyor (rounding 0.0001 sapmasiyla absolute
-      // threshold patliyor). Bu durumda beforeClose'u baz al ki son is gunu
-      // hareketi gosterilsin.
-      const pctDiff = Math.abs(price - lastClose) / lastClose;
-      prev = pctDiff < 0.001 ? beforeClose : lastClose;
-    } else if (meta.previousClose && meta.previousClose > 0 && Math.abs((meta.previousClose - price) / price) > 0.001) {
-      prev = meta.previousClose;
-    } else if (meta.chartPreviousClose && meta.chartPreviousClose > 0 && Math.abs((meta.chartPreviousClose - price) / price) > 0.001) {
-      prev = meta.chartPreviousClose;
-    } else {
-      prev = price;
+    // En son iş gününün gerçek değişim %'sini bul: price'tan farkli ilk close'u
+    // geriye dogru yuru. Bu sayede:
+    //   - Hafta sonu: price === Cuma_close → atla → Persembe_close ile karsilastir
+    //   - Cuma flat gun: price === Cuma_close === Persembe_close → Carsamba ile
+    //   - Tatil gunu: aynisi, sonraki gun ile karsilastir
+    // Boylece Gun % asla 0 takilmaz (gercek flat olmadigi surece).
+    let prev: number = price;
+    for (const c of validCloses) {
+      const pctDiff = Math.abs(price - c) / price;
+      if (pctDiff >= 0.001) { prev = c; break; }
+    }
+    // Hala bulunamadiysa meta.previousClose / chartPreviousClose fallback
+    if (prev === price) {
+      if (meta.previousClose && meta.previousClose > 0 && Math.abs((meta.previousClose - price) / price) >= 0.001) {
+        prev = meta.previousClose;
+      } else if (meta.chartPreviousClose && meta.chartPreviousClose > 0 && Math.abs((meta.chartPreviousClose - price) / price) >= 0.001) {
+        prev = meta.chartPreviousClose;
+      }
     }
     const changePct = prev > 0 && prev !== price ? ((price - prev) / prev) * 100 : 0;
     const updatedAt = meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now();

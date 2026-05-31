@@ -34,6 +34,16 @@ export interface CalendarEvent {
   description?: string;
   expectation?: string;
   impact?: EventImpact;
+  proAnalysis?: {
+    bullishScenario?: string;
+    baseScenario?: string;
+    bearishScenario?: string;
+    bistImpact?: string;
+    usdtryImpact?: string;
+    goldImpact?: string;
+    watchlist?: string[];
+    historicalContext?: string;
+  };
 }
 
 export const CURATED_CALENDAR: CalendarEvent[] = [
@@ -120,6 +130,16 @@ export const CURATED_CALENDAR: CalendarEvent[] = [
     description: 'TCMB 2026 yılı dördüncü PPK toplantısı — politika faizi açıklanacak.',
     expectation: 'Enflasyon görünümüne bağlı ölçülü faiz indirimi veya sabit tutulma piyasada öne çıkıyor.',
     impact: 'unknown',
+    proAnalysis: {
+      bullishScenario: '250 bps indirim — BIST yükseliş, USD/TRY üst banda. Faiz hassas hisseler (banka, GYO) güçlü.',
+      baseScenario: 'Sabit tutma + güvercin metin — sınırlı BIST tepkisi, TRY yatay. Vadeli işlemlerde squeeze riski.',
+      bearishScenario: 'Faiz artırımı veya şahin metin — BIST satış, USD/TRY hızlı geri çekilme, tahvil getirileri yukarı.',
+      bistImpact: 'Endeks bazlı 200-500 bps hareket. Banka endeksi (XBANK) en duyarlı.',
+      usdtryImpact: 'Karar sonrası ilk 1 saatte %0,5-1,5 hareket bekleniyor.',
+      goldImpact: 'TRY zayıflarsa gram altın güçlü; ons altın etkisi sınırlı.',
+      watchlist: ['XBANK', 'GARAN', 'AKBNK', 'YKBNK', 'USDTRY', 'TR10Y'],
+      historicalContext: 'Son 4 PPK toplantısında 3 sürpriz çıktı. Konsensus dışı kararlar piyasayı sert yönlendiriyor.',
+    },
   },
   {
     id: 'ecb-2026-06',
@@ -143,6 +163,16 @@ export const CURATED_CALENDAR: CalendarEvent[] = [
     description: 'Bolge Adliye Mahkemesi butlan kararına temyizin Yargıtayda görülmesi bekleniyor (tahmini Haziran ortası).',
     expectation: 'Karar siyasi belirsizlik üzerinden BIST risk primini ve TRY tarafini etkileyebilir.',
     impact: 'bearish',
+    proAnalysis: {
+      bullishScenario: 'Yargıtay butlan kararını bozar — siyasi belirsizlik dağılır, BIST risk primi düşer, TRY pozitif.',
+      baseScenario: 'Karar erteleme/eksik inceleme — belirsizlik sürer, BIST yatay, TRY zayıf bias.',
+      bearishScenario: 'Yargıtay butlan kararını onar — derin siyasi kriz, BIST satış baskısı, USD/TRY yukarı ivmelenebilir.',
+      bistImpact: 'XU100 endeksinde %2-5 hareket aralığı. Bankacılık ve büyük ölçekli sanayi en duyarlı.',
+      usdtryImpact: 'Karar sonrası TRY oynaklığı yüksek. Stop emirleri ve OFB volatilite genişler.',
+      goldImpact: 'TRY zayıflarsa gram altın güçlü; jeopolitik prim ons altına yansır.',
+      watchlist: ['XU100', 'XBANK', 'GARAN', 'AKBNK', 'USDTRY', 'EURTRY'],
+      historicalContext: 'Yargıtay siyasi davalarda genellikle muhafazakar — onama oranı yüksek. Sürpriz bozma piyasa için pozitif.',
+    },
   },
   {
     id: 'us-retail-sales-may-2026',
@@ -167,6 +197,16 @@ export const CURATED_CALENDAR: CalendarEvent[] = [
     description: 'FED iki günlük FOMC ikinci günü — faiz + güncel ekonomik projeksiyonlar (SEP) + dot plot. Powell 21:30.',
     expectation: 'Faizin sabit tutulması. Yıl içinde indirim sayısı dot plot revizyonu kritik.',
     impact: 'unknown',
+    proAnalysis: {
+      bullishScenario: 'Dot plot 2 → 3 indirime revize. Risk varlıklar rali — SPX, NDX güçlü, EM/BIST iyimser.',
+      baseScenario: 'Faiz sabit + dot plot değişmez — beklendiği için sınırlı tepki. DXY yatay, altın yatay-pozitif.',
+      bearishScenario: 'Şahin sürpriz (indirim sayısı azaldı) — DXY yukarı, ABD tahvil getirileri tırmanır, EM zayıf.',
+      bistImpact: 'TR borsası FOMC kararından dolaylı etkilenir — DXY hareketi USD/TRY üzerinden risk priminde değişiklik yaratır.',
+      usdtryImpact: 'DXY yönüne bağlı. Şahin FED → USD/TRY yukarı baskı, güvercin FED → indirim alanı.',
+      goldImpact: 'Güvercin FED altın için pozitif. Ons altın 5000 USD seviyesini test edebilir.',
+      watchlist: ['DXY', 'TLT', 'GLD', 'SPY', 'XU100', 'USDTRY'],
+      historicalContext: 'FOMC sonrası ilk 30 dk volatility en yüksek. Spread genişler, slippage artar.',
+    },
   },
   {
     id: 'tcmb-ppk-ozet-2026-06',

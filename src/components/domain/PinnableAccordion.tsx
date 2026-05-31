@@ -11,6 +11,7 @@
 import { useState, useEffect, type ReactNode, type MouseEvent } from 'react';
 import { ChevronRight, Pin, PinOff } from 'lucide-react';
 import { useAuth } from '@/store/auth';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -115,7 +116,18 @@ export function PinnableAccordion({
         />
       </summary>
       <div className="border-t border-border bg-bg-card p-2 sm:p-3">
-        {children}
+        <ErrorBoundary
+          label={`accordion:${id}`}
+          fallback={(err, reset) => (
+            <div className="rounded-md border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+              <div className="font-semibold mb-1">Bu bolum yuklenirken bir hata olustu</div>
+              <div className="text-warning/80 mb-2 text-[11px]">{err.message}</div>
+              <button onClick={reset} className="text-warning underline">Tekrar dene</button>
+            </div>
+          )}
+        >
+          {children}
+        </ErrorBoundary>
       </div>
     </details>
   );

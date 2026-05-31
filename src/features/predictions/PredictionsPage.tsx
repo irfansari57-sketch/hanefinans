@@ -34,6 +34,7 @@ import { LeaderGameCard } from './sections/LeaderGameCard';
 import { SymbolPuzzleCard } from './sections/SymbolPuzzleCard';
 import { FinancialQuizCard } from './sections/FinancialQuizCard';
 import { VirtualPortfolioCard } from './sections/VirtualPortfolioCard';
+import { SectorChampionCard } from './sections/SectorChampionCard';
 
 const BUCKETS: PredictionBucket[] = ['strongUp', 'up', 'flat', 'down', 'strongDown'];
 
@@ -147,11 +148,11 @@ export function PredictionsPage() {
             <div className="text-xs font-bold text-info">Bugünün Lideri</div>
             <div className="text-[10px] text-slate-400">Aktif</div>
           </a>
-          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+          <a href="#sektor-sampiyonu" className="rounded-xl border-2 border-orange-500/40 bg-orange-500/10 p-3 transition hover:scale-[1.02] hover:bg-orange-500/15">
             <div className="text-2xl mb-1">🏭</div>
-            <div className="text-xs font-bold text-slate-300">Sektör Şampiyonu</div>
-            <div className="text-[10px] text-warning">Yakında</div>
-          </div>
+            <div className="text-xs font-bold text-orange-400">Sektör Şampiyonu</div>
+            <div className="text-[10px] text-slate-400">Aktif</div>
+          </a>
           <a href="#finansal-quiz" className="rounded-xl border-2 border-warning/40 bg-warning/10 p-3 transition hover:scale-[1.02] hover:bg-warning/15">
             <div className="text-2xl mb-1">🧠</div>
             <div className="text-xs font-bold text-warning">Finansal Quiz</div>
@@ -182,6 +183,9 @@ export function PredictionsPage() {
         </PinnableAccordion>
         <PinnableAccordion id="game-portfolio" title="Sanal Portföy (Haftalık 100K)" icon={<span className="text-base">💰</span>} iconColorClass="bg-success/15 text-success">
           <VirtualPortfolioCard />
+        </PinnableAccordion>
+        <PinnableAccordion id="game-sector" title="Sektör Şampiyonu (Haftalık)" icon={<span className="text-base">🏭</span>} iconColorClass="bg-orange-500/15 text-orange-400">
+          <SectorChampionCard />
         </PinnableAccordion>
       </div>
 

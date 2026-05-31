@@ -208,13 +208,22 @@ html.light {
    İçerik [news, news] olarak iki kez render edilir; track yüksekliği = 2x içerik.
    translateY(-50%) → translateY(0%) loop'u, ikinci kopyanın başlangıç pozisyonu
    birinci kopyayla aynı olduğu için görsel olarak hiç kesilmeden döner. */
+/* Aşağıdan yukarı (default) — içerik altta belirir, yukarı doğru kayar */
+@keyframes news-ticker-up {
+  0%   { transform: translateY(0%); }
+  100% { transform: translateY(-50%); }
+}
+/* Yukarıdan aşağı — eski yön (kullanıcı tercihi) */
 @keyframes news-ticker-down {
   0%   { transform: translateY(-50%); }
   100% { transform: translateY(0%); }
 }
 .news-ticker-track {
-  animation: news-ticker-down linear infinite;
+  animation: news-ticker-up linear infinite;
   will-change: transform;
+}
+.news-ticker-track.dir-down {
+  animation-name: news-ticker-down;
 }
 .news-ticker-track:hover {
   animation-play-state: paused;

@@ -175,6 +175,7 @@ export function Layout() {
   }, []);
 
 
+
   useEffect(() => {
     activityRepo.log({ type: 'page-view', detail: location.pathname }).catch(() => {});
   }, [location.pathname]);
@@ -375,21 +376,7 @@ export function Layout() {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <span
-              className={cn(
-                'hidden sm:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border',
-                isMockMode
-                  ? 'border-warning/30 bg-warning/10 text-warning'
-                  : 'border-success/30 bg-success/10 text-success',
-              )}
-              title={isMockMode ? 'Bazı agent\'lar henüz mock' : 'Tüm akışlar canlı'}
-            >
-              <span className="relative inline-flex">
-                <span className={cn('animate-ping absolute inline-flex h-1.5 w-1.5 rounded-full opacity-75', isMockMode ? 'bg-warning' : 'bg-success')} />
-                <span className={cn('relative inline-flex h-1.5 w-1.5 rounded-full', isMockMode ? 'bg-warning' : 'bg-success')} />
-              </span>
-              {isMockMode ? 'Mock akış' : 'Canlı akış'}
-            </span>
+            {/* Canli akis badge kaldirildi — yer kazanimi */}
             <StreakBadge variant="compact" className="hidden sm:inline-flex" />
             <ThemeToggle size="sm" />
             <button

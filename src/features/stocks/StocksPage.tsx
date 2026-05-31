@@ -330,9 +330,6 @@ export function StocksPage() {
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <LiveBadge updatedAt={updatedAt} refreshing={loading || returnsLoading} />
-          <button className="btn-secondary" onClick={() => refresh(true)} disabled={loading || returnsLoading}>
-            <RefreshCw size={14} className={loading || returnsLoading ? 'animate-spin' : ''} /> Yenile
-          </button>
           <select
             value={indexFilter}
             onChange={(e) => setIndexFilter(e.target.value)}

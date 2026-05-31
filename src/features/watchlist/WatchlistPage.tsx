@@ -222,14 +222,9 @@ export function WatchlistPage() {
 
       <PageHeader
         title="Takip Listem"
-        subtitle="İlgilendiğin hisse ve fonları takip et, fiyatları ve değişimleri gör."
+        subtitle="İlgilendiğin hisse ve fonları takip et — otomatik 60sn yenileme."
         actions={
-          <div className="flex items-center gap-2">
-            <LiveBadge updatedAt={updatedAt} refreshing={loading} label={source === 'live' ? 'CANLI' : source === 'mixed' ? 'KARMA' : 'DEMO'} />
-            <button className="btn-secondary" onClick={refresh} disabled={loading}>
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
-            </button>
-          </div>
+          <LiveBadge updatedAt={updatedAt} refreshing={loading} label={source === 'live' ? 'CANLI' : source === 'mixed' ? 'KARMA' : 'DEMO'} />
         }
       />
 

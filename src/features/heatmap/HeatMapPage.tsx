@@ -151,14 +151,7 @@ export function HeatMapPage() {
       <PageHeader
         title="Heat Map"
         subtitle="BIST tüm sektörler tek bakışta — renkli sıcaklık haritası. Yeşil yoğun = güçlü yükseliş, kırmızı yoğun = sert düşüş."
-        actions={
-          <div className="flex items-center gap-2">
-            <LiveBadge updatedAt={updatedAt} refreshing={loading} />
-            <button className="btn-secondary" onClick={() => refresh(true)} disabled={loading}>
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
-            </button>
-          </div>
-        }
+        actions={<LiveBadge updatedAt={updatedAt} refreshing={loading} />}
       />
 
       {/* Piyasa genel görünüm */}

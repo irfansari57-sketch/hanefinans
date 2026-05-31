@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hane Finans — Önbellek Temizleniyor</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0f172a; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; padding: 20px; }
+    .card { max-width: 420px; text-align: center; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    p { margin: 8px 0; color: #94a3b8; font-size: 14px; line-height: 1.5; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #1e293b; border-top-color: #38bdf8; border-radius: 50%; margin: 20px auto; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status { font-family: monospace; font-size: 12px; color: #64748b; margin-top: 12px; min-height: 16px; }
+    .done { color: #4ade80; }
+    .err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Önbellek Temizleniyor</h1>
+    <div class="spinner" id="spinner"></div>
+    <p id="msg">Service Worker ve önbellek dosyaları kaldırılıyor...</p>
+    <div class="status" id="status"></div>
+  </div>
+  <script>
+    (async function () {
+      const status = document.getElementById('status');
+      const msg = document.getElementById('msg');
+      const spinner = document.getElementById('spinner');
+      const log = (s, cls) => {
+        const line = document.createElement('div');
+        line.textContent = s;
+        if (cls) line.className = cls;
+        status.appendChild(line);
+      };
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          log('Service Worker kayıtlarını siliniyor: ' + regs.length);
+          for (const r of regs) {
+            try { await r.unregister(); log('  unregister OK', 'done'); }
+            catch (e) { log('  unregister FAIL: ' + e.message, 'err'); }
+          }
+        }
+        if ('caches' in window) {
+          const names = await caches.keys();
+          log('Cache storage anahtarları: ' + names.length);
+          for (const n of names) {
+            try { await caches.delete(n); log('  ' + n + ' silindi', 'done'); }
+            catch (e) { log('  ' + n + ' FAIL: ' + e.message, 'err'); }
+          }
+        }
+        try { localStorage.clear(); log('localStorage temizlendi', 'done'); } catch (e) {}
+        try { sessionStorage.clear(); log('sessionStorage temizlendi', 'done'); } catch (e) {}
+
+        spinner.style.display = 'none';
+        msg.textContent = 'Tamamlandı! Ana sayfaya yönlendiriliyorsunuz...';
+        msg.style.color = '#4ade80';
+        setTimeout(() => { location.replace('/?_=' + Date.now()); }, 1200);
+      } catch (e) {
+        spinner.style.display = 'none';
+        msg.textContent = 'Hata: ' + e.message;
+        msg.style.color = '#f87171';
+        log('Lütfen tarayıcı ayarlarından site verilerini manuel temizleyin.', 'err');
+      }
+    })();
+  </script>
+</body>
+</html>

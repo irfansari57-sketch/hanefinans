@@ -37,16 +37,23 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+          // HTML'i precache'ten cikar — yeni deploy'da kullanici eski index.html ile
+          // eski JS hash istemesin (stale-cache → "Bir seyler ters gitti" hatasi).
+          // HTML'i runtime'da NetworkFirst ile servis ediyoruz (asagida).
+          globPatterns: ['**/*.{js,css,svg,png,ico}'],
           // Push notification handler — SW içine importScripts ile enjekte
           importScripts: ['/push-handler.js'],
           // Yeni SW indiğinde hemen aktif olsun + tüm açık sekmeleri yönetsin
           skipWaiting: true,
           clientsClaim: true,
-          // Offline navigation — bilinmeyen route'larda index.html serve et
+          // Clear-cache.html SW kontrolu disinda kalsin — kullanici acsin diye
+          navigateFallbackDenylist: [/^\/api\//, /^\/clear-cache\.html$/],
+          // Navigation request'leri NetworkFirst — offline'da en son cache'lenmis
+          // index.html servis edilir ama online'da hep taze gelir.
           navigateFallback: '/index.html',
-          navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
+            // index.html ve diger navigation request'leri NetworkFirst
+            { urlPattern: ({ request }) => request.mode === 'navigate', handler: 'NetworkFirst', options: { cacheName: 'html-pages', networkTimeoutSeconds: 3, expiration: { maxEntries: 10 } } },
             { urlPattern: /^\/api\//, handler: 'NetworkOnly' },
             { urlPattern: /^https:\/\/api\.frankfurter\.app/, handler: 'NetworkOnly' },
             { urlPattern: /^https:\/\/api\.twelvedata\.com/, handler: 'NetworkOnly' },

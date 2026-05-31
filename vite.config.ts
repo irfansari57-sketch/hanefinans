@@ -37,10 +37,11 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          // HTML'i precache'ten cikar — yeni deploy'da kullanici eski index.html ile
-          // eski JS hash istemesin (stale-cache → "Bir seyler ters gitti" hatasi).
-          // HTML'i runtime'da NetworkFirst ile servis ediyoruz (asagida).
-          globPatterns: ['**/*.{js,css,svg,png,ico}'],
+          // HTML'i precache'e DAHIL — navigateFallback icin gerekli (offline modda
+          // ve workbox createHandlerBoundToURL non-precached-url hatasini engellemek icin).
+          // Stale-cache sorununu navigation NetworkFirst runtimeCaching ile cozuyoruz (asagida):
+          // online'da daima yeni index.html ag'dan gelir, offline'da precached fallback.
+          globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
           // Push notification handler — SW içine importScripts ile enjekte
           importScripts: ['/push-handler.js'],
           // Yeni SW indiğinde hemen aktif olsun + tüm açık sekmeleri yönetsin

@@ -10,6 +10,10 @@ import type { PeriodReturns } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { useAuth, isPro } from '@/store/auth';
+import { Crown, Lock } from 'lucide-react';
+
+const FREE_PREVIEW_LIMIT = 5;
 
 /**
  * Güçlü Al Havuzu — tüm BIST evrenini tarayan SIKI kalite filtresi, maks. 25 hisse.
@@ -312,6 +316,11 @@ export function StrongBuyTab() {
     };
   }, [pool]);
 
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
+  const visiblePool = proUser ? pool : pool.slice(0, FREE_PREVIEW_LIMIT);
+  const lockedCount = proUser ? 0 : Math.max(0, pool.length - FREE_PREVIEW_LIMIT);
+
   return (
     <div className="space-y-3">
       {/* Üst kontrol bandı — Fon Havuzu ile aynı pattern */}
@@ -394,11 +403,36 @@ export function StrongBuyTab() {
               </tr>
             </thead>
             <tbody>
-              {pool.map((r, i) => (
+              {visiblePool.map((r, i) => (
                 <StrongBuyRow key={r.symbol} rec={r} rank={i + 1} />
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {lockedCount > 0 && (
+        <div className="rounded-xl border-2 border-warning/40 bg-gradient-to-br from-warning/15 via-warning/5 to-transparent p-4 shadow-[0_0_24px_rgba(245,158,11,0.15)]">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/20 text-warning shadow-inner">
+              <Crown size={20} strokeWidth={2.5} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 text-warning font-bold uppercase tracking-wider text-xs">
+                <Lock size={12} /> Geri Kalan {lockedCount} Hisse PRO Uyelere Ozel
+              </div>
+              <p className="mt-1 text-xs text-slate-300 max-w-2xl">
+                Ilk {FREE_PREVIEW_LIMIT} hisseyi gosterdik. Tam Guclu Al havuzuna — {pool.length} hissenin tamamina,
+                broker hedef potansiyeli, momentum skoru ve siki kalite filtreleri ile birlikte — eris.
+              </p>
+              <Link
+                to="/uyelik"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-warning px-3 py-1.5 text-xs font-bold text-bg-base hover:bg-warning/90 transition"
+              >
+                <Crown size={12} /> PRO Ol — Tum Havuza Eris
+              </Link>
+            </div>
+          </div>
         </div>
       )}
 

@@ -76,6 +76,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
       { to: '/takvim', label: 'Ekonomik Takvim', icon: CalendarClock },
+      { to: '/watchlist', label: 'Takip Listem', icon: Star },
       { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
       { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
@@ -172,6 +173,7 @@ export function Layout() {
       return () => clearInterval(id);
     });
   }, []);
+
 
   useEffect(() => {
     activityRepo.log({ type: 'page-view', detail: location.pathname }).catch(() => {});

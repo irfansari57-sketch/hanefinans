@@ -64,11 +64,20 @@ function parseYahooBody(body: string): { price: number; changePct: number; prev:
     if (validCloses.length >= 2) {
       const lastClose = validCloses[0];
       const beforeClose = validCloses[1];
-      prev = Math.abs(price - lastClose) < 0.0001 ? beforeClose : lastClose;
+      // Percent-based threshold (%0.1) — Yahoo bazen weekend/holiday'de
+      // price === lastClose donduruyor (rounding 0.0001 sapmasiyla absolute
+      // threshold patliyor). Bu durumda beforeClose'u baz al ki son is gunu
+      // hareketi gosterilsin.
+      const pctDiff = Math.abs(price - lastClose) / lastClose;
+      prev = pctDiff < 0.001 ? beforeClose : lastClose;
+    } else if (meta.previousClose && meta.previousClose > 0 && Math.abs((meta.previousClose - price) / price) > 0.001) {
+      prev = meta.previousClose;
+    } else if (meta.chartPreviousClose && meta.chartPreviousClose > 0 && Math.abs((meta.chartPreviousClose - price) / price) > 0.001) {
+      prev = meta.chartPreviousClose;
     } else {
-      prev = meta.previousClose ?? meta.chartPreviousClose ?? price;
+      prev = price;
     }
-    const changePct = prev > 0 ? ((price - prev) / prev) * 100 : 0;
+    const changePct = prev > 0 && prev !== price ? ((price - prev) / prev) * 100 : 0;
     const updatedAt = meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now();
     return { price, changePct, prev, updatedAt, name: meta.shortName ?? meta.longName };
   } catch {

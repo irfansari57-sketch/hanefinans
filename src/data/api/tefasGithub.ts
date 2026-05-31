@@ -160,21 +160,38 @@ function normalizeFundCategory(rawCategory: string, name: string): FundCategory 
   return (cat || 'Serbest') as FundCategory;
 }
 
-/** Feed verisini FundPerformance şemasına maple (FundsPage / Panel / Recs ortak kullanır). */
+function computeDayChangeFromHistory(history: Array<{ date: string; price: number }>): number | null {
+  if (!Array.isArray(history) || history.length < 2) return null;
+  const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+  const n = sorted.length;
+  const last = sorted[n - 1];
+  const prev = sorted[n - 2];
+  if (!last || !prev || !(prev.price > 0)) return null;
+  return ((last.price - prev.price) / prev.price) * 100;
+}
+
+/** Feed verisini FundPerformance şemasına maple. 1d eksikse history'den son is gunu hesabi yapilir. */
 export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[] {
-  return funds.map((f) => ({
-    code: f.code,
-    name: f.name,
-    category: normalizeFundCategory(f.category, f.name),
-    tefas: true,
-    day: f.returns['1d'] ?? 0,
-    week: f.returns['1w'] ?? 0,
-    month: f.returns['1m'] ?? 0,
-    threeMonth: f.returns['3m'] ?? 0,
-    sixMonth: f.returns['6m'] ?? 0,
-    ytd: f.returns.ytd ?? 0,
-    year: f.returns['1y'] ?? 0,
-  }));
+  return funds.map((f) => {
+    let day = f.returns['1d'];
+    if (day == null || day === 0) {
+      const fromHistory = computeDayChangeFromHistory(f.history ?? []);
+      if (fromHistory != null) day = fromHistory;
+    }
+    return {
+      code: f.code,
+      name: f.name,
+      category: normalizeFundCategory(f.category, f.name),
+      tefas: true,
+      day: day ?? 0,
+      week: f.returns['1w'] ?? 0,
+      month: f.returns['1m'] ?? 0,
+      threeMonth: f.returns['3m'] ?? 0,
+      sixMonth: f.returns['6m'] ?? 0,
+      ytd: f.returns.ytd ?? 0,
+      year: f.returns['1y'] ?? 0,
+    };
+  });
 }
 
 /** Tüm fonları FundPerformance dizisi olarak döner. Feed yapılandırılmadıysa null. */

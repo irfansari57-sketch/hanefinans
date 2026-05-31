@@ -30,6 +30,7 @@ import {
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import { LeaderGameCard } from './sections/LeaderGameCard';
+import { SymbolPuzzleCard } from './sections/SymbolPuzzleCard';
 
 const BUCKETS: PredictionBucket[] = ['strongUp', 'up', 'flat', 'down', 'strongDown'];
 
@@ -138,11 +139,11 @@ export function PredictionsPage() {
             <div className="text-xs font-bold text-success">Günlük Tahmin</div>
             <div className="text-[10px] text-slate-400">Aktif</div>
           </a>
-          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+          <a href="#bugunun-lideri" className="rounded-xl border-2 border-info/40 bg-info/10 p-3 transition hover:scale-[1.02] hover:bg-info/15">
             <div className="text-2xl mb-1">📈</div>
-            <div className="text-xs font-bold text-slate-300">Bugünün Lideri</div>
-            <div className="text-[10px] text-warning">Yakında</div>
-          </div>
+            <div className="text-xs font-bold text-info">Bugünün Lideri</div>
+            <div className="text-[10px] text-slate-400">Aktif</div>
+          </a>
           <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
             <div className="text-2xl mb-1">🏭</div>
             <div className="text-xs font-bold text-slate-300">Sektör Şampiyonu</div>
@@ -153,11 +154,11 @@ export function PredictionsPage() {
             <div className="text-xs font-bold text-slate-300">Finansal Quiz</div>
             <div className="text-[10px] text-warning">Yakında</div>
           </div>
-          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+          <a href="#sembol-bulmaca" className="rounded-xl border-2 border-purple-500/40 bg-purple-500/10 p-3 transition hover:scale-[1.02] hover:bg-purple-500/15">
             <div className="text-2xl mb-1">🔤</div>
-            <div className="text-xs font-bold text-slate-300">Sembol Bulmaca</div>
-            <div className="text-[10px] text-warning">Yakında</div>
-          </div>
+            <div className="text-xs font-bold text-purple-400">Sembol Bulmaca</div>
+            <div className="text-[10px] text-slate-400">Aktif</div>
+          </a>
           <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
             <div className="text-2xl mb-1">💰</div>
             <div className="text-xs font-bold text-slate-300">Sanal Portföy</div>
@@ -166,7 +167,10 @@ export function PredictionsPage() {
         </div>
       </section>
 
-      <h2 id="gunluk-tahmin" className="mb-3 text-sm font-semibold uppercase tracking-wider text-success flex items-center gap-1.5">
+      <div className="mb-8"><LeaderGameCard /></div>
+      <div className="mb-8"><SymbolPuzzleCard /></div>
+
+            <h2 id="gunluk-tahmin" className="mb-3 text-sm font-semibold uppercase tracking-wider text-success flex items-center gap-1.5">
         <Target size={14} /> Günlük Tahmin Oyunu
       </h2>
 

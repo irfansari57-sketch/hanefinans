@@ -184,14 +184,19 @@ export function StocksPage() {
       if (snapResult === 'cached') return; // cache yolu — topMovers fallback'i atla
       const newReturns = snapResult;
 
-      // Snapshot'tan gelmeyenleri arka planda batch'lerle yenile
-      const topMovers = [...liveStocks]
-        .filter((s) => s.price > 0 && !newReturns[s.symbol])
-        .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
-        .slice(0, 200)
-        .map((s) => s.symbol);
-      const RETURNS_BATCH = 15;
-      const RETURNS_BATCH_DELAY_MS = 600;
+      // Snapshot'tan gelmeyenleri arka planda batch'lerle yenile.
+      // Once gorunur ilk 100 (kullanici ekraninda ne goruyorsa) onceligi al, gerisi sonra.
+      const missing = [...liveStocks]
+        .filter((s) => s.price > 0 && !newReturns[s.symbol]);
+      const byMove = [...missing].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
+      // Once alfabetik (sayfa siralamasi) ilk 100, sonra movers
+      const alpha = [...missing].sort((a, b) => a.symbol.localeCompare(b.symbol)).slice(0, 100);
+      const topMovers = Array.from(
+        new Set([...alpha.map((s) => s.symbol), ...byMove.slice(0, 300).map((s) => s.symbol)])
+      ).slice(0, 300);
+      // Hizlandirildi: 200 -> 300 sembol kapsami, batch 15 -> 30, delay 600 -> 250ms
+      const RETURNS_BATCH = 30;
+      const RETURNS_BATCH_DELAY_MS = 250;
       for (let i = 0; i < topMovers.length; i += RETURNS_BATCH) {
         const batch = topMovers.slice(i, i + RETURNS_BATCH);
         await Promise.all(
@@ -508,6 +513,7 @@ function StockTableRow({ stock, rank, isWatched, onToggle }: StockTableRowProps)
     </tr>
   );
 }
+
 
 function PerfCell({ value }: { value: number | undefined }) {
   if (value == null || !Number.isFinite(value)) {

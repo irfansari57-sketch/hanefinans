@@ -371,17 +371,18 @@ export function RecommendationsPage() {
       />
 
 
+      {/* Sira: Fon Havuzu (default acik) -> Guclu Al -> Araci Kurum -> Model Portfoyler */}
+      <PinnableAccordion id="recs-fundpool" title="Fon Havuzu" icon={<PiggyBank size={16} />} iconColorClass="bg-accent/15 text-accent" defaultOpen>
+        <FundPoolTab allFunds={allFunds} />
+      </PinnableAccordion>
+      <PinnableAccordion id="recs-strongbuy" title="Guclu Al Hisse Havuzu" icon={<TrendingUp size={16} />} iconColorClass="bg-success/15 text-success">
+        <StrongBuyTab />
+      </PinnableAccordion>
       <PinnableAccordion id="recs-broker" title={`Araci Kurum (${BROKER_COUNT})`} icon={<Briefcase size={16} />} iconColorClass="bg-warning/15 text-warning">
         <BrokerRecommendations />
       </PinnableAccordion>
       <PinnableAccordion id="recs-portfolio" title={`Model Portfoyler (${PORTFOLIO_COUNT})`} icon={<PieChart size={16} />} iconColorClass="bg-info/15 text-info">
         <BrokerPortfolios />
-      </PinnableAccordion>
-      <PinnableAccordion id="recs-strongbuy" title="Guclu Al Hisse Havuzu" icon={<TrendingUp size={16} />} iconColorClass="bg-success/15 text-success">
-        <StrongBuyTab />
-      </PinnableAccordion>
-      <PinnableAccordion id="recs-fundpool" title="Fon Havuzu" icon={<PiggyBank size={16} />} iconColorClass="bg-accent/15 text-accent" defaultOpen>
-        <FundPoolTab allFunds={allFunds} />
       </PinnableAccordion>
 
       {true && (
@@ -522,60 +523,6 @@ export function RecommendationsPage() {
         </>
       )}
 
-      {true && (
-        <div className="space-y-3">
-          {!fundsConfigured ? (
-            <div className="card border-warning/40 bg-warning/5 p-5 text-sm text-slate-300">
-              <strong className="text-warning">TEFAS canlı verisi yapılandırılmadı.</strong>
-              <p className="mt-1 text-xs text-slate-400">
-                Bu sekmede gerçek fon verisi göstermek için <Link to="/funds" className="text-accent underline">Fonlar</Link> sayfasındaki kurulum yönergesini takip et.
-              </p>
-            </div>
-          ) : topFunds.length === 0 ? (
-            <div className="card p-6 text-center text-xs text-slate-500">Fon verisi yükleniyor…</div>
-          ) : (
-            <>
-              <p className="text-xs text-slate-500">
-                Yıllık getirisi en yüksek 10 fon (canlı TEFAS). Satıra tıklayıp açın, detay için TEFAS/Fintables linklerini kullan.
-              </p>
-
-              {/* Trend Fonlar üst özet bloğu (havuz istatistikleri + strip) kullanıcı talebi ile kaldırıldı. */}
-
-              {/* Fonlar sayfası tarzı: sticky kolonlar + min-w + responsive hide + sortable headers */}
-              <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-                <table className="w-full min-w-[860px] text-xs">
-                  <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
-                      <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">Kod</th>
-                      <th className="px-2 py-2.5 text-left hidden md:table-cell">Ad / Kategori</th>
-                      <SortableHeader label="Gün %" sortKey="day" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
-                      <SortableHeader label="1 Hafta %" sortKey="week" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} className="hidden lg:table-cell" />
-                      <SortableHeader label="1 Ay %" sortKey="month" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
-                      <SortableHeader label="3 Ay %" sortKey="threeMonth" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
-                      <SortableHeader label="6 Ay %" sortKey="sixMonth" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} className="hidden lg:table-cell" />
-                      <SortableHeader label="YTD %" sortKey="ytd" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} className="hidden xl:table-cell" />
-                      <SortableHeader label="1 Yıl %" sortKey="year" activeKey={tfSortKey} dir={tfSortDir} onClick={setTfSort} />
-                      <th className="px-2 py-2.5 text-center w-24">İşlem</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...topFunds].sort((a, b) => {
-                      const va = a[tfSortKey];
-                      const vb = b[tfSortKey];
-                      const an = Number.isFinite(va) ? va : -Infinity;
-                      const bn = Number.isFinite(vb) ? vb : -Infinity;
-                      return tfSortDir === 'asc' ? an - bn : bn - an;
-                    }).map((fund, i) => (
-                      <TrendFundRow key={fund.code} fund={fund} rank={i + 1} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-      )}
     </>
   );
 }

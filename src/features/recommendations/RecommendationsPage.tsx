@@ -23,6 +23,7 @@ import type { Stock, FundPerformance } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
+import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 
 // Modüler section'lar — `./sections/` altında her biri kendi dosyasında
 import type { ScalpTf, ScalpRec, DailySnapshotEntry, DailySnapshot } from './sections/types';
@@ -369,69 +370,21 @@ export function RecommendationsPage() {
         }
       />
 
-      <div className="mb-4 inline-flex flex-wrap rounded-lg border border-border bg-bg-soft p-1">
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'fundpool' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('fundpool')}
-        >
-          <PiggyBank size={14} /> Fon Havuzu
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'strongbuy' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('strongbuy')}
-        >
-          <TrendingUp size={14} /> Güçlü Al Hisse Havuzu
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'scalp' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('scalp')}
-        >
-          <Zap size={14} /> Algoritmik ({sortedRecs.filter((r) => isLongForTf(r, selectedTf)).length}/{sortedRecs.length})
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'broker' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('broker')}
-        >
-          <Briefcase size={14} /> Aracı Kurum ({BROKER_COUNT})
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'portfolio' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('portfolio')}
-        >
-          <PieChart size={14} /> Model Portföyler ({PORTFOLIO_COUNT})
-        </button>
-        <button
-          className={cn(
-            'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition',
-            tab === 'funds' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-          )}
-          onClick={() => setTab('funds')}
-        >
-          <PiggyBank size={14} /> Trend Fonlar ({topFunds.length})
-        </button>
-      </div>
 
-      {tab === 'broker' && <BrokerRecommendations />}
-      {tab === 'portfolio' && <BrokerPortfolios />}
-      {tab === 'strongbuy' && <StrongBuyTab />}
-      {tab === 'fundpool' && <FundPoolTab allFunds={allFunds} />}
+      <PinnableAccordion id="recs-broker" title={`Araci Kurum (${BROKER_COUNT})`} icon={<Briefcase size={16} />} iconColorClass="bg-warning/15 text-warning">
+        <BrokerRecommendations />
+      </PinnableAccordion>
+      <PinnableAccordion id="recs-portfolio" title={`Model Portfoyler (${PORTFOLIO_COUNT})`} icon={<PieChart size={16} />} iconColorClass="bg-info/15 text-info">
+        <BrokerPortfolios />
+      </PinnableAccordion>
+      <PinnableAccordion id="recs-strongbuy" title="Guclu Al Hisse Havuzu" icon={<TrendingUp size={16} />} iconColorClass="bg-success/15 text-success">
+        <StrongBuyTab />
+      </PinnableAccordion>
+      <PinnableAccordion id="recs-fundpool" title="Fon Havuzu" icon={<PiggyBank size={16} />} iconColorClass="bg-accent/15 text-accent" defaultOpen>
+        <FundPoolTab allFunds={allFunds} />
+      </PinnableAccordion>
 
-      {tab === 'scalp' && (
+      {true && (
         <>
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-slate-300">
             <Zap size={12} className="mt-0.5 shrink-0 text-accent" />
@@ -569,7 +522,7 @@ export function RecommendationsPage() {
         </>
       )}
 
-      {tab === 'funds' && (
+      {true && (
         <div className="space-y-3">
           {!fundsConfigured ? (
             <div className="card border-warning/40 bg-warning/5 p-5 text-sm text-slate-300">

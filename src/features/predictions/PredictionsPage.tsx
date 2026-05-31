@@ -187,11 +187,8 @@ export function PredictionsPage() {
         <PinnableAccordion id="game-sector" title="Sektör Şampiyonu (Haftalık)" icon={<span className="text-base">🏭</span>} iconColorClass="bg-orange-500/15 text-orange-400">
           <SectorChampionCard />
         </PinnableAccordion>
-      </div>
-
-            <h2 id="gunluk-tahmin" className="mb-3 text-sm font-semibold uppercase tracking-wider text-success flex items-center gap-1.5">
-        <Target size={14} /> Günlük Tahmin Oyunu
-      </h2>
+        <PinnableAccordion id="game-daily" title="Günlük Tahmin Oyunu (BIST 100/30 Yön)" icon={<span className="text-base">🎯</span>} iconColorClass="bg-success/15 text-success" defaultOpen>
+        <div id="gunluk-tahmin">
 
       {/* Stats + Streak */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2">
@@ -414,6 +411,9 @@ export function PredictionsPage() {
         🎯 Tam isabet: +10 puan • Komşu kategori: +5 puan • 2 uzak: 0 puan • 3+ uzak: -2 puan.
         Her gün 18:00 TR'de kapanır, ertesi gün sonuçlanır.
       </p>
+        </div>
+        </PinnableAccordion>
+      </div>
     </>
   );
 }

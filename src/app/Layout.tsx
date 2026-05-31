@@ -68,7 +68,7 @@ const navGroups: NavGroup[] = [
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
       { to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles },
-      { to: '/tahmin', label: 'Tahmin Oyunu', icon: Sparkles },
+      { to: '/tahmin', label: 'Oyunlarım', icon: Sparkles },
     ],
   },
   {

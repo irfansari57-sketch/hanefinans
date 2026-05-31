@@ -123,8 +123,51 @@ export function PredictionsPage() {
 
   return (
     <>
-      <SeoHead title="Tahmin Oyunu" description="Günlük BIST tahmin oyunu — puan kazan, sıralamada yüksel" path="/tahmin" />
-      <PageHeader title="Günlük Tahmin Oyunu" subtitle="Yarınki BIST hareketini tahmin et, puan kazan, sıralamada yüksel" />
+      <SeoHead title="Oyunlarım" description="Borsa oyunları — tahmin et, puan kazan, leaderboard'a gir" path="/tahmin" />
+      <PageHeader title="Oyunlarım" subtitle="Borsa bilgini test et, tahmin yap, puan topla, leaderboard'a yüksel" />
+
+      {/* Oyun secim grid'i — diger oyunlar yakinda */}
+      <section className="mb-6">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-warning flex items-center gap-1.5">
+          <Sparkles size={14} /> Tum Oyunlar
+        </h2>
+        <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          <a href="#gunluk-tahmin" className="rounded-xl border-2 border-success/40 bg-success/10 p-3 transition hover:scale-[1.02] hover:bg-success/15">
+            <div className="text-2xl mb-1">🎯</div>
+            <div className="text-xs font-bold text-success">Günlük Tahmin</div>
+            <div className="text-[10px] text-slate-400">Aktif</div>
+          </a>
+          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+            <div className="text-2xl mb-1">📈</div>
+            <div className="text-xs font-bold text-slate-300">Bugünün Lideri</div>
+            <div className="text-[10px] text-warning">Yakında</div>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+            <div className="text-2xl mb-1">🏭</div>
+            <div className="text-xs font-bold text-slate-300">Sektör Şampiyonu</div>
+            <div className="text-[10px] text-warning">Yakında</div>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+            <div className="text-2xl mb-1">🧠</div>
+            <div className="text-xs font-bold text-slate-300">Finansal Quiz</div>
+            <div className="text-[10px] text-warning">Yakında</div>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+            <div className="text-2xl mb-1">🔤</div>
+            <div className="text-xs font-bold text-slate-300">Sembol Bulmaca</div>
+            <div className="text-[10px] text-warning">Yakında</div>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+            <div className="text-2xl mb-1">💰</div>
+            <div className="text-xs font-bold text-slate-300">Sanal Portföy</div>
+            <div className="text-[10px] text-warning">Yakında</div>
+          </div>
+        </div>
+      </section>
+
+      <h2 id="gunluk-tahmin" className="mb-3 text-sm font-semibold uppercase tracking-wider text-success flex items-center gap-1.5">
+        <Target size={14} /> Günlük Tahmin Oyunu
+      </h2>
 
       {/* Stats + Streak */}
       <div className="mb-4 grid gap-3 sm:grid-cols-2">

@@ -10,6 +10,7 @@ import type { Stock } from '@/data/types';
 import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { IndexHeatGrid } from '@/components/domain/IndexHeatGrid';
 
 const AUTO_REFRESH_MS = 60_000;
 
@@ -183,13 +184,18 @@ export function HeatMapPage() {
         <SortBtn active={sortBy === 'alpha'} onClick={() => setSortBy('alpha')}>A-Z</SortBtn>
       </div>
 
-      {/* Sektör grupları */}
+      {/* Endeks Heat Map — ana + sektor endeksleri */}
+      <div className="mb-6">
+        <IndexHeatGrid />
+      </div>
+
+      <h2 className="mb-2 text-sm font-semibold text-slate-200">Sektorel Performans (Hisse bazli ortalamalar)</h2>
       {loading && stocks.length === MOCK_STOCKS.length ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} variant="rect" height={120} />)}
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} variant="rect" height={90} />)}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {sectorGroups.map(([sector, list]) => (
             <SectorBlock key={sector} sector={sector} stocks={list} />
           ))}
@@ -228,22 +234,51 @@ function SortBtn({ children, active, onClick }: { children: React.ReactNode; act
 
 function SectorBlock({ sector, stocks }: { sector: string; stocks: Stock[] }) {
   const sectorAvg = stocks.reduce((s, x) => s + (Number.isFinite(x.changePct) ? x.changePct : 0), 0) / Math.max(1, stocks.length);
+  const up = stocks.filter((s) => Number.isFinite(s.changePct) && s.changePct > 0).length;
+  const down = stocks.filter((s) => Number.isFinite(s.changePct) && s.changePct < 0).length;
+  const best = stocks.reduce((b, x) => (x.changePct > (b?.changePct ?? -Infinity) ? x : b), stocks[0]);
+  const worst = stocks.reduce((w, x) => (x.changePct < (w?.changePct ?? Infinity) ? x : w), stocks[0]);
+  const intensity = Math.min(Math.abs(sectorAvg) / 3, 1);
+  const bg = sectorAvg > 0
+    ? `rgba(34, 197, 94, ${0.08 + intensity * 0.25})`
+    : sectorAvg < 0
+    ? `rgba(239, 68, 68, ${0.08 + intensity * 0.25})`
+    : 'rgba(100, 116, 139, 0.1)';
+  const border = sectorAvg > 0
+    ? `rgba(34, 197, 94, ${0.3 + intensity * 0.3})`
+    : sectorAvg < 0
+    ? `rgba(239, 68, 68, ${0.3 + intensity * 0.3})`
+    : 'rgba(100, 116, 139, 0.25)';
   const avgTone = sectorAvg >= 0 ? 'text-success' : 'text-danger';
-
   return (
-    <section className="glass-card p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-          <Grid3x3 size={12} className="text-accent" /> {sector}
-          <span className="text-[10px] text-slate-500">({stocks.length})</span>
+    <section
+      className="rounded-lg p-3 transition-all hover:scale-[1.01]"
+      style={{ background: bg, border: `1px solid ${border}` }}
+    >
+      <div className="flex items-start justify-between mb-1.5">
+        <h3 className="flex items-center gap-1.5 text-sm font-bold text-slate-100">
+          <Grid3x3 size={12} className="text-accent" />
+          {sector}
         </h3>
-        <span className={cn('text-xs font-medium tabular-nums', avgTone)}>
-          Ort. {sectorAvg >= 0 ? '+' : ''}{sectorAvg.toFixed(2)}%
-        </span>
+        <span className="text-[10px] text-slate-400">{stocks.length} hisse</span>
       </div>
-      <div className="grid gap-1 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {stocks.map((s) => <HeatCell key={s.symbol} stock={s} />)}
+      <div className={cn('text-2xl font-bold tabular-nums mb-1', avgTone)}>
+        {sectorAvg >= 0 ? '+' : ''}{sectorAvg.toFixed(2)}%
       </div>
+      <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1.5">
+        <span className="text-success">{up} arti</span>
+        <span className="text-danger">{down} eksi</span>
+      </div>
+      {best && worst && best.symbol !== worst.symbol && (
+        <div className="flex items-center justify-between gap-1 text-[10px] mt-1 pt-1.5 border-t border-slate-700/40">
+          <Link to={`/stock/${best.symbol}`} className="font-mono text-success hover:underline truncate">
+            {best.symbol} +{best.changePct.toFixed(1)}%
+          </Link>
+          <Link to={`/stock/${worst.symbol}`} className="font-mono text-danger hover:underline truncate">
+            {worst.symbol} {worst.changePct.toFixed(1)}%
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

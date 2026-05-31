@@ -29,9 +29,11 @@ import {
 } from '@/data/api/predictionsClient';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
+import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { LeaderGameCard } from './sections/LeaderGameCard';
 import { SymbolPuzzleCard } from './sections/SymbolPuzzleCard';
 import { FinancialQuizCard } from './sections/FinancialQuizCard';
+import { VirtualPortfolioCard } from './sections/VirtualPortfolioCard';
 
 const BUCKETS: PredictionBucket[] = ['strongUp', 'up', 'flat', 'down', 'strongDown'];
 
@@ -160,17 +162,28 @@ export function PredictionsPage() {
             <div className="text-xs font-bold text-purple-400">Sembol Bulmaca</div>
             <div className="text-[10px] text-slate-400">Aktif</div>
           </a>
-          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+          <a href="#sanal-portfoy" className="rounded-xl border-2 border-success/40 bg-success/10 p-3 transition hover:scale-[1.02] hover:bg-success/15">
             <div className="text-2xl mb-1">💰</div>
-            <div className="text-xs font-bold text-slate-300">Sanal Portföy</div>
-            <div className="text-[10px] text-warning">Yakında</div>
-          </div>
+            <div className="text-xs font-bold text-success">Sanal Portföy</div>
+            <div className="text-[10px] text-slate-400">Aktif</div>
+          </a>
         </div>
       </section>
 
-      <div className="mb-8"><LeaderGameCard /></div>
-      <div className="mb-8"><SymbolPuzzleCard /></div>
-      <div className="mb-8"><FinancialQuizCard /></div>
+      <div className="space-y-2 mb-6">
+        <PinnableAccordion id="game-leader" title="Bugünün Lideri (BIST 30)" icon={<span className="text-base">📈</span>} iconColorClass="bg-info/15 text-info">
+          <LeaderGameCard />
+        </PinnableAccordion>
+        <PinnableAccordion id="game-puzzle" title="Sembol Bulmaca" icon={<span className="text-base">🔤</span>} iconColorClass="bg-purple-500/15 text-purple-400">
+          <SymbolPuzzleCard />
+        </PinnableAccordion>
+        <PinnableAccordion id="game-quiz" title="Finansal Quiz (3 Soru)" icon={<span className="text-base">🧠</span>} iconColorClass="bg-warning/15 text-warning">
+          <FinancialQuizCard />
+        </PinnableAccordion>
+        <PinnableAccordion id="game-portfolio" title="Sanal Portföy (Haftalık 100K)" icon={<span className="text-base">💰</span>} iconColorClass="bg-success/15 text-success">
+          <VirtualPortfolioCard />
+        </PinnableAccordion>
+      </div>
 
             <h2 id="gunluk-tahmin" className="mb-3 text-sm font-semibold uppercase tracking-wider text-success flex items-center gap-1.5">
         <Target size={14} /> Günlük Tahmin Oyunu

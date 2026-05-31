@@ -193,12 +193,11 @@ async function handleScheduled(event: ScheduledEvent, env: Env): Promise<void> {
   const cron = event.cron;
   const allSymbols = allWarmupSymbols();
 
-  // BIST historical — günde 1 kez 18:30 TR — top 200 sembol
+  // BIST historical — günde 1 kez 18:30 TR — TUM evren (461+)
+  // Eski versiyon top 200 ile sinirliydi -> kalan sembollerde Hisseler sayfasi "—" gosteriyordu
   if (cron === '30 15 * * 1-5') {
-    const popular = allSymbols.slice(0, 200);
-    const result = await warmBatch(env, popular, '1y', '1d', { concurrency: 4, batchDelayMs: 250 });
-    console.log(`[warmer] historical (200): ${result.ok} ok, ${result.fail} fail`, result.status);
-    // Cleanup — historical sonrasi opportunistic (günde 1 kez)
+    const result = await warmBatch(env, allSymbols, '1y', '1d', { concurrency: 4, batchDelayMs: 250 });
+    console.log(`[warmer] historical (${allSymbols.length}): ${result.ok} ok, ${result.fail} fail`, result.status);
     const deleted = await cleanupStale(env);
     console.log(`[warmer] cleanup: deleted ${deleted} stale rows`);
     return;

@@ -27,6 +27,7 @@ import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { fetchHistoricalYahoo, computePeriodReturns } from '@/data/api/yahoo';
 import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches } from '@/data/services';
 import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance } from '@/data/types';
+import { usePersistedState } from '@/lib/usePersistedState';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { daysUntil, formatDateShort } from '@/lib/date';
@@ -68,6 +69,32 @@ const MACRO_TO_YAHOO: Record<string, string> = {
   'DOGE/USD': 'DOGE-USD',
 };
 
+
+/**
+ * Mock/bos veri yerine skeleton — kart yapisinda animated placeholder.
+ * Initial render'da cache yoksa burada gozukur, fresh data gelince icerigi
+ * gercek MacroCard'lar dolar. Asla mock degeri (15.133, 6.890 vb.) gosterilmez.
+ */
+function MarketSkeletonCard() {
+  return (
+    <div className="glass-card p-1.5 sm:p-2 animate-pulse">
+      <div className="h-2 w-10 rounded bg-slate-700/60 mb-1.5 sm:h-2.5 sm:w-14" />
+      <div className="h-4 w-16 rounded bg-slate-700/50 mb-1 sm:h-6 sm:w-24" />
+      <div className="h-2.5 w-8 rounded bg-slate-700/40 sm:h-3.5 sm:w-12" />
+    </div>
+  );
+}
+
+function MarketSkeletonGrid({ count = 4 }: { count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <MarketSkeletonCard key={i} />
+      ))}
+    </>
+  );
+}
+
 export function PanelPage() {
   const symbols = useWatchlist((s) => s.symbols);
   // Tüm BIST evreni — top gainers/losers tam kapsamlı hesaplanacak (MOCK 50 değil 270+)
@@ -86,11 +113,13 @@ export function PanelPage() {
   const proUser = isPro(user);
   const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
-  const [macro, setMacro] = useState<MacroIndicator[]>(MOCK_MACRO_FALLBACK);
-  const [stocks, setStocks] = useState<Stock[]>(MOCK_STOCKS);
-  const [news, setNews] = useState<NewsItem[]>(MOCK_NEWS);
+  // Mock asla baslangic state'i degil — son bilinen gercek veri (localStorage) veya bos array.
+  // Bos ise card'lar skeleton/blur gosterir; fresh data gelince smooth update.
+  const [macro, setMacro, macroCached] = usePersistedState<MacroIndicator[]>('hf.cache.macro', 30 * 60_000, []);
+  const [stocks, setStocks, stocksCached] = usePersistedState<Stock[]>('hf.cache.stocks', 30 * 60_000, []);
+  const [news, setNews, newsCached] = usePersistedState<NewsItem[]>('hf.cache.news', 30 * 60_000, []);
   const [stocksSource, setStocksSource] = useState<'live' | 'mock' | 'mixed'>('mock');
-  const [sentiment, setSentiment] = useState<SentimentMention[]>(MOCK_SENTIMENT);
+  const [sentiment, setSentiment] = useState<SentimentMention[]>([]);
   const [sentimentSource, setSentimentSource] = useState<'live' | 'mock' | 'derived'>('mock');
   const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
   const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('week');
@@ -283,6 +312,7 @@ export function PanelPage() {
         defaultOpen
       >
         <div className="grid grid-cols-4 gap-1 sm:gap-2">
+          {macro.length === 0 && <MarketSkeletonGrid count={4} />}
           {macro
             .filter((m) => m.key === 'BIST 100' || m.key === 'BIST 30')
             .map((m) => {
@@ -376,6 +406,7 @@ export function PanelPage() {
         defaultOpen
       >
         <div className="grid grid-cols-4 gap-1 sm:gap-2">
+          {macro.length === 0 && <MarketSkeletonGrid count={4} />}
           {macro
             .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Ons Altın', 'Ons Gümüş'].includes(m.key))
             .map((m) => {
@@ -429,6 +460,7 @@ export function PanelPage() {
         defaultOpen
       >
         <div className="grid grid-cols-4 gap-1 sm:gap-2">
+          {macro.length === 0 && <MarketSkeletonGrid count={4} />}
           {['BTC/USD', 'ETH/USD', 'XRP/USD', 'DOGE/USD']
             .map((k) => macro.find((m) => m.key === k))
             .filter((m): m is MacroIndicator => !!m)

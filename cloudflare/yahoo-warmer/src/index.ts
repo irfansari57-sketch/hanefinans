@@ -254,17 +254,9 @@ export default {
     }
 
     if (url.pathname === '/warm/historical') {
-      // Eskiden ilk 30 idi — Hisseler sayfasinda period kolonlari ("—") cogu hisse
-      // icin bostu. Simdi tum BIST + endeksler + dovizler. start/count parametreleri
-      // ile chunk'layabilirsin: ?start=0&count=100
-      const all = allWarmupSymbols();
-      const start = parseInt(url.searchParams.get('start') ?? '', 10);
-      const count = parseInt(url.searchParams.get('count') ?? '', 10);
-      const chunk = (Number.isFinite(start) && start >= 0)
-        ? all.slice(start, start + (Number.isFinite(count) && count > 0 ? count : 50))
-        : all;
-      const result = await warmBatch(env, chunk, '1y', '1d', { concurrency: 3, batchDelayMs: 300 });
-      return Response.json({ success: true, chunkSize: chunk.length, totalSymbols: all.length, ...result });
+      const popular = allWarmupSymbols().slice(0, 30);
+      const result = await warmBatch(env, popular, '1y', '1d', { concurrency: 3, batchDelayMs: 300 });
+      return Response.json({ success: true, ...result });
     }
 
     if (url.pathname === '/warm/spot-metals') {

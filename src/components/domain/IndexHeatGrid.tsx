@@ -1,28 +1,20 @@
-/**
- * BIST Endeks Heat Map — ana BIST endeksleri ve sektor endeksleri
- * tek bir grid'de gunluk degisim renk yogunlugu ile.
- */
-
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Activity } from 'lucide-react';
 import { fetchIndexYahoo } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
 
 interface IndexDef {
-  symbol: string;     // Yahoo symbol (XU100.IS, XBANK.IS, vb)
-  short: string;      // Kart kisa adi
-  name: string;       // Tooltip / full ad
+  symbol: string;
+  short: string;
+  name: string;
   group: 'ana' | 'sektor';
 }
 
 const BIST_INDICES: IndexDef[] = [
-  // Ana endeksler
   { symbol: 'XU100.IS', short: 'BIST 100', name: 'BIST 100 — ana endeks', group: 'ana' },
   { symbol: 'XU030.IS', short: 'BIST 30',  name: 'BIST 30 — en likit 30 hisse', group: 'ana' },
   { symbol: 'XU050.IS', short: 'BIST 50',  name: 'BIST 50', group: 'ana' },
-  { symbol: 'XU100D.IS', short: 'BIST 100-30', name: 'BIST 100-30 (30 disindaki 70 hisse)', group: 'ana' },
-  // Sektor endeksleri
+  { symbol: 'XU100D.IS', short: 'BIST 100-30', name: 'BIST 100-30 (30 disindaki 70)', group: 'ana' },
   { symbol: 'XBANK.IS', short: 'XBANK',  name: 'Bankacilik', group: 'sektor' },
   { symbol: 'XHOLD.IS', short: 'XHOLD',  name: 'Holding ve Yatirim', group: 'sektor' },
   { symbol: 'XSANI.IS', short: 'XSANI',  name: 'Sanayi', group: 'sektor' },
@@ -31,15 +23,15 @@ const BIST_INDICES: IndexDef[] = [
   { symbol: 'XELKT.IS', short: 'XELKT',  name: 'Elektrik', group: 'sektor' },
   { symbol: 'XILTM.IS', short: 'XILTM',  name: 'Iletisim', group: 'sektor' },
   { symbol: 'XMANA.IS', short: 'XMANA',  name: 'Madencilik', group: 'sektor' },
-  { symbol: 'XKMYA.IS', short: 'XKMYA',  name: 'Kimya, Petrol, Plastik', group: 'sektor' },
-  { symbol: 'XMESY.IS', short: 'XMESY',  name: 'Metal Esya, Makina', group: 'sektor' },
+  { symbol: 'XKMYA.IS', short: 'XKMYA',  name: 'Kimya, Petrol', group: 'sektor' },
+  { symbol: 'XMESY.IS', short: 'XMESY',  name: 'Metal, Makina', group: 'sektor' },
   { symbol: 'XHIZM.IS', short: 'XHIZM',  name: 'Hizmetler', group: 'sektor' },
   { symbol: 'XINSA.IS', short: 'XINSA',  name: 'Insaat', group: 'sektor' },
   { symbol: 'XSIGR.IS', short: 'XSIGR',  name: 'Sigortacilik', group: 'sektor' },
-  { symbol: 'XGMYO.IS', short: 'XGMYO',  name: 'Gayrimenkul Yatirim Ortakligi', group: 'sektor' },
+  { symbol: 'XGMYO.IS', short: 'XGMYO',  name: 'GYO', group: 'sektor' },
   { symbol: 'XUTEK.IS', short: 'XUTEK',  name: 'Teknoloji', group: 'sektor' },
-  { symbol: 'XUSIN.IS', short: 'XUSIN',  name: 'Sinai (BIST Sinai)', group: 'sektor' },
-  { symbol: 'XUMAL.IS', short: 'XUMAL',  name: 'Mali (BIST Mali)', group: 'sektor' },
+  { symbol: 'XUSIN.IS', short: 'XUSIN',  name: 'BIST Sinai', group: 'sektor' },
+  { symbol: 'XUMAL.IS', short: 'XUMAL',  name: 'BIST Mali', group: 'sektor' },
 ];
 
 interface IndexQuote {
@@ -51,9 +43,7 @@ interface IndexQuote {
   changePct: number | null;
 }
 
-interface Props {
-  refreshMs?: number;
-}
+interface Props { refreshMs?: number; }
 
 export function IndexHeatGrid({ refreshMs = 60_000 }: Props) {
   const [quotes, setQuotes] = useState<IndexQuote[]>(() =>
@@ -85,7 +75,6 @@ export function IndexHeatGrid({ refreshMs = 60_000 }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Ana endeksler — 4 buyuk kart */}
       <section className="glass-card p-3">
         <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200">
           <Activity size={14} className="text-accent" />
@@ -95,8 +84,6 @@ export function IndexHeatGrid({ refreshMs = 60_000 }: Props) {
           {ana.map((q) => <IndexCell key={q.symbol} quote={q} large loading={loading} />)}
         </div>
       </section>
-
-      {/* Sektor endeksleri — kompakt grid */}
       <section className="glass-card p-3">
         <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-200">
           <Activity size={14} className="text-warning" />
@@ -113,8 +100,6 @@ export function IndexHeatGrid({ refreshMs = 60_000 }: Props) {
 function IndexCell({ quote, large, loading }: { quote: IndexQuote; large?: boolean; loading?: boolean }) {
   const change = quote.changePct;
   const value = quote.value;
-
-  // Loading state — skeleton
   if (loading && change === null) {
     return (
       <div className={cn('rounded-md border border-border bg-bg-card/50 p-2 animate-pulse', large && 'p-3')}>
@@ -123,7 +108,6 @@ function IndexCell({ quote, large, loading }: { quote: IndexQuote; large?: boole
       </div>
     );
   }
-
   const safeChange = Number.isFinite(change) ? (change as number) : 0;
   const intensity = Math.min(Math.abs(safeChange) / 5, 1);
   const bg = safeChange > 0
@@ -137,13 +121,9 @@ function IndexCell({ quote, large, loading }: { quote: IndexQuote; large?: boole
     ? `rgba(239, 68, 68, ${0.35 + intensity * 0.3})`
     : 'rgba(100, 116, 139, 0.25)';
   const tone = safeChange > 0 ? 'text-success' : safeChange < 0 ? 'text-danger' : 'text-slate-400';
-
   return (
     <div
-      className={cn(
-        'rounded-md transition-all hover:scale-[1.02] hover:shadow-md cursor-default',
-        large ? 'p-3' : 'p-2',
-      )}
+      className={cn('rounded-md transition-all hover:scale-[1.02] hover:shadow-md', large ? 'p-3' : 'p-2')}
       style={{ background: bg, border: `1px solid ${border}` }}
       title={`${quote.short} — ${quote.name}`}
     >

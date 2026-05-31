@@ -48,19 +48,36 @@ const SOURCES: RssSource[] = [
   { name: 'Sabah',          url: 'https://www.sabah.com.tr/rss/ekonomi.xml' },
   // Dünya Gazetesi (finansal)
   { name: 'Dünya Gazetesi', url: 'https://www.dunya.com/rss?xml=ekonomi' },
+  // Milliyet Ekonomi
+  { name: 'Milliyet',       url: 'https://www.milliyet.com.tr/rss/rssNew/ekonomiRss.xml' },
+  // Sözcü ekonomi
+  { name: 'Sozcu',          url: 'https://www.sozcu.com.tr/feed/?cat=ekonomi' },
 
-  // === Global / İngilizce kaynaklar — TR piyasasını etkileyebilecek makro/jeopolitik ===
-  // Investing.com — genel piyasa haberleri
-  { name: 'Investing',      url: 'https://www.investing.com/rss/news.rss' },
-  // Investing.com — döviz/forex
-  { name: 'Investing FX',   url: 'https://www.investing.com/rss/news_1.rss' },
-  // Investing.com — emtia (altın/petrol/gümüş)
-  { name: 'Investing Emtia', url: 'https://www.investing.com/rss/news_11.rss' },
-  // Reuters Business (Google News mirror — Reuters RSS doğrudan kapalı)
-  { name: 'Reuters',        url: 'https://news.google.com/rss/search?q=site%3Areuters.com+business&hl=en-US&gl=US&ceid=US:en' },
-  // Financial Times — piyasa
-  { name: 'FT',             url: 'https://www.ft.com/markets?format=rss' },
+  // NOT: Investing.com, Reuters, FT, CNBC, WSJ, Bloomberg (EN) gibi INGILIZCE
+  // kaynaklar TR kitlemize uygun degil — kullanici talebiyle whitelistten
+  // cikarildi. Sadece TR finans kaynaklari tutuluyor.
 ];
+
+// Ekstra savunma: RSS sonucu yine ingilizce domain icerebilir (Mynet
+// Reuters mirror gibi). Bunlari da filtrele.
+const BLOCKED_DOMAINS = new Set([
+  'investing.com', 'tr.investing.com', 'reuters.com', 'bloomberg.com',
+  'wsj.com', 'ft.com', 'cnbc.com', 'forbes.com',
+]);
+function isBlockedNewsDomain(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+    return BLOCKED_DOMAINS.has(host);
+  } catch {
+    return false;
+  }
+}
+function isTurkishText(text: string): boolean {
+  if (!text) return false;
+  return /[ığüşöçİĞÜŞÖÇ]/.test(text) ||
+    /\b(ve|veya|için|ile|bir|bu|yatırım|borsa|hisse|fon|piyasa|banka|ekonomi|şirket|fiyat|açıklama|enflasyon|faiz)\b/i.test(text);
+}
 
 // Basit BIST sembol algılayıcı
 const BIST_SYMBOLS = [
@@ -286,6 +303,18 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
   // Tüm kaynaklardan paralel çek
   const results = await Promise.all(SOURCES.map((s) => fetchSource(s)));
   let combined: NewsItem[] = results.flat();
+
+  // INGILIZCE icerik ele — domain blacklist + dil heuristic
+  combined = combined.filter((n) => {
+    if (isBlockedNewsDomain(n.url)) return false;
+    // Eger baslik + summary'de tamamen TR-disi karakter varsa ele
+    const blob = `${n.title} ${n.summary ?? ''}`;
+    if (!blob.trim()) return false;
+    // Kisa basliklarda heuristic yetersiz olabilir — bu yuzden sadece
+    // baslik 30+ karakter ve TR-isareti yoksa ele
+    if (blob.length > 30 && !isTurkishText(blob)) return false;
+    return true;
+  });
 
   // Query filtre (opsiyonel)
   if (queryFilter) {

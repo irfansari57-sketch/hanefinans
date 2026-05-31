@@ -164,6 +164,15 @@ export function Layout() {
     authRefresh();
   }, [authRefresh]);
 
+  // Ekonomik takvim hatirlaticilari — her dakika kontrol et
+  useEffect(() => {
+    import('@/lib/calendarReminders').then(({ tickReminders }) => {
+      tickReminders();
+      const id = setInterval(() => { tickReminders(); }, 60_000);
+      return () => clearInterval(id);
+    });
+  }, []);
+
   useEffect(() => {
     activityRepo.log({ type: 'page-view', detail: location.pathname }).catch(() => {});
   }, [location.pathname]);

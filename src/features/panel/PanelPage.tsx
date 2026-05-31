@@ -17,6 +17,7 @@ import { NewsAgentCard } from '@/components/domain/NewsAgentCard';
 import { MacroAgentCard } from '@/components/domain/MacroAgentCard';
 import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
+import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { usePinnedSection } from '@/lib/usePinnedSection';
 import {
@@ -651,6 +652,11 @@ export function PanelPage() {
           </div>
         )}
       </PinnableAccordion>
+
+      {/* Ekonomik Takvim — sadece mobilde göster (desktop sağ rail'de var) */}
+      <div className="mb-5 lg:hidden">
+        <EconomicCalendarWidget compact maxItems={5} daysAhead={14} collapsible />
+      </div>
 
       {/* AI Agent'lar — PRO/Elite üyelere özel, akordeon + pin */}
       {proUser ? (

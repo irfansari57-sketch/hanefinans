@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, isPro } from '@/store/auth';
+import { Bell, BellOff } from 'lucide-react';
+import { addReminder, removeReminder, hasReminder, ensureNotificationPermission } from '@/lib/calendarReminders';
 import {
   CURATED_CALENDAR,
   upcomingEvents,
@@ -171,6 +173,64 @@ function defaultAnalysis(event: CalendarEvent): NonNullable<CalendarEvent['proAn
     watchlist: [],
     historicalContext: 'Sirket gelismelerinde ilk fiyatlama ozellikle ilk 15-30 dakikada netlesir.',
   };
+}
+
+function EventReminderButton({ event }: { event: CalendarEvent }) {
+  const [active, setActive] = useState<boolean>(() => hasReminder(event.id));
+  const [feedback, setFeedback] = useState<string>('');
+
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (active) {
+      removeReminder(event.id);
+      setActive(false);
+      setFeedback('Hatirlatici iptal edildi');
+      setTimeout(() => setFeedback(''), 1800);
+      return;
+    }
+    const ok = await ensureNotificationPermission();
+    if (!ok) {
+      setFeedback('Bildirim izni gerekli');
+      setTimeout(() => setFeedback(''), 2500);
+      return;
+    }
+    const r = addReminder({
+      eventId: event.id,
+      eventTitle: event.title,
+      eventDate: event.date,
+      eventTime: event.time,
+    });
+    if (r.ok) {
+      setActive(true);
+      setFeedback('1 saat once hatirlatilacak');
+      setTimeout(() => setFeedback(''), 1800);
+    } else {
+      setFeedback(r.reason);
+      setTimeout(() => setFeedback(''), 2500);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border flex items-center gap-2">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition',
+          active
+            ? 'bg-warning/20 text-warning ring-1 ring-warning/40 hover:bg-warning/30'
+            : 'bg-accent/15 text-accent ring-1 ring-accent/30 hover:bg-accent/25',
+        )}
+        title="Olaydan 1 saat once tarayici bildirimi"
+      >
+        {active ? <BellOff size={12} /> : <Bell size={12} />}
+        {active ? 'Hatirlaticiyi iptal et' : '1 saat once hatirlat'}
+      </button>
+      {feedback && (
+        <span className="text-[10px] text-slate-400">{feedback}</span>
+      )}
+    </div>
+  );
 }
 
 function ProDetailPanel({ event, proUser }: { event: CalendarEvent; proUser: boolean }) {
@@ -499,6 +559,7 @@ export function EconomicCalendarWidget({
                     </div>
                   )}
                   <ProDetailPanel event={e} proUser={proUser} />
+                  <EventReminderButton event={e} />
                 </div>
               )}
             </li>

@@ -31,6 +31,7 @@ import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import { LeaderGameCard } from './sections/LeaderGameCard';
 import { SymbolPuzzleCard } from './sections/SymbolPuzzleCard';
+import { FinancialQuizCard } from './sections/FinancialQuizCard';
 
 const BUCKETS: PredictionBucket[] = ['strongUp', 'up', 'flat', 'down', 'strongDown'];
 
@@ -149,11 +150,11 @@ export function PredictionsPage() {
             <div className="text-xs font-bold text-slate-300">Sektör Şampiyonu</div>
             <div className="text-[10px] text-warning">Yakında</div>
           </div>
-          <div className="rounded-xl border border-border bg-bg-soft p-3 opacity-60">
+          <a href="#finansal-quiz" className="rounded-xl border-2 border-warning/40 bg-warning/10 p-3 transition hover:scale-[1.02] hover:bg-warning/15">
             <div className="text-2xl mb-1">🧠</div>
-            <div className="text-xs font-bold text-slate-300">Finansal Quiz</div>
-            <div className="text-[10px] text-warning">Yakında</div>
-          </div>
+            <div className="text-xs font-bold text-warning">Finansal Quiz</div>
+            <div className="text-[10px] text-slate-400">Aktif</div>
+          </a>
           <a href="#sembol-bulmaca" className="rounded-xl border-2 border-purple-500/40 bg-purple-500/10 p-3 transition hover:scale-[1.02] hover:bg-purple-500/15">
             <div className="text-2xl mb-1">🔤</div>
             <div className="text-xs font-bold text-purple-400">Sembol Bulmaca</div>
@@ -169,6 +170,7 @@ export function PredictionsPage() {
 
       <div className="mb-8"><LeaderGameCard /></div>
       <div className="mb-8"><SymbolPuzzleCard /></div>
+      <div className="mb-8"><FinancialQuizCard /></div>
 
             <h2 id="gunluk-tahmin" className="mb-3 text-sm font-semibold uppercase tracking-wider text-success flex items-center gap-1.5">
         <Target size={14} /> Günlük Tahmin Oyunu

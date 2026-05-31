@@ -173,6 +173,42 @@ export function WatchlistPage() {
     return { positives, negatives, avg, count, total: watched.length };
   }, [watched, stockReturns, stockPeriod]);
 
+  // Pool format summary — Strong Buy / Fon Havuzu tarzi 5 donem ozet
+  const poolSummary = useMemo(() => {
+    if (!watched.length) return null;
+    const periods = ['1g', '1h', '1a', '3a', '1y'] as const;
+    const acc: Record<string, { pos: number; neg: number; sum: number; count: number }> = {};
+    for (const p of periods) acc[p] = { pos: 0, neg: 0, sum: 0, count: 0 };
+    for (const s of watched) {
+      const day = s.changePct;
+      if (Number.isFinite(day)) {
+        const a = acc['1g'];
+        a.sum += day; a.count += 1;
+        if (day > 0) a.pos += 1;
+        else if (day < 0) a.neg += 1;
+      }
+      const r = stockReturns[s.symbol];
+      if (r) {
+        for (const p of ['1h', '1a', '3a', '1y'] as const) {
+          const v = r[p];
+          if (v == null) continue;
+          const a = acc[p];
+          a.sum += v; a.count += 1;
+          if (v > 0) a.pos += 1;
+          else if (v < 0) a.neg += 1;
+        }
+      }
+    }
+    return {
+      total: watched.length,
+      day:  { avg: acc['1g'].count ? acc['1g'].sum / acc['1g'].count : 0, ...acc['1g'] },
+      week: { avg: acc['1h'].count ? acc['1h'].sum / acc['1h'].count : 0, ...acc['1h'] },
+      month:{ avg: acc['1a'].count ? acc['1a'].sum / acc['1a'].count : 0, ...acc['1a'] },
+      q3:   { avg: acc['3a'].count ? acc['3a'].sum / acc['3a'].count : 0, ...acc['3a'] },
+      year: { avg: acc['1y'].count ? acc['1y'].sum / acc['1y'].count : 0, ...acc['1y'] },
+    };
+  }, [watched, stockReturns]);
+
   // Takipteki fonların TEFAS verisi ile birleşimi
   const watchedFundsWithData = useMemo(() => {
     if (!tefasFunds) return watchedFunds.map((f) => ({ entry: f, tefas: undefined as TefasFundData | undefined }));
@@ -292,42 +328,15 @@ export function WatchlistPage() {
         )}
       </div>
 
-      {summary && (
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Takipte</div>
-            <div className="mt-1 text-xl font-semibold">{watched.length}</div>
-          </div>
-          <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">
-              {PERIOD_LABELS[stockPeriod]} Yeşil / Kırmızı
-            </div>
-            <div className="mt-1 text-xl font-semibold">
-              <span className="text-success">{summary.positives}</span>
-              <span className="mx-1 text-slate-600">/</span>
-              <span className="text-danger">{summary.negatives}</span>
-              {summary.count < summary.total && (
-                <span className="ml-2 text-[10px] font-normal text-slate-500">
-                  ({summary.count}/{summary.total})
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">
-              Ortalama Değişim · {PERIOD_LABELS[stockPeriod]}
-            </div>
-            <div className={cn('mt-1 text-xl font-semibold', summary.avg >= 0 ? 'text-success' : 'text-danger')}>
-              {summary.count === 0 ? (
-                <span className="text-slate-500">—</span>
-              ) : (
-                <>
-                  {summary.avg >= 0 ? '+' : ''}
-                  {summary.avg.toFixed(2)}%
-                </>
-              )}
-            </div>
-          </div>
+      {/* Pool-format ozet — Strong Buy / Fon Havuzu tarzi 6 kart yatay grid */}
+      {poolSummary && (
+        <div className="mb-4 grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          <WlPoolSummaryCard label="Takipteki Hisse" mainValue={`${poolSummary.total}`} sub="Toplam" tone="neutral" />
+          <WlPoolSummaryCard label="Ortalama Gün %" mainValue={fmtWlAvg(poolSummary.day.avg, poolSummary.day.count)} sub={fmtWlRatio(poolSummary.day)} tone={poolSummary.day.avg >= 0 ? 'pos' : 'neg'} />
+          <WlPoolSummaryCard label="Ortalama 1 Hafta %" mainValue={fmtWlAvg(poolSummary.week.avg, poolSummary.week.count)} sub={fmtWlRatio(poolSummary.week)} tone={poolSummary.week.avg >= 0 ? 'pos' : 'neg'} />
+          <WlPoolSummaryCard label="Ortalama 1 Ay %" mainValue={fmtWlAvg(poolSummary.month.avg, poolSummary.month.count)} sub={fmtWlRatio(poolSummary.month)} tone={poolSummary.month.avg >= 0 ? 'pos' : 'neg'} />
+          <WlPoolSummaryCard label="Ortalama 3 Ay %" mainValue={fmtWlAvg(poolSummary.q3.avg, poolSummary.q3.count)} sub={fmtWlRatio(poolSummary.q3)} tone={poolSummary.q3.avg >= 0 ? 'pos' : 'neg'} />
+          <WlPoolSummaryCard label="Ortalama 1 Yıl %" mainValue={fmtWlAvg(poolSummary.year.avg, poolSummary.year.count)} sub={fmtWlRatio(poolSummary.year)} tone={poolSummary.year.avg >= 0 ? 'pos' : 'neg'} />
         </div>
       )}
 
@@ -801,5 +810,29 @@ function WatchlistFundRow({ entry, tefas, rank, period, fmtPct, onRemove }: Watc
         </div>
       </td>
     </tr>
+  );
+}
+
+function fmtWlAvg(v: number, count: number): string {
+  if (count === 0) return '—';
+  const sign = v >= 0 ? '+' : '';
+  return `${sign}${v.toFixed(2)}%`;
+}
+
+function fmtWlRatio(s: { pos: number; neg: number; count: number }): string {
+  if (s.count === 0) return '—';
+  return `${s.pos} ↑ / ${s.neg} ↓`;
+}
+
+function WlPoolSummaryCard({ label, mainValue, sub, tone }: {
+  label: string; mainValue: string; sub: string; tone: 'pos' | 'neg' | 'neutral';
+}) {
+  const toneClass = tone === 'pos' ? 'text-success' : tone === 'neg' ? 'text-danger' : 'text-slate-100';
+  return (
+    <div className="rounded-xl border border-border bg-bg-soft p-3">
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={cn('mt-1 text-base font-bold tabular-nums', toneClass)}>{mainValue}</div>
+      <div className="mt-0.5 text-[10px] text-slate-500">{sub}</div>
+    </div>
   );
 }

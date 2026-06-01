@@ -24,6 +24,7 @@ import { AdBanner } from '@/components/domain/AdBanner';
 import { useSiteSettings } from '@/store/siteSettings';
 import { generateMarkdownReport, downloadMarkdown } from '@/lib/reportGenerator';
 import { MOCK_STOCKS, MOCK_MACRO_FALLBACK } from '@/data/mock';
+import { usePersistedState } from '@/lib/usePersistedState';
 import type { Stock, MacroIndicator, NewsItem } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { AnalystCommentary } from '@/components/domain/AnalystCommentary';
@@ -43,8 +44,11 @@ export function MorningReportPage() {
   const [fearGreed, setFearGreed] = useState<FearGreedSnapshot | null>(null);
   const [topAltcoins, setTopAltcoins] = useState<AltcoinMover[]>([]);
   const [cryptoTA, setCryptoTA] = useState<CryptoTA[]>([]);
-  const [stocks, setStocks] = useState<Stock[]>(MOCK_STOCKS);
-  const [macros, setMacros] = useState<MacroIndicator[]>(MOCK_MACRO_FALLBACK);
+  // SWR cache (24h) — mock yerine son ziyaret degeri, asla bos placeholder
+  // ile basbasa kalmaz; cache yoksa skeleton'a fallback yapilir asagida.
+  const SWR_TTL_MS = 24 * 60 * 60 * 1000;
+  const [stocks, setStocks, stocksCached] = usePersistedState<Stock[]>('hf.morning.cache.stocks', SWR_TTL_MS, []);
+  const [macros, setMacros, macrosCached] = usePersistedState<MacroIndicator[]>('hf.morning.cache.macros', SWR_TTL_MS, []);
   const [futures, setFutures] = useState<Array<{ label: string; value: number; changePct: number }>>([]);
   const [topGainersTA, setTopGainersTA] = useState<BistTA[]>([]);
   const [, setIndexTA] = useState<IndexTA[]>([]);
@@ -373,28 +377,8 @@ export function MorningReportPage() {
       <PageHeader
         title="Günlük Analiz"
         subtitle={`${new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' })} • ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <LiveBadge updatedAt={updatedAt} refreshing={loading} />
-            <button className="btn-secondary" onClick={() => refresh(true)} disabled={loading}>
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
-            </button>
-            {admin && (
-              <>
-                <button className="btn-secondary" onClick={onDownload}>
-                  <Download size={14} /> .md İndir
-                </button>
-                <button
-                  className={cn('btn-primary', alreadySentToday && 'opacity-80')}
-                  onClick={onTelegramSend}
-                  disabled={sending || !isTelegramConfigured()}
-                >
-                  <Send size={14} /> {sending ? 'Gönderiliyor…' : alreadySentToday ? 'Bugün gönderildi' : 'Telegram\'a Yolla'}
-                </button>
-              </>
-            )}
-          </div>
-        }
+        // Kullanici istegiyle Yenile / .md Indir / Telegram'a Yolla butonlari kaldirildi.
+        // Cache otomatik yenileniyor (SWR), Telegram gunluk cron'la zaten gidiyor.
       />
 
       {sendResult && (

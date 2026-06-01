@@ -23,6 +23,9 @@ import { loadStocks, loadNews } from '@/data/services';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
+import { DeepAnalysisCard } from './sections/DeepAnalysisCard';
+import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
+import { Sparkles as SparklesIcon } from 'lucide-react';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { useWatchlist } from '@/store/watchlist';
@@ -363,6 +366,28 @@ export function StockDetailPage() {
           </h2>
           <MultiTimeframeCard r={mtResult} currency={isUs ? '$' : '₺'} hideHeader />
         </div>
+      )}
+
+      {/* AI Derin Analiz — accordion (default kapali, ag istek/AI maliyet) */}
+      {!isUs && (
+        <PinnableAccordion
+          id={`deep-${stock.symbol}`}
+          title="AI Derin Analiz"
+          description="Pro 2/ay · Elite limitsiz · 24h cache"
+          icon={<SparklesIcon size={14} />}
+          iconColorClass="bg-accent/15 text-accent"
+        >
+          <DeepAnalysisCard
+            symbol={stock.symbol}
+            name={stock.name}
+            price={stock.price}
+            changePct={stock.changePct}
+            sector={stock.sector}
+            rsi={technicalAnalysis?.rsi ?? undefined}
+            macd={technicalAnalysis?.macdBullish ? 'bullish' : technicalAnalysis?.macdBearish ? 'bearish' : 'neutral'}
+            ema={technicalAnalysis?.emas?.map((e) => ({ period: e.period, above: e.abovePct >= 0 })) ?? undefined}
+          />
+        </PinnableAccordion>
       )}
 
       {/* Teknik Analiz — Fintables tarzı */}

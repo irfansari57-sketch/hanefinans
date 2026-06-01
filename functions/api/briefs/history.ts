@@ -34,7 +34,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const briefs = (rows.results ?? []).map((r) => ({
     date: r.brief_date,
     generatedAt: r.generated_at,
-    // Preview: ilk 200 char (markdown stripped)
+    contentMd: r.content_md,
+    // Preview: ilk 200 char (markdown stripped) — kart goruntusu icin
     preview: r.content_md
       .replace(/[*_#`]/g, '')
       .replace(/\n+/g, ' ')

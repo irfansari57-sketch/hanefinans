@@ -1,0 +1,61 @@
+name: Daily AI Brief
+# Sabah 07:30 TR'de AI brief uretir + push gonderir.
+# Cloudflare D1'e yazar, push_subscriptions'a notification atar.
+#
+# Idempotency: D1 UNIQUE (user_id=0, brief_date) sayesinde ayni gun icin tekrar
+# olusturma reddedilir. Yedek cron sadece birincil atlanirsa devreye girer.
+#
+# Manuel tetikleme: workflow_dispatch (force=1 ile idempotency bypass).
+
+on:
+  schedule:
+    - cron: '30 4 * * *'  # 07:30 TR — birincil
+    - cron: '30 5 * * *'  # 08:30 TR — yedek (gecikme veya atlama icin)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Mevcut brief varsa yine de uret (idempotency bypass)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  generate-brief:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger brief generator
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # Force flag (manuel tetikleme icin)
+          FORCE_PARAM=""
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            FORCE_PARAM="?force=1"
+          fi
+
+          echo "Triggering brief generator (force=${FORCE_PARAM:-no})..."
+
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST "https://hanefinans.net/api/cron/daily-brief${FORCE_PARAM}" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
+            -H "Content-Type: application/json")
+
+          echo "HTTP status: ${HTTP_CODE}"
+          echo "Response:"
+          cat /tmp/response.json
+          echo ""
+
+          if [ "${HTTP_CODE}" -ne 200 ]; then
+            echo "::error::Brief generator basarisiz (HTTP ${HTTP_CODE})"
+            exit 1
+          fi
+
+          # Skipped (idempotency) is OK
+          if grep -q '"skipped":true' /tmp/response.json; then
+            echo "::notice::Brief zaten bugun uretildi (idempotency)"
+          else
+            echo "::notice::Brief basariyla uretildi"
+          fi

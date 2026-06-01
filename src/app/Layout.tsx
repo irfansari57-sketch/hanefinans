@@ -65,6 +65,7 @@ const navGroups: NavGroup[] = [
     title: 'Genel',
     items: [
       { to: '/panel', label: 'Panel', icon: LayoutDashboard },
+      { to: '/brief', label: 'Sabah Brief', icon: Sparkles },
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
       { to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles },

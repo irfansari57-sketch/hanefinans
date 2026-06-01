@@ -548,10 +548,7 @@ export function Layout() {
       {/* Mobil fiks alt bar — Panel/Gelişmeler/Takip/Portföy + Daha */}
       <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
 
-      {/* Onboarding tour kullanici talebiyle kaldirildi (gerekirse ileride re-enable) */}
-      {/* <OnboardingTour /> */}
-
-      {/* PWA "Ana ekrana ekle" banner — beforeinstallprompt + iOS Safari manuel */}
+      {/* Onboarding tour kullanici talebiyle kaldirildi */}
       <PwaInstallBanner />
       <AlertWatcher />
       <NewsWatcher />

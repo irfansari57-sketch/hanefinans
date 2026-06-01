@@ -114,15 +114,20 @@ export function PanelPage() {
   const proUser = isPro(user);
   const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
-  // Mock asla baslangic state'i degil — son bilinen gercek veri (localStorage) veya bos array.
-  // Bos ise card'lar skeleton/blur gosterir; fresh data gelince smooth update.
-  const [macro, setMacro, macroCached] = usePersistedState<MacroIndicator[]>('hf.cache.macro', 30 * 60_000, []);
-  const [stocks, setStocks, stocksCached] = usePersistedState<Stock[]>('hf.cache.stocks', 30 * 60_000, []);
-  const [news, setNews, newsCached] = usePersistedState<NewsItem[]>('hf.cache.news', 30 * 60_000, []);
+  // SWR cache — 24 saatlik TTL ile son bilinen veri her zaman gosterilir.
+  // Cache yoksa skeleton, varsa anlik render + arka planda yenileme.
+  // En kotu senaryo: dunku veri + "X saat once" badge — kullanici asla bos kart gormez.
+  const SWR_TTL_MS = 24 * 60 * 60 * 1000;
+  const [macro, setMacro, macroCached] = usePersistedState<MacroIndicator[]>('hf.cache.macro', SWR_TTL_MS, []);
+  const [stocks, setStocks, stocksCached] = usePersistedState<Stock[]>('hf.cache.stocks', SWR_TTL_MS, []);
+  const [news, setNews, newsCached] = usePersistedState<NewsItem[]>('hf.cache.news', SWR_TTL_MS, []);
+  const [sentiment, setSentiment, sentimentCached] = usePersistedState<SentimentMention[]>('hf.cache.sentiment', SWR_TTL_MS, []);
+  const [topFunds, setTopFunds, topFundsCached] = usePersistedState<FundPerformance[]>('hf.cache.topFunds', SWR_TTL_MS, []);
   const [stocksSource, setStocksSource] = useState<'live' | 'mock' | 'mixed'>('mock');
-  const [sentiment, setSentiment] = useState<SentimentMention[]>([]);
   const [sentimentSource, setSentimentSource] = useState<'live' | 'mock' | 'derived'>('mock');
-  const [topFunds, setTopFunds] = useState<FundPerformance[]>([]);
+  // SWR: sayfa cache'ten render ediliyor mu (en az bir kart cache'ten)
+  // Bu boolean LiveBadge'e iletilecek — "guncelleniyor" yerine "cache'ten + guncelleniyor" gosterir
+  const isAnyCached = macroCached || stocksCached || newsCached || sentimentCached || topFundsCached;
   const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('week');
   const [stocksPeriod, setStocksPeriod] = useState<'day' | 'week' | 'month'>('week');
   const [stocksReturns, setStocksReturns] = useState<Record<string, { '1h'?: number; '1a'?: number }>>({});
@@ -296,8 +301,15 @@ export function PanelPage() {
       </div>
 
       {/* Panel basligi kullanici talebiyle kaldirildi.
-          LiveBadge'i ufak bir cubukta sag ust köşede tutuyoruz. */}
-      <div className="mb-3 flex justify-end">
+          LiveBadge'i ufak bir cubukta sag ust köşede tutuyoruz.
+          SWR cache: ilk render localStorage'dan instant — eger eski veri varsa
+          arka planda yenileme yapilirken kullaniciya bilgi verir (gozumsenmez bir flash). */}
+      <div className="mb-3 flex justify-end items-center gap-2">
+        {isAnyCached && refreshing && (
+          <span className="text-[10px] text-slate-500 italic">
+            Son ziyaretten · guncelleniyor…
+          </span>
+        )}
         <LiveBadge updatedAt={updatedAt} refreshing={refreshing} label="CANLI" />
       </div>
 
@@ -736,10 +748,6 @@ export function PanelPage() {
           </div>
         </Link>
       )}
-
-      {/* Canlı Gelişmeler + Global Piyasalar blokları kaldırıldı — kullanıcı talebi.
-          Gelişmeler için sol menüden "Gelişmeler", global için "Global Piyasalar" sayfası. */}
-
     </>
   );
 }

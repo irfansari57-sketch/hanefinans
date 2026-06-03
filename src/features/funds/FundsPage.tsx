@@ -216,44 +216,54 @@ export function FundsPage() {
         </div>
       </div>
 
-      {/* Takipte tab — özet kartlar (haftalık varsayılan): toplam / yeşil-kırmızı / ortalama */}
+      {/* Takipte tab — 6 ozet kart: Takipteki, Gun, 1Hafta, 1Ay, 3Ay, 1Yil (Hisseler ile ayni) */}
       {tab === 'watched' && sorted.length > 0 && (() => {
-        let positives = 0;
-        let negatives = 0;
-        let sum = 0;
-        let count = 0;
-        for (const f of sorted) {
-          const v = f.week;
-          if (!Number.isFinite(v)) continue;
-          if (v > 0) positives += 1;
-          else if (v < 0) negatives += 1;
-          sum += v;
-          count += 1;
-        }
-        const avg = count > 0 ? sum / count : 0;
+        const summarize = (key: 'day' | 'week' | 'month' | 'threeMonth' | 'year') => {
+          let pos = 0, neg = 0, sum = 0, count = 0;
+          for (const f of sorted) {
+            const v = f[key];
+            if (!Number.isFinite(v)) continue;
+            if (v > 0) pos += 1;
+            else if (v < 0) neg += 1;
+            sum += v;
+            count += 1;
+          }
+          return { pos, neg, avg: count > 0 ? sum / count : 0, count };
+        };
+        const day = summarize('day');
+        const week = summarize('week');
+        const month = summarize('month');
+        const three = summarize('threeMonth');
+        const year = summarize('year');
+        const fmtAvg = (s: { avg: number; count: number }) =>
+          s.count === 0 ? '—' : `${s.avg >= 0 ? '+' : ''}${s.avg.toFixed(2)}%`;
+        const tone = (s: { avg: number; count: number }) =>
+          s.count === 0 ? 'text-slate-500' : s.avg >= 0 ? 'text-success' : 'text-danger';
+
         return (
-          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+          <div className="mb-4 grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             <div className="rounded-xl border border-border bg-bg-soft p-3">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">Takipte</div>
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">Takipteki</div>
               <div className="mt-1 text-xl font-semibold">{sorted.length}</div>
+              <div className="text-[10px] text-slate-500">fon</div>
             </div>
-            <div className="rounded-xl border border-border bg-bg-soft p-3">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">1 Hafta Yeşil / Kırmızı</div>
-              <div className="mt-1 text-xl font-semibold">
-                <span className="text-success">{positives}</span>
-                <span className="mx-1 text-slate-600">/</span>
-                <span className="text-danger">{negatives}</span>
-                {count < sorted.length && (
-                  <span className="ml-2 text-[10px] font-normal text-slate-500">({count}/{sorted.length})</span>
-                )}
+            {[
+              { label: 'Gün %', s: day },
+              { label: '1 Hafta', s: week },
+              { label: '1 Ay', s: month },
+              { label: '3 Ay', s: three },
+              { label: '1 Yıl', s: year },
+            ].map(({ label, s }) => (
+              <div key={label} className="rounded-xl border border-border bg-bg-soft p-3">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+                <div className={cn('mt-1 text-base font-semibold tabular-nums', tone(s))}>{fmtAvg(s)}</div>
+                <div className="text-[10px] text-slate-500">
+                  <span className="text-success">{s.pos}↑</span>
+                  <span className="mx-1">/</span>
+                  <span className="text-danger">{s.neg}↓</span>
+                </div>
               </div>
-            </div>
-            <div className="rounded-xl border border-border bg-bg-soft p-3">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">Ortalama Değişim · 1 Hafta</div>
-              <div className={cn('mt-1 text-xl font-semibold', avg >= 0 ? 'text-success' : 'text-danger')}>
-                {count === 0 ? <span className="text-slate-500">—</span> : (<>{avg >= 0 ? '+' : ''}{avg.toFixed(2)}%</>)}
-              </div>
-            </div>
+            ))}
           </div>
         );
       })()}

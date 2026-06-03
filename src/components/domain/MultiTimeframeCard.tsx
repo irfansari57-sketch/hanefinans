@@ -205,6 +205,7 @@ function TimeframeBox({ label, ta, price }: { label: string; ta: TimeframeAnalys
 }
 
 // İkonlu başlık — section header için
+// İkonlu başlık — section header için
 export function MultiTimeframeHeader({ title }: { title?: string }) {
   return (
     <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-accent">

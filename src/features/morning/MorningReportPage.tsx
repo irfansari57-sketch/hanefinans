@@ -396,9 +396,6 @@ export function MorningReportPage() {
       {/* ============ KISA PİYASA ANALİZİ — Multi-Timeframe Long/Short ============ */}
       <section className="glass-card mb-5 p-5">
         <SectionHeader icon={Zap} title="Kısa Piyasa Analizi" tone="accent" />
-        <p className="mt-1 ml-13 text-xs text-slate-400">
-          BIST 100, BIST 30, USD/TRY ve Altın için <strong>1 saatlik, 4 saatlik ve günlük</strong> trend yönü + büyük oyuncu eğilimi.
-        </p>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
           {mtResults.length === 0 ? (
@@ -410,21 +407,10 @@ export function MorningReportPage() {
           )}
         </div>
 
-        {/* Mini özet sayıları */}
-        <div className="mt-5 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {silverOz && <MiniRow label="Ons Gümüş" value={`$${silverOz.value.toFixed(2)}`} change={silverOz.changePct ?? 0} />}
-          {eurTry && <MiniRow label="EUR/TRY" value={eurTry.value.toFixed(2)} change={eurTry.changePct ?? 0} />}
-          {gold && <MiniRow label="Gram Altın" value={`${gold.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}₺`} change={gold.changePct ?? 0} />}
-          {silver && <MiniRow label="Gram Gümüş" value={`${silver.value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}₺`} change={silver.changePct ?? 0} />}
-          {platinum && <MiniRow label="Gram Platin" value={`${platinum.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}₺`} change={platinum.changePct ?? 0} />}
-          {cryptos[0] && <MiniRow label={cryptos[0].symbol} value={`$${cryptos[0].usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}`} change={cryptos[0].change24h} />}
-        </div>
+        {/* Doviz/emtia mini ozet kartlari kullanici talebiyle kaldirildi. */}
       </section>
 
-      {/* ============ PİYASA YORUMCULARI ============ */}
-      <div className="mb-5">
-        <AnalystCommentary />
-      </div>
+      {/* Aracı Kurum Bültenleri (AnalystCommentary) kullanıcı talebiyle Öneriler sayfasına taşındı. */}
     </>
   );
 }

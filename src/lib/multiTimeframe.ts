@@ -432,37 +432,31 @@ export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   // 0) Zaman bağlamı — gün başı/orta/sonu/kapalı
   parts.push(timeContextLine());
 
-  // 1) Ana yön — boğa/ayı + yükseliş/düşüş
+  // 1) ÖNCE KISA VADE — MA 5/8/13 üçlü dizilim ve fiyatın bunlara göre konumu.
+  //    Kullanıcı talebi: günlük fiyat MA 5/8/13 önceliklendirilsin.
+  if (r.tf1d) {
+    const tri = triCrossLine(r.tf1d, 'Günlük', r.price);
+    if (tri) parts.push(tri);
+    const cross = shortCrossLine(r.tf1d, 'Günlük');
+    if (cross) parts.push(cross);
+  }
+
+  // 2) Gün hareketi — bugünün momentumunu kısa vade ile birlikte oku
+  const move = dailyMoveLine(r.changePct);
+  if (move) parts.push(move);
+
+  // 3) SONRA ANA TREND — MA 55 (orta vade) ve MA 200 (uzun vade / piyasa rejimi)
   const sma200 = r.tf1d?.emaValues?.[200];
   const sma55 = r.tf1d?.emaValues?.[55];
   const regime = r.marketRegime ?? computeMarketRegime(r.price, sma200);
   const trend = r.priceTrend ?? computePriceTrend(r.price, sma55);
   parts.push(mainDirectionLine(r.price, regime, trend, sma200, sma55));
 
-  // 2) Büyük oyuncu eğilimi
-  parts.push(bigPlayerLine(r.bigPlayerLean));
-
-  // 3) Üçlü MA dizilim (5-8-13) + öncü pozitif sinyal
-  if (r.tf1d) {
-    const tri = triCrossLine(r.tf1d, 'Günlük', r.price);
-    if (tri) parts.push(tri);
-  }
-
-  // 4) MA 5/8 kesişim - kısa vade yön
-  if (r.tf1d) {
-    const cross = shortCrossLine(r.tf1d, 'Günlük');
-    if (cross) parts.push(cross);
-  }
-
-  // 5) Gün hareketi
-  const move = dailyMoveLine(r.changePct);
-  if (move) parts.push(move);
-
-  // 6) TF coherence
+  // 4) TF coherence — 1H/4H/Günlük uyumu (kısa-orta-uzun)
   const coherence = trendCoherenceLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend);
   if (coherence) parts.push(coherence);
 
-  // 7) Aksiyon önerisi — kombinasyonlara göre net giriş/çıkış ipucu
+  // 5) Aksiyon önerisi — kombinasyonlara göre net giriş/çıkış ipucu
   parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
 
   return parts.join(' ');

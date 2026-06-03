@@ -138,9 +138,9 @@ export function PanelPage() {
   const [sparklineMap, setSparklineMap] = useState<Record<string, number[]>>(() => sparklineMemo.data);
 
   // Pin'lenebilir bölümler — kullanıcı isterse açık/kapalı durumunu kaydeder.
-  // Mobilde default kapalı (kompakt görünüm); desktop'ta default açık.
-  const stocksPin = usePinnedSection('panel-top-movers-stocks', true, false);
-  const fundsPin = usePinnedSection('panel-top-movers-funds', true, false);
+  // Default kapalı (hem mobile hem desktop) — kullanıcı isterse açar, pin'le sabitler.
+  const stocksPin = usePinnedSection('panel-top-movers-stocks', false, false);
+  const fundsPin = usePinnedSection('panel-top-movers-funds', false, false);
 
   const refresh = useCallback(async (force = false) => {
     if (force) clearServiceCaches();
@@ -647,7 +647,6 @@ export function PanelPage() {
         title="Takip Listem"
         icon={<Newspaper size={16} />}
         iconColorClass="bg-accent/15 text-accent"
-        defaultOpen
       >
         <div className="flex items-center justify-end mb-2">
           <SourceBadge source={stocksSource} />

@@ -24,6 +24,8 @@ import { formatMoney } from '@/lib/format';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
+import { AnalystCommentary } from '@/components/domain/AnalystCommentary';
+import { MessageSquare } from 'lucide-react';
 
 // Modüler section'lar — `./sections/` altında her biri kendi dosyasında
 import type { ScalpTf, ScalpRec, DailySnapshotEntry, DailySnapshot } from './sections/types';
@@ -379,6 +381,9 @@ export function RecommendationsPage() {
       <PinnableAccordion id="recs-strongbuy" title="Guclu Al Hisse Havuzu" icon={<TrendingUp size={16} />} iconColorClass="bg-success/15 text-success">
         <StrongBuyTab />
       </PinnableAccordion>
+      <PinnableAccordion id="recs-analyst" title="Aracı Kurum Bültenleri" icon={<MessageSquare size={16} />} iconColorClass="bg-info/15 text-info">
+        <AnalystCommentary />
+      </PinnableAccordion>
       <PinnableAccordion id="recs-broker" title={`Araci Kurum (${BROKER_COUNT})`} icon={<Briefcase size={16} />} iconColorClass="bg-warning/15 text-warning">
         <BrokerRecommendations />
       </PinnableAccordion>
@@ -651,9 +656,6 @@ function ScalpTableRow({ rec, rank, selectedTf, watched, onToggle }: {
             <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
               TAZE
             </span>
-          )}
-          {!isLong && !isFresh && (
-            <span className="text-[9px] text-slate-500">—</span>
           )}
         </div>
       </td>

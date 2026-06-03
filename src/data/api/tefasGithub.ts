@@ -170,22 +170,65 @@ function computeDayChangeFromHistory(history: Array<{ date: string; price: numbe
   return ((last.price - prev.price) / prev.price) * 100;
 }
 
-/** Feed verisini FundPerformance şemasına maple. 1d eksikse history'den son is gunu hesabi yapilir. */
+/**
+ * History array'inden N takvim gunu onceki fiyatla yuzde fark.
+ * Hafta = 7 gun, Ay = 30, vb. Yakin gunu bulamazsa null doner.
+ */
+function computeChangeFromHistoryNDays(
+  history: Array<{ date: string; price: number }>,
+  daysAgo: number,
+): number | null {
+  if (!Array.isArray(history) || history.length < 2) return null;
+  const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+  const last = sorted[sorted.length - 1];
+  if (!last || !(last.price > 0)) return null;
+  // Target date = last.date - daysAgo gun
+  const lastDate = new Date(last.date);
+  const targetMs = lastDate.getTime() - daysAgo * 24 * 60 * 60 * 1000;
+  // Sorted icinde en yakin (target'a >= olan) ilk eleman
+  let best: typeof sorted[number] | null = null;
+  for (const h of sorted) {
+    if (new Date(h.date).getTime() <= targetMs) best = h;
+    else break;
+  }
+  if (!best || !(best.price > 0)) return null;
+  return ((last.price - best.price) / best.price) * 100;
+}
+
+/** Feed verisini FundPerformance şemasına maple. 1d/1w/1m eksikse history'den hesaplanir. */
 export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[] {
   return funds.map((f) => {
+    const hist = f.history ?? [];
+
+    // 1d — feed'de yoksa son 2 history noktasi
     let day = f.returns['1d'];
     if (day == null || day === 0) {
-      const fromHistory = computeDayChangeFromHistory(f.history ?? []);
+      const fromHistory = computeDayChangeFromHistory(hist);
       if (fromHistory != null) day = fromHistory;
     }
+
+    // 1w (haftalik) — 7 takvim gunu
+    let week = f.returns['1w'];
+    if (week == null || week === 0) {
+      const fromHistory = computeChangeFromHistoryNDays(hist, 7);
+      if (fromHistory != null) week = fromHistory;
+    }
+
+    // 1m (aylik) — 30 takvim gunu
+    let month = f.returns['1m'];
+    if (month == null || month === 0) {
+      const fromHistory = computeChangeFromHistoryNDays(hist, 30);
+      if (fromHistory != null) month = fromHistory;
+    }
+
     return {
       code: f.code,
       name: f.name,
       category: normalizeFundCategory(f.category, f.name),
       tefas: true,
       day: day ?? 0,
-      week: f.returns['1w'] ?? 0,
-      month: f.returns['1m'] ?? 0,
+      week: week ?? 0,
+      month: month ?? 0,
       threeMonth: f.returns['3m'] ?? 0,
       sixMonth: f.returns['6m'] ?? 0,
       ytd: f.returns.ytd ?? 0,
@@ -209,6 +252,6 @@ export async function loadFundsAsPerformanceDetailed(): Promise<TefasFeedFetchRe
   funds?: FundPerformance[];
 }> {
   const result = await fetchTefasFeedDetailed();
-  if (!result.ok || !result.feed) return result;
+  if (!result.feed) return result;
   return { ...result, funds: mapTefasToPerformance(result.feed.funds) };
 }

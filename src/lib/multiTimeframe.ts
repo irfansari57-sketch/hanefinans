@@ -1,24 +1,26 @@
 /**
  * Çoklu zaman dilimli trend analizi
  *
- * Her sembol için 3 zaman diliminde (1h, 4h, 1d) EMA bazlı long/short yön belirler.
- * Büyük oyuncu eğilimini de MACD + EMA200 pozisyonu üzerinden hesaplar.
+ * Her sembol için 3 zaman diliminde (1h, 4h, 1d) MA (basit hareketli ortalama) bazlı
+ * long/short yön belirler. MA periyotları: 5, 8, 13, 21, 55, 200 (Fibonacci).
+ * 5-8-13 kesişimi kısa vade al sinyali; fiyat 8 MA üstü öncü pozitif sinyal.
+ * Büyük oyuncu eğilimini MACD + MA200 pozisyonu üzerinden hesaplar.
  */
 
-import { ema, macd, type OHLC } from './indicators';
+import { sma, macd, type OHLC } from './indicators';
 import type { OhlcvBar } from '@/data/api/yahoo';
 
 export type Trend = 'long' | 'short' | 'neutral';
 
-/** Genel piyasa rejimi — Fiyatın Günlük EMA 200'e göre konumu */
+/** Genel piyasa rejimi — Fiyatın Günlük MA 200'e göre konumu */
 export type MarketRegime = 'bull' | 'bear' | 'unknown';
 
-/** Ana yön — Fiyatın Günlük EMA 55'e göre konumu (kısa-orta vade) */
+/** Ana yön — Fiyatın Günlük MA 55'e göre konumu (kısa-orta vade) */
 export type PriceTrend = 'up' | 'down' | 'sideways';
 
 export interface TimeframeAnalysis {
   trend: Trend;
-  /** EMA dizilim notu (kaç EMA üstte) */
+  /** MA dizilim notu (kaç MA üstte) */
   emaScore: number;
   /** Hangi periyotlar fiyat üzerinde */
   emasAbove: number[];
@@ -42,28 +44,28 @@ export interface MultiTimeframeResult {
   tf4h: TimeframeAnalysis | null;
   tf1d: TimeframeAnalysis | null;
   bigPlayerLean: 'alıcı' | 'satıcı' | 'kararsız';
-  /** EMA 200 üstü → bull, altı → bear (Günlük). Verilmezse buildVerdict günlük EMA'lardan otomatik türetir. */
+  /** MA 200 üstü → bull, altı → bear (Günlük). Verilmezse buildVerdict günlük EMA'lardan otomatik türetir. */
   marketRegime?: MarketRegime;
-  /** EMA 55 üstü → up, altı → down (Günlük). Verilmezse buildVerdict günlük EMA'lardan otomatik türetir. */
+  /** MA 55 üstü → up, altı → down (Günlük). Verilmezse buildVerdict günlük EMA'lardan otomatik türetir. */
   priceTrend?: PriceTrend;
   verdict: string;
 }
 
 /**
- * Günlük EMA 200'e göre boğa/ayı piyasası belirle.
+ * Günlük MA 200'e göre boğa/ayı piyasası belirle.
  * Sade ve net — kullanıcıya "ana yönde" ne olduğunu anında bildirir.
  */
-export function computeMarketRegime(price: number, ema200Daily: number | undefined): MarketRegime {
-  if (!Number.isFinite(ema200Daily) || !Number.isFinite(price)) return 'unknown';
-  // EMA 200'e %0.5'ten yakınsa "unknown" — çok marjinal pozisyon karışıklık yaratır
-  const margin = (ema200Daily as number) * 0.005;
-  if (price > (ema200Daily as number) + margin) return 'bull';
-  if (price < (ema200Daily as number) - margin) return 'bear';
+export function computeMarketRegime(price: number, sma200Daily: number | undefined): MarketRegime {
+  if (!Number.isFinite(sma200Daily) || !Number.isFinite(price)) return 'unknown';
+  // MA 200'e %0.5'ten yakınsa "unknown" — çok marjinal pozisyon karışıklık yaratır
+  const margin = (sma200Daily as number) * 0.005;
+  if (price > (sma200Daily as number) + margin) return 'bull';
+  if (price < (sma200Daily as number) - margin) return 'bear';
   return 'unknown';
 }
 
 /**
- * Günlük EMA 55'e göre kısa-orta vade trend belirle.
+ * Günlük MA 55'e göre kısa-orta vade trend belirle.
  * up: fiyat 55 EMA üstünde, down: altında, sideways: marjinal yakın.
  */
 export function computePriceTrend(price: number, ema55Daily: number | undefined): PriceTrend {
@@ -101,7 +103,7 @@ export function aggregateTo4h(bars1h: OhlcvBar[]): OhlcvBar[] {
 }
 
 /**
- * Verilen closes dizisinden EMA dizilimi → trend hesabı
+ * Verilen closes dizisinden MA dizilimi → trend hesabı
  * Kısa zaman dilimleri için periods=[5,8,13,21,55]
  * Günlük için periods=[5,8,13,21,55,200]
  */
@@ -113,7 +115,7 @@ export function analyzeTimeframe(
   const last = closes[closes.length - 1];
 
   const emaValues = periods.map((p) => {
-    const series = ema(closes, p);
+    const series = sma(closes, p);
     return {
       period: p,
       value: series.at(-1) ?? NaN,
@@ -153,13 +155,13 @@ export function computeBigPlayerLean(bars: OHLC[]): 'alıcı' | 'satıcı' | 'ka
   if (bars.length < 200) return 'kararsız';
   const closes = bars.map((b) => b.close);
   const last = closes[closes.length - 1];
-  const ema200 = ema(closes, 200).at(-1);
+  const sma200 = sma(closes, 200).at(-1);
   const macdR = macd(closes);
   const histLast = macdR.histogram.at(-1) ?? 0;
   const histPrev = macdR.histogram.at(-2) ?? 0;
 
-  if (!Number.isFinite(ema200)) return 'kararsız';
-  const above200 = last > (ema200 as number);
+  if (!Number.isFinite(sma200)) return 'kararsız';
+  const above200 = last > (sma200 as number);
   const histRising = histLast > histPrev;
 
   // Güçlü alıcı: 200 üstünde + MACD pozitif + yükseliyor
@@ -219,12 +221,91 @@ function fmtPrice(n: number): string {
 }
 
 /**
- * Kısa vade kesişim sinyali — günlükte EMA 5 ile EMA 8'in pozisyonu kısa vade
+ * TR saatine göre gün başı / orta / sonu / piyasa kapalı bağlamı.
+ * BIST seans: 10:00-18:00. Açılış-öğle (10-13), öğle-15, 15-18 (kapanış).
+ * Yorumun başında konum bilgisi vererek "geriden gelen yorum" hissini önler.
+ */
+function timeContextLine(): string {
+  const now = new Date();
+  // TR = UTC+3 (DST yok)
+  const tr = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  const day = tr.getUTCDay(); // 0 Sun, 6 Sat
+  const hour = tr.getUTCHours();
+  const min = tr.getUTCMinutes();
+
+  // Hafta sonu
+  if (day === 0 || day === 6) {
+    return 'Piyasa kapalı (hafta sonu) — son işlem günü Cuma kapanışı değerlendirmesi:';
+  }
+
+  // Açılış öncesi
+  if (hour < 10) {
+    return 'Açılış öncesi — gece offshore hareketleri ve Asya seansı dikkate alınarak:';
+  }
+  // Açılış-öğle (10:00-12:30)
+  if (hour < 12 || (hour === 12 && min < 30)) {
+    return 'Gün başı — açılış momentumu ve ilk seans yönü:';
+  }
+  // Öğle ortası (12:30-15:00)
+  if (hour < 15) {
+    return 'Gün ortası — sabah hareketinin testi, ABD verisi yaklaşıyor:';
+  }
+  // Kapanış öncesi (15:00-18:00)
+  if (hour < 18) {
+    return 'Gün sonu — kapanış öncesi pozisyon ayarı, hacim artışı:';
+  }
+  // Kapanış sonrası
+  return 'Piyasa kapalı — bugünkü kapanış sonrası yarın açılışa hazırlık:';
+}
+
+/**
+ * Üçlü MA dizilim sinyali — 5-8-13 birlikte yukarı kesişimi güçlü AL sinyali.
+ * Fiyat 8 MA üstü öncü pozitif (haber öncesi giriş, momentum kanıtı).
+ */
+function triCrossLine(ta: TimeframeAnalysis, tfLabel: string, price: number): string {
+  const v5 = ta.emaValues?.[5];
+  const v8 = ta.emaValues?.[8];
+  const v13 = ta.emaValues?.[13];
+  if (!Number.isFinite(v5) || !Number.isFinite(v8) || !Number.isFinite(v13)) return '';
+
+  const v5p = ta.emaValuesPrev?.[5];
+  const v8p = ta.emaValuesPrev?.[8];
+  const v13p = ta.emaValuesPrev?.[13];
+
+  // Üçlü AL: 5>8>13 ve önceki barda 5≤8 (taze kesişim)
+  const bullStack = v5 > v8 && v8 > v13;
+  const wasNotBull = Number.isFinite(v5p) && Number.isFinite(v8p) &&
+                     !((v5p as number) > (v8p as number));
+  const above8 = Number.isFinite(price) && price > (v8 as number);
+
+  if (bullStack && wasNotBull) {
+    return `${tfLabel} MA 5 > MA 8 > MA 13 ÜÇLÜ AL SİNYALİ taze oluştu — kısa vade güçlü yukarı dizilim, momentum tetiklendi.`;
+  }
+
+  // Üçlü düşüş: 5<8<13 ve önceki barda 5≥8
+  const bearStack = v5 < v8 && v8 < v13;
+  const wasNotBear = Number.isFinite(v5p) && Number.isFinite(v8p) &&
+                     !((v5p as number) < (v8p as number));
+  if (bearStack && wasNotBear) {
+    return `${tfLabel} MA 5 < MA 8 < MA 13 ÜÇLÜ SAT SİNYALİ taze oluştu — kısa vade güçlü aşağı dizilim, momentum aşağı döndü.`;
+  }
+
+  if (bullStack && above8) {
+    return `${tfLabel} fiyat MA 8 üstünde + üçlü dizilim (5>8>13) korunuyor — öncü pozitif: haber öncesi giriş için uygun konum.`;
+  }
+  if (bearStack) {
+    return `${tfLabel} üçlü aşağı dizilim (5<8<13) sürüyor — yukarı tepki için 5/8 kesişimi beklenmeli.`;
+  }
+  return '';
+}
+
+/**
+ * Kısa vade kesişim sinyali — günlükte MA 5 ile MA 8'in pozisyonu kısa vade
  * yön belirleyicisidir. Fresh cross (bir önceki barda diğer taraftaydı, bugün
  * tersine geçti) çok güçlü bir sinyal; sade pozisyon ise momentum bilgisi.
  *
- * - EMA 5 yukarı kesişim → güçlü LONG sinyali (20 Kasım, 6 Ocak gibi noktalar)
- * - EMA 5 aşağı kesişim  → güçlü SHORT sinyali
+ * - MA 5 yukarı kesişim → güçlü LONG sinyali (20 Kasım, 6 Ocak gibi noktalar)
+ * - MA 5 aşağı kesişim  → güçlü SHORT sinyali
  */
 function shortCrossLine(ta: TimeframeAnalysis, tfLabel: string): string {
   const e5 = ta.emaValues?.[5];
@@ -244,20 +325,20 @@ function shortCrossLine(ta: TimeframeAnalysis, tfLabel: string): string {
 
   // Fresh bull cross — bugün yukarı kesişti, güçlü LONG sinyali
   if (above && wasBelow) {
-    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ÜSTÜNE KESTİ — kısa vade GÜÇLÜ LONG sinyali, kısa periyot pozisyon için uygun pencere açıldı.`;
+    return `${tfLabel} MA 5 (${ema5Str}) bugün MA 8 (${ema8Str}) ÜSTÜNE KESTİ — kısa vade GÜÇLÜ LONG sinyali, kısa periyot pozisyon için uygun pencere açıldı.`;
   }
 
   // Fresh bear cross — bugün aşağı kesişti, güçlü SHORT sinyali
   if (!above && wasAbove) {
-    return `${tfLabel} EMA 5 (${ema5Str}) bugün EMA 8 (${ema8Str}) ALTINA KESTİ — kısa vade GÜÇLÜ SHORT sinyali, long pozisyonlardan çıkış uyarısı; momentum aşağı dönüyor.`;
+    return `${tfLabel} MA 5 (${ema5Str}) bugün MA 8 (${ema8Str}) ALTINA KESTİ — kısa vade GÜÇLÜ SHORT sinyali, long pozisyonlardan çıkış uyarısı; momentum aşağı dönüyor.`;
   }
 
   // Position only (no fresh cross)
   if (above) {
-    return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) üstünde — kısa vade yukarı momentum sürüyor, mevcut long taraf korunuyor; aşağı kesişim olmadan trend bozulmaz.`;
+    return `${tfLabel} MA 5 (${ema5Str}), MA 8 (${ema8Str}) üstünde — kısa vade yukarı momentum sürüyor, mevcut long taraf korunuyor; aşağı kesişim olmadan trend bozulmaz.`;
   }
-  // EMA 5 EMA 8 altında — aktif düşüş trendinde kullanıcıyı net uyar
-  return `${tfLabel} EMA 5 (${ema5Str}), EMA 8 (${ema8Str}) ALTINDA — kısa vade aşağı trend aktif. ⚠️ Long pozisyon için günlük EMA 5'in EMA 8 üstüne kesişimi beklenmeli; bu pencerede long açmak yatırımcıyı zarara sokabilir.`;
+  // MA 5 MA 8 altında — aktif düşüş trendinde kullanıcıyı net uyar
+  return `${tfLabel} MA 5 (${ema5Str}), MA 8 (${ema8Str}) ALTINDA — kısa vade aşağı trend aktif. ⚠️ Long pozisyon için günlük MA 5'in MA 8 üstüne kesişimi beklenmeli; bu pencerede long açmak yatırımcıyı zarara sokabilir.`;
 }
 
 /** Günün hareket büyüklüğüne göre karakter notu. */
@@ -288,30 +369,30 @@ function mainDirectionLine(
   price: number,
   regime: MarketRegime,
   trend: PriceTrend,
-  ema200?: number,
+  sma200?: number,
   ema55?: number,
 ): string {
-  const ema200Str = Number.isFinite(ema200) ? fmtPrice(ema200 as number) : null;
+  const sma200Str = Number.isFinite(sma200) ? fmtPrice(sma200 as number) : null;
   const ema55Str = Number.isFinite(ema55) ? fmtPrice(ema55 as number) : null;
 
   const regimePart = regime === 'bull'
-    ? `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} üstünde — **BOĞA PİYASASI** içindeyiz`
+    ? `Günlük MA 200${sma200Str ? ` (${sma200Str})` : ''} üstünde — **BOĞA PİYASASI** içindeyiz`
     : regime === 'bear'
-      ? `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} altında — **AYI PİYASASI** içindeyiz`
-      : `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} civarında — piyasa rejimi belirsiz`;
+      ? `Günlük MA 200${sma200Str ? ` (${sma200Str})` : ''} altında — **AYI PİYASASI** içindeyiz`
+      : `Günlük MA 200${sma200Str ? ` (${sma200Str})` : ''} civarında — piyasa rejimi belirsiz`;
 
   const trendPart = trend === 'up'
-    ? `ve EMA 55${ema55Str ? ` (${ema55Str})` : ''} üstünde olduğu için **YÜKSELİŞ TRENDİ** sürüyor.`
+    ? `ve MA 55${ema55Str ? ` (${ema55Str})` : ''} üstünde olduğu için **YÜKSELİŞ TRENDİ** sürüyor.`
     : trend === 'down'
-      ? `ve EMA 55${ema55Str ? ` (${ema55Str})` : ''} altında olduğu için **DÜŞÜŞ TRENDİ** baskın.`
-      : `, EMA 55${ema55Str ? ` (${ema55Str})` : ''} civarında yatay seyir.`;
+      ? `ve MA 55${ema55Str ? ` (${ema55Str})` : ''} altında olduğu için **DÜŞÜŞ TRENDİ** baskın.`
+      : `, MA 55${ema55Str ? ` (${ema55Str})` : ''} civarında yatay seyir.`;
 
   // Çelişki: bull ama down? Bunu da yumuşat
   if (regime === 'bull' && trend === 'down') {
-    return `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} üstünde — uzun vadeli **BOĞA PİYASASI** korunuyor, ama EMA 55${ema55Str ? ` (${ema55Str})` : ''} altına sarkma var — kısa vadeli **düzeltme** dalgası.`;
+    return `Günlük MA 200${sma200Str ? ` (${sma200Str})` : ''} üstünde — uzun vadeli **BOĞA PİYASASI** korunuyor, ama MA 55${ema55Str ? ` (${ema55Str})` : ''} altına sarkma var — kısa vadeli **düzeltme** dalgası.`;
   }
   if (regime === 'bear' && trend === 'up') {
-    return `Günlük EMA 200${ema200Str ? ` (${ema200Str})` : ''} altında — **AYI PİYASASI** sürüyor, ama EMA 55${ema55Str ? ` (${ema55Str})` : ''} üstüne çıkış var — kısa vadeli **toparlanma** denemesi.`;
+    return `Günlük MA 200${sma200Str ? ` (${sma200Str})` : ''} altında — **AYI PİYASASI** sürüyor, ama MA 55${ema55Str ? ` (${ema55Str})` : ''} üstüne çıkış var — kısa vadeli **toparlanma** denemesi.`;
   }
   return `${regimePart} ${trendPart}`.replace(/\s+/g, ' ');
 }
@@ -333,68 +414,55 @@ function actionHintLine(
     return 'Aksiyon önerisi: Long trend güçlü ama kurumsal teyit zayıf — riski sıkı stop ile yönet, hızlı kâr realizasyonu mantıklı.';
   }
   if (t1h === 'short' && t4h === 'short' && t1d === 'short') {
-    if (lean === 'satıcı') return 'Aksiyon önerisi: Trend dönüşü işareti yok — long pozisyon açma; mevcut shortlar korunuyor, kısa EMA üstüne çıkış olmadan dönüş beklenmez.';
-    return 'Aksiyon önerisi: Aşağı yönlü baskı sürüyor ama kurumsal satıcı görünmüyor — kenarda durmak ya da çok küçük long denemeleri tercih edilebilir, agresif short riskli.';
+    if (lean === 'satıcı') return 'Aksiyon önerisi: Trend dönüşü işareti yok — long pozisyon açma; mevcut shortlar korunuyor, kısa MA üstüne çıkış olmadan dönüş beklenmez.';
+    return 'Aksiyon önerisi: Aşağı yönlü baskı sürüyor — long pozisyon riski yüksek, kısa MA kesişimi beklenmeli.';
   }
-  if (t1d === 'long' && (t1h === 'short' || t4h === 'short')) {
-    return `Aksiyon önerisi: Ana trend yukarı, kısa vadeli geri çekilmede long fırsatı aranabilir — günlük EMA 21${ema21Str} destek bölgesi olarak takip; altına sarkma risk işareti.`;
-  }
-  if (t1d === 'short' && (t1h === 'long' || t4h === 'long')) {
-    return `Aksiyon önerisi: Ana trend aşağı, kısa vadeli sıçramalar satış fırsatı; günlük EMA 55${ema55Str} üstüne çıkmadan kalıcı trend dönüşü beklenmez.`;
-  }
-  if (lean === 'alıcı') return 'Aksiyon önerisi: Yön karışık ama kurumsal alıcı eğilimi var — sabırlı ol, net teyit (4H/Günlük long) gelince pozisyon büyüt.';
-  if (lean === 'satıcı') return 'Aksiyon önerisi: Yön karışık ve kurumsal satıcı tarafta — alımdan kaçın, kenarda dur ya da çok küçük taktik shortlar dene.';
+  if (lean === 'alıcı') return `Aksiyon önerisi: Karışık sinyaller ama kurumsal taraf alıcı — günlük MA 21${ema21Str} desteğinden bounce'lara öncelik verilebilir.`;
+  if (lean === 'satıcı') return `Aksiyon önerisi: Karışık sinyaller + kurumsal satıcı — günlük MA 55${ema55Str} altına kalıcı geçişte short bias güçlenir.`;
   return 'Aksiyon önerisi: Yön karışık + kurumsal kararsız — net sinyal oluşmadan agresif giriş riskli; range stratejisi (destek alımı + direnç satışı) tercih edilebilir.';
 }
 
 /**
- * Multi-timeframe sonucundan zengin Türkçe verdict üret.
- *
- * Sıralama (önemden niceliğe):
- *   1) ANA YÖN — Boğa/Ayı + Yükseliş/Düşüş (EMA 200 + EMA 55 odaklı)
- *   2) Büyük oyuncu özeti
- *   3) Gün hareketi karakteri
- *   4) Zaman dilimi tutarlılığı (1H/4H/Günlük long-short uyum)
- *   5) Net aksiyon ipucu
- *   6) EMA 5/8/13/21 detayı — yalnızca momentum nüansı için, sonda
+ * Tüm sinyalleri birleştirerek kullanıcıya 1 paragraflık net yorum üret.
+ * Sıra: zaman bağlamı → ana yön → büyük oyuncu → üçlü MA dizilim → MA 5/8 → günlük hareket → TF coherence → aksiyon.
  */
 export function buildVerdict(r: Omit<MultiTimeframeResult, 'verdict'>): string {
   const parts: string[] = [];
 
-  // marketRegime/priceTrend verilmemişse günlük EMA'lardan otomatik türet — eski çağrı yerleri bozulmasın
-  const regime: MarketRegime = r.marketRegime ?? computeMarketRegime(r.price, r.tf1d?.emaValues[200]);
-  const trend: PriceTrend = r.priceTrend ?? computePriceTrend(r.price, r.tf1d?.emaValues[55]);
+  // 0) Zaman bağlamı — gün başı/orta/sonu/kapalı
+  parts.push(timeContextLine());
 
-  // 1) EMA 5/8 KESİŞİM SİNYALİ — kısa vade yön belirleyici, EN BAŞTA gelir (kullanıcı pozisyon kararını ilk burada görsün)
-  const focusTf = r.tf1d ?? r.tf4h ?? r.tf1h;
-  const focusLabel = r.tf1d ? 'Günlük' : r.tf4h ? '4 saatlik' : '1 saatlik';
-  if (focusTf) {
-    const cross = shortCrossLine(focusTf, focusLabel);
+  // 1) Ana yön — boğa/ayı + yükseliş/düşüş
+  const sma200 = r.tf1d?.emaValues?.[200];
+  const sma55 = r.tf1d?.emaValues?.[55];
+  const regime = r.marketRegime ?? computeMarketRegime(r.price, sma200);
+  const trend = r.priceTrend ?? computePriceTrend(r.price, sma55);
+  parts.push(mainDirectionLine(r.price, regime, trend, sma200, sma55));
+
+  // 2) Büyük oyuncu eğilimi
+  parts.push(bigPlayerLine(r.bigPlayerLean));
+
+  // 3) Üçlü MA dizilim (5-8-13) + öncü pozitif sinyal
+  if (r.tf1d) {
+    const tri = triCrossLine(r.tf1d, 'Günlük', r.price);
+    if (tri) parts.push(tri);
+  }
+
+  // 4) MA 5/8 kesişim - kısa vade yön
+  if (r.tf1d) {
+    const cross = shortCrossLine(r.tf1d, 'Günlük');
     if (cross) parts.push(cross);
   }
 
-  // 2) ANA YÖN — Boğa/Ayı + Yükseliş/Düşüş bağlamı
-  const main = mainDirectionLine(
-    r.price,
-    regime,
-    trend,
-    r.tf1d?.emaValues[200],
-    r.tf1d?.emaValues[55],
-  );
-  parts.push(main);
-
-  // 3) Büyük oyuncu
-  parts.push(bigPlayerLine(r.bigPlayerLean));
-
-  // 4) Gün hareketi
+  // 5) Gün hareketi
   const move = dailyMoveLine(r.changePct);
   if (move) parts.push(move);
 
-  // 5) TF coherence
+  // 6) TF coherence
   const coherence = trendCoherenceLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend);
   if (coherence) parts.push(coherence);
 
-  // 6) Aksiyon önerisi — kombinasyonlara göre net giriş/çıkış ipucu
+  // 7) Aksiyon önerisi — kombinasyonlara göre net giriş/çıkış ipucu
   parts.push(actionHintLine(r.tf1h?.trend, r.tf4h?.trend, r.tf1d?.trend, r.bigPlayerLean, r.tf1d?.emaValues));
 
   return parts.join(' ');

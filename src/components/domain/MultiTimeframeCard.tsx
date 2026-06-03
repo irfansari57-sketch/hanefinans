@@ -58,7 +58,7 @@ function MultiTimeframeCardInner({ r, currency = '₺', hideHeader }: MultiTimef
         </div>
       )}
 
-      {/* ANA YÖN ROZETLERİ — EMA 200 (Boğa/Ayı) + EMA 55 (Yükseliş/Düşüş) */}
+      {/* ANA YÖN ROZETLERİ — MA 200 (Boğa/Ayı) + MA 55 (Yükseliş/Düşüş) */}
       <div className={cn('grid grid-cols-2 gap-2', hideHeader ? 'mt-0' : 'mt-3')}>
         <RegimeBadge regime={regime} />
         <TrendBadge trend={trend} />
@@ -92,7 +92,7 @@ function MultiTimeframeCardInner({ r, currency = '₺', hideHeader }: MultiTimef
   );
 }
 
-/** Boğa / Ayı piyasası rozeti — EMA 200 odaklı, büyük ve baskın */
+/** Boğa / Ayı piyasası rozeti — MA 200 odaklı, büyük ve baskın */
 function RegimeBadge({ regime }: { regime: 'bull' | 'bear' | 'unknown' }) {
   const cls = regime === 'bull' ? 'border-success/40 bg-success/10 text-success'
     : regime === 'bear' ? 'border-danger/40 bg-danger/10 text-danger'
@@ -109,7 +109,7 @@ function RegimeBadge({ regime }: { regime: 'bull' | 'bear' | 'unknown' }) {
   );
 }
 
-/** Yükseliş / Düşüş trendi rozeti — EMA 55 odaklı */
+/** Yükseliş / Düşüş trendi rozeti — MA 55 odaklı */
 function TrendBadge({ trend }: { trend: 'up' | 'down' | 'sideways' }) {
   const cls = trend === 'up' ? 'border-success/40 bg-success/10 text-success'
     : trend === 'down' ? 'border-danger/40 bg-danger/10 text-danger'
@@ -149,7 +149,7 @@ function TimeframeBox({ label, ta }: { label: string; ta: TimeframeAnalysis | nu
       <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className={cn('mt-1 text-sm font-bold', color)}>{txt}</div>
       <div className="mt-0.5 text-[9px] text-slate-500">
-        {ta.emaScore}/{ta.emasAbove.length + ta.emasBelow.length} EMA üstte
+        {ta.emaScore}/{ta.emasAbove.length + ta.emasBelow.length} MA üstte
       </div>
     </div>
   );

@@ -41,13 +41,22 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Önce stage et (untracked yeni dosya da dahil), sonra staged diff kontrolü
+          git pull --rebase --autostash origin main || true
           git add data/tefas.json
           if git diff --staged --quiet; then
             echo "TEFAS verisinde değişiklik yok, commit atlanıyor"
           else
-            # [skip ci] → Cloudflare Pages rebuild tetiklemesin (data değişikliği UI'yi etkilemez)
             git commit -m "data: TEFAS otomatik güncelleme $(date -u +%Y-%m-%d_%H:%M) [skip ci]"
-            git push
-            echo "✅ data/tefas.json commit'lendi ve push edildi"
+            # Push race condition fix — 3 retry + rebase
+            for i in 1 2 3; do
+              if git push; then
+                echo "✅ data/tefas.json commit'lendi ve push edildi (deneme $i)"
+                exit 0
+              fi
+              echo "⚠️ Push reddedildi (deneme $i), pull --rebase + retry..."
+              git pull --rebase --autostash origin main || true
+              sleep 3
+            done
+            echo "❌ 3 denemeden sonra push hala başarısız"
+            exit 1
           fi

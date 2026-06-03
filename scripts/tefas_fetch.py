@@ -232,13 +232,31 @@ def main() -> int:
     # Son 14 is gunu icin RANGE fetch — 1d/1w icin guvenilir kaynak + history field
     print(f"\nSon 14 is gunu history range cekiliyor...", flush=True)
     t0 = time.time()
-    history_df = fetch_history_range(working_ftype, anchors['last'], days_back=14)
+    history_df = None
+    try:
+        history_df = fetch_history_range(working_ftype, anchors['last'], days_back=14)
+    except Exception as e:
+        print(f"  ! history range exception: {type(e).__name__}: {e}", flush=True)
+        history_df = None
     elapsed = time.time() - t0
     if history_df is not None and not history_df.empty:
         print(f"  ✓ history range: {len(history_df)} satır ({elapsed:.1f}s)", flush=True)
     else:
-        print(f"  ✗ history range: veri yok ({elapsed:.1f}s)", flush=True)
+        print(f"  ✗ history range: veri yok / paket desteklemiyor ({elapsed:.1f}s)", flush=True)
         history_df = pd.DataFrame()
+        # Fallback: anchor approach (eski usul) — prev ve 1w icin ayri snapshot fetch
+        print(f"\nFallback: prev ve 1w anchor'lari ayri cekiliyor...", flush=True)
+        for key, days_back_val in [('prev', 2), ('1w', 8)]:
+            t0 = time.time()
+            anchor_date = today - timedelta(days=days_back_val)
+            df = fetch_snapshot(working_ftype, anchor_date)
+            elapsed = time.time() - t0
+            if df is not None and not df.empty:
+                print(f"  ✓ {key}: {len(df)} satır ({elapsed:.1f}s)", flush=True)
+                snapshots[key] = df
+            else:
+                snapshots[key] = pd.DataFrame()
+            time.sleep(0.3)
 
     # Her anchor için kod → NAV map'i
     nav_maps: dict[str, dict[str, float]] = {}
@@ -288,28 +306,34 @@ def main() -> int:
         def get_past(key: str) -> float | None:
             return nav_maps.get(key, {}).get(code)
 
-        # History'den 1d ve 1w hesabi — anchor approach guvenilmez (hafta sonu collapse)
+        # History'den 1d ve 1w hesabi (oncelik) — anchor approach guvenilmez (hafta sonu collapse)
         hist = history_by_code.get(code, [])
-        # 1d: history'den son 2 nokta
+        # 1d: history'den son 2 nokta, yoksa anchor 'prev'
         h_1d = None
         if len(hist) >= 2:
             h_1d = pct_change(hist[-1][1], hist[-2][1])
-        # 1w: history'den 7 gun once (en yakin <= target)
+        if h_1d is None:
+            h_1d = pct_change(latest_nav, get_past('prev'))
+        # 1w: history'den 7+ gun once, yoksa anchor '1w'
         h_1w = None
         if len(hist) >= 2:
             last_date_str = hist[-1][0]
             try:
                 last_date = datetime.strptime(last_date_str, '%Y-%m-%d')
                 target = last_date - timedelta(days=7)
-                # Geriye dogru ara — target'tan eski veya esit ilk nokta
                 best = None
                 for d, p in hist[:-1]:
-                    if datetime.strptime(d, '%Y-%m-%d') <= target:
-                        best = p
+                    try:
+                        if datetime.strptime(d, '%Y-%m-%d') <= target:
+                            best = p
+                    except Exception:
+                        continue
                 if best is not None:
                     h_1w = pct_change(hist[-1][1], best)
             except Exception:
                 pass
+        if h_1w is None:
+            h_1w = pct_change(latest_nav, get_past('1w'))
 
         returns = {
             "1d":  h_1d,

@@ -221,18 +221,21 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       if (fromHistory != null) month = fromHistory;
     }
 
+    // Feed'de bazi fonlar icin 1d/1w `null` ve `history: []` doner — scraper bu
+    // alanlari yazmiyor. UI'da +0.00% yerine "—" gosterelim ki kullanici "veri yok"
+    // ile "gercek 0" karistirma. Bunun icin NaN doneriz (UI Number.isFinite check yapiyor).
     return {
       code: f.code,
       name: f.name,
       category: normalizeFundCategory(f.category, f.name),
       tefas: true,
-      day: day ?? 0,
-      week: week ?? 0,
-      month: month ?? 0,
-      threeMonth: f.returns['3m'] ?? 0,
-      sixMonth: f.returns['6m'] ?? 0,
-      ytd: f.returns.ytd ?? 0,
-      year: f.returns['1y'] ?? 0,
+      day: day == null ? NaN : day,
+      week: week == null ? NaN : week,
+      month: month == null ? NaN : month,
+      threeMonth: f.returns['3m'] ?? NaN,
+      sixMonth: f.returns['6m'] ?? NaN,
+      ytd: f.returns.ytd ?? NaN,
+      year: f.returns['1y'] ?? NaN,
     };
   });
 }

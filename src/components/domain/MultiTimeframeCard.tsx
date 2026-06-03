@@ -66,9 +66,9 @@ function MultiTimeframeCardInner({ r, currency = '₺', hideHeader }: MultiTimef
 
       {/* TF kutuları — artık herkese açık */}
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <TimeframeBox label="1 SAATLİK" ta={r.tf1h} />
-        <TimeframeBox label="4 SAATLİK" ta={r.tf4h} />
-        <TimeframeBox label="GÜNLÜK" ta={r.tf1d} />
+        <TimeframeBox label="1 SAATLİK" ta={r.tf1h} price={r.price} />
+        <TimeframeBox label="4 SAATLİK" ta={r.tf4h} price={r.price} />
+        <TimeframeBox label="GÜNLÜK" ta={r.tf1d} price={r.price} />
       </div>
 
       {/* Büyük Oyuncu — artık herkese açık */}
@@ -126,7 +126,7 @@ function TrendBadge({ trend }: { trend: 'up' | 'down' | 'sideways' }) {
   );
 }
 
-function TimeframeBox({ label, ta }: { label: string; ta: TimeframeAnalysis | null }) {
+function TimeframeBox({ label, ta, price }: { label: string; ta: TimeframeAnalysis | null; price?: number }) {
   if (!ta) {
     return (
       <div className="rounded border border-border bg-bg-soft p-2 text-center">
@@ -144,18 +144,65 @@ function TimeframeBox({ label, ta }: { label: string; ta: TimeframeAnalysis | nu
   const txt = ta.trend === 'long' ? 'LONG ↑'
     : ta.trend === 'short' ? 'SHORT ↓'
     : 'NEUTRAL ↔';
-  return (
-    <div className={cn('rounded border p-2 text-center', bg)}>
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-      <div className={cn('mt-1 text-sm font-bold', color)}>{txt}</div>
-      <div className="mt-0.5 text-[9px] text-slate-500">
-        {ta.emaScore}/{ta.emasAbove.length + ta.emasBelow.length} MA üstte
+
+  // Sade gosterim: MA 5, MA 8, MA 13 fiyatlari + yukari ok (fiyat ustunde ise)
+  const ma5 = ta.emaValues?.[5];
+  const ma8 = ta.emaValues?.[8];
+  const ma13 = ta.emaValues?.[13];
+  const fmt = (v: number | undefined) => Number.isFinite(v)
+    ? (v as number).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '—';
+  const arrow = (val: number | undefined) =>
+    Number.isFinite(val) && Number.isFinite(price) && (price as number) > (val as number)
+      ? <span className="text-success">↑</span>
+      : Number.isFinite(val) && Number.isFinite(price)
+      ? <span className="text-danger">↓</span>
+      : null;
+
+  // MA 8'e gore belirgin status mesaji
+  let ma8Status: React.ReactNode = null;
+  if (Number.isFinite(ma8) && Number.isFinite(price)) {
+    const above8 = (price as number) > (ma8 as number);
+    ma8Status = (
+      <div className={cn(
+        'mt-1 text-[10px] font-semibold rounded px-1.5 py-0.5 text-center',
+        above8 ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger',
+      )}>
+        Fiyat MA 8 {above8 ? 'ÜSTÜNDE' : 'ALTINDA'}
       </div>
+    );
+  }
+
+  return (
+    <div className={cn('rounded border p-2', bg)}>
+      <div className="text-center mb-1">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+        <div className={cn('mt-0.5 text-sm font-bold', color)}>{txt}</div>
+      </div>
+      <div className="grid grid-cols-3 gap-1 text-[10px]">
+        <div className="text-center">
+          <div className="text-slate-500">MA 5</div>
+          <div className="font-mono tabular-nums flex items-center justify-center gap-0.5">
+            {fmt(ma5)}{arrow(ma5)}
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-slate-500">MA 8</div>
+          <div className="font-mono tabular-nums flex items-center justify-center gap-0.5">
+            {fmt(ma8)}{arrow(ma8)}
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="text-slate-500">MA 13</div>
+          <div className="font-mono tabular-nums flex items-center justify-center gap-0.5">
+            {fmt(ma13)}{arrow(ma13)}
+          </div>
+        </div>
+      </div>
+      {ma8Status}
     </div>
   );
 }
-
-// LockedBox kaldırıldı — TF kutuları artık herkese açık (kullanıcı talebi).
 
 // İkonlu başlık — section header için
 export function MultiTimeframeHeader({ title }: { title?: string }) {
@@ -164,4 +211,4 @@ export function MultiTimeframeHeader({ title }: { title?: string }) {
       <Zap size={14} /> {title ?? 'Çoklu Zaman Dilimi Yön Analizi'}
     </h2>
   );
-}
+}

@@ -138,7 +138,7 @@ export function RecommendationsPage() {
           const s = rec.stock.changePct >= 0 ? '+' : '';
           return `• <b>${sym}</b> — ₺${rec.stock.price.toFixed(2)} (${s}${rec.stock.changePct.toFixed(2)}%)`;
         });
-        const message = `🚨 <b>Yeni TAZE Golden Cross</b> (${tfLabel(tf)})\n\n` +
+        const message = `🚨 <b>Yeni TAZE MA Üçlü Üst</b> (${tfLabel(tf)})\n\n` +
           lines.join('\n') +
           `\n\n🌐 hanefinans.net/recommendations`;
         sendTelegram(message, 'HTML').catch(() => { /* sessizce geç */ });
@@ -371,8 +371,9 @@ export function RecommendationsPage() {
       />
 
 
-      {/* Sira: Fon Havuzu (default acik) -> Guclu Al -> Araci Kurum -> Model Portfoyler */}
-      <PinnableAccordion id="recs-fundpool" title="Fon Havuzu" icon={<PiggyBank size={16} />} iconColorClass="bg-accent/15 text-accent" defaultOpen>
+      {/* Sira: Fon Havuzu -> Hisse Havuzu -> Algoritmik (MA Uclu Ust) -> Araci Kurum -> Model Portfoyler.
+          Hepsi default kapali — kullanici hangisini isterse acar. */}
+      <PinnableAccordion id="recs-fundpool" title="Fon Havuzu" icon={<PiggyBank size={16} />} iconColorClass="bg-accent/15 text-accent">
         <FundPoolTab allFunds={allFunds} />
       </PinnableAccordion>
       <PinnableAccordion id="recs-strongbuy" title="Guclu Al Hisse Havuzu" icon={<TrendingUp size={16} />} iconColorClass="bg-success/15 text-success">
@@ -385,13 +386,14 @@ export function RecommendationsPage() {
         <BrokerPortfolios />
       </PinnableAccordion>
 
-      {true && (
+      <PinnableAccordion id="recs-algo" title="Algoritmik (MA Uclu Ust)" icon={<Zap size={16} />} iconColorClass="bg-accent/15 text-accent">
         <>
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-slate-300">
             <Zap size={12} className="mt-0.5 shrink-0 text-accent" />
             <span>
-              <strong className="text-accent">Golden Cross stratejisi:</strong> Seçili zaman diliminde EMA 50 üstüne çıkmış ve
-              EMA 50 &gt; EMA 200 (golden cross aktif) hisseler. <strong>TAZE</strong> rozeti son 10 bar içinde gerçekleşen yeni golden cross'u işaretler.
+              <strong className="text-accent">MA Üçlü Üst stratejisi:</strong> Seçili zaman diliminde fiyatı{' '}
+              <strong>MA 5, MA 8 ve MA 13</strong>'ün tümünün üstünde + dizilim sağlam (MA 5 &gt; MA 8 &gt; MA 13) olan hisseler.
+              Güçlü kısa vade yukarı trend. <strong>TAZE</strong> rozeti son 5 bar içinde bu duruma geçen yeni sinyali işaretler.
             </span>
           </div>
 
@@ -454,7 +456,7 @@ export function RecommendationsPage() {
                     : 'border-border bg-bg-soft text-slate-400 hover:text-slate-200',
                 )}
                 title={tazeAlertsEnabled
-                  ? 'TAZE bildirimleri aktif — yeni Golden Cross olunca Telegram\'a push'
+                  ? 'TAZE bildirimleri aktif — yeni MA Üçlü Üst olunca Telegram\'a push'
                   : 'TAZE bildirimleri kapali — etkinlestir'}
               >
                 {tazeAlertsEnabled ? <Bell size={11} /> : <BellOff size={11} />}
@@ -521,7 +523,7 @@ export function RecommendationsPage() {
             ⚠️ Vur-kaç önerileri kısa vadeli teknik sinyallerdir; yatırım tavsiyesi değildir. Sıkı stop-loss ile pozisyon yönet.
           </p>
         </>
-      )}
+      </PinnableAccordion>
 
     </>
   );

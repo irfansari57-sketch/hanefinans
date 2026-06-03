@@ -1,4 +1,4 @@
-import { ema } from '@/lib/indicators';
+import { ema, sma } from '@/lib/indicators';
 import type { ScalpRec, ScalpTf } from './types';
 
 /**
@@ -58,39 +58,45 @@ export function scoreForTf(rec: ScalpRec, tf: ScalpTf): number {
 }
 
 /**
- * Golden Cross dedektörü — güçlü uzun trend sinyali.
- *  - Fiyat EMA 50 üstünde (kısa vade momentum)
- *  - EMA 50 > EMA 200 (golden cross aktif)
- *  - Taze cross: son 10 bar öncesinde 50 < 200 idi → şimdi yukarı kesti = bonus
+ * MA Üçlü Üst (5-8-13) — güçlü kısa vade yukarı trend sinyali.
+ *  - Fiyat MA 5, MA 8, MA 13'ün tamamının üstünde (üç MA da üstte)
+ *  - MA 5 > MA 8 > MA 13 dizilim (sağlamlık testi)
+ *  - Taze trend: son 5 bar öncesinde böyle değildi → bonus
  *
- * EMA 50/200 5m'de çok daha geç ve güvenli sinyal verir.
- * En az 200 bar veri gerek (yetersizse false döner).
+ * Fibonacci kısa periyot — momentum başlangıcını erken yakalar.
+ * En az 13 bar veri gerek (yetersizse false döner).
  */
 export function detectGoldenCross(closes: number[]): { isLong: boolean; score: number; freshCross: boolean } {
-  if (closes.length < 200) return { isLong: false, score: 0, freshCross: false };
+  if (closes.length < 13) return { isLong: false, score: 0, freshCross: false };
   const last = closes[closes.length - 1];
-  const ema50Arr = ema(closes, 50);
-  const ema200Arr = ema(closes, 200);
-  const ema50 = ema50Arr.at(-1) ?? NaN;
-  const ema200 = ema200Arr.at(-1) ?? NaN;
-  if (!Number.isFinite(ema50) || !Number.isFinite(ema200)) {
+  const ma5Arr = sma(closes, 5);
+  const ma8Arr = sma(closes, 8);
+  const ma13Arr = sma(closes, 13);
+  const ma5 = ma5Arr.at(-1) ?? NaN;
+  const ma8 = ma8Arr.at(-1) ?? NaN;
+  const ma13 = ma13Arr.at(-1) ?? NaN;
+  if (!Number.isFinite(ma5) || !Number.isFinite(ma8) || !Number.isFinite(ma13)) {
     return { isLong: false, score: 0, freshCross: false };
   }
 
-  const goldenCross = ema50 > ema200;
-  const aboveEma50 = last > ema50;
-  const isLong = goldenCross && aboveEma50;
+  // Üçü de fiyatın altında + sağlam dizilim (5>8>13)
+  const above5 = last > ma5;
+  const above8 = last > ma8;
+  const above13 = last > ma13;
+  const properStack = ma5 > ma8 && ma8 > ma13;
+  const isLong = above5 && above8 && above13 && properStack;
 
-  // Taze cross: 10 bar önce EMA 50 <= EMA 200 idi, şimdi üstünde
-  const lookback = Math.min(10, ema50Arr.length - 1);
-  const ema50Past = ema50Arr[ema50Arr.length - 1 - lookback];
-  const ema200Past = ema200Arr[ema200Arr.length - 1 - lookback];
-  const freshCross = Number.isFinite(ema50Past) && Number.isFinite(ema200Past)
-    ? ema50Past <= ema200Past && goldenCross
-    : false;
-
-  // Skor: golden cross + aboveEma50 + freshness + above-distance
-  const distancePct = ((last - ema200) / ema200) * 100;
+  // Taze trend: son 5 bar önce bu durumda değildi
+  const lookback = Math.min(5, ma5Arr.length - 1);
+  const ma5Past = ma5Arr[ma5Arr.length - 1 - lookback];
+  const ma8Past = ma8Arr[ma8Arr.length - 1 - lookback];
+  const ma13Past = ma13Arr[ma13Arr.length - 1 - lookback];
+  const lastPast = closes[closes.length - 1 - lookback];
+  const wasLong = Number.isFinite(ma5Past) && Number.isFinite(ma8Past) && Number.isFinite(ma13Past)
+    ? lastPast > ma5Past && lastPast > ma8Past && lastPast > ma13Past && ma5Past > ma8Past && ma8Past > ma13Past
+    : true;
+  const freshCross = isLong && !wasLong;
+  const distancePct = ((last - ma13) / ma13) * 100;
   const score = (isLong ? 10 : 0) + (freshCross ? 5 : 0) + Math.min(distancePct, 5);
   return { isLong, score, freshCross };
 }

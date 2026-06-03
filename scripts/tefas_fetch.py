@@ -65,6 +65,28 @@ def fetch_snapshot(ftype: str, target_date: datetime, max_back: int = 5) -> pd.D
     return None
 
 
+def fetch_history_range(ftype: str, end_date: datetime, days_back: int = 14) -> pd.DataFrame | None:
+    """
+    Range fetch — son N is gunu icin tum fonlarin gunluk NAV history'sini tek call'da cek.
+    Anchor approach yerine bunu kullanarak 1d/1w'yi guvenilir hesapla + history field'ini doldur.
+    """
+    end = previous_business_day(end_date)
+    # Takvim olarak 14*1.5 = 21 gun geriye git ki hafta sonu ve tatilleri kapsayabilelim
+    start = end - timedelta(days=int(days_back * 1.6))
+    start = previous_business_day(start)
+    try:
+        df = get_funds(
+            fund_type=ftype,
+            start_date=fmt_tr_date(start),
+            end_date=fmt_tr_date(end),
+        )
+        if df is not None and not df.empty:
+            return df
+    except Exception as e:
+        print(f"    ! history range {fmt_tr_date(start)}-{fmt_tr_date(end)}: {type(e).__name__}: {e}", flush=True)
+    return None
+
+
 def categorize_fund(name: str) -> str:
     """
     Fon isminden kategori çıkar — TEFAS'ın resmi kategorilerini tefasfon
@@ -148,9 +170,8 @@ def main() -> int:
     today = datetime.now(timezone.utc).replace(tzinfo=None)
 
     anchors = {
-        'last':  today - timedelta(days=1),
-        'prev':  today - timedelta(days=2),  # günlük getiri için önceki iş günü
-        '1w':    today - timedelta(days=8),
+        'last':  today - timedelta(days=1),  # bugün (last business day)
+        # 'prev' ve '1w' artik history range'den hesaplaniyor (asagida)
         '1m':    today - timedelta(days=31),
         '3m':    today - timedelta(days=92),
         '6m':    today - timedelta(days=183),
@@ -194,8 +215,8 @@ def main() -> int:
     if not cols['category']:
         print(f"⚠️ Category sütunu bulunamadı — kategori boş gelecek", file=sys.stderr)
 
-    # Diğer anchor'ları çek
-    for key in ['prev', '1w', '1m', '3m', '6m', '1y', 'ytd']:
+    # Uzun donem anchor'lari (1m, 3m, 6m, 1y, ytd) tek-tarih fetch ile
+    for key in ['1m', '3m', '6m', '1y', 'ytd']:
         print(f"\n{key} anchor çekiliyor...", flush=True)
         t0 = time.time()
         df = fetch_snapshot(working_ftype, anchors[key])
@@ -205,8 +226,19 @@ def main() -> int:
             snapshots[key] = df
         else:
             print(f"  ✗ {key}: veri yok ({elapsed:.1f}s)", flush=True)
-            snapshots[key] = pd.DataFrame()  # boş DF, yokluğu işaretlemek için
+            snapshots[key] = pd.DataFrame()
         time.sleep(0.3)
+
+    # Son 14 is gunu icin RANGE fetch — 1d/1w icin guvenilir kaynak + history field
+    print(f"\nSon 14 is gunu history range cekiliyor...", flush=True)
+    t0 = time.time()
+    history_df = fetch_history_range(working_ftype, anchors['last'], days_back=14)
+    elapsed = time.time() - t0
+    if history_df is not None and not history_df.empty:
+        print(f"  ✓ history range: {len(history_df)} satır ({elapsed:.1f}s)", flush=True)
+    else:
+        print(f"  ✗ history range: veri yok ({elapsed:.1f}s)", flush=True)
+        history_df = pd.DataFrame()
 
     # Her anchor için kod → NAV map'i
     nav_maps: dict[str, dict[str, float]] = {}
@@ -225,6 +257,26 @@ def main() -> int:
     last_df = snapshots['last']
     last_nav = nav_maps['last']
 
+    # History df'yi kod -> [(date, price), ...] dict'e cevir (sıralı)
+    history_by_code: dict[str, list[tuple[str, float]]] = {}
+    if not history_df.empty and cols['code'] and cols['date'] and cols['price']:
+        try:
+            for _, row in history_df.iterrows():
+                code = str(row[cols['code']])
+                try:
+                    iso = pd.to_datetime(row[cols['date']]).strftime('%Y-%m-%d')
+                    price = float(row[cols['price']])
+                except Exception:
+                    continue
+                if price <= 0:
+                    continue
+                history_by_code.setdefault(code, []).append((iso, price))
+            # Her kod icin tarihe gore sirala (eski → yeni)
+            for code in history_by_code:
+                history_by_code[code].sort(key=lambda x: x[0])
+        except Exception as e:
+            print(f"  ⚠️ history parsing hatası: {e}", flush=True)
+
     funds = []
     for code, latest_nav in last_nav.items():
         # 'last' df'ten son satırı bul
@@ -236,9 +288,32 @@ def main() -> int:
         def get_past(key: str) -> float | None:
             return nav_maps.get(key, {}).get(code)
 
+        # History'den 1d ve 1w hesabi — anchor approach guvenilmez (hafta sonu collapse)
+        hist = history_by_code.get(code, [])
+        # 1d: history'den son 2 nokta
+        h_1d = None
+        if len(hist) >= 2:
+            h_1d = pct_change(hist[-1][1], hist[-2][1])
+        # 1w: history'den 7 gun once (en yakin <= target)
+        h_1w = None
+        if len(hist) >= 2:
+            last_date_str = hist[-1][0]
+            try:
+                last_date = datetime.strptime(last_date_str, '%Y-%m-%d')
+                target = last_date - timedelta(days=7)
+                # Geriye dogru ara — target'tan eski veya esit ilk nokta
+                best = None
+                for d, p in hist[:-1]:
+                    if datetime.strptime(d, '%Y-%m-%d') <= target:
+                        best = p
+                if best is not None:
+                    h_1w = pct_change(hist[-1][1], best)
+            except Exception:
+                pass
+
         returns = {
-            "1d":  pct_change(latest_nav, get_past('prev')),
-            "1w":  pct_change(latest_nav, get_past('1w')),
+            "1d":  h_1d,
+            "1w":  h_1w,
             "1m":  pct_change(latest_nav, get_past('1m')),
             "3m":  pct_change(latest_nav, get_past('3m')),
             "6m":  pct_change(latest_nav, get_past('6m')),
@@ -257,6 +332,11 @@ def main() -> int:
         # Resmi kategori varsa onu kullan, yoksa isim-bazlı heuristic
         official_cat = str(last_row.get(cols['category'], "") if cols['category'] else "").strip()
         fund_category = official_cat if official_cat else categorize_fund(fund_name)
+        # History array — frontend fallback'i besler, FundDetailPage chart kullanir
+        history_arr = [
+            {"date": d, "price": p} for d, p in hist
+        ]
+
         funds.append({
             "code": str(code),
             "name": fund_name,
@@ -267,7 +347,7 @@ def main() -> int:
             "investorCount": int(last_row.get(cols['investors'], 0) or 0) if cols['investors'] else None,
             "shareCount": int(last_row.get(cols['shares'], 0) or 0) if cols['shares'] else None,
             "returns": returns,
-            "history": [],  # anchor approach — full history yok; FundDetailPage canlı çeker
+            "history": history_arr,
         })
 
     # 1Y getiriye göre desc sırala

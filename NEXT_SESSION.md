@@ -1,8 +1,228 @@
-# Hane Finans — Sonraki Seans Yol Haritası
+# Hane Finans / Finhane — Sonraki Seans Yol Haritası
 
-> Son güncelleme: 2026-06-01 (sabaha doğru)
-> Aktif yön: Farklılaşma + Bağlılık + AI Kişiselleştirme
-> Gelir motoru (iyzico/Stripe) ertelendi — önce kullanıcıyı bağlamak, sonra para istemek.
+> Son güncelleme: 2026-06-03 (gece)
+> ÖNCELİK: KURUMSAL REBRAND — Hane Finans → **Finhane** ("Finans Yuvanız")
+> Sebep: "Hane Finans" tescil sürecinde sıkıntı çıkacak; "Finhane" benzersiz kelime kombinasyonu daha güvenli.
+
+---
+
+## 🚨 SONRAKİ SEANS — Finhane Rebrand (Acil + Kapsamlı)
+
+> Marka: **Finhane**
+> Motto: **"Finans Yuvanız"**
+> Domain: `finhane.net` (alternatif: finhane.com, finhane.com.tr)
+> Email: `info@finhane.net` veya `destek@finhane.net`
+
+### Faz 1 — Marka Kimliği (Hazırlık, kod öncesi)
+
+**1.1 Domain alımı (önce yapılacak):**
+- `finhane.net` müsait mi kontrol et — istenen 1. tercih
+- `finhane.com` ve `finhane.com.tr` da al (savunma + Türkiye TLD)
+- Nameserver Cloudflare'e bağla
+
+**1.2 Tescil:**
+- TÜRKPATENT'e Finhane marka tescil başvurusu (sınıf 36 — finansal hizmetler)
+- ~1.500-3.000 TL başvuru ücreti
+- ~6-12 ay süre (paralel olarak ürün geliştirilebilir)
+
+**1.3 Logo + Görsel:**
+- Mevcut Hane Finans logo'su (`Logo.tsx`) **kelime mark** içeriyor — yeniden tasarlanacak
+- "FİNHANE" wordmark + sembolik element (ev + grafik birleşimi → "yuva" çağrışımı)
+- Renk paleti: Mevcut accent rengi korunabilir (cyan/teal)
+- Favicon + PWA icon (192x192, 512x512) yeniden üret
+
+**1.4 Tagline / iletişim dili:**
+- Ana motto: **"Finans Yuvanız"** (tüm sayfa altbilgilerine + meta description'lara)
+- Alt mottolar:
+  - "BIST, fon, kripto — hepsi tek yuvada"
+  - "Türkiye'nin AI destekli finans asistanı"
+- Tone: sıcak + güvenilir + akıllı (yuva = ev = aile + sıcaklık)
+
+### Faz 2 — Kod Refactor (Tüm sayfa metinleri)
+
+**2.1 Find & Replace seansı:**
+- `"Hane Finans"` → `"Finhane"` (case-sensitive)
+- `"HANE FİNANS"` → `"FİNHANE"`
+- `"hane finans"` → `"finhane"`
+- `"hanefinans"` → `"finhane"` (URL slug, identifier)
+- `"@hanefinans"` → `"@finhane"`
+
+**2.2 Etkilenecek dosyalar (kritik):**
+- `src/app/Layout.tsx` — header/footer
+- `src/components/brand/Logo.tsx` — wordmark + svg
+- `src/components/brand/BrandingBlock.tsx` — sidebar branding
+- `src/components/seo/SeoHead.tsx` — default meta title/description
+- `index.html` — `<title>`, og:title, og:description
+- `public/manifest.json` veya `manifest.webmanifest` — PWA name, short_name
+- `public/_headers` — CSP report-uri (yeni domain)
+- `src/data/services.ts` — cache prefix `fa.service.v7.` → `fh.service.v8.` (schema bump)
+- `src/lib/usePersistedState.ts` — schema version bump
+- `src/lib/usePinnedSection.ts` — pin key namespace
+- Tüm `localStorage.setItem('fa.*')` → `fh.*` (200+ key)
+- Tüm `localStorage.getItem('fa.*')` → eski + yeni dual-read (3 deploy boyunca)
+
+**2.3 Backend / Cloudflare:**
+- `cloudflare/yahoo-warmer/wrangler.toml` — worker adı `hane-finans-yahoo-warmer` → `finhane-yahoo-warmer`
+- `functions/_push.ts` — VAPID subject `mailto:haneassistance@gmail.com` → `mailto:destek@finhane.net`
+- `functions/api/cron/daily-report.ts` — telegram bot mesajları "Hane Finans" → "Finhane"
+- `functions/api/cron/daily-brief.ts` (kaldırılmıştı) — uygulanmaz
+- `functions/api/ai/deep-analyze.ts` — prompt'taki marka adı (varsa)
+
+**2.4 GitHub Actions workflows:**
+- Repo rename: `hanefinans` → `finhane`
+- `.github/workflows/*.yml` — repo URL'leri otomatik güncellenir
+- Cron URL'leri — `https://hanefinans.net/api/cron/*` → `https://finhane.net/api/cron/*`
+- secrets güncellemesi (CRON_SECRET değişmesin)
+
+**2.5 Email migrasyonu:**
+- `haneassistance@gmail.com` aktif kalsın (forward kurulur)
+- Yeni: `info@finhane.net`, `destek@finhane.net`, `noreply@finhane.net`
+- Cloudflare Email Routing veya Google Workspace (~36 USD/yıl)
+- Tüm form mailto link'leri güncellenir
+
+### Faz 3 — Asset + SEO
+
+**3.1 Asset yenileme:**
+- `public/favicon-96x96.png?v=2` → yeni Finhane favicon `?v=3`
+- `public/web-app-manifest-192x192.png` + `512x512`
+- `public/icon.svg`
+- `public/bg-finance.svg` (sahne) — Finhane kelimesi varsa
+- `public/ad-poster-pro.png` (PRO banner) — Finhane brand
+- Open Graph image (1200x630) — "Finhane • Finans Yuvanız"
+
+**3.2 SEO 301 redirect:**
+- Cloudflare Pages → Custom domain `hanefinans.net` korunsun (eski kullanıcılar)
+- Page Rule: `hanefinans.net/*` → `https://finhane.net/$1` (301 redirect, query preserve)
+- Bu sayede eski linkler kaybolmaz, SEO juice transfer olur
+- 12-18 ay sonra eski domain bırakılabilir
+
+**3.3 JSON-LD + meta:**
+- `Organization` schema: `"name": "Finhane"`
+- `WebSite` schema: `url: "https://finhane.net"`
+- `sameAs` ile sosyal medya (X, LinkedIn, Instagram) yeni handle'lar
+- TR + EN için ayrı meta description
+- `<meta name="author" content="Finhane">`
+
+**3.4 Robots + sitemap:**
+- `public/robots.txt` → yeni sitemap URL
+- `public/sitemap.xml` — eğer dinamik değilse manuel güncelle
+
+### Faz 4 — Domain + DNS + Deploy
+
+**4.1 Cloudflare Pages:**
+- Yeni Pages projesi `finhane` adıyla aç (mevcut `hanefinans` korunabilir bir süre)
+- Yeni repo `finhane`'i bağla (rename sonrası)
+- Custom domain `finhane.net` + `www.finhane.net`
+- SSL otomatik (Cloudflare)
+
+**4.2 D1 + Worker:**
+- D1 binding aynı kalır (`hanefinans-db` adı şu an, opsiyonel rename)
+- Yahoo warmer worker yeni isimle yeniden deploy
+- KV namespace (`HANEFINANS_FUNDS`) opsiyonel rename
+- Cron eski URL'lere de yanıt versin (geçiş süresinde)
+
+**4.3 DNS geçiş takvimi:**
+- Gün 0: `finhane.net` live, `hanefinans.net` 301 redirect
+- Gün 0-90: Her iki domain çalışır, organik trafiği takip et
+- Gün 90+: Search Console'da eski domain'in ranking'i azaldığında yenisinin yükseldiğini doğrula
+- Gün 180-365: Eski domain kira süresi bitince bırakılır (veya forward kalsın)
+
+### Faz 5 — Veri + Service Worker Migrasyonu
+
+**5.1 localStorage migration:**
+```typescript
+// src/lib/brandMigration.ts (yeni)
+const FA_PREFIX = 'fa.';
+const FH_PREFIX = 'fh.';
+function migrateLocalStorage() {
+  if (localStorage.getItem('fh.migrated.v1') === '1') return;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(FA_PREFIX)) {
+      const v = localStorage.getItem(k);
+      if (v) localStorage.setItem(FH_PREFIX + k.slice(3), v);
+    }
+  }
+  localStorage.setItem('fh.migrated.v1', '1');
+}
+```
+- App boot'unda 1 kez çalışsın
+- 30-60 gün sonra eski `fa.*` key'leri sil
+
+**5.2 Service Worker:**
+- Mevcut SW `hanefinans` cache adlarını kullanıyor olabilir
+- `vite.config.ts`'te workbox `cacheName` prefixleri kontrol et
+- Yeni deploy yeni SW (`fh-sw-v1`) üretir, eski SW otomatik unregister olur (registerType: autoUpdate)
+- Önce kullanıcı `clear-cache.html` ile temizler — bu URL korunur
+
+**5.3 Push notification:**
+- VAPID public key aynı kalsın (kullanıcı subscription'larını koru)
+- Subject (mailto) güncellenir, ama push servisi bunu sadece bilgi olarak kullanır
+- Bot mesaj imzası "Finhane" olur
+
+### Faz 6 — Dokümantasyon + İletişim
+
+**6.1 Sayfa içi duyuru:**
+- `/uyelik` sayfasında veya banner — "Yenilendik! Hane Finans artık Finhane. Aynı ekip, yeni isim."
+- 30 gün gösterilir, sonra kaldırılır
+
+**6.2 Mevcut kullanıcılara email:**
+- Push subscription'ı olan kullanıcılara tek seferlik notification
+- Email yoksa kullanıcı bilgilendirme yok
+
+**6.3 İçerik tarama:**
+- KVKK aydınlatma metni — şirket adı geçiyorsa güncelle
+- Üyelik sözleşmesi
+- Mesafeli satış sözleşmesi (gelecek)
+- Çerez politikası
+- İade politikası
+
+**6.4 Sosyal medya:**
+- X (@finhane), Instagram (@finhane), LinkedIn (linkedin.com/company/finhane)
+- Bio: "Finans Yuvanız • BIST, fon, kripto + AI"
+
+**6.5 Hane Finans Cowork Plugin (#147 PAUSED):**
+- Plugin adı `hanefinans` → `finhane`
+- Skill prefixleri `/hanefinans:brief` → `/finhane:brief`
+- Repo: `finhane-cowork-plugin`
+- Rebrand sonrası tekrar başlanır
+
+---
+
+## 🎯 Tahmini Zaman Çizelgesi (sonraki seans)
+
+| Faz | Süre | Açıklama |
+|---|---|---|
+| 1. Marka Kimliği | 2-3 hafta | Domain alımı + logo + tescil başvurusu |
+| 2. Kod Refactor | 1 gün (1 seans) | sed-based bulk replace + manuel kontrol |
+| 3. Asset + SEO | 2-3 gün | Logo SVG + favicon + meta + JSON-LD |
+| 4. Domain + Deploy | 1 gün | Pages + DNS + 301 redirect |
+| 5. Migrasyon | 1 hafta | localStorage migration + SW cache temizliği test |
+| 6. Dokümantasyon | 2-3 gün | KVKK + sözleşmeler + duyuru |
+
+**Toplam:** 3-4 hafta (paralel çalışılırsa 2 hafta).
+
+---
+
+## ✅ Rebrand sonrası DEVAM EDEN İŞLER (öncelik sırasıyla)
+
+Rebrand bittikten sonra şu seans setleri devam eder:
+
+### Sıradaki: Hane Asistan / Finhane Asistan — Sticky Chat (eski Seans 5)
+- Sticky chat widget (alt sağ)
+- Konteks: watchlist + portföy + son sorgu
+- Claude Sonnet multi-turn
+- Kota: Elite 50/gün, Pro 10/gün, Free 0
+- D1: `chat_sessions` + `chat_messages`
+
+### Sonra: Cowork Plugin (Finhane adıyla)
+- `.claude-plugin/plugin.json` manifest
+- 8 skill (bist-snapshot, hisse-analiz, fon-onerisi, vs.)
+- Slash command'lar (/finhane:brief, vs.)
+- GitHub repo + Anthropic marketplace PR
+
+### Smart Spotlight + Geçmişte Bugün + AI Tahmin Doğruluk
+- Daha önceki plan korunuyor, sadece marka adı değişiyor.
 
 ---
 

@@ -1,7 +1,35 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useRouteError, isRouteErrorResponse } from 'react-router-dom';
-import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Home, RefreshCw, Trash2 } from 'lucide-react';
 import { captureException } from '@/lib/sentry';
+
+/**
+ * Aggressive cache clear — SW unregister + caches.delete + sessionStorage reset.
+ * "Stale chunk" hatalarında (yeni deploy + eski browser cache) tek tık ile çözer.
+ * Özellikle mobilde manuel SW temizleme zor olduğu için bu kritik.
+ */
+async function clearEverythingAndReload() {
+  try {
+    // 1) Service worker'ları sil
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch { /* ignore */ }
+  try {
+    // 2) Cache Storage tamamen temizle (workbox + runtime cache'ler)
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch { /* ignore */ }
+  try {
+    // 3) Reload sayacini resetle (lazyWithRetry 3-deneme sınırı)
+    sessionStorage.removeItem('fa.chunkReloadHistory');
+  } catch { /* ignore */ }
+  // 4) Cache bypass ile sayfayı tekrar yükle
+  window.location.replace(window.location.pathname + '?_=' + Date.now());
+}
 
 /**
  * React Router'ın `errorElement` slot'una takılan boundary.
@@ -14,6 +42,7 @@ import { captureException } from '@/lib/sentry';
  */
 export function RouteErrorBoundary() {
   const error = useRouteError();
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     // 404 değilse Sentry'ye gönder — 404 spam yapmasın
@@ -26,7 +55,17 @@ export function RouteErrorBoundary() {
   }, [error]);
 
   const is404 = isRouteErrorResponse(error) && error.status === 404;
-  const errMsg = error instanceof Error ? error.message : String(error);
+
+  // Mesajı kontrol et — chunk fetch hatasıysa cache temizleme butonunu daha öne çıkar
+  const errMsgRaw = error instanceof Error ? error.message : String(error);
+  const looksLikeChunkError = /Failed to fetch dynamically imported module|Importing a module script failed|MIME type/i.test(errMsgRaw);
+
+  const onClearAndReload = async () => {
+    setClearing(true);
+    await clearEverythingAndReload();
+  };
+
+  const errMsg = errMsgRaw;
   const errStack = error instanceof Error ? error.stack : undefined;
 
   return (
@@ -51,14 +90,31 @@ export function RouteErrorBoundary() {
           </pre>
         )}
 
-        <div className="mt-6 flex justify-center gap-2">
+        {!is404 && looksLikeChunkError && (
+          <p className="mt-3 text-[11px] text-warning">
+            Önbellek sorunu tespit edildi. Aşağıdaki "Önbelleği temizle" butonu ile çözülür.
+          </p>
+        )}
+
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link to="/panel" className="btn-primary">
             <Home size={14} /> Ana sayfaya dön
           </Link>
           {!is404 && (
-            <button onClick={() => window.location.reload()} className="btn-secondary">
-              <RefreshCw size={14} /> Sayfayı yenile
-            </button>
+            <>
+              <button
+                onClick={onClearAndReload}
+                disabled={clearing}
+                className="btn-primary"
+                title="Service Worker + önbellek temizler, sayfayı sıfırdan yükler"
+              >
+                <Trash2 size={14} />
+                {clearing ? 'Temizleniyor…' : 'Önbelleği temizle ve yeniden dene'}
+              </button>
+              <button onClick={() => window.location.reload()} className="btn-secondary">
+                <RefreshCw size={14} /> Sayfayı yenile
+              </button>
+            </>
           )}
         </div>
       </div>

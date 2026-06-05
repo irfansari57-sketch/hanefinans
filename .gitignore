@@ -32,3 +32,12 @@ dist-types/
 
 # === OS ===
 Thumbs.db
+
+# Finhane local brand exploration (yerelde kalsin)
+_finhane_*/
+
+# Cowork plugin WIP (kendi repo'suna gidecek)
+hanefinans-plugin/
+
+# Plugin marketplace reference clone
+plugins-ref/

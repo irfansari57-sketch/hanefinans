@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-06-05T16:22:34.530010+00:00",
+  "fetchedAt": "2026-06-05T19:25:41.211917+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -12,7 +12,7 @@
       "recommendations": [],
       "portfolio": [],
       "ok": false,
-      "error": "HTTPSConnectionPool(host='www.isyatirim.com.tr', port=443): Max retries exceeded with url: /tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.isyatirim.com.tr', port=443) at 0x7fa7e7d74410>, 'Connection to www.isyatirim.com.tr timed out. (connect timeout=20)'))"
+      "error": "HTTPSConnectionPool(host='www.isyatirim.com.tr', port=443): Max retries exceeded with url: /tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.isyatirim.com.tr', port=443) at 0x7f776357c390>, 'Connection to www.isyatirim.com.tr timed out. (connect timeout=20)'))"
     },
     {
       "brokerId": "osmanli-yatirim",

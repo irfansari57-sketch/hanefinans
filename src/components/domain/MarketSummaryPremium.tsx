@@ -5,10 +5,9 @@ import { macroKeyToRoute } from '@/lib/macroRoutes';
 import { cn } from '@/lib/utils';
 
 /**
- * Premium 3-sütunlu Piyasa Özeti — Panel sayfasının üst bloğu.
- * Üç kategori yan yana: Endeks & Döviz / Kıymetli Metal / Kripto.
- * Her satır clickable → detay sayfasına gider.
- * Renkli rozet içinde +/- yüzde + trend ok ikonu.
+ * Premium 3-sutunlu Piyasa Ozeti — Panel sayfasinin ust blogu.
+ * Turkuaz etiket + 3D depth (gradient + uzun golge + inset highlight).
+ * Satir tiklanabilir -> detay sayfasi.
  */
 
 interface Props {
@@ -48,13 +47,13 @@ function Row({ m }: { m: MacroIndicator }) {
   const content = (
     <div className="flex items-center justify-between gap-2 py-1.5 sm:py-2">
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-slate-500 sm:text-[11px]">
+        <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-accent sm:text-[11px]">
           <span className="truncate">{m.label}</span>
           {route && (
             <ArrowUpRight size={10} className="shrink-0 opacity-0 transition group-hover/row:opacity-60" />
           )}
         </div>
-        <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:text-base">
+        <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 drop-shadow-sm sm:text-base">
           {formatValue(m)}
         </div>
       </div>
@@ -104,10 +103,19 @@ interface ColumnProps {
 
 function Column({ title, icon, borderClass, items }: ColumnProps) {
   return (
-    <div className={cn('rounded-xl border bg-bg-card/50 p-2.5 transition sm:p-3', borderClass)}>
-      <div className="mb-1 flex items-center gap-1.5 border-b border-slate-700/30 pb-2">
+    <div
+      className={cn(
+        'relative rounded-xl border p-2.5 transition-all duration-200 sm:p-3',
+        'bg-gradient-to-br from-bg-card/85 via-bg-card/60 to-bg-soft/40',
+        'shadow-[0_10px_30px_-10px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.06)]',
+        'hover:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.85),inset_0_1px_0_0_rgba(255,255,255,0.1)]',
+        'hover:-translate-y-0.5',
+        borderClass,
+      )}
+    >
+      <div className="mb-1 flex items-center gap-1.5 border-b border-slate-700/40 pb-2">
         {icon}
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-[11px]">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 sm:text-[11px]">
           {title}
         </span>
       </div>
@@ -135,19 +143,19 @@ export function MarketSummaryPremium({ macro }: Props) {
       <Column
         title="Endeks & Döviz"
         icon={<BarChart3 size={14} className="text-accent" />}
-        borderClass="border-accent/20 hover:border-accent/40"
+        borderClass="border-accent/25 hover:border-accent/50"
         items={indices}
       />
       <Column
         title="Kıymetli Metal"
         icon={<Coins size={14} className="text-warning" />}
-        borderClass="border-warning/20 hover:border-warning/40"
+        borderClass="border-warning/25 hover:border-warning/50"
         items={metals}
       />
       <Column
         title="Kripto"
         icon={<Bitcoin size={14} className="text-fuchsia-400" />}
-        borderClass="border-fuchsia-500/20 hover:border-fuchsia-500/40"
+        borderClass="border-fuchsia-500/25 hover:border-fuchsia-500/50"
         items={crypto}
       />
     </div>

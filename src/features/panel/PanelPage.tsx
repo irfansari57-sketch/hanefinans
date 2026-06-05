@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, AlertTriangle, CalendarClock, MessageSquare, Radio, RefreshCw } from 'lucide-react';
+import { Radio } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
@@ -18,7 +18,8 @@ import { MacroAgentCard } from '@/components/domain/MacroAgentCard';
 import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
-import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
+import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff } from 'lucide-react';
 import { usePinnedSection } from '@/lib/usePinnedSection';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
@@ -32,7 +33,6 @@ import { usePersistedState } from '@/lib/usePersistedState';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { daysUntil, formatDateShort } from '@/lib/date';
-import { macroKeyToRoute } from '@/lib/macroRoutes';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 const sentimentTone = {
@@ -316,206 +316,23 @@ export function PanelPage() {
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
-      {/* Piyasa Özeti — endeks + döviz, pinnable accordion */}
+      {/* Piyasa Özeti — premium 3 sütun (Endeks+Döviz / Metal / Kripto), satır clickable */}
       <PinnableAccordion
-        id="panel-bist-indices"
+        id="panel-market-summary"
         title="Piyasa Özeti"
         icon={<BarChart3 size={16} />}
         iconColorClass="bg-accent/15 text-accent"
         defaultOpen
       >
-        <div className="grid grid-cols-4 gap-1 sm:gap-2">
-          {macro.length === 0 && <MarketSkeletonGrid count={4} />}
-          {macro
-            .filter((m) => m.key === 'BIST 100' || m.key === 'BIST 30')
-            .map((m) => {
-              const route = macroKeyToRoute(m.key);
-              const card = (
-                <>
-                  <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
-                  </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
-                    {m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                  </div>
-                  <div className="mt-1 flex items-end justify-between gap-2">
-                    {m.changePct != null && (
-                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                      </div>
-                    )}
-                    <span className="inline-flex items-center">
-                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
-                        <Minus size={20} className="text-slate-500" />
-                      ) : m.changePct > 0 ? (
-                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
-                      ) : m.changePct < 0 ? (
-                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
-                      ) : (
-                        <Minus size={20} className="text-slate-500" />
-                      )}
-                    </span>
-                  </div>
-                </>
-              );
-              return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
-                  {card}
-                </Link>
-              ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
-              );
-            })}
-          {/* USD/TRY ve EUR/TRY de BIST'le birlikte göster */}
-          {macro
-            .filter((m) => m.key === 'USD/TRY' || m.key === 'EUR/TRY')
-            .map((m) => {
-              const route = macroKeyToRoute(m.key);
-              const card = (
-                <>
-                  <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
-                  </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
-                    {m.value.toFixed(2)}
-                  </div>
-                  <div className="mt-1 flex items-end justify-between gap-2">
-                    {m.changePct != null && (
-                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                      </div>
-                    )}
-                    <span className="inline-flex items-center">
-                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
-                        <Minus size={20} className="text-slate-500" />
-                      ) : m.changePct > 0 ? (
-                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
-                      ) : m.changePct < 0 ? (
-                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
-                      ) : (
-                        <Minus size={20} className="text-slate-500" />
-                      )}
-                    </span>
-                  </div>
-                </>
-              );
-              return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
-                  {card}
-                </Link>
-              ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
-              );
-            })}
-        </div>
-      </PinnableAccordion>
-
-      {/* Emtia — pinnable accordion, BIST stilinde kartlar */}
-      <PinnableAccordion
-        id="panel-emtia"
-        title="Altın & Gümüş"
-        icon={<Sparkles size={16} />}
-        iconColorClass="bg-warning/15 text-warning"
-        defaultOpen
-      >
-        <div className="grid grid-cols-4 gap-1 sm:gap-2">
-          {macro.length === 0 && <MarketSkeletonGrid count={4} />}
-          {macro
-            .filter((m) => ['Gram Altın', 'Gram Gümüş', 'Ons Altın', 'Ons Gümüş'].includes(m.key))
-            .map((m) => {
-              const route = macroKeyToRoute(m.key);
-              const card = (
-                <>
-                  <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
-                  </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
-                    {m.value.toLocaleString('tr-TR', { maximumFractionDigits: m.value < 100 ? 2 : 0 })}
-                    {m.unit && <span className="ml-1 text-[10px] font-medium text-slate-500">{m.unit}</span>}
-                  </div>
-                  <div className="mt-1 flex items-end justify-between gap-2">
-                    {m.changePct != null && (
-                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                      </div>
-                    )}
-                    <span className="inline-flex items-center">
-                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
-                        <Minus size={20} className="text-slate-500" />
-                      ) : m.changePct > 0 ? (
-                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
-                      ) : m.changePct < 0 ? (
-                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
-                      ) : (
-                        <Minus size={20} className="text-slate-500" />
-                      )}
-                    </span>
-                  </div>
-                </>
-              );
-              return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
-                  {card}
-                </Link>
-              ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
-              );
-            })}
-        </div>
-      </PinnableAccordion>
-
-      {/* Kripto — pinnable accordion, BIST stilinde kartlar */}
-      <PinnableAccordion
-        id="panel-kripto"
-        title="Kripto"
-        icon={<Activity size={16} />}
-        iconColorClass="bg-warning/15 text-warning"
-        defaultOpen
-      >
-        <div className="grid grid-cols-4 gap-1 sm:gap-2">
-          {macro.length === 0 && <MarketSkeletonGrid count={4} />}
-          {['BTC/USD', 'ETH/USD', 'XRP/USD', 'DOGE/USD']
-            .map((k) => macro.find((m) => m.key === k))
-            .filter((m): m is MacroIndicator => !!m)
-            .map((m) => {
-              const route = macroKeyToRoute(m.key);
-              const card = (
-                <>
-                  <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-accent sm:text-xs">{m.label}</span>
-                  </div>
-                  <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 sm:mt-0.5 sm:text-lg">
-                    ${m.value.toLocaleString('en-US', { maximumFractionDigits: m.value < 10 ? 4 : m.value < 1000 ? 2 : 0 })}
-                  </div>
-                  <div className="mt-1 flex items-end justify-between gap-2">
-                    {m.changePct != null && (
-                      <div className={cn('text-[9px] tabular-nums sm:text-sm', m.changePct >= 0 ? 'text-success' : 'text-danger')}>
-                        {m.changePct >= 0 ? '+' : ''}{m.changePct.toFixed(2)}%
-                      </div>
-                    )}
-                    <span className="inline-flex items-center">
-                      {m.changePct == null || !Number.isFinite(m.changePct) ? (
-                        <Minus size={20} className="text-slate-500" />
-                      ) : m.changePct > 0 ? (
-                        <TrendingUp size={20} className="text-success" strokeWidth={2.5} />
-                      ) : m.changePct < 0 ? (
-                        <TrendingDown size={20} className="text-danger" strokeWidth={2.5} />
-                      ) : (
-                        <Minus size={20} className="text-slate-500" />
-                      )}
-                    </span>
-                  </div>
-                </>
-              );
-              return route ? (
-                <Link key={m.key} to={route} className="glass-card block p-1.5 transition hover:border-accent/40 sm:p-2">
-                  {card}
-                </Link>
-              ) : (
-                <div key={m.key} className="glass-card p-1.5 sm:p-2">{card}</div>
-              );
-            })}
-        </div>
+        {macro.length === 0 ? (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+            <div className="rounded-xl border border-slate-700/30 bg-bg-card/50 p-3"><MarketSkeletonGrid count={4} /></div>
+            <div className="rounded-xl border border-slate-700/30 bg-bg-card/50 p-3"><MarketSkeletonGrid count={4} /></div>
+            <div className="rounded-xl border border-slate-700/30 bg-bg-card/50 p-3"><MarketSkeletonGrid count={4} /></div>
+          </div>
+        ) : (
+          <MarketSummaryPremium macro={macro} />
+        )}
       </PinnableAccordion>
 
       {/* Top movers — hisseler (pin'lenebilir, her ekranda aç/kapa) */}

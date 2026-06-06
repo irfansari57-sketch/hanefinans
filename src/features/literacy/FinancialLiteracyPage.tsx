@@ -290,7 +290,7 @@ const TOPICS: Topic[] = [
       'Fon seçimi sistemin kalbidir — agresif (hisse), dengeli (karma), muhafazakar (borçlanma), katılım, altın',
       'OKS (Otomatik): 45 yaş altı çalışan otomatik dahil edilir — istemiyorsan 2 ay içinde ücretsiz cayma hakkı',
       'Vergi: Çıkışta birikim üzerinden %5 stopaj (10 yıl + 56 yaş = %3.75\'e düşer)',
-      'Yılda 6 kez ücretsiz fon değişimi yapabilirsin — piyasaya göre dağılımını ayarla',
+      'Yılda 12 kez ücretsiz fon değişimi yapabilirsin — altın, gümüş, hisse, mevduat temelli fonlar arasında piyasaya göre rotasyon yaparak devlet katkısı + kişisel katkı dışında ciddi ek getiri elde edebilirsin',
     ],
     keyTerms: [
       { term: 'Devlet Katkısı (DK)', def: '%20 oranında devletin yatırdığın paraya eklediği teşvik (2026 başında %30\'dan %20\'ye düşürüldü)' },
@@ -312,7 +312,7 @@ const TOPICS: Topic[] = [
       },
       {
         heading: 'Hangi Fonu Seçmeliyim?',
-        body: 'BES içinde 7-10 fon arasından seçim yaparsın. **Genel rehber:** 30 yaş altıysan %70-80 hisse senedi fonu (yüksek risk, yüksek getiri), 30-45 yaş arası %50-60 hisse + %30-40 borçlanma araçları (dengeli), 45+ yaş %30 hisse + %60 borçlanma + %10 altın (muhafazakar). **Kural:** Emekliliğine "100\'den yaşını çıkararak hisse oranını belirle" yöntemi yaygındır (35 yaşında %65 hisse). Yılda 6 kez ücretsiz fon değişimi yapabilirsin — piyasa şartlarına göre ayarla. Performansları TEFAS\'ta veya Fintables\'da karşılaştırabilirsin.',
+        body: 'BES içinde 7-10 fon arasından seçim yaparsın. **Genel rehber:** 30 yaş altıysan %70-80 hisse senedi fonu (yüksek risk, yüksek getiri), 30-45 yaş arası %50-60 hisse + %30-40 borçlanma araçları (dengeli), 45+ yaş %30 hisse + %60 borçlanma + %10 altın (muhafazakar). **Kural:** Emekliliğine "100\'den yaşını çıkararak hisse oranını belirle" yöntemi yaygındır (35 yaşında %65 hisse). Yılda 12 kez ücretsiz fon değişimi yapabilirsin — altın, gümüş, hisse, mevduat temelli fonlar arasında piyasa şartlarına göre rotasyon yaparak ciddi ek getiri elde edebilirsin (devlet katkısı ve kişisel katkının üstüne). Performansları TEFAS\'ta veya Fintables\'da karşılaştırabilirsin.',
       },
       {
         heading: 'BES vs Bireysel Yatırım Hangisi Avantajlı?',
@@ -324,7 +324,7 @@ const TOPICS: Topic[] = [
       },
       {
         heading: 'Sık Yapılan 6 Hata',
-        body: '(1) **"Cayayım, kendim yatırırım"** — disiplin tutmayanların büyük çoğunluğu bireysel olarak yatırım yapmıyor; %20 devlet katkısını kaçırıyorlar. (2) **Düşük getirili fonlarda kalıp değişim yapmamak** — yılda 6 ücretsiz değişim hakkını kullanmamak büyük getiri kaybı. (3) **Tavan üstüne para yatırmak** — devlet katkısı yok, sadece yönetim ücreti ödüyorsun. (4) **2 yıl bekleme süresi dolmadan şirket değiştirmek** — komisyon ödüyorsun. (5) **9. yılda paniğe kapılıp çıkmak** — devlet katkısının %40\'ını feda ediyorsun. (6) **Tek bir fona yığılmak** — kıymetli madenler veya katılım fonu gibi sabit "güvenli" fona koymak, enflasyona yenik düşmek demektir. **BES\'te en büyük servet sabırdır.**',
+        body: '(1) **"Cayayım, kendim yatırırım"** — disiplin tutmayanların büyük çoğunluğu bireysel olarak yatırım yapmıyor; %20 devlet katkısını kaçırıyorlar. (2) **Düşük getirili fonlarda kalıp değişim yapmamak** — yılda 12 ücretsiz değişim hakkını kullanmamak büyük getiri kaybı; altın/gümüş/hisse/mevduat fonları arasında piyasa şartına göre rotasyon yapmak devlet katkısı ve kişisel katkının üstüne kayda değer ek getiri sağlar. (3) **Tavan üstüne para yatırmak** — devlet katkısı yok, sadece yönetim ücreti ödüyorsun. (4) **2 yıl bekleme süresi dolmadan şirket değiştirmek** — komisyon ödüyorsun. (5) **9. yılda paniğe kapılıp çıkmak** — devlet katkısının %40\'ını feda ediyorsun. (6) **Tek bir fona yığılmak** — kıymetli madenler veya katılım fonu gibi sabit "güvenli" fona koymak, enflasyona yenik düşmek demektir. **BES\'te en büyük servet sabırdır.**',
       },
       {
         heading: 'En İyi Emeklilik Şirketleri (2026)',

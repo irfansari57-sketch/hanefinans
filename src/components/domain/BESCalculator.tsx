@@ -21,9 +21,9 @@ const STATE_CONTRIBUTION_RATE = 0.20; // 2026: %30 → %20
 const INITIAL_ANNUAL_BAU_CAP = 396_000;
 
 const SCENARIOS = [
-  { key: 'pess', label: 'Kötümser', rate: 0.00, tone: 'danger',  hint: 'Reel %0 — fonlar enflasyonla başa baş' },
-  { key: 'mid',  label: 'Orta',     rate: 0.03, tone: 'accent',  hint: 'Reel %3 — EGM varsayılan, uzun vadeli ortalama' },
-  { key: 'opt',  label: 'İyimser',  rate: 0.05, tone: 'success', hint: 'Reel %5 — güçlü fon performansı dönemi' },
+  { key: 'pess', label: 'Kötümser', rate: 0.01, tone: 'danger',  hint: 'Reel %1 — temkinli senaryo, enflasyonun hafif üzeri' },
+  { key: 'mid',  label: 'Orta',     rate: 0.05, tone: 'accent',  hint: 'Reel %5 — fon rotasyonu ile sürdürülebilir orta vade' },
+  { key: 'opt',  label: 'İyimser',  rate: 0.08, tone: 'success', hint: 'Reel %8 — altın/hisse rotasyonu ile güçlü fon performansı' },
 ] as const;
 
 type Scenario = typeof SCENARIOS[number];
@@ -120,16 +120,17 @@ export function BESCalculator() {
   const [monthly, setMonthly] = useState(10_000);
   const [initialDeposit, setInitialDeposit] = useState(300_000);
 
-  // Ek parametreler (EGM ile aynı varsayılanlar)
+  // Ek parametreler — kullanıcı tarafından önerilen varsayılanlar
+  // (Fon rotasyonu disiplini + güncel piyasa koşulları gözetilerek belirlendi)
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [contribIncrease, setContribIncrease] = useState(5);   // % yıllık reel katkı artışı
-  const [mgmtFee, setMgmtFee] = useState(2);                    // % yıllık yönetim gideri
-  const [fundFee, setFundFee] = useState(1);                    // % FİGK
-  const [bauIncrease, setBauIncrease] = useState(3);            // % yıllık reel BAU artışı
+  const [contribIncrease, setContribIncrease] = useState(10);   // % yıllık reel katkı artışı
+  const [mgmtFee, setMgmtFee] = useState(1);                    // % yıllık yönetim gideri
+  const [fundFee, setFundFee] = useState(0.5);                  // % FİGK
+  const [bauIncrease, setBauIncrease] = useState(5);            // % yıllık reel BAU artışı
 
-  // Senaryo getirileri (gelişmiş düzenleme)
+  // Senaryo getirileri — fon rotasyonu varsayımıyla revize
   const [editRates, setEditRates] = useState(false);
-  const [rates, setRates] = useState({ pess: 0, mid: 3, opt: 5 });
+  const [rates, setRates] = useState({ pess: 1, mid: 5, opt: 8 });
 
   const years = Math.max(0, retirementAge - currentAge);
 

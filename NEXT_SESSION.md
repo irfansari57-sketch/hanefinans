@@ -1,8 +1,136 @@
-# Hane Finans / Finhane — Sonraki Seans Yol Haritası
+# Hane Finans — Sonraki Seans Yol Haritası
 
-> Son güncelleme: 2026-06-03 (gece)
-> ÖNCELİK: KURUMSAL REBRAND — Hane Finans → **Finhane** ("Finans Yuvanız")
-> Sebep: "Hane Finans" tescil sürecinde sıkıntı çıkacak; "Finhane" benzersiz kelime kombinasyonu daha güvenli.
+> Son güncelleme: 2026-06-06 (gece)
+> ÖNCELİK: **Yapısal iyileştirme + Premium görünüm** (Finhane rebrand askıya alındı)
+> Karar: Finhane rebrand TÜRKPATENT marka vekili görüşü gelene kadar bekletildi.
+
+---
+
+## 🎯 ÖNCELİK 1 — Yapısal İyileştirme + Premium Görünüm
+
+### A — Yapısal İyileştirmeler
+
+**A1. Performans & Yükleme:**
+- Image lazy-load + `loading="lazy"` tüm `<img>` etiketlerinde
+- Critical CSS inlining (FCP < 1s hedefi)
+- SW cache stratejisi gözden geçirme — stale-while-revalidate
+- Code-split: BESCalculator sadece literacy'de yüklensin (lazy chunk)
+- Lighthouse mobile skoru ölçüm + 90+ hedefi
+
+**A2. SEO + Meta:**
+- Tüm sayfalarda `<SeoHead>` tutarlılık denetimi
+- `og:image` özelleştirmesi her ana sayfa için (panel/öneriler/hisseler/fonlar/BES)
+- `schema.org/FinancialService` JSON-LD ekle (kuruluş + ürün şeması)
+- Sitemap.xml otomatik üretimi (route'lardan)
+- robots.txt + canonical doğrulama
+
+**A3. Erişilebilirlik (a11y):**
+- Tüm interaktif elemanlara `aria-label` denetimi
+- Klavye navigasyonu (tab order, focus ring görünür mü)
+- Renk kontrastı WCAG AA (özellikle slate-500 metin üzerine)
+- Screen reader: semantik heading hiyerarşisi (`<h2>`, `<h3>`)
+- Form field'ları `<label>` ile bağlı mı
+
+**A4. Mobile-first review:**
+- Her sayfa 360 / 414 / 768px breakpoint'lerinde elden geç
+- Dokunma hedefi min 44×44px (Apple HIG)
+- Bottom sheet pattern (filter modal vb.)
+- iOS safe-area-inset (notch desteği)
+
+**A5. Veri güvenilirliği:**
+- TEFAS scraper monitoring — son güncelleme tarihi UI'da göster
+- BIST snapshot hata fallback (Yahoo proxy down → demo değil "veri yok" rozeti)
+- Sentry telemetri düzenli incele
+- Watchlist senkronizasyonu D1'e (şu an localStorage, login'de kayboluyor)
+
+**A6. Backend stabilizasyon:**
+- Workers günlük rate-limit metrikleri
+- D1 yavaş sorgu tespit (EXPLAIN)
+- KV cache hit-ratio izleme
+- Cron job retry stratejisi (TEFAS workflow gibi)
+
+### B — Premium Görünüm (UI/UX)
+
+**B1. Kart depth standardı:**
+- Piyasa Özeti'ndeki 3D efekti (`<PremiumCard>` standardı) tüm kartlara yaygınlaştır
+- Öneriler, Hisseler, Fonlar, Watchlist, Tahmin, Oyunlar — hepsi
+- Hover'da `-translate-y-0.5` mikro-yükseliş tutarlı
+
+**B2. Tipografi premium:**
+- Headings için display font denemesi (Manrope veya Space Grotesk)
+- Tüm sayısal değerlerde `tabular-nums`
+- Tracking: -0.02em headings, +0.02em uppercase etiketler
+
+**B3. Renk paleti zenginleştirme:**
+- İkincil aksan (fuchsia) sistemli yaygınlaştır
+- Badge tonu doygunlaştır (`/15` → `/20`)
+- Border `slate-700/30` → `/40` (daha belirgin)
+- Glassmorphism: sidebar + nav `backdrop-blur-xl`
+
+**B4. Mikro-etkileşim:**
+- Sayfa geçişlerinde fade-in (200ms)
+- Liste satır stagger (50ms)
+- Buton tıklama `scale-95` press feedback
+- Toast slide-up + auto-dismiss
+- Shimmer skeleton tüm sayfalara
+
+**B5. Loading + Empty state:**
+- Mock kalıntı tarama (15.133, 6.890 vb. kalmasın)
+- Boş kartlar için "nasıl doldurulur" ipucu
+- Skeleton gerçek layout'u yansıtsın
+
+**B6. Header + Navigation refresh:**
+- Sol sidebar gradient + brand alanı (logo + motto) premium
+- Üst search bar geniş + auto-complete polish
+- Active route: glow indicator
+- Tema toggle + bildirim + profil kompakt
+
+**B7. Marka kimliği polish:**
+- "Hane Finans" logo daha modern (minimalist bina+grafik)
+- "Financial Intelligence" alt yazı tipografi
+- Favicon yeni logoya göre
+- Apple touch icon + maskable + 512x512 PWA icon
+
+**B8. Hisse/Fon detay premium:**
+- Multi-timeframe kartı üst kısma
+- Yorum bölümü sticky scroll
+- Action buton grup (Alarm/Watchlist/Paylaş) sağ alt sticky pill
+- AI summary üst banner (preview, ücretsiz)
+
+**B9. Form premium:**
+- Input: focus ring + border highlight kombinasyonu
+- Select dropdown custom (default yerine)
+- Slider track+thumb tutarlı (BES'teki gibi)
+- Toggle switch iOS tarzı
+
+**B10. Onboarding:**
+- 3 ekranlı onboarding (Watchlist → Alarm → Brief)
+- Sample data dolu görünüm
+- Welcome modal dismissable, az müdahaleci
+
+### C — Önerilen yapım sırası
+
+1. **B1 (Kart depth standardı)** → hızlı premium hissi yayımı
+2. **B5 (Loading + Empty)** → mock kalıntı temizliği güven artırır
+3. **A2 (SEO)** → trafik temeli
+4. **B4 (Mikro-etkileşim)** → his değişimi büyük
+5. **A1 (Performans)** → Lighthouse skoru
+6. **B6 (Header+Nav)** → sürekli görünen alan, en çok ROI
+7. Diğerleri zamanla
+
+---
+
+## ⏸️ ASKIDA — Finhane Rebrand
+
+> TÜRKPATENT marka vekili görüşü gelene kadar bekletildi.
+> Vekil "Hane Finans yüksek risk" derse → Finhane'e geç
+> Orta/düşük risk derse → mevcut isimle devam, sadece logo polish
+
+Önceki rebrand planı aşağıda korunuyor (referans).
+
+---
+
+## (referans — eski rebrand planı)
 
 ---
 

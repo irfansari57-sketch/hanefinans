@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Layers, Sparkles, ExternalLink } from 'lucide-react';
+import { Layers, Sparkles, ExternalLink, Lock, Crown } from 'lucide-react';
 import type { FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { useAuth, isPro } from '@/store/auth';
 
 /**
  * Fon Havuzu — kullanıcının seçtiği fon kategorisinin en iyi N fonu.
@@ -43,6 +44,12 @@ interface FundPoolTabProps {
 }
 
 export function FundPoolTab({ allFunds }: FundPoolTabProps) {
+  // Tier paywall — anon: 5, free: 10, pro/elite: hepsi
+  const user = useAuth((s) => s.user);
+  const proUser = isPro(user);
+  const isAnon = !user;
+  const tierLimit = proUser ? Infinity : isAnon ? 5 : 10;
+
   // SINGLE-SELECT — varsayılan Katılım
   const [selectedCategory, setSelectedCategory] = useState<string>('Katılım');
   const [topN, setTopN] = useState<5 | 10 | 20 | 30>(10);
@@ -191,6 +198,9 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
 
           <span className="ml-auto rounded-md border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
             {pool.length} fon
+            {!proUser && pool.length > tierLimit && (
+              <span className="ml-1 text-slate-400">({tierLimit} görünür)</span>
+            )}
           </span>
         </div>
       </div>
@@ -234,9 +244,13 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
               </tr>
             </thead>
             <tbody>
-              {pool.map((fund, i) => (
+              {pool.slice(0, tierLimit).map((fund, i) => (
                 <PoolFundRow key={fund.code} fund={fund} rank={i + 1} sortKey={sortKey} />
               ))}
+              {/* Tier paywall — anon: 5 görür, free: 10 görür, pro: hepsi */}
+              {!proUser && pool.length > tierLimit && (
+                <PaywallRow isAnon={isAnon} shown={tierLimit} hiddenCount={pool.length - tierLimit} />
+              )}
             </tbody>
           </table>
         </div>
@@ -329,6 +343,49 @@ function PoolFundRow({ fund, rank, sortKey }: PoolFundRowProps) {
         >
           TEFAS <ExternalLink size={8} />
         </a>
+      </td>
+    </tr>
+  );
+}
+
+// Tier paywall — anon kullanıcıyı üyeliğe, free kullanıcıyı PRO'ya yönlendirir
+function PaywallRow({ isAnon, shown, hiddenCount }: { isAnon: boolean; shown: number; hiddenCount: number }) {
+  if (isAnon) {
+    return (
+      <tr className="border-t border-accent/30 bg-accent/5">
+        <td colSpan={11} className="px-3 py-4 text-center">
+          <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+            <Lock size={14} className="text-accent" />
+            <span className="text-[11px] text-slate-300">
+              İlk <strong className="text-accent">{shown}</strong> fonu gördün. Sonraki <strong className="text-accent">5 fon</strong> için ücretsiz üye ol. Tamamı için PRO gerekli (toplam {hiddenCount} fon gizli).
+            </span>
+            <Link
+              to="/giris"
+              className="inline-flex items-center gap-1 rounded-md bg-accent px-3 py-1.5 text-[11px] font-bold text-bg shadow hover:bg-accent/90"
+            >
+              Ücretsiz Üye Ol →
+            </Link>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+  // Free user — PRO'ya yükselt CTA
+  return (
+    <tr className="border-t border-warning/30 bg-warning/5">
+      <td colSpan={11} className="px-3 py-4 text-center">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+          <Crown size={14} className="text-warning" />
+          <span className="text-[11px] text-slate-300">
+            İlk <strong className="text-warning">{shown}</strong> fonu gördün. Kalan <strong className="text-warning">{hiddenCount} fon</strong> PRO'ya özel.
+          </span>
+          <Link
+            to="/uyelik"
+            className="inline-flex items-center gap-1 rounded-md bg-warning px-3 py-1.5 text-[11px] font-bold text-bg shadow hover:bg-warning/90"
+          >
+            PRO'ya Yükselt →
+          </Link>
+        </div>
       </td>
     </tr>
   );

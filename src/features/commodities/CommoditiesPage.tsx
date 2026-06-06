@@ -53,14 +53,42 @@ export function CommoditiesPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      // USD/TRY için macro
+      // USD/TRY + Panel ile aynı macro veri (GoldAPI/MetalsAPI kaynaklı Ons metal değerleri dahil)
       const macroR = await loadMacroAll();
       const u = macroR.data.find((m) => m.key === 'USD/TRY')?.value ?? null;
       setUsdTry(u);
 
+      // Macro'dan Ons Altın/Gümüş/Platin haritası — Panel ile birebir tutarlı
+      // (loadMacroAll içinde GoldAPI → MetalsAPI → backend → TD → Yahoo futures chain'i)
+      const macroByKey = new Map<string, typeof macroR.data[number]>(
+        macroR.data.map((m) => [m.key as string, m]),
+      );
+      const metalKeyMap: Record<string, string> = {
+        gold: 'Ons Altın',
+        silver: 'Ons Gümüş',
+        platinum: 'Ons Platin',
+      };
+
       // Tüm emtia fiyatlarını paralel çek
       const results = await Promise.all(
         COMMODITIES.map(async (c) => {
+          // Kıymetli Maden ise önce macro'dan al (Panel ile uyumlu),
+          // gelmezse Yahoo futures'a düş.
+          const macroKey = metalKeyMap[c.key];
+          if (macroKey) {
+            const mm = macroByKey.get(macroKey);
+            if (mm && Number.isFinite(mm.value) && (mm.value as number) > 0) {
+              const priceUsd = mm.value;
+              const priceTRY = u ? ouncePriceToGramTRY(priceUsd, u) : undefined;
+              return {
+                ...c,
+                priceUsd,
+                changePct: mm.changePct,
+                priceTRY,
+              };
+            }
+          }
+          // Diğer emtialar (Paladyum, Brent, WTI, Doğal Gaz, Bakır, Buğday, Mısır) → Yahoo futures
           const yResult = await fetchIndexYahoo(c.symbolYahoo);
           if (!yResult) return { ...c };
           const priceUsd = yResult.value;

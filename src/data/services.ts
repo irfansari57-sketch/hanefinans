@@ -246,8 +246,9 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
     }
     const td = await fetchMetalSpotTD(tdPair);
     if (td && Number.isFinite(td.value) && td.value > 0) return td;
-    const ySpot = await fetchIndexYahoo(spotSym);
-    if (ySpot && Number.isFinite(ySpot.value) && ySpot.value > 0) return ySpot;
+    // Spot Yahoo (XAUUSD=X) yedeği kaldırıldı — Yahoo Finance bu sembolü destekemiyor (404).
+    // Direkt futures'a düş: GC=F altın, SI=F gümüş, PL=F platin (Comex sözleşmeleri).
+    // Spot ile ~$1-5 fark olabilir ama Cuma kapanış değeri kesin var.
     return fetchIndexYahoo(futSym);
   };
 
@@ -398,5 +399,6 @@ export function clearServiceCaches() {
       if (k && k.startsWith(CACHE_PREFIX)) localStorage.removeItem(k);
     }
     localStorage.removeItem('fa.macro.cache.v1');
+    snapshotMemo = null;
   } catch { /* ignore */ }
 }

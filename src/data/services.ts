@@ -59,15 +59,21 @@ function enrichStocks(live: Stock[]): Stock[] {
 interface SpotMetalQuote { value: number; changePct: number; updatedAt?: string; source?: string }
 interface SpotMetalsApi {
   ok: boolean;
-  /** Bundle'ın backend'de freshly fetched edildiği zaman (Unix ms) */
   bundleUpdatedAt?: number;
   XAU?: SpotMetalQuote;
   XAG?: SpotMetalQuote;
   XPT?: SpotMetalQuote;
 }
 
-/** Backend bundle bu kadar saatten eski ise stale say → fallback chain (TD/Yahoo/Futures) devreye girer */
+/** Per-metal updatedAt bu kadar saatten eski ise o metali kullanma → fallback chain'e geç */
 const SPOT_METALS_STALE_HOURS = 12;
+
+function metalAgeHours(updatedAt?: string): number {
+  if (!updatedAt) return Number.POSITIVE_INFINITY;
+  const ts = Date.parse(updatedAt);
+  if (!Number.isFinite(ts)) return Number.POSITIVE_INFINITY;
+  return (Date.now() - ts) / (60 * 60 * 1000);
+}
 
 async function fetchSpotMetalsInline(): Promise<SpotMetalsApi | null> {
   try {
@@ -75,14 +81,13 @@ async function fetchSpotMetalsInline(): Promise<SpotMetalsApi | null> {
     if (!r.ok) return null;
     const j = (await r.json()) as SpotMetalsApi;
     if (!j.ok) return null;
-    // Backend bundle çok eskiyse (backend down + D1 stale fallback veya Stooq hafta sonu freeze)
-    // → null dön. loadMacroAll içindeki fetchMetal() chain TD → Yahoo spot → Futures'a düşer.
-    if (typeof j.bundleUpdatedAt === 'number' && Number.isFinite(j.bundleUpdatedAt)) {
-      const ageHours = (Date.now() - j.bundleUpdatedAt) / (60 * 60 * 1000);
-      if (ageHours > SPOT_METALS_STALE_HOURS) {
-        return null;
-      }
-    }
+    // Per-metal stale check: Stooq hafta sonu eski timestamp ile veri döndürebiliyor.
+    // Her metalın updatedAt'i 12h+ eskiyse o metali kaldır → loadMacroAll fetchMetal() chain
+    // Yahoo direct'e (XAUUSD=X) geçer.
+    if (j.XAU && metalAgeHours(j.XAU.updatedAt) > SPOT_METALS_STALE_HOURS) delete j.XAU;
+    if (j.XAG && metalAgeHours(j.XAG.updatedAt) > SPOT_METALS_STALE_HOURS) delete j.XAG;
+    if (j.XPT && metalAgeHours(j.XPT.updatedAt) > SPOT_METALS_STALE_HOURS) delete j.XPT;
+    if (!j.XAU && !j.XAG && !j.XPT) return null;
     return j;
   } catch {
     return null;

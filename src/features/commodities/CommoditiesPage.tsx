@@ -6,7 +6,7 @@ import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo, ouncePriceToGramTRY } from '@/data/api/yahoo';
 import { loadMacroAll } from '@/data/services';
-import { fetchSpotMetalsMetalsApi } from '@/data/api/metalsapi';
+import { fetchPalladiumGoldApi } from '@/data/api/goldapi';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
@@ -54,11 +54,11 @@ export function CommoditiesPage() {
   const refresh = async () => {
     setLoading(true);
     try {
-      // USD/TRY + Panel ile aynı macro veri (GoldAPI/MetalsAPI kaynaklı Ons metal değerleri dahil)
-      // + Paladyum (XPD) için MetalsAPI ek çağrısı (Yahoo PA=F yüzde değişimi hatalı geliyor)
-      const [macroR, metalsApiData] = await Promise.all([
+      // USD/TRY + Panel ile aynı macro veri (Ons Altın/Gümüş/Platin GoldAPI chain'inden)
+      // + Paladyum için ayrıca GoldAPI XPD/USD (Yahoo PA=F previousClose hatalı geldiği için)
+      const [macroR, palladiumGoldApi] = await Promise.all([
         loadMacroAll(),
-        fetchSpotMetalsMetalsApi(),
+        fetchPalladiumGoldApi(),
       ]);
       const u = macroR.data.find((m) => m.key === 'USD/TRY')?.value ?? null;
       setUsdTry(u);
@@ -77,35 +77,30 @@ export function CommoditiesPage() {
       // Tüm emtia fiyatlarını paralel çek
       const results = await Promise.all(
         COMMODITIES.map(async (c) => {
-          // Kıymetli Maden ise önce macro'dan al (Panel ile uyumlu),
-          // gelmezse Yahoo futures'a düş.
+          // Altın/Gümüş/Platin → macro'dan (Panel ile uyumlu)
           const macroKey = metalKeyMap[c.key];
           if (macroKey) {
             const mm = macroByKey.get(macroKey);
             if (mm && Number.isFinite(mm.value) && (mm.value as number) > 0) {
               const priceUsd = mm.value;
               const priceTRY = u ? ouncePriceToGramTRY(priceUsd, u) : undefined;
-              return {
-                ...c,
-                priceUsd,
-                changePct: mm.changePct,
-                priceTRY,
-              };
+              return { ...c, priceUsd, changePct: mm.changePct, priceTRY };
             }
           }
-          // Diğer emtialar (Paladyum, Brent, WTI, Doğal Gaz, Bakır, Buğday, Mısır) → Yahoo futures
+          // Paladyum → GoldAPI XPD/USD (Yahoo PA=F previousClose hatalı)
+          if (c.key === 'palladium' && palladiumGoldApi) {
+            const priceUsd = palladiumGoldApi.value;
+            const priceTRY = u ? ouncePriceToGramTRY(priceUsd, u) : undefined;
+            return { ...c, priceUsd, changePct: palladiumGoldApi.changePct, priceTRY };
+          }
+          // Diğer emtialar (Brent, WTI, Doğal Gaz, Bakır, Buğday, Mısır) → Yahoo futures
           const yResult = await fetchIndexYahoo(c.symbolYahoo);
           if (!yResult) return { ...c };
           const priceUsd = yResult.value;
           const priceTRY = c.category === 'Kıymetli Maden' && u
             ? ouncePriceToGramTRY(priceUsd, u)
             : undefined;
-          return {
-            ...c,
-            priceUsd,
-            changePct: yResult.changePct,
-            priceTRY,
-          };
+          return { ...c, priceUsd, changePct: yResult.changePct, priceTRY };
         }),
       );
       setRows(results);

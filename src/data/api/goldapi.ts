@@ -38,7 +38,7 @@ export async function fetchGramAltinTRY(usdToTry: number | null): Promise<{ valu
  * GoldAPI'den XAU/USD veya XAG/USD spot fiyatı (Ons cinsinden, USD).
  * `chp` = günlük yüzde değişim (Cuma kapanış vs Perşembe kapanış).
  */
-async function fetchMetalSpotUSD(pair: 'XAU' | 'XAG' | 'XPT'): Promise<{ value: number; changePct: number } | null> {
+async function fetchMetalSpotUSD(pair: 'XAU' | 'XAG' | 'XPT' | 'XPD'): Promise<{ value: number; changePct: number } | null> {
   if (!API_KEYS.goldApi) return null;
   try {
     const res = await fetch(`${BASE}/${pair}/USD`, {
@@ -105,4 +105,57 @@ export async function fetchSpotMetalsGoldApi(): Promise<GoldApiCache | null> {
   };
   writeGoldApiCache(result);
   return result;
+}
+
+// ---- Paladyum (XPD) ayrı 12 saat cache ----
+// Bunu ana XAU/XAG/XPT bundle'dan ayrı tutuyoruz çünkü Emtialar sayfasında
+// göstermek için Yahoo PA=F yüzde değişimi hatalı geliyor. GoldAPI free tier
+// 100/ay limiti içinde kalmak için 12 saat cache (günde 2 call × 30 = 60/ay).
+
+const PALADIUM_CACHE_TTL = 12 * 60 * 60 * 1000;
+const PALADIUM_CACHE_KEY = 'fa.goldapi.palladium.v1';
+interface PalladiumCache {
+  fetchedAt: number;
+  value?: number;       // USD/ons
+  changePct?: number;   // günlük yüzde değişim
+}
+
+function readPalladiumCache(): PalladiumCache | null {
+  try {
+    const raw = localStorage.getItem(PALADIUM_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PalladiumCache;
+    if (Date.now() - parsed.fetchedAt > PALADIUM_CACHE_TTL) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writePalladiumCache(data: PalladiumCache) {
+  try {
+    localStorage.setItem(PALADIUM_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * GoldAPI'den XPD/USD spot fiyat + günlük yüzde değişim.
+ * 12 saat cache ile free tier 100/ay limiti içinde kalır.
+ */
+export async function fetchPalladiumGoldApi(): Promise<{ value: number; changePct: number } | null> {
+  const cached = readPalladiumCache();
+  if (cached && cached.value && Number.isFinite(cached.value)) {
+    return { value: cached.value, changePct: cached.changePct ?? 0 };
+  }
+  if (!API_KEYS.goldApi) return null;
+  const xpd = await fetchMetalSpotUSD('XPD');
+  if (!xpd) return null;
+  writePalladiumCache({
+    fetchedAt: Date.now(),
+    value: xpd.value,
+    changePct: xpd.changePct,
+  });
+  return xpd;
 }

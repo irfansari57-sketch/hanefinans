@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { PiggyBank, Search, Star, AlertCircle, ArrowUpDown } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PremiumCard } from '@/components/ui/PremiumCard';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LiveBadge } from '@/components/domain/LiveBadge';
@@ -242,28 +243,31 @@ export function FundsPage() {
 
         return (
           <div className="mb-4 grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            <div className="rounded-xl border border-border bg-bg-soft p-3">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">Takipteki</div>
-              <div className="mt-1 text-xl font-semibold">{sorted.length}</div>
+            <PremiumCard accent="cyan" hover="lift" density="compact">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-accent">Takipteki</div>
+              <div className="mt-1 text-xl font-semibold drop-shadow-sm">{sorted.length}</div>
               <div className="text-[10px] text-slate-500">fon</div>
-            </div>
+            </PremiumCard>
             {[
               { label: 'Gün %', s: day },
               { label: '1 Hafta', s: week },
               { label: '1 Ay', s: month },
               { label: '3 Ay', s: three },
               { label: '1 Yıl', s: year },
-            ].map(({ label, s }) => (
-              <div key={label} className="rounded-xl border border-border bg-bg-soft p-3">
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-                <div className={cn('mt-1 text-base font-semibold tabular-nums', tone(s))}>{fmtAvg(s)}</div>
-                <div className="text-[10px] text-slate-500">
-                  <span className="text-success">{s.pos}↑</span>
-                  <span className="mx-1">/</span>
-                  <span className="text-danger">{s.neg}↓</span>
-                </div>
-              </div>
-            ))}
+            ].map(({ label, s }) => {
+              const acc = s.count === 0 ? 'slate' : s.avg >= 0 ? 'success' : 'danger';
+              return (
+                <PremiumCard key={label} accent={acc} hover="lift" density="compact">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-accent">{label}</div>
+                  <div className={cn('mt-1 text-base font-semibold tabular-nums drop-shadow-sm', tone(s))}>{fmtAvg(s)}</div>
+                  <div className="text-[10px] text-slate-500">
+                    <span className="text-success">{s.pos}↑</span>
+                    <span className="mx-1">/</span>
+                    <span className="text-danger">{s.neg}↓</span>
+                  </div>
+                </PremiumCard>
+              );
+            })}
           </div>
         );
       })()}

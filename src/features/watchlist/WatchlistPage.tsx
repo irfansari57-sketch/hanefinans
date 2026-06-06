@@ -5,6 +5,7 @@ import { Plus, Star, X, Search, RefreshCw, PiggyBank, TrendingUp, ExternalLink }
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PremiumCard } from '@/components/ui/PremiumCard';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { MOCK_STOCKS } from '@/data/mock';
 import { loadStocks, clearServiceCaches } from '@/data/services';
@@ -626,15 +627,15 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
     <>
       {summary && (
         <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Takipte</div>
-            <div className="mt-1 text-xl font-semibold">{summary.total}</div>
-          </div>
-          <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">
+          <PremiumCard accent="cyan" hover="lift" density="compact">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-accent">Takipte</div>
+            <div className="mt-1 text-xl font-semibold drop-shadow-sm">{summary.total}</div>
+          </PremiumCard>
+          <PremiumCard accent="slate" hover="lift" density="compact">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
               {PERIOD_LABELS[fundPeriod]} Yeşil / Kırmızı
             </div>
-            <div className="mt-1 text-xl font-semibold">
+            <div className="mt-1 text-xl font-semibold drop-shadow-sm">
               <span className="text-success">{summary.positives}</span>
               <span className="mx-1 text-slate-600">/</span>
               <span className="text-danger">{summary.negatives}</span>
@@ -644,12 +645,12 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
                 </span>
               )}
             </div>
-          </div>
-          <div className="rounded-xl border border-border bg-bg-soft p-3">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">
+          </PremiumCard>
+          <PremiumCard accent={summary.avg >= 0 ? 'success' : 'danger'} hover="lift" density="compact">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
               Ortalama Değişim · {PERIOD_LABELS[fundPeriod]}
             </div>
-            <div className={cn('mt-1 text-xl font-semibold', summary.avg >= 0 ? 'text-success' : 'text-danger')}>
+            <div className={cn('mt-1 text-xl font-semibold drop-shadow-sm', summary.avg >= 0 ? 'text-success' : 'text-danger')}>
               {summary.count === 0 ? (
                 <span className="text-slate-500">—</span>
               ) : (
@@ -659,7 +660,7 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
                 </>
               )}
             </div>
-          </div>
+          </PremiumCard>
         </div>
       )}
 
@@ -823,11 +824,12 @@ function WlPoolSummaryCard({ label, mainValue, sub, tone }: {
   label: string; mainValue: string; sub: string; tone: 'pos' | 'neg' | 'neutral';
 }) {
   const toneClass = tone === 'pos' ? 'text-success' : tone === 'neg' ? 'text-danger' : 'text-slate-100';
+  const accent = tone === 'pos' ? 'success' : tone === 'neg' ? 'danger' : 'slate';
   return (
-    <div className="rounded-xl border border-border bg-bg-soft p-3">
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-      <div className={cn('mt-1 text-base font-bold tabular-nums', toneClass)}>{mainValue}</div>
+    <PremiumCard accent={accent} hover="lift" density="compact">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-accent">{label}</div>
+      <div className={cn('mt-1 text-base font-bold tabular-nums drop-shadow-sm', toneClass)}>{mainValue}</div>
       <div className="mt-0.5 text-[10px] text-slate-500">{sub}</div>
-    </div>
+    </PremiumCard>
   );
 }

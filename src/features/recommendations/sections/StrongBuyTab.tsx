@@ -10,6 +10,7 @@ import type { PeriodReturns } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/format';
 import { SortableHeader } from '@/components/ui/SortableHeader';
+import { PremiumCard } from '@/components/ui/PremiumCard';
 import { useAuth, isPro } from '@/store/auth';
 import { Crown, Lock } from 'lucide-react';
 
@@ -482,12 +483,13 @@ function SummaryCard({ label, mainValue, sub, tone }: {
   label: string; mainValue: string; sub: string; tone: 'pos' | 'neg' | 'neutral';
 }) {
   const toneClass = tone === 'pos' ? 'text-success' : tone === 'neg' ? 'text-danger' : 'text-slate-100';
+  const accent = tone === 'pos' ? 'success' : tone === 'neg' ? 'danger' : 'slate';
   return (
-    <div className="rounded-xl border border-border bg-bg-soft p-3">
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-      <div className={cn('mt-1 text-base font-bold tabular-nums', toneClass)}>{mainValue}</div>
+    <PremiumCard accent={accent} hover="lift" density="compact">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-accent">{label}</div>
+      <div className={cn('mt-1 text-base font-bold tabular-nums drop-shadow-sm', toneClass)}>{mainValue}</div>
       <div className="mt-0.5 text-[10px] text-slate-500">{sub}</div>
-    </div>
+    </PremiumCard>
   );
 }
 

@@ -56,18 +56,33 @@ function enrichStocks(live: Stock[]): Stock[] {
 }
 
 // Spot metals — inline fetch (no module indirection)
+interface SpotMetalQuote { value: number; changePct: number; updatedAt?: string; source?: string }
 interface SpotMetalsApi {
   ok: boolean;
-  XAU?: { value: number; changePct: number };
-  XAG?: { value: number; changePct: number };
-  XPT?: { value: number; changePct: number };
+  /** Bundle'ın backend'de freshly fetched edildiği zaman (Unix ms) */
+  bundleUpdatedAt?: number;
+  XAU?: SpotMetalQuote;
+  XAG?: SpotMetalQuote;
+  XPT?: SpotMetalQuote;
 }
+
+/** Backend bundle bu kadar saatten eski ise stale say → fallback chain (TD/Yahoo/Futures) devreye girer */
+const SPOT_METALS_STALE_HOURS = 12;
+
 async function fetchSpotMetalsInline(): Promise<SpotMetalsApi | null> {
   try {
     const r = await fetch('/api/spot-metals');
     if (!r.ok) return null;
     const j = (await r.json()) as SpotMetalsApi;
     if (!j.ok) return null;
+    // Backend bundle çok eskiyse (backend down + D1 stale fallback veya Stooq hafta sonu freeze)
+    // → null dön. loadMacroAll içindeki fetchMetal() chain TD → Yahoo spot → Futures'a düşer.
+    if (typeof j.bundleUpdatedAt === 'number' && Number.isFinite(j.bundleUpdatedAt)) {
+      const ageHours = (Date.now() - j.bundleUpdatedAt) / (60 * 60 * 1000);
+      if (ageHours > SPOT_METALS_STALE_HOURS) {
+        return null;
+      }
+    }
     return j;
   } catch {
     return null;

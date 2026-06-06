@@ -3,7 +3,8 @@ import type { Stock, NewsItem, MacroIndicator, SentimentMention } from './types'
 import { fetchQuotesTD, fetchMetalSpotTD } from './api/twelvedata';
 import { fetchQuotesYahoo, fetchIndexYahoo, YAHOO_SYMBOLS, ouncePriceToGramTRY } from './api/yahoo';
 import { fetchNewsGNews } from './api/gnews';
-import { fetchGramAltinTRY } from './api/goldapi';
+import { fetchGramAltinTRY, fetchSpotMetalsGoldApi } from './api/goldapi';
+import { fetchSpotMetalsMetalsApi } from './api/metalsapi';
 import { loadTcmbMacro } from './api/tcmb';
 import { API_KEYS } from './api/keys';
 import { loadMacro as loadMacroFx } from './macro';
@@ -227,8 +228,18 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
   const usdTry = base.find((m) => m.key === 'USD/TRY')?.value ?? null;
   const nowIso = new Date().toISOString();
 
-  // Kıymetli maden — backend Stooq spot birincil, TD spot yedek, Yahoo spot yedek, futures son.
-  const spotMetals = await fetchSpotMetalsInline();
+  // Kıymetli maden veri kaynak öncelik sırası:
+  //   1) GoldAPI.io (free 50/ay, en güvenilir spot fiyat, 6h cache)
+  //   2) MetalsAPI.com (free 50/gün, spot fiyat, 6h cache)
+  //   3) Backend Stooq spot (hafta sonu stale olabilir)
+  //   4) TwelveData spot (free 800/gün, kotaya dikkat)
+  //   5) Yahoo futures GC=F / SI=F / PL=F (Comex; spot'a ~$1-5 yakın)
+  // Hepsi 6 saatlik cache ile koordineli, kotalar yorulmaz.
+  const [goldApiMetals, metalsApiMetals, spotMetals] = await Promise.all([
+    fetchSpotMetalsGoldApi(),
+    fetchSpotMetalsMetalsApi(),
+    fetchSpotMetalsInline(),
+  ]);
   // Debug: console.log helps verify deploy includes this code
   if (typeof window !== 'undefined') {
     try { (window as { __spotMetalsDebug?: SpotMetalsApi | null }).__spotMetalsDebug = spotMetals; } catch { /* ignore */ }
@@ -237,18 +248,28 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
   const fetchMetal = async (
     kind: 'XAU' | 'XAG' | 'XPT',
     tdPair: 'XAU/USD' | 'XAG/USD' | 'XPT/USD',
-    spotSym: string,
+    _spotSym: string,
     futSym: string,
   ): Promise<{ value: number; changePct: number } | null> => {
+    // 1) GoldAPI.io — en güvenilir spot, hafta sonu Cuma kapanış değeri
+    const ga = goldApiMetals?.[kind];
+    if (ga && Number.isFinite(ga.value) && ga.value > 0) {
+      return { value: ga.value, changePct: ga.changePct };
+    }
+    // 2) MetalsAPI.com — yedek spot
+    const ma = metalsApiMetals?.[kind];
+    if (ma != null && Number.isFinite(ma) && (ma as number) > 0) {
+      return { value: ma as number, changePct: 0 };
+    }
+    // 3) Backend Stooq spot — hafta sonu stale check uygulanır
     const s = spotMetals?.[kind];
     if (s && Number.isFinite(s.value) && s.value > 0) {
       return { value: s.value, changePct: s.changePct };
     }
+    // 4) TwelveData spot
     const td = await fetchMetalSpotTD(tdPair);
     if (td && Number.isFinite(td.value) && td.value > 0) return td;
-    // Spot Yahoo (XAUUSD=X) yedeği kaldırıldı — Yahoo Finance bu sembolü destekemiyor (404).
-    // Direkt futures'a düş: GC=F altın, SI=F gümüş, PL=F platin (Comex sözleşmeleri).
-    // Spot ile ~$1-5 fark olabilir ama Cuma kapanış değeri kesin var.
+    // 5) Yahoo futures GC=F / SI=F / PL=F — son çare
     return fetchIndexYahoo(futSym);
   };
 

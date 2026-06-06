@@ -1,8 +1,117 @@
 # Hane Finans — Sonraki Seans Yol Haritası
 
-> Son güncelleme: 2026-06-06 (gece)
-> ÖNCELİK: **Yapısal iyileştirme + Premium görünüm** (Finhane rebrand askıya alındı)
-> Karar: Finhane rebrand TÜRKPATENT marka vekili görüşü gelene kadar bekletildi.
+> Son güncelleme: 2026-06-06 (Cumartesi gece)
+> **ACİL ÖNCELİK:** Kıymetli metal hafta sonu doğru kapanış değeri sorunu
+> Sonra: Yapısal iyileştirme + Premium görünüm
+
+---
+
+## 🚨 ÖNCELİK 0 — Kıymetli Metal Hafta Sonu Veri Sorunu (KESİN ÇÖZÜM)
+
+**Mevcut sorun:** Panel'de Ons Altın `$4,365.3 +0.65%` ve Ons Gümüş `$69.1 +0.23%` Cuma sabahki değerlerde donmuş — gerçek Cuma kapanış `$4,317.93 -3.29%` ve `$68.29 -7.51%`.
+
+**Geçen seansta denenen ama yetmeyen şeyler:**
+- Backend Stooq + Yahoo proxy fallback eklendi → 502 attı (Cloudflare Workers'tan outbound engellendi)
+- Frontend per-metal stale check eklendi → işe yaradı ama fallback chain kırıktı
+- Yahoo XAUUSD=X spot → Yahoo Finance bu sembolü **desteklemiyor** (404)
+- TwelveData → 429 rate-limit (free tier tükenmiş)
+
+**SONRAKİ SEANS — sistemli yaklaşım:**
+
+### Faz 1 — Tanı (15 dk)
+
+1. **Cloudflare Pages Functions Logs** — `dash.cloudflare.com` → hanefinans → Functions → Real-time logs → spot-metals endpoint çağrısı yapıp **gerçek runtime exception**'ı gör. 502 ataşıyor sebep net olmalı.
+2. **Frontend Network tab** — Hangi URL'ler hangi status dönüyor:
+   - `/api/yahoo/snapshot?...` (BIST için çalışıyor, metal için de çalışıyor mu?)
+   - `/api/yahoo/v8/finance/chart/GC=F` (Comex altın futures — 200 mü 404 mü?)
+   - `/api/yahoo/v8/finance/chart/SI=F` (Comex gümüş futures)
+3. **Manuel curl** — Cloudflare Worker'dan değil, normal browser'dan: `https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=5d&interval=1d` → 200 mi 403 mü?
+
+### Faz 2 — Çok Kaynaklı Backend (45 dk)
+
+Cloudflare Workers'tan tek kaynağa (Stooq) bağımlı kalmak başarısız oldu. Sıralı 5 kaynak deneme:
+
+```typescript
+// functions/api/spot-metals.ts — yeni mimari
+async function fetchAllMetals() {
+  // 1. GoldAPI.io — free 50 req/month, very reliable spot
+  //    https://www.goldapi.io/dashboard (free key al)
+  const goldapi = await tryGoldApi();
+  if (goldapi.complete) return goldapi;
+
+  // 2. Metals-API.com — free 50 req/day
+  //    https://metals-api.com/
+  const metalsapi = await tryMetalsApi();
+  if (metalsapi.complete) return metalsapi;
+
+  // 3. Stooq XAUUSD/XAGUSD/XPTUSD — eski yöntem
+  const stooq = await tryStooq();
+  if (stooq.complete) return stooq;
+
+  // 4. Yahoo futures GC=F/SI=F/PL=F — Yahoo'da kesin var, futures
+  const futures = await tryYahooFutures();
+  if (futures.complete) return futures;
+
+  // 5. D1'de saklanan SON KESİN BİLİNEN Cuma kapanış değeri
+  //    Cron job Cuma 23:00 NY'de günceller (aşağıda)
+  const d1Backup = await loadD1Backup();
+  return d1Backup;
+}
+```
+
+**Aksiyon:**
+- [ ] GoldAPI.io ücretsiz hesap aç, API key al → `wrangler secret put GOLDAPI_KEY`
+- [ ] Metals-API.com ücretsiz hesap aç, API key al → `wrangler secret put METALSAPI_KEY`
+- [ ] Backend'i 5 kaynaklı yaz, hangi kaynak çalışırsa `X-Source` header'ında belirt
+
+### Faz 3 — D1 "Son Kesin Kapanış" Cron Warmer (30 dk)
+
+**Konsept:** Cuma 23:30 ET (TR: Cumartesi 06:30) GitHub Actions cron çalışır → Yahoo'dan/GoldAPI'dan Cuma kapanış değerini çekip D1'e yazar. Pazartesi sabaha kadar bu cache'ten servis eder.
+
+```yaml
+# .github/workflows/metal-eod-warmer.yml
+name: Metal EOD Warmer
+on:
+  schedule:
+    - cron: '30 3 * * 6'  # Her Cumartesi 03:30 UTC (06:30 TR)
+jobs:
+  fetch-eod:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -X POST https://hanefinans.net/api/admin/warm-metals \
+            -H "Authorization: Bearer $WARMER_TOKEN"
+```
+
+Backend `/api/admin/warm-metals` GoldAPI/Yahoo'dan Cuma close değerlerini çekip D1'e yazar. `bundleUpdatedAt` = Friday close timestamp olarak set edilir.
+
+### Faz 4 — UI Defensive Mod (15 dk)
+
+Frontend `MarketSummaryPremium.tsx`'te:
+
+```tsx
+const isMarketClosed = isWeekend() && metal.key.includes('Ons');
+const closeBadge = isMarketClosed ? (
+  <span className="text-[9px] text-slate-500 italic">
+    📅 Cuma kapanış
+  </span>
+) : null;
+```
+
+Hafta sonu metallerde "Cuma kapanış" rozeti gösterilir → kullanıcı `+0.65%` görünce yanıltıcı sanmasın, kapanış değeri olduğu net anlaşılır.
+
+### Faz 5 — Test Etme (15 dk)
+
+- Cloudflare Functions Logs real-time'da endpoint'i hit et, X-Source kontrol
+- Browser cache temizle + Panel kontrol
+- Hafta sonu test için: zaman manipülasyonu (DevTools'tan Cumartesi seç) → "Cuma kapanış" rozeti görünmeli
+
+### Toplam tahmini süre: **2 saat** (tanı + 5 kaynak + cron + UI + test)
+
+### Bu seans yapılması gereken hazırlıklar (kullanıcı):
+1. GoldAPI.io ücretsiz hesap aç → API key kaydet
+2. Metals-API.com ücretsiz hesap aç → API key kaydet
+3. Cloudflare Pages Functions Logs'a girip nasıl bakılacağını gör
 
 ---
 

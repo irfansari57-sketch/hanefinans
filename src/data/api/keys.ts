@@ -10,6 +10,7 @@ export const API_KEYS = {
   twelveData: (env.VITE_TWELVEDATA_KEY ?? '').trim(),
   gnews: (env.VITE_GNEWS_KEY ?? '').trim(),
   goldApi: (env.VITE_GOLDAPI_KEY ?? '').trim(),
+  metalsApi: (env.VITE_METALSAPI_KEY ?? '').trim(),
   telegramChatId: (env.VITE_TELEGRAM_CHAT_ID ?? '').trim(),
   // Supabase opsiyonel — Hafta 2 için
   supabaseUrl: (env.VITE_SUPABASE_URL ?? '').trim(),
@@ -24,6 +25,7 @@ export type ServiceKey =
   | 'twelveData'
   | 'gnews'
   | 'goldApi'
+  | 'metalsApi'
   | 'tcmb'
   | 'telegram'
   | 'supabase'
@@ -73,7 +75,16 @@ export const API_STATUS: ApiKeyStatus[] = [
     envVar: 'VITE_GOLDAPI_KEY',
     signUpUrl: 'https://www.goldapi.io/dashboard',
     freeTier: '100/ay',
-    provides: 'Gram altın (USD × USD/TRY)',
+    provides: 'Ons + Gram altın spot (USD)',
+  },
+  {
+    service: 'metalsApi',
+    label: 'Metals-API',
+    configured: !!API_KEYS.metalsApi,
+    envVar: 'VITE_METALSAPI_KEY',
+    signUpUrl: 'https://metals-api.com/',
+    freeTier: '50/gün',
+    provides: 'Ons altın/gümüş/platin spot (USD) — hafta sonu Cuma kapanış değeri',
   },
   {
     service: 'tcmb',

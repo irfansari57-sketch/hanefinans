@@ -1,18 +1,9 @@
 /**
  * GET /api/spot-metals
  *
- * Spot precious metals (XAU/XAG/XPT USD) — D1-first, Stooq primary, Yahoo fallback.
- *
- * Strateji:
- *   1) D1 fresh (< 5 dk) — anında dön
- *   2) Stooq canlı çek (CSV)
- *   3) Stooq fail VEYA Stooq verisi stale (>12 saat) ise → Yahoo /chart proxy fallback
- *   4) Hepsi fail → D1 stale fallback (< 4 saat)
- *
- * Önemli: Stooq hafta sonu / piyasa kapalıyken eski intraday verisini döndürebiliyor.
- * Bu durumda Yahoo'nun `regularMarketPreviousClose` ile değişim hesabı doğru olur.
- *
- * Response'a `bundleUpdatedAt` (Unix ms) eklendi ki frontend stale tespit edebilsin.
+ * D1-first spot precious metals (XAU/XAG/XPT USD).
+ * Warmer cron her 3 dk D1'i tazeler; bu endpoint sadece D1'den okur.
+ * On-demand fallback olarak Stooq'a doğrudan da gider (warmer çalışmazsa).
  */
 
 interface Env { DB?: D1Database; }
@@ -21,23 +12,21 @@ interface MetalQuote {
   value: number;
   changePct: number;
   updatedAt: string;
-  source: 'stooq' | 'yahoo' | 'd1-cache';
+  source: 'stooq' | 'd1-cache';
 }
 
 interface SpotMetalsBundle {
   ok: boolean;
-  /** Bundle'ın D1'e yazıldığı / freshly fetched edildiği zaman (Unix ms) */
-  bundleUpdatedAt: number;
+  /** Bundle'ın freshly fetched edildiği zaman (Unix ms) — frontend stale tespit için */
+  bundleUpdatedAt?: number;
   XAU?: MetalQuote;
   XAG?: MetalQuote;
   XPT?: MetalQuote;
 }
 
 const CACHE_FRESH_MS = 5 * 60 * 1000;          // < 5 dk → fresh, hemen dön
-const CACHE_STALE_MAX_MS = 4 * 60 * 60 * 1000; // 4 saat içinde stale fallback (son çare)
-const STOOQ_FRESH_MAX_HOURS = 12;              // Stooq verisi 12 saat eskiden eskiyse → Yahoo'ya geç
+const CACHE_STALE_MAX_MS = 30 * 60 * 1000;     // 30 dk içinde ise stale-while-revalidate
 const STOOQ_TIMEOUT_MS = 6000;
-const YAHOO_TIMEOUT_MS = 6000;
 
 interface CacheRow { payload: string; updated_at: number; }
 
@@ -58,13 +47,6 @@ async function writeD1(db: D1Database, key: string, payload: string): Promise<vo
     )
     .bind(key, payload, Date.now())
     .run();
-}
-
-/** Stooq quote'unun ne kadar eski olduğunu hesapla (saat cinsinden). */
-function ageHours(updatedAt: string): number {
-  const ts = Date.parse(updatedAt);
-  if (!Number.isFinite(ts)) return Number.POSITIVE_INFINITY;
-  return (Date.now() - ts) / (60 * 60 * 1000);
 }
 
 async function fetchStooq(symbol: string): Promise<MetalQuote | null> {
@@ -102,90 +84,11 @@ async function fetchStooq(symbol: string): Promise<MetalQuote | null> {
   }
 }
 
-/**
- * Yahoo Finance /chart fallback — XAUUSD=X / XAGUSD=X / XPTUSD=X.
- * Avantaj: `regularMarketPreviousClose` ile gerçek günlük değişim doğru hesaplanır.
- */
-async function fetchYahooMetal(yahooSym: string): Promise<MetalQuote | null> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym)}?interval=1d&range=5d`;
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), YAHOO_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0',
-        Accept: 'application/json,*/*',
-      },
-      signal: controller.signal,
-    });
-    if (!res.ok) return null;
-    const json = await res.json() as {
-      chart?: {
-        result?: Array<{
-          meta?: {
-            regularMarketPrice?: number;
-            previousClose?: number;
-            chartPreviousClose?: number;
-            regularMarketTime?: number;
-          };
-          timestamp?: number[];
-          indicators?: { quote?: Array<{ close?: number[] }> };
-        }>;
-      };
-    };
-    const r = json?.chart?.result?.[0];
-    if (!r) return null;
-    const meta = r.meta ?? {};
-    const closes = r.indicators?.quote?.[0]?.close ?? [];
-    // En son fiyat: regularMarketPrice → son bar close
-    const last = Number.isFinite(meta.regularMarketPrice as number)
-      ? (meta.regularMarketPrice as number)
-      : [...closes].reverse().find((c) => Number.isFinite(c)) as number | undefined;
-    if (!Number.isFinite(last) || (last as number) <= 0) return null;
-    // Önceki kapanış: previousClose → chartPreviousClose → son 2 close'tan birinci
-    let prev = Number.isFinite(meta.previousClose as number) ? (meta.previousClose as number) : NaN;
-    if (!Number.isFinite(prev)) prev = Number.isFinite(meta.chartPreviousClose as number) ? (meta.chartPreviousClose as number) : NaN;
-    if (!Number.isFinite(prev)) {
-      const validCloses = closes.filter((c) => Number.isFinite(c)) as number[];
-      if (validCloses.length >= 2) prev = validCloses[validCloses.length - 2];
-    }
-    const changePct = Number.isFinite(prev) && (prev as number) > 0
-      ? (((last as number) - (prev as number)) / (prev as number)) * 100
-      : 0;
-    const updatedAtMs = Number.isFinite(meta.regularMarketTime as number)
-      ? (meta.regularMarketTime as number) * 1000
-      : Date.now();
-    return {
-      value: last as number,
-      changePct,
-      updatedAt: new Date(updatedAtMs).toISOString(),
-      source: 'yahoo',
-    };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-/** Stooq sonucu fresh değilse Yahoo'ya geç. */
-async function fetchMetalSmart(stooqSym: string, yahooSym: string): Promise<MetalQuote | null> {
-  const s = await fetchStooq(stooqSym);
-  if (s && ageHours(s.updatedAt) <= STOOQ_FRESH_MAX_HOURS) {
-    return s;
-  }
-  // Stooq stale veya null — Yahoo dene
-  const y = await fetchYahooMetal(yahooSym);
-  if (y) return y;
-  // Yahoo da fail → Stooq'un stale verisini son çare olarak dön (yoksa null)
-  return s;
-}
-
-async function fetchAllSmart(): Promise<SpotMetalsBundle> {
+async function fetchAllFromStooq(): Promise<SpotMetalsBundle> {
   const [xau, xag, xpt] = await Promise.all([
-    fetchMetalSmart('XAUUSD', 'XAUUSD=X'),
-    fetchMetalSmart('XAGUSD', 'XAGUSD=X'),
-    fetchMetalSmart('XPTUSD', 'XPTUSD=X'),
+    fetchStooq('XAUUSD'),
+    fetchStooq('XAGUSD'),
+    fetchStooq('XPTUSD'),
   ]);
   return {
     ok: !!(xau || xag || xpt),
@@ -219,7 +122,6 @@ export const onRequest: PagesFunction<Env> = async ({ env }) => {
       try {
         const parsed = JSON.parse(cached.payload) as SpotMetalsBundle;
         if (age < CACHE_FRESH_MS && parsed.ok) {
-          // bundleUpdatedAt eski payload'larda yoksa, D1 yazma zamanını kullan
           if (!Number.isFinite(parsed.bundleUpdatedAt)) {
             parsed.bundleUpdatedAt = cached.updated_at;
           }
@@ -229,14 +131,14 @@ export const onRequest: PagesFunction<Env> = async ({ env }) => {
     }
   }
 
-  // 2) Smart fetch — Stooq fresh ise Stooq, değilse Yahoo
-  const live = await fetchAllSmart();
+  // 2) D1 stale (>5dk) veya boş — Stooq'tan canlı çek
+  const live = await fetchAllFromStooq();
   if (live.ok && env.DB) {
     await writeD1(env.DB, cacheKey, JSON.stringify(live)).catch(() => null);
-    return jsonResp(live, 200, 'SMART-LIVE');
+    return jsonResp(live, 200, 'STOOQ-LIVE');
   }
 
-  // 3) Smart fetch fail → D1 stale (< 4 saat) son çare
+  // 3) Stooq da başarısız → eski D1 son çare
   if (env.DB) {
     const cached = await readD1(env.DB, cacheKey);
     if (cached && Date.now() - cached.updated_at < CACHE_STALE_MAX_MS) {
@@ -252,5 +154,5 @@ export const onRequest: PagesFunction<Env> = async ({ env }) => {
     }
   }
 
-  return jsonResp(live, live.ok ? 200 : 502, 'SMART-LIVE');
+  return jsonResp(live, live.ok ? 200 : 502, 'STOOQ-LIVE');
 };

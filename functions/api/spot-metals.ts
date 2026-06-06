@@ -90,9 +90,19 @@ async function fetchAllFromStooq(): Promise<SpotMetalsBundle> {
     fetchStooq('XAGUSD'),
     fetchStooq('XPTUSD'),
   ]);
+
+  // KRİTİK: bundleUpdatedAt fetch zamanı DEĞİL, en eski metalın updatedAt'i olmalı.
+  // Aksi halde Stooq stale veri dönse bile frontend "şu an çekildi, fresh" sanır ve
+  // fallback chain (TD/Yahoo direct/Futures) hiç devreye girmez.
+  const metalTimes = [xau, xag, xpt]
+    .filter((m): m is MetalQuote => m != null)
+    .map((m) => Date.parse(m.updatedAt))
+    .filter((t) => Number.isFinite(t));
+  const oldestMetalTime = metalTimes.length > 0 ? Math.min(...metalTimes) : Date.now();
+
   return {
     ok: !!(xau || xag || xpt),
-    bundleUpdatedAt: Date.now(),
+    bundleUpdatedAt: oldestMetalTime,
     XAU: xau ?? undefined,
     XAG: xag ?? undefined,
     XPT: xpt ?? undefined,

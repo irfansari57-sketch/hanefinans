@@ -328,7 +328,7 @@ const TOPICS: Topic[] = [
       },
       {
         heading: 'En İyi Emeklilik Şirketleri (2026)',
-        body: 'Türkiye\'deki başlıca BES şirketleri: **AvivaSA, Anadolu Hayat Emeklilik, Garanti Emeklilik, Allianz Yaşam ve Emeklilik, BNP Paribas Cardif Emeklilik, NN Hayat ve Emeklilik, AGESA, Vakıf Emeklilik, Halk Emeklilik, Ziraat Emeklilik.** Şirket seçimi 3 kritere dayanır: (1) **Fon çeşitliliği** ve performans (TEFAS\'tan kontrol et), (2) **Yönetim ücretleri** (yıllık net %1.5\'in altı iyi), (3) **Online erişim ve mobil app** kalitesi. Geçmiş performans gelecek garantisi değildir ama 5-10 yıllık dönem getirilerini karşılaştırarak makul bir seçim yapabilirsin. Şirket değiştirmek istersen 2 yıl bekledikten sonra ücretsiz aktarım hakkın var, devlet katkısı korunur.',
+        body: 'Türkiye\'deki başlıca BES şirketleri: **Katılım Emeklilik, AvivaSA, Anadolu Hayat Emeklilik, Garanti Emeklilik, Allianz Yaşam ve Emeklilik, BNP Paribas Cardif Emeklilik, NN Hayat ve Emeklilik, AGESA, Vakıf Emeklilik, Halk Emeklilik, Ziraat Emeklilik.** Şirket seçimi 3 kritere dayanır: (1) **Fon çeşitliliği** ve performans (TEFAS\'tan kontrol et), (2) **Yönetim ücretleri** (yıllık net %1.5\'in altı iyi), (3) **Online erişim ve mobil app** kalitesi. Geçmiş performans gelecek garantisi değildir ama 5-10 yıllık dönem getirilerini karşılaştırarak makul bir seçim yapabilirsin. Şirket değiştirmek istersen 2 yıl bekledikten sonra ücretsiz aktarım hakkın var, devlet katkısı korunur.',
       },
     ],
     externalLinks: [

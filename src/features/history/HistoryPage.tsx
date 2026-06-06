@@ -7,6 +7,7 @@ import {
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { PremiumCard } from '@/components/ui/PremiumCard';
 import { activityRepo, alertsRepo, bookmarksRepo, notesRepo } from '@/data/repositories';
 import type { ActivityEntry, ActivityType, PriceAlert } from '@/data/db';
 import { formatRelative, formatDateTR } from '@/lib/date';
@@ -204,7 +205,7 @@ function NotesList() {
         .slice()
         .sort((a, b) => (b.pinned ?? 0) - (a.pinned ?? 0) || b.updatedAt - a.updatedAt)
         .map((n) => (
-          <div key={n.id} className="rounded-xl border border-border bg-bg-soft p-3">
+          <PremiumCard key={n.id} accent="cyan" hover="lift" density="compact">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <div className="flex items-center gap-2">
                 {n.symbol && <SymbolBadge symbol={n.symbol} />}
@@ -230,7 +231,7 @@ function NotesList() {
               </div>
             </div>
             <MiniMarkdown text={n.body} className="mt-2 space-y-1.5 text-sm text-slate-200" />
-          </div>
+          </PremiumCard>
         ))}
     </div>
   );
@@ -326,7 +327,7 @@ function BookmarksList() {
   return (
     <div className="grid gap-2">
       {bookmarks.map((b) => (
-        <div key={b.id} className="rounded-xl border border-border bg-bg-soft p-3">
+        <PremiumCard key={b.id} accent="slate" hover="lift" density="compact">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <div className="flex flex-wrap items-center gap-1.5">
               {b.snapshot?.symbols?.map((s) => (
@@ -349,7 +350,7 @@ function BookmarksList() {
             {b.snapshot?.publishedAt && formatRelative(b.snapshot.publishedAt)} •
             kaydedildi {formatRelative(new Date(b.bookmarkedAt).toISOString())}
           </div>
-        </div>
+        </PremiumCard>
       ))}
     </div>
   );

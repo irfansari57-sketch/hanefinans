@@ -156,15 +156,15 @@ function DailyMaBox({ ta, price }: { ta: TimeframeAnalysis | null; price?: numbe
   return (
     <div className="rounded-lg border border-border bg-bg-soft p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-wider text-slate-500">Günlük MA Analizi</div>
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">Günlük EMA Analizi</div>
         <div className={cn('rounded border px-2 py-0.5 text-[10px] font-bold', verdict.cls)}>
           {verdict.label}
         </div>
       </div>
       <div className="space-y-1.5">
-        <Row name="MA 5" val={ma5} isAbove={a5} />
-        <Row name="MA 8" val={ma8} isAbove={a8} />
-        <Row name="MA 13" val={ma13} isAbove={a13} />
+        <Row name="EMA 5" val={ma5} isAbove={a5} />
+        <Row name="EMA 8" val={ma8} isAbove={a8} />
+        <Row name="EMA 13" val={ma13} isAbove={a13} />
       </div>
     </div>
   );

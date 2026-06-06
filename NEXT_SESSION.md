@@ -1,12 +1,218 @@
 # Hane Finans — Sonraki Seans Yol Haritası
 
-> Son güncelleme: 2026-06-06 (Cumartesi gece)
-> **ACİL ÖNCELİK:** Kıymetli metal hafta sonu doğru kapanış değeri sorunu
-> Sonra: Yapısal iyileştirme + Premium görünüm
+> Son güncelleme: 2026-06-07 (Pazar gece) — son seans 12+ saatlik intensive çalışma
+>
+> **Bu seansta TAMAMLANDI:**
+> - ✅ Premium 3 sütun Piyasa Özeti (turkuaz + 3D depth)
+> - ✅ Fon Havuzu tier-paywall (anon=5, free=10, pro=tümü)
+> - ✅ Ekonomik takvim Mayıs TÜFE 06-05 + Tem/Ağu/Eyl/Eki/Kas TÜFE entries
+> - ✅ BES bilgilendirme 6→12 kez fon değişim + Katılım Emeklilik
+> - ✅ BES Calculator default değerler (katkı 10%, yönetim 1%, FİGK 0.5%, BAU 5%, senaryo 1/5/8)
+> - ✅ multiTimeframe MA → EMA + spot fiyat çelişkisi bug fix
+> - ✅ RouteErrorBoundary mobile cache temizle butonu
+> - ✅ TÜRKPATENT marka değerlendirmesi
+> - ✅ Kıymetli metal **gerçek Cuma kapanış değeri** (GoldAPI/MetalsAPI chain)
+> - ✅ Emtialar sayfası Panel ile veri tutarlılığı
+> - ✅ Sol menü Piyasalar sıralaması (Fonlar→Hisseler→Emtialar→Döviz→…)
+>
+> **AÇIK İŞLER:**
+> - ⏳ Paladyum yüzde değişimi yanlış (Yahoo PA=F bug) → ÖNCELİK 0
+> - ⏳ Yapısal + Premium UI/UX upgrade serisi (B1-B10)
+> - ⏳ Finhane rebrand (TÜRKPATENT vekil görüşü gelince)
+> - ⏳ Cowork Plugin 8 skill
 
 ---
 
-## 🚨 ÖNCELİK 0 — Kıymetli Metal Hafta Sonu Veri Sorunu (KESİN ÇÖZÜM)
+## 🎯 ÖNCELİK 0 — Paladyum Veri Kaynağı Çözümü (kısa)
+
+**Sorun:** Yahoo `PA=F` futures için `previousClose` Cuma değil daha eski bir günü dönüyor. Bu yüzden yüzde değişimi yanlış (+1.32% gösteriyor, gerçek -5.35%).
+
+**MetalsAPI denendi:** Free tier yok, en ucuz $199/yıl. Uygun değil.
+
+**Sonraki seansta denenecek alternatifler (sıralı):**
+
+1. **Stooq XPDUSD spot** — frontend doğrudan veya backend `/api/spot-metals` endpoint'inde sıralı denenir. Stooq ücretsiz, key gerektirmez. Hafta sonu freeze sorunu olabilir ama Paladyum için yine de en iyi opsiyon.
+
+2. **GoldAPI'ye XPD eklenir** (mevcut key 100/ay sınırı içinde):
+   - Cache 24 saat → günde 1 call × 4 metal (XAU/XAG/XPT/XPD) × 30 gün = **120 call/ay** ← limit aşar
+   - Cache 36 saat → 80/ay ← limit içinde, ama market saatleri kaçırılır
+   - **Çözüm:** Hafta içi 6 saat cache (4/gün), hafta sonu 12 saat cache (2/gün) → 4 metal × (5×4 + 2×2) gün = **96/ay** ✓
+   - **TEST:** GoldAPI'nin XPD desteklediği doğrulanmalı (response'da `price` alanı dolu mu)
+
+3. **TwelveData XPD/USD** — `fetchMetalSpotTD('XPD/USD')` tarzı. TD free 800/gün. Genelde XPD destekli, doğrulanmalı.
+
+4. **Stooq backend proxy** — `functions/api/spot-metals.ts`'i yeniden aktif et, Cloudflare Workers'tan Stooq 502 sorunu için **User-Agent + Accept** header'larını tweakle. Eğer çalışırsa diğer 3 alternatife gerek yok.
+
+**Yapım sırası:** Önce (1) Stooq direct dene — bir HTTP isteği, key yok. Çalışırsa bitir. Çalışmazsa (3) TwelveData, en son (2) GoldAPI XPD.
+
+**Toplam tahmini süre:** 30-45 dakika.
+
+---
+
+## 🎯 ÖNCELİK 1 — Premium UI/UX Genelleme (B-serisi devam)
+
+Geçen seansta Piyasa Özeti'nde uygulanan **3D kart depth + turkuaz etiket** stili tüm sayfalara yaygınlaştırılacak. Aşağıdaki sırayla:
+
+### B1 — `<PremiumCard>` standart bileşeni (30 dk)
+
+Mevcut MarketSummaryPremium'daki gradient + uzun gölge + inset highlight + hover translate stillerini bir reusable component'e çıkar:
+
+```tsx
+// src/components/ui/PremiumCard.tsx
+<PremiumCard accent="cyan" hover="lift">
+  {children}
+</PremiumCard>
+```
+
+Variants:
+- `accent`: `'cyan' | 'warning' | 'success' | 'danger' | 'fuchsia' | 'slate'`
+- `hover`: `'lift' | 'glow' | 'none'`
+- `density`: `'compact' | 'comfortable'`
+
+### B2 — Sayfa-sayfa premium pass (60 dk)
+
+Tüm liste/grid kartlarını `<PremiumCard>`'a çevir:
+
+- **Öneriler sayfası** — Fon Havuzu satırları, Strong Buy kartları, Algoritmik card
+- **Hisseler/Fonlar sayfaları** — TopMovers, summary cards, watchlist items
+- **Panel** — Takip Listem, AI Agent kartları, top movers detaylar
+- **Oyunlarım** — Bugünün Lideri, Quiz, Sembol Bulmaca kartları
+- **Watchlist** — Stock row, Fund row
+- **Alarmlarım** — Alarm card
+- **Portföyüm** — Portfolio row + summary cards
+
+### B3 — Tipografi premium pass (20 dk)
+
+- Headings için **Inter Variable Font** zaten var; opsiyonel `Manrope` veya `Space Grotesk` heading testi
+- Sayısal değerlerde `tabular-nums` denetimi (bazı yerler eksik)
+- Letter-spacing: -0.02em başlıklar, +0.02em uppercase etiketler
+- Mobile font scaling — başlıklarda 16px-22px responsive
+
+### B4 — Mikro-etkileşim (30 dk)
+
+- Sayfa geçişlerinde **fade-in animation** (200ms)
+- Liste satırlarında **stagger** (50ms aralık) — ilk render'da
+- Buton tıklamada `scale-95` press feedback
+- Toast bildirimleri slide-up + auto-dismiss
+- Shimmer skeleton tüm sayfalara (mevcut bazı yerlerde eksik)
+
+### B5 — Loading + Empty state cleanup (20 dk)
+
+- **Mock kalıntı taraması** — hiçbir yerde `15.133`, `6.890` gibi sahte rakam kalmasın
+- Boş kartlar için **"nasıl doldurulur"** ipucu (Watchlist'te zaten var, Alarmlarım/Portföyüm'e yaygınlaştır)
+- Skeleton'lar gerçek layout'u yansıtsın
+
+### B6 — Header + Navigation polish (40 dk)
+
+- Sol sidebar **gradient bg** + brand alanı (logo + "Financial Intelligence" daha premium)
+- Üst search bar geniş + auto-complete dropdown polish
+- Active route indicator **glow** efekti (mevcut sol mavi çubuk yerine)
+- Tema toggle + bildirim + profil avatar daha kompakt
+
+**Toplam B serisi tahmini:** 3-4 saat. Bir seansta hepsi yapılabilir.
+
+---
+
+## 🎯 ÖNCELİK 2 — Yapısal İyileştirme (A-serisi)
+
+### A1 — Performans (45 dk)
+- Image `loading="lazy"` denetimi
+- Critical CSS inlining (FCP < 1s)
+- SW cache stratejisi — stale-while-revalidate doğrulama
+- Code-split: BESCalculator lazy chunk
+- Lighthouse mobile skoru 90+ hedef
+
+### A2 — SEO + Meta (30 dk)
+- Tüm sayfalarda `<SeoHead>` tutarlılık
+- `og:image` özelleştirme (panel/öneriler/hisseler/fonlar/BES)
+- `schema.org/FinancialService` JSON-LD
+- Sitemap.xml + robots.txt + canonical doğrulama
+
+### A3 — a11y (30 dk)
+- `aria-label` denetimi
+- Klavye nav (tab order, focus ring)
+- Renk kontrastı WCAG AA (özellikle `text-slate-500`)
+- Heading hiyerarşisi semantik
+
+### A4 — Mobile-first review (60 dk)
+- 360 / 414 / 768px breakpoint testleri
+- Dokunma hedefi min 44×44px
+- Bottom sheet pattern
+- iOS safe-area-inset
+
+---
+
+## 🎯 ÖNCELİK 3 — Cowork Plugin (Anthropic Marketplace)
+
+Mevcut `hanefinans-plugin/` klasörü hazır, manifest var. Eksik:
+
+- 8 skill'in markdown frontmatter + procedure (bist-snapshot bir tane var)
+- Slash commands (`/finhane:brief` vb.)
+- `marketplace.json` + README + LICENSE
+- Test deployment
+
+**Skill listesi (planlanmış):**
+1. `bist-snapshot` (✅ var)
+2. `hisse-deep-dive` — hisse derin analiz
+3. `fon-onerisi` — kategori bazlı fon önerisi
+4. `bes-hesapla` — emeklilik birikim projeksiyonu
+5. `gunluk-brief` — sabah özeti
+6. `ai-screener` — natural language ile hisse tarama
+7. `alarm-kur` — şartlı alarm oluşturma
+8. `portfoy-analiz` — portföy risk + getiri
+
+**Toplam tahmini:** 2 saat.
+
+---
+
+## ⏸️ ASKIDA — Finhane Rebrand
+
+> TÜRKPATENT marka vekili görüşü gelene kadar bekletildi.
+> Karar:
+> - "Hane Finans" tescil ret riski **%30-40** (jenerik+tanımlayıcı)
+> - Logoyla figüratif tescil **%50-60** kabul
+> - Vekil görüşü almadan başvurma — başvuru ücreti boşa gider
+
+Vekil "yüksek risk" derse → Finhane'e geç (mevcut rebrand planı NEXT_SESSION'da korunuyor).
+
+---
+
+## 🎯 ÖNCELİK 4 — Mini İyileştirmeler (sıraya konulacak)
+
+- **Piyasa Özeti sparkline** — her satıra son 30 gün mini grafik
+- **24 saat hacim** — kripto + hisse kartlarına hover'da tooltip
+- **Hisse Smart Spotlight** — günün öne çıkan hissesi widget
+- **Geçmişte Bugün** — TR borsa tarihi from-DB
+- **AI Tahmin Doğruluk Skoru** — geçmiş tahminlerin yüzdesi
+- **Push notifications** — alarm + brief (mevcut backend var, frontend eksik)
+
+---
+
+## 🎯 ÖNCELİK 5 — Hazır olunca yapılacaklar
+
+- **Finhane Asistan sticky chat** (Elite premium) — sayfanın sağ alt köşesinde sticky AI sohbet
+- **Domain alımları** (Hane Finans için TR/COM/COMTR savunma)
+
+---
+
+## 📋 ÖNERİLEN BAŞLANGIÇ SIRASI (sonraki seans)
+
+```
+1. Paladyum veri (30-45 dk) ← ÖNCE BİTİR
+2. B1 PremiumCard component (30 dk)
+3. B2 sayfa-sayfa premium pass (60 dk)
+4. B4 mikro-etkileşim (30 dk)
+5. B5 loading/empty cleanup (20 dk)
+6. A2 SEO (30 dk)
+7. A1 Performans Lighthouse (45 dk)
+8. (Bonus eğer vakit kalırsa) B6 Header polish
+```
+
+**Toplam:** ~4 saat çekirdek iş, kullanıcıya **kesin görünür** premium upgrade'le biter.
+
+---
+
+## 🚨 ÖNCELİK 0 — Kıymetli Metal Hafta Sonu Veri Sorunu (KESİN ÇÖZÜM — ÇÖZÜLDÜ ✅)
 
 **Mevcut sorun:** Panel'de Ons Altın `$4,365.3 +0.65%` ve Ons Gümüş `$69.1 +0.23%` Cuma sabahki değerlerde donmuş — gerçek Cuma kapanış `$4,317.93 -3.29%` ve `$68.29 -7.51%`.
 

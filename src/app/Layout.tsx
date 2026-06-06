@@ -74,15 +74,16 @@ const navGroups: NavGroup[] = [
   {
     title: 'Piyasalar',
     items: [
-      { to: '/news', label: 'Gelişmeler', icon: Newspaper },
-      { to: '/takvim', label: 'Ekonomik Takvim', icon: CalendarClock },
-      { to: '/watchlist', label: 'Takip Listem', icon: Star },
-      { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
-      { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
-      { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
+      // Yeni sıra: Fonlar → Hisseler → Emtialar → Döviz Kurları → Takip Listem → Portföyüm → Ekonomik Takvim → Gelişmeler
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
+      { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/doviz', label: 'Döviz Kurları', icon: Coins },
+      { to: '/watchlist', label: 'Takip Listem', icon: Star },
+      { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
+      { to: '/takvim', label: 'Ekonomik Takvim', icon: CalendarClock },
+      { to: '/news', label: 'Gelişmeler', icon: Newspaper },
+      { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
       { to: '/kripto', label: 'Kripto', icon: Bitcoin },
       { to: '/abd', label: 'ABD Borsaları', icon: Flag, pro: true },
       { to: '/global', label: 'Global Piyasalar', icon: Globe, pro: true },

@@ -6,6 +6,7 @@ import { LiveBadge } from '@/components/domain/LiveBadge';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo, ouncePriceToGramTRY } from '@/data/api/yahoo';
 import { loadMacroAll } from '@/data/services';
+import { fetchSpotMetalsMetalsApi } from '@/data/api/metalsapi';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
@@ -54,7 +55,11 @@ export function CommoditiesPage() {
     setLoading(true);
     try {
       // USD/TRY + Panel ile aynı macro veri (GoldAPI/MetalsAPI kaynaklı Ons metal değerleri dahil)
-      const macroR = await loadMacroAll();
+      // + Paladyum (XPD) için MetalsAPI ek çağrısı (Yahoo PA=F yüzde değişimi hatalı geliyor)
+      const [macroR, metalsApiData] = await Promise.all([
+        loadMacroAll(),
+        fetchSpotMetalsMetalsApi(),
+      ]);
       const u = macroR.data.find((m) => m.key === 'USD/TRY')?.value ?? null;
       setUsdTry(u);
 

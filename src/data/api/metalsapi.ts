@@ -29,6 +29,7 @@ export interface MetalsApiSpot {
   XAU?: number;
   XAG?: number;
   XPT?: number;
+  XPD?: number;
 }
 
 function readCache(): MetalsApiSpot | null {
@@ -54,7 +55,7 @@ export async function fetchSpotMetalsMetalsApi(): Promise<MetalsApiSpot | null> 
   if (cached) return cached;
   if (!API_KEYS.metalsApi) return null;
   try {
-    const url = `${BASE}?access_key=${encodeURIComponent(API_KEYS.metalsApi)}&base=USD&symbols=XAU,XAG,XPT`;
+    const url = `${BASE}?access_key=${encodeURIComponent(API_KEYS.metalsApi)}&base=USD&symbols=XAU,XAG,XPT,XPD`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as MetalsApiResp;
@@ -62,13 +63,15 @@ export async function fetchSpotMetalsMetalsApi(): Promise<MetalsApiSpot | null> 
     const xau = json.rates.USDXAU;
     const xag = json.rates.USDXAG;
     const xpt = json.rates.USDXPT;
-    if (!Number.isFinite(xau) && !Number.isFinite(xag) && !Number.isFinite(xpt)) return null;
+    const xpd = json.rates.USDXPD;
+    if (!Number.isFinite(xau) && !Number.isFinite(xag) && !Number.isFinite(xpt) && !Number.isFinite(xpd)) return null;
     const result: MetalsApiSpot = {
       fetchedAt: Date.now(),
       date: json.date,
       XAU: Number.isFinite(xau) ? xau : undefined,
       XAG: Number.isFinite(xag) ? xag : undefined,
       XPT: Number.isFinite(xpt) ? xpt : undefined,
+      XPD: Number.isFinite(xpd) ? xpd : undefined,
     };
     writeCache(result);
     return result;

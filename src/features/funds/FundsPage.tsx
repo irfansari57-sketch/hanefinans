@@ -242,7 +242,7 @@ export function FundsPage() {
           s.count === 0 ? 'text-slate-500' : s.avg >= 0 ? 'text-success' : 'text-danger';
 
         return (
-          <div className="mb-4 grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="row-stagger mb-4 grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             <PremiumCard accent="cyan" hover="lift" density="compact">
               <div className="text-[10px] font-bold uppercase tracking-wider text-accent">Takipteki</div>
               <div className="mt-1 text-xl font-semibold drop-shadow-sm">{sorted.length}</div>

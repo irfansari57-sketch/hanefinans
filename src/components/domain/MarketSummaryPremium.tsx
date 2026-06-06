@@ -139,7 +139,7 @@ export function MarketSummaryPremium({ macro }: Props) {
   const crypto = findItems(COL_CRYPTO);
 
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+    <div className="row-stagger grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
       <Column
         title="Endeks & Döviz"
         icon={<BarChart3 size={14} className="text-accent" />}

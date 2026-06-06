@@ -456,7 +456,7 @@ export function Layout() {
           id="main-content"
           key={location.pathname}
           tabIndex={-1}
-          className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 pb-20 focus:outline-none sm:px-6 sm:py-6 sm:pb-20 md:pb-6 lg:px-8"
+          className="page-fade-in mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-3 py-4 pb-20 focus:outline-none sm:px-6 sm:py-6 sm:pb-20 md:pb-6 lg:px-8"
         >
           <Outlet />
         </main>

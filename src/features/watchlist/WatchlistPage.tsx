@@ -626,7 +626,7 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
   return (
     <>
       {summary && (
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <div className="row-stagger mb-4 grid gap-3 sm:grid-cols-3">
           <PremiumCard accent="cyan" hover="lift" density="compact">
             <div className="text-[10px] font-bold uppercase tracking-wider text-accent">Takipte</div>
             <div className="mt-1 text-xl font-semibold drop-shadow-sm">{summary.total}</div>

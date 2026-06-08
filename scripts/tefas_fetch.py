@@ -34,10 +34,20 @@ def fmt_tr_date(d: datetime) -> str:
 
 
 def previous_business_day(d: datetime) -> datetime:
-    """Verilen tarih hafta sonuysa cuma'ya çek."""
+    """Verilen tarih hafta sonuysa cuma'ya çek (verilen tarih iş günüyse aynen döner)."""
     while d.weekday() >= 5:  # 0=Mon, 5=Sat, 6=Sun
         d -= timedelta(days=1)
     return d
+
+
+def strictly_prior_business_day(d: datetime) -> datetime:
+    """Verilen tarihten KESİNLİKLE önceki iş günü.
+    Cuma verilirse Perşembe, Pazartesi verilirse Cuma, Pazar verilirse Cuma'dan
+    bir önceki iş günü (Perşembe) döner. 1d/1w anchor'ları için kritik —
+    aksi halde Pazar günü last=Cuma, prev=Cuma aynı çıkıyor → fark=0.
+    """
+    d = d - timedelta(days=1)
+    return previous_business_day(d)
 
 
 def pct_change(latest: float, past: float | None) -> float | None:
@@ -169,9 +179,17 @@ def main() -> int:
     os.makedirs("data", exist_ok=True)
     today = datetime.now(timezone.utc).replace(tzinfo=None)
 
+    # 'last' anchor: son yayınlanan iş günü NAV (Pazar→Cuma, Pazartesi→Cuma).
+    last_anchor = previous_business_day(today - timedelta(days=1))
+
     anchors = {
-        'last':  today - timedelta(days=1),  # bugün (last business day)
-        # 'prev' ve '1w' artik history range'den hesaplaniyor (asagida)
+        'last':  last_anchor,
+        # 'prev' = last_anchor'dan KESİN bir iş günü önce (Cuma → Perşembe).
+        # Önceden today - timedelta(days=2) idi; Pazar günü last ve prev aynı Cuma'ya
+        # çekiliyordu → 1d = 0. Şimdi garanti farklı bir iş günü.
+        'prev':  strictly_prior_business_day(last_anchor),
+        # '1w' = last_anchor'dan 7 takvim günü önceki iş günü
+        '1w':    previous_business_day(last_anchor - timedelta(days=7)),
         '1m':    today - timedelta(days=31),
         '3m':    today - timedelta(days=92),
         '6m':    today - timedelta(days=183),
@@ -181,7 +199,7 @@ def main() -> int:
 
     print(f"\nAnchor tarihleri:", flush=True)
     for k, d in anchors.items():
-        print(f"  {k}: {fmt_tr_date(d)}", flush=True)
+        print(f"  {k}: {fmt_tr_date(d)} (weekday={d.weekday()})", flush=True)
 
     # Önce 'last' (bugün) ile fund_type doğrula — SEC önce, sonra YAT fallback
     snapshots: dict[str, pd.DataFrame] = {}
@@ -215,8 +233,10 @@ def main() -> int:
     if not cols['category']:
         print(f"⚠️ Category sütunu bulunamadı — kategori boş gelecek", file=sys.stderr)
 
-    # Uzun donem anchor'lari (1m, 3m, 6m, 1y, ytd) tek-tarih fetch ile
-    for key in ['1m', '3m', '6m', '1y', 'ytd']:
+    # Uzun donem anchor'lari + prev + 1w (history range desteklenmediği için
+    # her zaman snapshot anchor approach'la fetch et — 1d=0 ve 1w=null sorununun
+    # asıl çözümü bu).
+    for key in ['prev', '1w', '1m', '3m', '6m', '1y', 'ytd']:
         print(f"\n{key} anchor çekiliyor...", flush=True)
         t0 = time.time()
         df = fetch_snapshot(working_ftype, anchors[key])
@@ -242,11 +262,12 @@ def main() -> int:
     if history_df is not None and not history_df.empty:
         print(f"  ✓ history range: {len(history_df)} satır ({elapsed:.1f}s)", flush=True)
     else:
-        print(f"  ✗ history range: veri yok / paket desteklemiyor ({elapsed:.1f}s)", flush=True)
+        print(f"  ✗ history range: veri yok / paket desteklemiyor ({elapsed:.1f}s) — prev/1w zaten ana akışta çekildi", flush=True)
         history_df = pd.DataFrame()
-        # Fallback: anchor approach (eski usul) — prev ve 1w icin ayri snapshot fetch
-        print(f"\nFallback: prev ve 1w anchor'lari ayri cekiliyor...", flush=True)
-        for key, days_back_val in [('prev', 2), ('1w', 8)]:
+        # NOT: prev ve 1w artık ana anchor loop'ta çekiliyor — eski fallback
+        # kaldırıldı. Aşağıdaki for [('prev', 2)...] bloğu sadece overwrite olmasın
+        # diye boş tutuluyor.
+        for key, days_back_val in [('_skip_', 2), ('_skip_', 8)]:
             t0 = time.time()
             anchor_date = today - timedelta(days=days_back_val)
             df = fetch_snapshot(working_ftype, anchor_date)

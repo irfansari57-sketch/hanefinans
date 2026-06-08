@@ -62,6 +62,23 @@ def calc_return(history, days):
     return round(((last["price"] - candidate["price"]) / candidate["price"]) * 100, 2)
 
 
+def calc_day_return(history):
+    """Son iki ardışık NAV arasındaki yüzde fark — gerçek "son işlem günü" değişimi.
+    TEFAS hafta sonu yeni NAV yayınlamaz; bu yüzden takvim günü değil, listedeki
+    son iki kayıt baz alınır (Cuma vs Perşembe gibi).
+    """
+    if not history or len(history) < 2:
+        return None
+    history = sorted(history, key=lambda x: x["date"])
+    last = history[-1]
+    prev = history[-2]
+    if not prev or prev["price"] == 0:
+        return None
+    if last["date"] == prev["date"]:
+        return None
+    return round(((last["price"] - prev["price"]) / prev["price"]) * 100, 2)
+
+
 def calc_ytd(history):
     if not history:
         return None
@@ -109,6 +126,7 @@ def fetch_fund(crawler, code):
         "investorCount": int(last_row.get("number_of_investors") or 0),
         "shareCount": float(last_row.get("number_of_shares") or 0),
         "returns": {
+            "1d": calc_day_return(history),
             "1w": calc_return(history, 7),
             "1m": calc_return(history, 30),
             "3m": calc_return(history, 90),
@@ -135,7 +153,7 @@ def main():
         if data:
             funds.append(data)
             r = data["returns"]
-            print(f"  ✓ {code}: NAV={data['nav']:.4f}  1A={r.get('1m')}%  1Y={r.get('1y')}%")
+            print(f"  ✓ {code}: NAV={data['nav']:.4f}  1G={r.get('1d')}%  1H={r.get('1w')}%  1A={r.get('1m')}%  1Y={r.get('1y')}%")
         else:
             failed.append(code)
 

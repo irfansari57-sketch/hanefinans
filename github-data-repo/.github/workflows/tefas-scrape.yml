@@ -2,8 +2,12 @@ name: TEFAS Scrape
 
 on:
   schedule:
-    # Her saatin başında çalış (UTC). Türkiye saati ile her saat 03:00, 04:00, ...
-    - cron: '5 * * * *'
+    # Sadece haftaiçi (Pzt-Cum) çalış — UTC saatleri.
+    # TEFAS Türkiye'de hafta sonu NAV yayınlamaz; Cumartesi/Pazar koşmak boşa Action
+    # quota harcar, üstüne updatedAt'i gereksiz yeniler. Cuma 18:30 (TR) kapanış ile
+    # son snapshot dondurulur; Pazartesi 06:00 (TR) ile yeniden başlar.
+    # Cron: dakika 5'te her saat, Pzt-Cum, UTC 03:00 - 19:00 (TR 06:00 - 22:00).
+    - cron: '5 3-19 * * 1-5'
   workflow_dispatch:  # Actions sekmesinde "Run workflow" ile manuel tetik
   push:
     branches: [main]  # main'e her commit'te de çalış (test için)

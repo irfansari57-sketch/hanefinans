@@ -1,122 +1,157 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Ana sayfa -->
   <url>
     <loc>https://hanefinans.net/</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <!-- Genel — Yüksek öncelik -->
   <url>
     <loc>https://hanefinans.net/panel</loc>
-    <lastmod>2026-05-23</lastmod>
-    <changefreq>daily</changefreq>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/morning</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/recommendations</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://hanefinans.net/news</loc>
-    <lastmod>2026-05-23</lastmod>
-    <changefreq>hourly</changefreq>
+    <loc>https://hanefinans.net/sorgu</loc>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hanefinans.net/tahmin</loc>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://hanefinans.net/brief</loc>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Piyasalar — Yüksek öncelik -->
+  <url>
+    <loc>https://hanefinans.net/funds</loc>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/stocks</loc>
-    <lastmod>2026-05-23</lastmod>
-    <changefreq>daily</changefreq>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://hanefinans.net/funds</loc>
-    <lastmod>2026-05-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://hanefinans.net/emtia</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/doviz</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hanefinans.net/takvim</loc>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://hanefinans.net/news</loc>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/kripto</loc>
-    <lastmod>2026-05-23</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>hourly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/heatmap</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/abd</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/global</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
+
+  <!-- Eğitim — SEO için kritik içerik -->
   <url>
     <loc>https://hanefinans.net/egitim</loc>
-    <lastmod>2026-05-23</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-06-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
   </url>
+
+  <!-- Hesap / Üyelik -->
   <url>
     <loc>https://hanefinans.net/uyelik</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+
+  <!-- Yasal sayfalar -->
   <url>
     <loc>https://hanefinans.net/legal/kvkk</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/legal/uyelik-sozlesmesi</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/legal/mesafeli-satis-sozlesmesi</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/legal/iade-politikasi</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://hanefinans.net/legal/cerez-politikasi</loc>
-    <lastmod>2026-05-23</lastmod>
+    <lastmod>2026-06-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

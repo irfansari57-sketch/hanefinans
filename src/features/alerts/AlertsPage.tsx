@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, Trash2, RotateCcw, ChevronRight, Pause, Play, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { PremiumCard } from '@/components/ui/PremiumCard';
 import { useAuth } from '@/store/auth';
 import {
   listAlerts,
@@ -205,11 +206,11 @@ function AlertCard({ item, busy, onToggle, onDelete }: {
   const url = routeFor(item);
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border bg-bg-soft p-3 transition',
-        isTriggered ? 'border-success/30 bg-success/5' : isActive ? 'border-border hover:border-accent/40' : 'border-border opacity-70',
-      )}
+    <PremiumCard
+      accent={isTriggered ? 'success' : isActive ? 'cyan' : 'slate'}
+      hover={isActive ? 'lift' : 'none'}
+      density="compact"
+      className={!isActive && !isTriggered ? 'opacity-70' : undefined}
     >
       <div className="flex items-start gap-3">
         <div className={cn(
@@ -284,7 +285,7 @@ function AlertCard({ item, busy, onToggle, onDelete }: {
           </button>
         </div>
       </div>
-    </div>
+    </PremiumCard>
   );
 }
 

@@ -60,6 +60,60 @@
 
     <!-- Hint to AT: this is a financial info app -->
     <meta name="application-name" content="Hane Finans" />
+
+    <!-- Schema.org JSON-LD: FinancialService + Organization + WebSite -->
+    <!-- Google'a "bu site finansal hizmet sunan organizasyon" diyerek rich result + knowledge graph kazandırır -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://hanefinans.net/#org",
+          "name": "Hane Finans",
+          "alternateName": "Hane Finans Financial Intelligence",
+          "url": "https://hanefinans.net/",
+          "logo": "https://hanefinans.net/web-app-manifest-512x512.png",
+          "description": "BIST hisseleri, TEFAS fonları, kripto, döviz ve makro göstergeler için AI destekli finansal analiz platformu.",
+          "areaServed": { "@type": "Country", "name": "Turkey" },
+          "knowsLanguage": "tr-TR"
+        },
+        {
+          "@type": "FinancialService",
+          "@id": "https://hanefinans.net/#service",
+          "name": "Hane Finans — BIST, Fon, Kripto Analiz",
+          "url": "https://hanefinans.net/",
+          "provider": { "@id": "https://hanefinans.net/#org" },
+          "areaServed": { "@type": "Country", "name": "Turkey" },
+          "category": "Investment Analysis Platform",
+          "serviceType": [
+            "BIST hisse takibi",
+            "TEFAS fon analizi",
+            "Kripto varlık takibi",
+            "Döviz kuru izleme",
+            "Makroekonomik gösterge takibi",
+            "AI tabanlı teknik analiz",
+            "Yapay zeka destekli haber takibi",
+            "BES (Bireysel Emeklilik) hesaplama"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://hanefinans.net/#website",
+          "url": "https://hanefinans.net/",
+          "name": "Hane Finans",
+          "description": "Türkiye'nin AI destekli finans takip platformu",
+          "publisher": { "@id": "https://hanefinans.net/#org" },
+          "inLanguage": "tr-TR",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://hanefinans.net/sorgu?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="bg-bg text-slate-100">
     <div id="root"></div>

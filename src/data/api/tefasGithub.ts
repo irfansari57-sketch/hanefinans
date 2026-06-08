@@ -52,6 +52,45 @@ let cache: { fetchedAt: number; data: TefasFeed } | null = null;
 let lastError: TefasFeedFetchResult | null = null;
 const CACHE_TTL_MS = 5 * 60_000;
 
+// LastGood snapshot: hafta sonu / network hatasında son başarılı feed'i tutar.
+// TEFAS hafta sonu NAV yayınlamaz; Cuma 23:59 (TR) feed'i Pazartesi açılışa kadar
+// "kilit" gibi davranır. Bu sayede Cumartesi/Pazar fonlarda "Gün %", "1 Hafta %"
+// vs. boş veya 0 görünmez — son işlem gününün gerçek kapanış değerleri görünür.
+const LAST_GOOD_LS_KEY = 'fa.tefas.lastGood.v1';
+// TTL 7 gün: en uzun durumda 1 Cuma → 1 Pazartesi açılışa kadar (~80 sa) yeter.
+// Bunun üstünde feed gerçekten gelmiyor demektir; kullanıcıya "—" göstermek daha doğru.
+const LAST_GOOD_TTL_MS = 7 * 24 * 60 * 60_000;
+
+interface LastGoodSnapshot {
+  fetchedAt: number;
+  data: TefasFeed;
+}
+
+function readLastGood(): TefasFeed | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(LAST_GOOD_LS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LastGoodSnapshot;
+    if (!parsed?.data?.funds || !Array.isArray(parsed.data.funds)) return null;
+    if (Date.now() - parsed.fetchedAt > LAST_GOOD_TTL_MS) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastGood(data: TefasFeed) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    if (!data?.funds || data.funds.length === 0) return;
+    const payload: LastGoodSnapshot = { fetchedAt: Date.now(), data };
+    localStorage.setItem(LAST_GOOD_LS_KEY, JSON.stringify(payload));
+  } catch {
+    /* quota — yoksay */
+  }
+}
+
 export function getLastFeedError(): TefasFeedFetchResult | null {
   return lastError;
 }
@@ -59,6 +98,23 @@ export function getLastFeedError(): TefasFeedFetchResult | null {
 export async function fetchTefasFeed(): Promise<TefasFeed | null> {
   const r = await fetchTefasFeedDetailed();
   return r.ok ? r.feed ?? null : null;
+}
+
+/**
+ * lastGood fallback yardımcısı: hata durumunda son başarılı snapshot varsa onu döndür.
+ * UI'da "Veri yok / 0.00%" yerine son işlem gününün gerçek değerlerini gösterir.
+ */
+function fallbackToLastGood(error: TefasFeedFetchResult): TefasFeedFetchResult {
+  const last = readLastGood();
+  if (last) {
+    // In-memory cache'i de doldur ki bir sonraki çağrı 5dk içinde tekrar fetch denemesin
+    cache = { fetchedAt: Date.now(), data: last };
+    // lastError'u sakla ama dış dünyaya "ok" döndür — UI veri görüyor
+    lastError = error;
+    return { ok: true, feed: last, url: FEED_URL };
+  }
+  lastError = error;
+  return error;
 }
 
 export async function fetchTefasFeedDetailed(): Promise<TefasFeedFetchResult> {
@@ -79,8 +135,7 @@ export async function fetchTefasFeedDetailed(): Promise<TefasFeedFetchResult> {
         error: `HTTP ${r.status} ${r.statusText}`,
         preview: text.slice(0, 200),
       };
-      lastError = result;
-      return result;
+      return fallbackToLastGood(result);
     }
     const text = await r.text();
     let data: TefasFeed;
@@ -94,8 +149,7 @@ export async function fetchTefasFeedDetailed(): Promise<TefasFeedFetchResult> {
         error: `JSON parse hatası: ${(parseErr as Error).message}`,
         preview: text.slice(0, 200),
       };
-      lastError = result;
-      return result;
+      return fallbackToLastGood(result);
     }
     if (!data.funds || !Array.isArray(data.funds) || data.funds.length === 0) {
       const result: TefasFeedFetchResult = {
@@ -105,10 +159,11 @@ export async function fetchTefasFeedDetailed(): Promise<TefasFeedFetchResult> {
         error: `Feed çağrısı başarılı ama 'funds' alanı boş/yok (count: ${data.count ?? 0})`,
         preview: text.slice(0, 200),
       };
-      lastError = result;
-      return result;
+      return fallbackToLastGood(result);
     }
+    // Başarılı: in-memory + localStorage'a yaz
     cache = { fetchedAt: Date.now(), data };
+    writeLastGood(data);
     lastError = null;
     return { ok: true, feed: data, url: FEED_URL };
   } catch (err) {
@@ -117,8 +172,7 @@ export async function fetchTefasFeedDetailed(): Promise<TefasFeedFetchResult> {
       url: FEED_URL,
       error: `Ağ hatası: ${(err as Error).message}`,
     };
-    lastError = result;
-    return result;
+    return fallbackToLastGood(result);
   }
 }
 

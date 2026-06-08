@@ -24,8 +24,11 @@ type SortKey =
   | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'rytd' | 'r1y';
 
 const STOCK_RETURNS_CACHE_KEY = 'fa.stocks.returns.v1';
-// SWR: 24 saat — cache hep canli, dunku veri en kotu senaryo. Cron her gece D1'i yeniler.
-const STOCK_RETURNS_TTL_MS = 24 * 60 * 60_000;
+// SWR: 7 gün — hafta sonu (Cmt-Paz) BIST kapalıyken Yahoo/snapshot endpoint boş
+// dönebilir; eski cache hala kullanılabilir olsun. Cron haftaiçi her gece D1'i
+// yenilediği için pratikte her zaman <24h veri görüyoruz; TTL 7 gün sadece
+// hafta sonu kilit + olası ağ hatası senaryosuna karşı sigorta.
+const STOCK_RETURNS_TTL_MS = 7 * 24 * 60 * 60_000;
 
 interface ReturnsCache {
   fetchedAt: number;
@@ -59,8 +62,9 @@ function writeReturnsCache(data: Record<string, PeriodReturns>) {
 }
 
 // Agresif memo: hem in-memory hem localStorage — sayfa yenilemede de instant render
-// SWR 24 saat: son ziyaret değerleri her zaman dolu görünür.
-const STOCKS_MEMO_TTL_MS = 24 * 60 * 60_000;
+// SWR 7 gün: hafta sonu kilidiyle Cuma kapanış değerleri Pazartesi açılışa kadar
+// görünür kalır. Cron her haftaiçi günü yeni veriyle override eder.
+const STOCKS_MEMO_TTL_MS = 7 * 24 * 60 * 60_000;
 const STOCKS_MEMO_LS_KEY = 'fa.stocksMemo.v1';
 interface StocksMemo {
   fetchedAt: number;

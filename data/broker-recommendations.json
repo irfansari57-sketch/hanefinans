@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-06-09T20:36:44.009259+00:00",
+  "fetchedAt": "2026-06-10T18:09:38.023379+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -8,14 +8,14 @@
       "initials": "İY",
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
-      "lastUpdate": "2026-06-09",
+      "lastUpdate": "2026-06-10",
       "recommendations": [
         {
           "symbol": "MPARK",
           "rating": "GÜÇLÜ AL",
           "targetPrice": 700.24,
           "stopLoss": null,
-          "thesis": "Mevcut 449.75₺ → hedef 700.24₺ (%56 potansiyel)",
+          "thesis": "Mevcut 446.00₺ → hedef 700.24₺ (%57 potansiyel)",
           "updatedAt": "2025-12-23"
         },
         {
@@ -23,7 +23,7 @@
           "rating": "AL",
           "targetPrice": 450.0,
           "stopLoss": null,
-          "thesis": "Mevcut 357.25₺ → hedef 450.00₺ (%26 potansiyel)",
+          "thesis": "Mevcut 376.75₺ → hedef 450.00₺ (%19 potansiyel)",
           "updatedAt": "2025-01-16"
         },
         {
@@ -31,7 +31,7 @@
           "rating": "AL",
           "targetPrice": 367.28,
           "stopLoss": null,
-          "thesis": "Mevcut 299.00₺ → hedef 367.28₺ (%23 potansiyel)",
+          "thesis": "Mevcut 285.00₺ → hedef 367.28₺ (%29 potansiyel)",
           "updatedAt": "2025-10-20"
         },
         {
@@ -39,7 +39,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 338.0,
           "stopLoss": null,
-          "thesis": "Mevcut 229.50₺ → hedef 338.00₺ (%47 potansiyel)",
+          "thesis": "Mevcut 234.80₺ → hedef 338.00₺ (%44 potansiyel)",
           "updatedAt": "2026-04-09"
         },
         {
@@ -47,7 +47,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 195.0,
           "stopLoss": null,
-          "thesis": "Mevcut 130.40₺ → hedef 195.00₺ (%50 potansiyel)",
+          "thesis": "Mevcut 128.20₺ → hedef 195.00₺ (%52 potansiyel)",
           "updatedAt": "2024-07-08"
         },
         {
@@ -55,7 +55,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 173.54,
           "stopLoss": null,
-          "thesis": "Mevcut 105.70₺ → hedef 173.54₺ (%64 potansiyel)",
+          "thesis": "Mevcut 104.30₺ → hedef 173.54₺ (%66 potansiyel)",
           "updatedAt": "2026-03-12"
         },
         {
@@ -63,7 +63,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 117.5,
           "stopLoss": null,
-          "thesis": "Mevcut 77.20₺ → hedef 117.50₺ (%52 potansiyel)",
+          "thesis": "Mevcut 76.65₺ → hedef 117.50₺ (%53 potansiyel)",
           "updatedAt": "2025-10-16"
         },
         {
@@ -71,7 +71,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 107.0,
           "stopLoss": null,
-          "thesis": "Mevcut 67.15₺ → hedef 107.00₺ (%59 potansiyel)",
+          "thesis": "Mevcut 66.10₺ → hedef 107.00₺ (%62 potansiyel)",
           "updatedAt": "2026-04-14"
         }
       ],
@@ -117,7 +117,7 @@
       "initials": "OY",
       "colorSeed": "#10b981",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "lastUpdate": "2026-06-09",
+      "lastUpdate": "2026-06-10",
       "recommendations": [],
       "ok": false,
       "debugLog": [
@@ -135,17 +135,17 @@
       "initials": "KT",
       "colorSeed": "#ec4899",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
-      "lastUpdate": "2026-06-09",
+      "lastUpdate": "2026-06-10",
       "recommendations": [],
       "portfolio": [],
       "ok": false,
       "debugLog": [
         "GET listing: https://kuveytturkyatirim.com.tr/arastirma-raporlari/",
-        "Listing HTTP 200, html size=663975 chars",
-        "Found 4 'gunluk-bulten' PDF pattern matches in listing",
-        "Latest PDF: /media/icamzucf/gunluk-bulten_08062026.pdf",
-        "PDF HTTP 200, 3113408 bytes",
-        "PDF text: 1473 chars",
+        "Listing HTTP 200, html size=664139 chars",
+        "Found 6 'gunluk-bulten' PDF pattern matches in listing",
+        "Latest PDF: /media/cc3iucy4/gunluk-bulten_10062026.pdf",
+        "PDF HTTP 200, 3842283 bytes",
+        "PDF text: 1224 chars",
         "Bülten Claude: Claude returned 0 items but all were filtered out (invalid symbol/format)",
         "Recommendations: 0"
       ],

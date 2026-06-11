@@ -57,7 +57,9 @@ def pct_change(latest: float, past: float | None) -> float | None:
 
 
 def fetch_snapshot(ftype: str, target_date: datetime, max_back: int = 5) -> pd.DataFrame | None:
-    """Tek bir tarih için tüm fonların verisini çek; iş günü değilse 5 gün geriye dön."""
+    """Tek bir tarih için tüm fonların verisini çek; iş günü değilse max_back gün geriye dön.
+    Long-term anchorlar (3m/6m/1y/ytd) için max_back=20 ile çağırın — uzun tatil/bayramları
+    kapsasın. Aksi halde 1994 fonun 3m kolonu hep null gelir."""
     d = previous_business_day(target_date)
     for back in range(max_back):
         try:
@@ -236,10 +238,16 @@ def main() -> int:
     # Uzun donem anchor'lari + prev + 1w (history range desteklenmediği için
     # her zaman snapshot anchor approach'la fetch et — 1d=0 ve 1w=null sorununun
     # asıl çözümü bu).
+    # max_back dinamik: kisa-vadeli icin 5 yeter, uzun-vadeli icin 20 (tatil/bayram
+    # kapsasin). Onceden hepsi 5'ti -> 3m/ytd hep null geliyordu.
+    max_back_by_key = {
+        'prev': 5, '1w': 7, '1m': 10,
+        '3m': 20, '6m': 20, '1y': 25, 'ytd': 20,
+    }
     for key in ['prev', '1w', '1m', '3m', '6m', '1y', 'ytd']:
-        print(f"\n{key} anchor çekiliyor...", flush=True)
+        print(f"\n{key} anchor çekiliyor (max_back={max_back_by_key.get(key, 5)})...", flush=True)
         t0 = time.time()
-        df = fetch_snapshot(working_ftype, anchors[key])
+        df = fetch_snapshot(working_ftype, anchors[key], max_back=max_back_by_key.get(key, 5))
         elapsed = time.time() - t0
         if df is not None and not df.empty:
             print(f"  ✓ {key}: {len(df)} satır ({elapsed:.1f}s)", flush=True)

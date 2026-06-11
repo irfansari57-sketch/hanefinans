@@ -416,7 +416,7 @@ export function Layout() {
                   />
                   <div className="flex flex-col items-center leading-tight">
                     <span className="text-sm font-extrabold tracking-tight">HANE FİNANS</span>
-                    <span lang="en" className="mt-0.5 text-[10px] tracking-[0.18em] text-accent font-semibold">FINANCIAL INTELLIGENCE</span>
+                    <span className="mt-0.5 text-[10px] tracking-[0.18em] text-accent font-semibold">VERİ · ANALİZ · FIRSAT</span>
                   </div>
                 </div>
                 <button

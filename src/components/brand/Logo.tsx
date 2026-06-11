@@ -20,8 +20,8 @@ export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
           <span className="logo-text-3d text-base font-extrabold tracking-tight">
             HANE FİNANS
           </span>
-          <span lang="en" className="mt-0.5 text-[10px] tracking-[0.18em] text-accent/85 font-semibold">
-            FINANCIAL INTELLIGENCE
+          <span className="mt-0.5 text-[10px] tracking-[0.18em] text-accent/85 font-semibold">
+            VERİ · ANALİZ · FIRSAT
           </span>
         </div>
       </div>

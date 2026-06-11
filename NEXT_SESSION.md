@@ -1,6 +1,70 @@
-# Hane Finans — Sonraki Seans Yol Haritası
+# Hane Finans → Finsardes — Sonraki Seans Yol Haritası
 
-> Son güncelleme: 2026-06-07 (Pazar gece) — son seans 12+ saatlik intensive çalışma
+> Son güncelleme: 2026-06-11 (Perşembe) — Finsardes rebrand kararı + Faz 1 slogan + BIST endeks kapsam filtresi
+
+---
+
+## 🎨 FİNSARDES REBRAND PLANI (kademeli)
+
+### Karar — Yeni marka: **Finsardes**
+
+**Etimoloji**: **Fin** (Finans/Fintech) + **Sardes** (Lidya başkenti, MÖ 7. yy'da tarihteki ilk madeni para burada basıldı)
+
+**Slogan**: *Veri, Analiz, Fırsat*
+
+**Marka anlatısı**:
+> *"MÖ 7. yüzyıl Anadolu — Sardes'te insanlık ilk madeni parayı bastı. Bugün Finsardes, paranın doğduğu topraklardan dijital fırsatlara köprü."*
+
+### Marka kontrolleri (kullanıcı yapacak)
+
+| Kontrol | Adres | Notlar |
+|---|---|---|
+| Domain | namecheap.com / godaddy.com | finsardes.com, .net, .com.tr |
+| TÜRKPATENT | turkpatent.gov.tr → Marka Araştırması | Sınıf 36 (finans) + 42 (yazılım) + 35 (reklam) |
+| Sosyal handle | LinkedIn, Twitter, IG, YouTube | @finsardes hepsi rezerve |
+
+**Bulgu (2026-06-11 web search):** Türkiye fintech haritasında (Papara, Sipay, Param, vs.) **Finsardes yok** → SEO bakir, marka çakışma riski sıfıra yakın.
+
+### Faz 1: Kozmetik ✅ TAMAMLANDI (2026-06-11)
+
+- Sidebar header'da "FINANCIAL INTELLIGENCE" → **"VERİ · ANALİZ · FIRSAT"**
+- Logo.tsx + AuthPage'de aynı slogan
+- index.html title: *"Hane Finans — Veri, Analiz, Fırsat | BIST, Fon, Kripto ve Makro"*
+- index.html OG + Twitter meta: slogan eklendi
+- JSON-LD Organization: `slogan: "Veri, Analiz, Fırsat"` + alternateName güncel
+
+### Faz 2: Çift marka dönemi (sonraki seans, ~3-4 saat)
+
+**Önkoşul**: Domain alınmış olmalı (finsardes.com)
+
+- Site içi metinlerde: "Finsardes (eski Hane Finans)"
+- Logo: Yeni Finsardes logosu + altında küçük "powered by Hane Finans"
+- Email/iletişim formu finsardes.com'a yönlendir
+- Cloudflare Pages → custom domain ekle: finsardes.com → hanefinans-prod build
+- 301 redirect: hanefinans.net/* → finsardes.com/* (Cloudflare worker)
+
+### Faz 3: Final geçiş (TÜRKPATENT onayı sonrası, ~1-2 saat)
+
+- Tüm "Hane Finans" referansları "Finsardes"e dönüştür
+- JSON-LD Organization name değişir
+- Sitemap, og-image SVG, manifest tam Finsardes
+- SEO: hanefinans.net subdomain olarak korunur (eski SEO erimesin)
+- Footer copyright: "© 2026 Finsardes"
+
+### Logo konsept önerisi (sonraki seans)
+
+**Lidya sikkesinden ilham:**
+- **Üst**: Stylized Croesus sikkesi — yarım daire + aslan figürü (Lidya kral simgesi)
+- **Alt**: "FINSARDES" tipografi, Inter ExtraBold sans-serif
+
+**Renk paleti**:
+- Lidya Altın: `#D4AF37`
+- Sardes Kil: `#B85C38`
+- Modern aksan: `#22D3EE` (turkuaz — Hane Finans köprü)
+
+---
+
+> Önceki güncelleme: 2026-06-07 (Pazar gece) — son seans 12+ saatlik intensive çalışma
 >
 > **Bu seansta TAMAMLANDI:**
 > - ✅ Premium 3 sütun Piyasa Özeti (turkuaz + 3D depth)

@@ -108,7 +108,7 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-charts': ['recharts'],
+            'vendor-charts': ['lightweight-charts'],
             'vendor-icons': ['lucide-react'],
             'vendor-data': ['dexie', 'dexie-react-hooks'],
             'vendor-helmet': ['react-helmet-async'],

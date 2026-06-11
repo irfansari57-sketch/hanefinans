@@ -533,8 +533,8 @@ export function Layout() {
       {/* Sağ haber bandı — aşağıdan yukarı akan gündem */}
       <RightNewsTicker />
 
-      {/* Geri bildirim widget */}
-      <FeedbackWidget />
+      {/* Geri bildirim widget — gecici olarak kapali */}
+      {/* <FeedbackWidget /> */}
 
       {/* Toast notifications */}
       <ToastContainer />

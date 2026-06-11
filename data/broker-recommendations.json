@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-06-11T18:37:24.299532+00:00",
+  "fetchedAt": "2026-06-11T21:33:53.469611+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -9,10 +9,107 @@
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
       "lastUpdate": "2026-06-11",
-      "recommendations": [],
-      "portfolio": [],
-      "ok": false,
-      "error": "HTTPSConnectionPool(host='www.isyatirim.com.tr', port=443): Max retries exceeded with url: /tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.isyatirim.com.tr', port=443) at 0x7f3ceb281110>, 'Connection to www.isyatirim.com.tr timed out. (connect timeout=20)'))"
+      "recommendations": [
+        {
+          "symbol": "MPARK",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 700.24,
+          "stopLoss": null,
+          "thesis": "Mevcut 438.00₺ → hedef 700.24₺ (%60 potansiyel)",
+          "updatedAt": "2025-12-23"
+        },
+        {
+          "symbol": "ASELS",
+          "rating": "AL",
+          "targetPrice": 450.0,
+          "stopLoss": null,
+          "thesis": "Mevcut 377.75₺ → hedef 450.00₺ (%19 potansiyel)",
+          "updatedAt": "2025-01-16"
+        },
+        {
+          "symbol": "ASTOR",
+          "rating": "AL",
+          "targetPrice": 367.28,
+          "stopLoss": null,
+          "thesis": "Mevcut 295.00₺ → hedef 367.28₺ (%25 potansiyel)",
+          "updatedAt": "2025-10-20"
+        },
+        {
+          "symbol": "TUPRS",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 338.0,
+          "stopLoss": null,
+          "thesis": "Mevcut 236.00₺ → hedef 338.00₺ (%43 potansiyel)",
+          "updatedAt": "2026-04-09"
+        },
+        {
+          "symbol": "GARAN",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 195.0,
+          "stopLoss": null,
+          "thesis": "Mevcut 129.00₺ → hedef 195.00₺ (%51 potansiyel)",
+          "updatedAt": "2024-07-08"
+        },
+        {
+          "symbol": "ENJSA",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 173.54,
+          "stopLoss": null,
+          "thesis": "Mevcut 103.90₺ → hedef 173.54₺ (%67 potansiyel)",
+          "updatedAt": "2026-03-12"
+        },
+        {
+          "symbol": "AKSEN",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 117.5,
+          "stopLoss": null,
+          "thesis": "Mevcut 76.30₺ → hedef 117.50₺ (%54 potansiyel)",
+          "updatedAt": "2025-10-16"
+        },
+        {
+          "symbol": "AKBNK",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 107.0,
+          "stopLoss": null,
+          "thesis": "Mevcut 66.80₺ → hedef 107.00₺ (%60 potansiyel)",
+          "updatedAt": "2026-04-14"
+        }
+      ],
+      "portfolio": [
+        {
+          "symbol": "AKBNK",
+          "weight": 11.0
+        },
+        {
+          "symbol": "AKSEN",
+          "weight": 14.0
+        },
+        {
+          "symbol": "ASELS",
+          "weight": 12.0
+        },
+        {
+          "symbol": "ASTOR",
+          "weight": 12.0
+        },
+        {
+          "symbol": "ENJSA",
+          "weight": 14.0
+        },
+        {
+          "symbol": "GARAN",
+          "weight": 11.0
+        },
+        {
+          "symbol": "MPARK",
+          "weight": 14.0
+        },
+        {
+          "symbol": "TUPRS",
+          "weight": 12.0
+        }
+      ],
+      "ok": true
     },
     {
       "brokerId": "osmanli-yatirim",
@@ -57,7 +154,7 @@
   ],
   "summary": {
     "total_brokers": 3,
-    "successful": 0,
-    "total_recommendations": 0
+    "successful": 1,
+    "total_recommendations": 8
   }
 }

@@ -309,4 +309,115 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }), {
       status: 200,
       headers: {
-        'Content-Type':
+        'Content-Type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        system: SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: `Sorgu: "${safeQuery}"${datasetHint}\n\nJSON döndür:` },
+        ],
+      }),
+    });
+
+    if (!r.ok) {
+      const errText = await r.text();
+      return new Response(JSON.stringify({
+        ok: false,
+        error: `Anthropic ${r.status}: ${errText.slice(0, 200)}`,
+        quota: quotaInfo,
+      }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const aiRes = await r.json() as AnthropicResponse;
+    const raw = aiRes.content?.[0]?.text?.trim() ?? '';
+
+    // JSON çıkar — bazen ```json bloklarıyla gelir, temizle
+    let jsonText = raw;
+    const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlock) jsonText = codeBlock[1].trim();
+    // İlk { ve son } arasını al
+    const firstBrace = jsonText.indexOf('{');
+    const lastBrace = jsonText.lastIndexOf('}');
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      jsonText = jsonText.slice(firstBrace, lastBrace + 1);
+    }
+
+    let spec: ScreenerSpec;
+    try {
+      spec = JSON.parse(jsonText) as ScreenerSpec;
+    } catch (e) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: 'LLM JSON parse hatası',
+        raw: raw.slice(0, 300),
+        quota: quotaInfo,
+      }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Güvenlik: spec sanity check
+    if (!spec.dataset || !Array.isArray(spec.filters)) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: 'Geçersiz spec yapısı',
+        spec,
+        quota: quotaInfo,
+      }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (spec.dataset !== 'stocks' && spec.dataset !== 'funds') {
+      spec.dataset = 'stocks';
+    }
+    if (!spec.limit || spec.limit > 100) spec.limit = spec.dataset === 'stocks' ? 20 : 10;
+
+    return new Response(JSON.stringify({
+      ok: true,
+      spec,
+      model: 'claude-haiku-4-5',
+      quota: quotaInfo,
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        ...(quotaInfo
+          ? {
+              'X-Quota-Tier': quotaInfo.tier,
+              'X-Quota-Limit': String(quotaInfo.limit),
+              'X-Quota-Used': String(quotaInfo.used),
+              'X-Quota-Reset': String(quotaInfo.resetAt),
+            }
+          : {}),
+      },
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({
+      ok: false,
+      error: `Network error: ${(e as Error).message}`,
+      quota: quotaInfo,
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+};
+
+/** "3 saat", "23 dk", "12 sn" gibi insancıl reset ipucu üretir. */
+function formatResetHint(resetAtSec: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const secs = Math.max(0, resetAtSec - now);
+  if (secs >= 3600) return `${Math.ceil(secs / 3600)} saat`;
+  if (secs >= 60) return `${Math.ceil(secs / 60)} dk`;
+  return `${secs} sn`;
+}

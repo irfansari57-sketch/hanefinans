@@ -82,7 +82,16 @@ export function RecommendationsPage() {
   };
   const [scalpFilter, setScalpFilter] = useState<'all' | 'longonly' | 'watchlist'>('all');
   // BIST kapsamı — Algoritmik (MA Üçlü Üst) havuzunda default BIST 100
-  const [algoScopeFilter, setAlgoScopeFilter] = useState<BistScopeCode>('XU100');
+  const [algoScopeFilter, setAlgoScopeFilter] = useState<BistScopeCode>(() => {
+    try {
+      const saved = localStorage.getItem('fa.algo.scopeFilter');
+      if (saved === 'XU100' || saved === 'XU030' || saved === 'BISTTUM') return saved;
+    } catch { /* */ }
+    return 'XU100';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('fa.algo.scopeFilter', algoScopeFilter); } catch { /* */ }
+  }, [algoScopeFilter]);
   const [selectedTf, setSelectedTf] = useState<ScalpTf>('5m');
   const [searchQuery, setSearchQuery] = useState('');
   const [tazeAlertsEnabled, setTazeAlertsEnabled] = useState<boolean>(() => {

@@ -101,5 +101,21 @@ export default defineConfig(({ mode }) => {
       },
     },
     preview: { host: true, port: 5173 },
+    build: {
+      // Buyuk ana chunk'i (659kb idi) parcalara ayir. React + Router ortak,
+      // Recharts kendi chunk'inda (167kb), Dexie/lucide ayri vendor.
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-charts': ['recharts'],
+            'vendor-icons': ['lucide-react'],
+            'vendor-data': ['dexie', 'dexie-react-hooks'],
+            'vendor-helmet': ['react-helmet-async'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 600,
+    },
   };
 });

@@ -115,7 +115,16 @@ export function StrongBuyTab() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [sourceFilter, setSourceFilter] = useState<'all' | 'broker' | 'technical'>('all');
   // BIST kapsam filtresi — default BIST 100 (en başta XU100 odaklı havuz)
-  const [scopeFilter, setScopeFilter] = useState<BistScopeCode>('XU100');
+  const [scopeFilter, setScopeFilter] = useState<BistScopeCode>(() => {
+    try {
+      const saved = localStorage.getItem('fa.strongbuy.scopeFilter');
+      if (saved === 'XU100' || saved === 'XU030' || saved === 'BISTTUM') return saved;
+    } catch { /* */ }
+    return 'XU100';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('fa.strongbuy.scopeFilter', scopeFilter); } catch { /* */ }
+  }, [scopeFilter]);
   const [sortKey, setSortKey] = useState<SbSortKey>('score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const setSort = (k: SbSortKey) => {

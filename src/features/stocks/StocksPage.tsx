@@ -107,7 +107,17 @@ export function StocksPage() {
   const [indexFilter, setIndexFilter] = useState<string>('all');
   // BIST kapsamı — default BIST 100 (kullanıcı "Tüm Hisseler" sekmesinde de
   // önce ana endeks görsün; çöp hisse sayısı 4-5 katına düşer, listede odak artar)
-  const [scopeFilter, setScopeFilter] = useState<BistScopeCode>('XU100');
+  const [scopeFilter, setScopeFilter] = useState<BistScopeCode>(() => {
+    // localStorage'dan son tercih — kullanici BIST Tum sectiyse bir sonraki ziyarette de Tum acik gelsin
+    try {
+      const saved = localStorage.getItem('fa.stocks.scopeFilter');
+      if (saved === 'XU100' || saved === 'XU030' || saved === 'BISTTUM') return saved;
+    } catch { /* */ }
+    return 'XU100';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('fa.stocks.scopeFilter', scopeFilter); } catch { /* */ }
+  }, [scopeFilter]);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 50;
 

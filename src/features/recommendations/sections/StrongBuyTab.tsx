@@ -4,6 +4,7 @@ import { TrendingUp, RefreshCw, ChevronRight, Star, Briefcase, Activity } from '
 import { BROKER_RECOMMENDATIONS } from '@/data/brokerRecommendations';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
+import { BIST_SCOPES, isInBistScope, type BistScopeCode } from '@/data/bistIndices';
 import { loadStocks } from '@/data/services';
 import type { Stock } from '@/data/types';
 import type { PeriodReturns } from '@/data/api/yahoo';
@@ -113,6 +114,8 @@ export function StrongBuyTab() {
   const [returnsLoading, setReturnsLoading] = useState(true);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [sourceFilter, setSourceFilter] = useState<'all' | 'broker' | 'technical'>('all');
+  // BIST kapsam filtresi — default BIST 100 (en başta XU100 odaklı havuz)
+  const [scopeFilter, setScopeFilter] = useState<BistScopeCode>('XU100');
   const [sortKey, setSortKey] = useState<SbSortKey>('score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const setSort = (k: SbSortKey) => {
@@ -269,9 +272,22 @@ export function StrongBuyTab() {
     return out;
   }, [stocks, returnsMap]);
 
-  // Source filter + sort + cap MAX_POOL
+  // Scope chip counts (her scope için kaç hisse aggregated içinde)
+  const scopeCounts = useMemo(() => {
+    const result: Record<BistScopeCode, number> = { XU100: 0, XU030: 0, BISTTUM: 0 };
+    for (const a of aggregated) {
+      for (const sc of BIST_SCOPES) {
+        if (isInBistScope(a.symbol, sc.code)) result[sc.code] += 1;
+      }
+    }
+    return result;
+  }, [aggregated]);
+
+  // Source filter + scope filter + sort + cap MAX_POOL
   const pool = useMemo(() => {
     let list = sourceFilter === 'all' ? aggregated : aggregated.filter((a) => a.source === sourceFilter);
+    // BIST kapsam filtresi (BIST 100 default, BIST 30 daraltır, BISTTUM hepsi)
+    list = list.filter((a) => isInBistScope(a.symbol, scopeFilter));
     list = [...list].sort((a, b) => {
       let va: number, vb: number;
       switch (sortKey) {
@@ -287,7 +303,7 @@ export function StrongBuyTab() {
       return sortDir === 'asc' ? va - vb : vb - va;
     });
     return list.slice(0, MAX_POOL);
-  }, [aggregated, sourceFilter, sortKey, sortDir]);
+  }, [aggregated, sourceFilter, scopeFilter, sortKey, sortDir]);
 
   const brokerCount = aggregated.filter((a) => a.source === 'broker').length;
   const technicalCount = aggregated.filter((a) => a.source === 'technical').length;
@@ -340,8 +356,36 @@ export function StrongBuyTab() {
           </div>
         </div>
 
+        {/* BIST kapsam chip'leri — EN ÜSTE (BIST 100 / BIST 30 / BIST Tüm) */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kapsam:</span>
+          {BIST_SCOPES.map((sc) => {
+            const isActive = scopeFilter === sc.code;
+            const count = scopeCounts[sc.code];
+            return (
+              <button
+                key={sc.code}
+                type="button"
+                onClick={() => setScopeFilter(sc.code)}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition',
+                  isActive
+                    ? 'border-accent/50 bg-accent/15 text-accent shadow-sm shadow-accent/10'
+                    : 'border-border bg-bg-soft text-slate-400 hover:border-accent/30 hover:text-slate-200',
+                )}
+                aria-pressed={isActive}
+              >
+                <span>{sc.label}</span>
+                <span className={cn('rounded px-1 py-0.5 text-[9px] font-bold tabular-nums', isActive ? 'bg-accent/20' : 'bg-bg-card text-slate-500')}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Source chip'leri — single-select (Fon Havuzu ile aynı görünüm) */}
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           <SourceChip label={`Tümü (${aggregated.length})`} active={sourceFilter === 'all'} onClick={() => setSourceFilter('all')} />
           <SourceChip label={`Broker (${brokerCount})`} active={sourceFilter === 'broker'} onClick={() => setSourceFilter('broker')} tone="success" />
           <SourceChip label={`Teknik (${technicalCount})`} active={sourceFilter === 'technical'} onClick={() => setSourceFilter('technical')} tone="accent" />

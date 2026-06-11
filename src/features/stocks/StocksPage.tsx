@@ -8,7 +8,7 @@ import { loadStocks } from '@/data/services';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
-import { BIST_INDICES, INDEX_TO_SECTORS } from '@/data/bistIndices';
+import { BIST_INDICES, INDEX_TO_SECTORS, BIST_SCOPES, isInBistScope, type BistScopeCode } from '@/data/bistIndices';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
@@ -105,6 +105,9 @@ export function StocksPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [tab, setTab] = useState<'all' | 'watched'>('all');
   const [indexFilter, setIndexFilter] = useState<string>('all');
+  // BIST kapsamı — default BIST 100 (kullanıcı "Tüm Hisseler" sekmesinde de
+  // önce ana endeks görsün; çöp hisse sayısı 4-5 katına düşer, listede odak artar)
+  const [scopeFilter, setScopeFilter] = useState<BistScopeCode>('XU100');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -271,13 +274,15 @@ export function StocksPage() {
         if (hasPrice && !hasDailyMove && !hasReturns) return false;
       }
       if (sectorAllowList && !sectorAllowList.has(s.sector ?? '')) return false;
+      // BIST kapsamı filtresi (XU100 / XU030 / BISTTUM) — sektör endeksinden ayrı
+      if (!isInBistScope(s.symbol, scopeFilter)) return false;
       if (q) {
         const blob = `${s.symbol} ${s.name}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [rows, search, indexFilter, tab]);
+  }, [rows, search, indexFilter, tab, scopeFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -309,7 +314,26 @@ export function StocksPage() {
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, indexFilter]);
+  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, indexFilter, scopeFilter]);
+
+  // BIST scope sayaçları (chip rozetleri için)
+  const scopeCounts = useMemo(() => {
+    const result: Record<BistScopeCode, number> = { XU100: 0, XU030: 0, BISTTUM: 0 };
+    for (const r of rows) {
+      // Sadece "alive" (delisted olmayan) hisseleri say — tab=all filtreleme mantığı
+      const hasReturns = r.returns && Object.values(r.returns).some((v) => v != null && Number.isFinite(v));
+      const hasPrice = r.price > 0;
+      const hasDailyMove = Number.isFinite(r.changePct) && r.changePct !== 0;
+      if (tab === 'all') {
+        if (!hasPrice && !hasReturns) continue;
+        if (hasPrice && !hasDailyMove && !hasReturns) continue;
+      }
+      for (const sc of BIST_SCOPES) {
+        if (isInBistScope(r.symbol, sc.code)) result[sc.code] += 1;
+      }
+    }
+    return result;
+  }, [rows, tab]);
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -322,6 +346,34 @@ export function StocksPage() {
   return (
     <>
       <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat ve dönem getirileri." path="/stocks" />
+
+      {/* BIST kapsam chip'leri — BIST 100 / BIST 30 / BIST Tüm */}
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kapsam:</span>
+        {BIST_SCOPES.map((sc) => {
+          const isActive = scopeFilter === sc.code;
+          const count = scopeCounts[sc.code];
+          return (
+            <button
+              key={sc.code}
+              type="button"
+              onClick={() => setScopeFilter(sc.code)}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition',
+                isActive
+                  ? 'border-accent/50 bg-accent/15 text-accent shadow-sm shadow-accent/10'
+                  : 'border-border bg-bg-soft text-slate-400 hover:border-accent/30 hover:text-slate-200',
+              )}
+              aria-pressed={isActive}
+            >
+              <span>{sc.label}</span>
+              <span className={cn('rounded px-1 py-0.5 text-[9px] font-bold tabular-nums', isActive ? 'bg-accent/20' : 'bg-bg-card text-slate-500')}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">

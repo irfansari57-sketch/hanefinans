@@ -42,6 +42,11 @@ interface ScreenerSpec {
   sort?: { field: string; dir: 'asc' | 'desc' };
   limit: number;
   explanation: string;
+  /**
+   * BIST endeks kapsamı — "BIST 100" / "BIST 30" sorgularında AI buraya yazar.
+   * Frontend `applySpec`'te BIST_100_SYMBOLS / BIST_30_SYMBOLS Set'iyle hard-filter.
+   */
+  scope?: 'XU100' | 'XU030';
 }
 
 interface AnthropicResponse {
@@ -111,9 +116,15 @@ KURALLAR:
 5) "top N", "en iyi N" → limit=N. Belirtilmemişse hisse için 20, fon için 10.
 6) Sayısal değerleri normalize et: "%5" → 5, "%5'ten fazla" → > 5, "%5+" → >= 5.
 7) explanation alanına Türkçe kısa özet (max 100 karakter).
+8) BIST ENDEKS KAPSAMI: Kullanıcı "BIST 100" / "XU100" / "ana endeks" derse → scope:"XU100".
+   "BIST 30" / "XU030" / "büyük 30" derse → scope:"XU030". Belirtilmemişse scope alanını yazma (tüm BIST evreni).
+   Endeks SEKTÖR DEĞİL — yani "BIST 100 bankacılık" derse: scope:"XU100" + filters[sector includes Bankacılık].
+   Endeks kapsamı sektör filtresinden BAĞIMSIZ olarak çalışır.
 
-ÇIKTI: SADECE geçerli JSON, başka metin yok. Örnek:
-{"dataset":"stocks","filters":[{"field":"sector","op":"includes","value":"Bankacılık"},{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"explanation":"Son 1 ayda %5+ getirili bankacılık hisseleri"}`;
+ÇIKTI: SADECE geçerli JSON, başka metin yok. Örnekler:
+{"dataset":"stocks","filters":[{"field":"sector","op":"includes","value":"Bankacılık"},{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"explanation":"Son 1 ayda %5+ getirili bankacılık hisseleri"}
+{"dataset":"stocks","filters":[{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"scope":"XU100","explanation":"BIST 100'de son 1 ayda %5+ artmış hisseler"}
+{"dataset":"stocks","filters":[],"sort":{"field":"r1y","dir":"desc"},"limit":10,"scope":"XU030","explanation":"BIST 30'da yıllık en iyi 10 hisse"}`;
 
 function tierFromUser(user: { tier?: 'free' | 'pro' | 'elite' } | null): Tier {
   if (!user) return 'anon';
@@ -298,35 +309,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }), {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-        ...(quotaInfo
-          ? {
-              'X-Quota-Tier': quotaInfo.tier,
-              'X-Quota-Limit': String(quotaInfo.limit),
-              'X-Quota-Used': String(quotaInfo.used),
-              'X-Quota-Reset': String(quotaInfo.resetAt),
-            }
-          : {}),
-      },
-    });
-  } catch (e) {
-    return new Response(JSON.stringify({
-      ok: false,
-      error: `Network error: ${(e as Error).message}`,
-      quota: quotaInfo,
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-};
-
-/** "3 saat", "23 dk", "12 sn" gibi insancıl reset ipucu üretir. */
-function formatResetHint(resetAtSec: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const secs = Math.max(0, resetAtSec - now);
-  if (secs >= 3600) return `${Math.ceil(secs / 3600)} saat`;
-  if (secs >= 60) return `${Math.ceil(secs / 60)} dk`;
-  return `${secs} sn`;
-}
+        'Content-Type':

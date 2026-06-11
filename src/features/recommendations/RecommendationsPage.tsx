@@ -18,6 +18,7 @@ import {
 } from '@/lib/multiTimeframe';
 import { sendTelegram, getTelegramChatId } from '@/lib/telegram';
 import { MOCK_STOCKS } from '@/data/mock';
+import { BIST_SCOPES, isInBistScope, type BistScopeCode } from '@/data/bistIndices';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import type { Stock, FundPerformance } from '@/data/types';
 import { formatMoney } from '@/lib/format';
@@ -80,6 +81,8 @@ export function RecommendationsPage() {
     else { setAlgoSortKey(k); setAlgoSortDir('desc'); }
   };
   const [scalpFilter, setScalpFilter] = useState<'all' | 'longonly' | 'watchlist'>('all');
+  // BIST kapsamı — Algoritmik (MA Üçlü Üst) havuzunda default BIST 100
+  const [algoScopeFilter, setAlgoScopeFilter] = useState<BistScopeCode>('XU100');
   const [selectedTf, setSelectedTf] = useState<ScalpTf>('5m');
   const [searchQuery, setSearchQuery] = useState('');
   const [tazeAlertsEnabled, setTazeAlertsEnabled] = useState<boolean>(() => {
@@ -425,6 +428,30 @@ export function RecommendationsPage() {
                 ))}
               </div>
 
+              {/* BIST kapsam chip'leri — BIST 100 / BIST 30 / BIST Tüm (en başta) */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kapsam:</span>
+                {BIST_SCOPES.map((sc) => {
+                  const isActive = algoScopeFilter === sc.code;
+                  return (
+                    <button
+                      key={sc.code}
+                      type="button"
+                      onClick={() => setAlgoScopeFilter(sc.code)}
+                      className={cn(
+                        'rounded-md border px-2 py-0.5 text-[11px] font-medium transition',
+                        isActive
+                          ? 'border-accent/50 bg-accent/15 text-accent shadow-sm shadow-accent/10'
+                          : 'border-border bg-bg-soft text-slate-400 hover:border-accent/30 hover:text-slate-200',
+                      )}
+                      aria-pressed={isActive}
+                    >
+                      {sc.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Filter selector */}
               <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
                 {(['all', 'longonly', 'watchlist'] as const).map((f) => (
@@ -500,6 +527,8 @@ export function RecommendationsPage() {
                       })
                   )
                     .filter((rec) => {
+                      // BIST kapsam filtresi (XU100 / XU030 / BISTTUM)
+                      if (!isInBistScope(rec.stock.symbol, algoScopeFilter)) return false;
                       if (scalpFilter === 'longonly' && !isLongForTf(rec, selectedTf)) return false;
                       if (scalpFilter === 'watchlist' && !watchlistHas(rec.stock.symbol)) return false;
                       const q = searchQuery.trim().toUpperCase();

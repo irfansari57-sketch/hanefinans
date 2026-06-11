@@ -2,6 +2,8 @@
  * Doğal dil sorgudan filter spec üreten /api/ai/screener endpoint'inin client wrapper'ı.
  */
 
+import { BIST_100_SYMBOLS, BIST_30_SYMBOLS } from '@/data/bistIndices';
+
 export type ScreenerOp = '>' | '>=' | '<' | '<=' | '=' | '!=' | 'includes' | 'in';
 
 export interface ScreenerFilter {
@@ -16,6 +18,14 @@ export interface ScreenerSpec {
   sort?: { field: string; dir: 'asc' | 'desc' };
   limit: number;
   explanation: string;
+  /**
+   * BIST endeks kapsamı — kullanıcı "BIST 100" / "BIST 30" derse AI buraya yazar.
+   * applySpec'te symbol Set kontrolüyle hard-filter uygulanır.
+   * - "XU100" → BIST 100 sembolleri
+   * - "XU030" → BIST 30 sembolleri
+   * - tanımlı değil → tüm BIST evreni
+   */
+  scope?: 'XU100' | 'XU030';
 }
 
 export type QuotaTier = 'anon' | 'free' | 'pro' | 'elite';
@@ -93,9 +103,20 @@ export function applyFilter(item: Record<string, unknown>, filter: ScreenerFilte
   }
 }
 
-/** Spec'in tamamını applyFilter ile geç + sort + limit uygula. */
+/** Spec'in tamamını applyFilter ile geç + scope + sort + limit uygula. */
 export function applySpec<T extends Record<string, unknown>>(items: T[], spec: ScreenerSpec): T[] {
   let out = items.filter((item) => spec.filters.every((f) => applyFilter(item, f)));
+
+  // BIST endeks kapsamı (XU100 / XU030) — sadece hisse dataset'i için anlamlı.
+  // Sembol stocks'ta `symbol`, funds'ta `code`. Funds için scope no-op gibi davranır.
+  if (spec.scope === 'XU100' || spec.scope === 'XU030') {
+    const allowSet = spec.scope === 'XU030' ? BIST_30_SYMBOLS : BIST_100_SYMBOLS;
+    out = out.filter((item) => {
+      const sym = (item['symbol'] ?? item['code']) as unknown;
+      return typeof sym === 'string' && allowSet.has(sym);
+    });
+  }
+
   if (spec.sort) {
     const { field, dir } = spec.sort;
     out = [...out].sort((a, b) => {

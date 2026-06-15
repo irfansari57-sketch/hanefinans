@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-06-12T17:26:27.948910+00:00",
+  "fetchedAt": "2026-06-15T12:54:19.543884+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -8,7 +8,7 @@
       "initials": "İY",
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
-      "lastUpdate": "2026-06-12",
+      "lastUpdate": "2026-06-15",
       "recommendations": [
         {
           "symbol": "MPARK",
@@ -117,7 +117,7 @@
       "initials": "OY",
       "colorSeed": "#10b981",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "lastUpdate": "2026-06-12",
+      "lastUpdate": "2026-06-15",
       "recommendations": [],
       "ok": false,
       "debugLog": [
@@ -135,21 +135,15 @@
       "initials": "KT",
       "colorSeed": "#ec4899",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
-      "lastUpdate": "2026-06-12",
+      "lastUpdate": "2026-06-15",
       "recommendations": [],
       "portfolio": [],
       "ok": false,
       "debugLog": [
         "GET listing: https://kuveytturkyatirim.com.tr/arastirma-raporlari/",
-        "Listing HTTP 200, html size=664027 chars",
-        "Found 4 'gunluk-bulten' PDF pattern matches in listing",
-        "Latest PDF: /media/n1hkbezd/gunluk-bulten_12062026.pdf",
-        "PDF HTTP 200, 3198064 bytes",
-        "PDF text: 2428 chars",
-        "Bülten Claude: Claude returned 0 items but all were filtered out (invalid symbol/format)",
-        "Recommendations: 0"
+        "Bülten exception: ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
       ],
-      "error": "Claude returned 0 items but all were filtered out (invalid symbol/format)"
+      "error": "Bülten exception: ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
     }
   ],
   "summary": {

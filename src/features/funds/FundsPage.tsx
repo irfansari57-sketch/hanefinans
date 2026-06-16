@@ -473,6 +473,14 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
           {fund.category && (
             <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">{fund.category}</span>
           )}
+          {fund.tefasOpen === false && (
+            <span
+              className="rounded border border-danger/40 bg-danger/10 px-1 py-0.5 text-[9px] font-semibold text-danger whitespace-nowrap"
+              title="TEFAS'ta İşleme Kapalı — sadece nitelikli yatırımcı (10M TL+ net varlık)"
+            >
+              TEFAS Kapalı
+            </span>
+          )}
           <span className="truncate text-[11px] text-slate-400 max-w-[200px]">{fund.name}</span>
         </div>
       </td>

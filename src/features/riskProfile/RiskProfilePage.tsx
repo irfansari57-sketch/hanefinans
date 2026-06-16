@@ -22,8 +22,8 @@ import { buildPortfolio, type PortfolioRecommendation } from '@/lib/portfolioBui
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import type { FundPerformance } from '@/data/types';
 
-type StepKey = 'age' | 'horizon' | 'tolerance' | 'goal' | 'experience';
-const STEPS: StepKey[] = ['age', 'horizon', 'tolerance', 'goal', 'experience'];
+type StepKey = 'age' | 'horizon' | 'tolerance' | 'goal' | 'experience' | 'principle';
+const STEPS: StepKey[] = ['age', 'horizon', 'tolerance', 'goal', 'experience', 'principle'];
 
 const QUESTIONS: Record<StepKey, {
   title: string;
@@ -78,6 +78,14 @@ const QUESTIONS: Record<StepKey, {
       { value: 'intermediate', label: 'Orta', hint: '1-3 yıl deneyim' },
       { value: 'experienced', label: 'Tecrübeli', hint: '3+ yıl, aktif takip' },
       { value: 'professional', label: 'Profesyonel', hint: 'Türev araç, opsiyon deneyimi' },
+    ],
+  },
+  principle: {
+    title: 'Yatirim ilkeniz hangisi?',
+    subtitle: 'Faiz/etik kisitlariniz var mi? Katilim Endeksi (faizsiz) ilkelerine uygun fonlar onerelim mi?',
+    options: [
+      { value: 'standard', label: 'Standart', hint: 'Tüm fon kategorileri uygun (faiz dahil)' },
+      { value: 'participation', label: 'Katılım (Faizsiz)', hint: 'Sadece Katılım Endeksi, Altın ve Kıymetli Maden fonları' },
     ],
   },
 };
@@ -171,6 +179,11 @@ export function RiskProfilePage() {
                 <span className="rounded-md bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent">
                   Skor: {profile.score}/100
                 </span>
+                {profile.principle === 'participation' && (
+                  <span className="rounded-md bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success">
+                    Katılım (Faizsiz)
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-sm text-slate-300 leading-relaxed">{profile.description}</p>
             </div>
@@ -286,8 +299,8 @@ export function RiskProfilePage() {
   // Anket akisi
   return (
     <>
-      <SeoHead title="Risk Profili Anketi" description="5 soruda kisisel risk profilinizi ogrenip portfoy onerisi alin." path="/risk-profili" />
-      <PageHeader title="Risk Profili" subtitle="5 soruda kisisel yatirim profilinizi olusturun" />
+      <SeoHead title="Risk Profili Anketi" description="6 soruda kisisel risk profilinizi ve yatirim ilkenizi ogrenip portfoy onerisi alin." path="/risk-profili" />
+      <PageHeader title="Risk Profili" subtitle="6 soruda kisisel yatirim profilinizi olusturun" />
 
       {/* Ilerleme barı */}
       <div className="mb-4">

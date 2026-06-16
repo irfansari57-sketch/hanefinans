@@ -1,11 +1,12 @@
 /**
- * Risk Profili Sistemi — Bireysel yatirimci icin 5 soruluk risk analizi.
+ * Risk Profili Sistemi - Bireysel yatirimci icin 6 soruluk risk analizi.
  *
  * Akis:
- *   1. Kullanici 5 sorudan birer cevap verir (each 1-5 puan)
+ *   1. Kullanici 6 sorudan birer cevap verir (her biri 1-5 puan, principle haric)
  *   2. Toplam puan 5-25 arasi -> 0-100 skala normalize edilir
  *   3. Skora gore 5 profilden biri belirlenir
  *   4. Her profil icin kategori bazli portfoy agirliklari hesaplanir
+ *   5. Katilim ilkesi secilirse faizli kategoriler -> Katilim'a remap edilir
  *
  * Sonuc: PortfolioBuilder bu agirliklara gore TEFAS Acik fonlardan onerir.
  */
@@ -15,6 +16,13 @@ export type Horizon = 'lessThan1y' | '1to3y' | '3to10y' | 'moreThan10y';
 export type RiskTolerance = 'loss10' | 'loss20' | 'loss30' | 'loss50plus';
 export type Goal = 'preserve' | 'income' | 'growth' | 'speculate';
 export type Experience = 'beginner' | 'intermediate' | 'experienced' | 'professional';
+/**
+ * Yatirim ilkesi:
+ *   - standard: faiz/turev/etik kisit yok, tum fonlar uygun
+ *   - participation: Katilim Endeksi (faizsiz/etik) - sadece Katilim/Altin/
+ *     Kiymetli Maden ve isimde KATILIM gecen fonlar
+ */
+export type InvestmentPrinciple = 'standard' | 'participation';
 
 export interface RiskAnswers {
   age: AgeBracket;
@@ -22,6 +30,7 @@ export interface RiskAnswers {
   tolerance: RiskTolerance;
   goal: Goal;
   experience: Experience;
+  principle: InvestmentPrinciple;
 }
 
 export type RiskProfileLevel =
@@ -35,12 +44,14 @@ export interface RiskProfile {
   level: RiskProfileLevel;
   /** 0-100 puan */
   score: number;
-  /** Profil basligi — TR */
+  /** Profil basligi - TR */
   label: string;
   /** Kisa aciklama */
   description: string;
   /** Kategori bazli portfoy agirliklari (toplam ~100) */
   weights: Partial<Record<TargetCategory, number>>;
+  /** Yatirim ilkesi - katilim secilirse portfoy faizsiz/etik fonlardan kurulur */
+  principle: InvestmentPrinciple;
 }
 
 /** Risk profili icin portfoy hedef kategorileri. */
@@ -90,6 +101,7 @@ const EXP_SCORE: Record<Experience, number> = {
 /**
  * 5 soruluk cevap setinden 0-100 skoru hesaplar.
  * Her soru 1-5 puan -> toplam 5-25 -> (toplam-5)/20 * 100.
+ * (Principle skor hesabina dahil degil - sadece weight remap'i etkiler)
  */
 export function computeRiskScore(answers: RiskAnswers): number {
   const total =
@@ -103,7 +115,8 @@ export function computeRiskScore(answers: RiskAnswers): number {
 }
 
 /**
- * 0-100 skoru 5 risk profilinden birine eşler.
+ * 0-100 skoru 5 risk profilinden birine esler.
+ * Default principle 'standard' doner - buildRiskProfile bunu override eder.
  */
 export function classifyRiskProfile(score: number): RiskProfile {
   if (score < 20) {
@@ -117,6 +130,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Borçlanma Araçları': 20,
         'Altın': 10,
       },
+      principle: 'standard',
     };
   }
   if (score < 40) {
@@ -132,6 +146,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Hisse Senedi': 10,
         'Altın': 5,
       },
+      principle: 'standard',
     };
   }
   if (score < 60) {
@@ -147,6 +162,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Altın': 10,
         'Kıymetli Maden': 10,
       },
+      principle: 'standard',
     };
   }
   if (score < 80) {
@@ -162,6 +178,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Kıymetli Maden': 10,
         'Fon Sepeti': 5,
       },
+      principle: 'standard',
     };
   }
   return {
@@ -175,15 +192,44 @@ export function classifyRiskProfile(score: number): RiskProfile {
       'Kıymetli Maden': 10,
       'Fon Sepeti': 5,
     },
+    principle: 'standard',
   };
 }
 
 /**
  * Anket cevaplarini alir, profil + onerilen kategori agirliklarini doner.
+ * Katilim ilkesi secilirse weights'i faizsiz kategori agirligina donusturur:
+ *   - Para Piyasasi -> Katilim
+ *   - Borclanma Araclari -> Katilim (faiz iceren bonolari kapsadigi icin)
+ *   - Karma -> Katilim (karma genelde tahvil/faiz icerir)
+ *   - Diger kategoriler (Hisse, Altin, Kiymetli Maden, Degisken) ayni kalir
+ *     ANCAK frontend filter'da sadece "KATILIM" iceren fonlara dusurulur
  */
 export function buildRiskProfile(answers: RiskAnswers): RiskProfile {
   const score = computeRiskScore(answers);
-  return classifyRiskProfile(score);
+  const base = classifyRiskProfile(score);
+  base.principle = answers.principle;
+
+  if (answers.principle === 'participation') {
+    const newWeights: Partial<Record<TargetCategory, number>> = {};
+    let katilimAccum = 0;
+    for (const [cat, w] of Object.entries(base.weights)) {
+      const weight = w as number;
+      // Faiz iceren kategoriler -> Katilim'a topla
+      if (cat === 'Para Piyasası' || cat === 'Borçlanma Araçları' || cat === 'Karma') {
+        katilimAccum += weight;
+      } else {
+        newWeights[cat as TargetCategory] = weight;
+      }
+    }
+    if (katilimAccum > 0) {
+      newWeights['Katılım'] = (newWeights['Katılım'] ?? 0) + katilimAccum;
+    }
+    base.weights = newWeights;
+    base.description += ' Katilim Endeksi ilkelerine uygun fonlar onerilir.';
+  }
+
+  return base;
 }
 
 // --- localStorage persist ---

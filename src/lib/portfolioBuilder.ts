@@ -1,8 +1,8 @@
 /**
- * Portfoy Onerisi Algoritmasi
+ * Portfoy Onerisi Algoritmasi (Katilim filter destekli)
  *
  * Girdi:
- *   - RiskProfile (kategori agirliklari)
+ *   - RiskProfile (kategori agirliklari + principle)
  *   - Tum TEFAS Acik fonlar listesi
  *
  * Cikti:
@@ -14,6 +14,7 @@
  *   2. Sadece son 1Y getirisi olan fonlar (saglikli veri)
  *   3. Profil agirliklarinin sirali olarak: her kategoriden top-N fon
  *   4. Toplam 4-6 fon dondurur (agirlik > %15 olan kategoriler oncelikli)
+ *   5. Katilim principle ise: sadece Katilim/Altin/Kiymetli Maden/isimde KATILIM gecen fonlar
  */
 
 import type { FundPerformance } from '@/data/types';
@@ -39,15 +40,42 @@ export interface RecommendedFund {
 }
 
 /**
+ * Bir fon Katilim Endeksi ilkelerine uygun mu?
+ *   - category = 'Katılım'
+ *   - veya isminde KATILIM/PARTICIPATION/ISLAMIC geciyor
+ *   - veya kategorisi Altın / Kıymetli Maden / Gümüş (faizsiz emtia)
+ */
+function isParticipationCompliant(fund: FundPerformance): boolean {
+  const cat = (fund.category ?? '').toLocaleUpperCase('tr-TR');
+  const name = (fund.name ?? '').toLocaleUpperCase('tr-TR');
+  if (cat.includes('KATILIM')) return true;
+  if (name.includes('KATILIM')) return true;
+  if (name.includes('PARTICIPATION')) return true;
+  if (name.includes('ISLAMIC')) return true;
+  // Faizsiz emtia kategorileri
+  if (cat.includes('ALTIN') || cat.includes('GÜMÜŞ') || cat.includes('GUMUS')) return true;
+  if (cat.includes('KIYMETLİ MADEN') || cat.includes('KIYMETLI MADEN')) return true;
+  return false;
+}
+
+/**
  * Profil ve fon listesinden 4-6 fonluk portfoy onerisi olusturur.
  */
 export function buildPortfolio(profile: RiskProfile, allFunds: FundPerformance[]): PortfolioRecommendation {
   // 1. Sadece TEFAS acik + son 1Y getirisi gecerli fonlar
-  const tradable = allFunds.filter((f) =>
-    f.tefasOpen !== false
+  // STRICT: tefasOpen === true sart. undefined gelirse riske girme (kullanici
+  // alamayacagi fonu onerme - ZA2 gibi banka ozel "sepet hesap" fonlarini
+  // filtre disi birak).
+  let tradable = allFunds.filter((f) =>
+    f.tefasOpen === true
     && Number.isFinite(f.year)
     && (f.year as number) > -50, // anormal kayipli fonlari ele
   );
+
+  // 1b. Katilim principle ise sadece uyumlu fonlar
+  if (profile.principle === 'participation') {
+    tradable = tradable.filter(isParticipationCompliant);
+  }
 
   // 2. Kategoriye gore grupla
   const byCategory = new Map<string, FundPerformance[]>();
@@ -66,7 +94,11 @@ export function buildPortfolio(profile: RiskProfile, allFunds: FundPerformance[]
   // 4. Her kategoriden top-N fon sec (agirlik buyukse 2 fon, kucukse 1 fon)
   const result: RecommendedFund[] = [];
   for (const [cat, weight] of weightEntries) {
-    const funds = byCategory.get(cat) ?? [];
+    let funds = byCategory.get(cat) ?? [];
+    // Katilim profile + 'Katılım' kategorisi bos ise: tum uyumlu fonlardan sec
+    if (profile.principle === 'participation' && cat === 'Katılım' && funds.length === 0) {
+      funds = tradable; // tradable zaten participation-compliant filter'dan gecti
+    }
     if (funds.length === 0) continue;
 
     // Bu kategoriden kac fon secelim
@@ -81,6 +113,8 @@ export function buildPortfolio(profile: RiskProfile, allFunds: FundPerformance[]
     const perFundWeight = Math.round((weight as number) / fundCount);
 
     for (const f of top) {
+      // Ayni fon birden fazla kategoride secilebilir - dupe engelle
+      if (result.some((r) => r.fund.code === f.code)) continue;
       result.push({
         fund: f,
         weightPct: perFundWeight,

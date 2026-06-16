@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-06-15T18:06:50.452539+00:00",
+  "fetchedAt": "2026-06-16T11:57:05.427497+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -8,7 +8,7 @@
       "initials": "İY",
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
-      "lastUpdate": "2026-06-15",
+      "lastUpdate": "2026-06-16",
       "recommendations": [
         {
           "symbol": "MPARK",
@@ -117,7 +117,7 @@
       "initials": "OY",
       "colorSeed": "#10b981",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "lastUpdate": "2026-06-15",
+      "lastUpdate": "2026-06-16",
       "recommendations": [],
       "ok": false,
       "debugLog": [
@@ -135,17 +135,17 @@
       "initials": "KT",
       "colorSeed": "#ec4899",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
-      "lastUpdate": "2026-06-15",
+      "lastUpdate": "2026-06-16",
       "recommendations": [],
       "portfolio": [],
       "ok": false,
       "debugLog": [
         "GET listing: https://kuveytturkyatirim.com.tr/arastirma-raporlari/",
-        "Listing HTTP 200, html size=663933 chars",
+        "Listing HTTP 200, html size=663776 chars",
         "Found 4 'gunluk-bulten' PDF pattern matches in listing",
-        "Latest PDF: /media/wfqphshc/gunluk-bulten_15062026.pdf",
-        "PDF HTTP 200, 2739294 bytes",
-        "PDF text: 2381 chars",
+        "Latest PDF: /media/ldgjzclh/gunluk-bulten_16062026.pdf",
+        "PDF HTTP 200, 3658387 bytes",
+        "PDF text: 1911 chars",
         "Bülten Claude: Claude returned 0 items but all were filtered out (invalid symbol/format)",
         "Recommendations: 0"
       ],

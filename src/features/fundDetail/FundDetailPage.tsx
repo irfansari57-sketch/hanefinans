@@ -127,7 +127,7 @@ export function FundDetailPage() {
         <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-warning/10 blur-3xl" />
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-warning/15 text-warning">
                 <PiggyBank size={20} />
               </span>
@@ -135,17 +135,6 @@ export function FundDetailPage() {
               {fund.category && (
                 <span className="rounded-md border border-border bg-bg-soft px-2 py-0.5 text-xs text-slate-300">
                   {fund.category}
-                </span>
-              )}
-              {/* TEFAS'ta İşleme Kapalı badge — Odeabank tarzı (Serbest fon vs).
-                  Backend feed'de tefasOpen yoksa client-side heuristic ile hesapla. */}
-              {githubData && isTefasClosedClient(githubData) && (
-                <span
-                  className="inline-flex items-center gap-1 rounded-md border border-danger/40 bg-danger/15 px-2 py-0.5 text-xs font-semibold text-danger"
-                  title="Bu fon TEFAS üzerinden alınamaz. Sadece SPK nitelikli yatırımcılara (10M TL+ net varlık, 2026 Ocak güncel) ilgili portföy yönetim şirketi üzerinden açıktır."
-                >
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-danger" />
-                  TEFAS'ta İşleme Kapalı
                 </span>
               )}
             </div>
@@ -374,22 +363,6 @@ export function FundDetailPage() {
       </section>
     </>
   );
-}
-
-/**
- * TEFAS'a kapali fon mu? Backend feed'de tefasOpen flag varsa onu kullan,
- * yoksa client-side ayni heuristic (SPK Serbest Fon kosulu).
- */
-function isTefasClosedClient(fund: TefasFundData): boolean {
-  if (fund.tefasOpen === false) return true;
-  if (fund.tefasOpen === true) return false;
-  const cat = (fund.category ?? '').trim();
-  const n = (fund.name ?? '').toUpperCase();
-  if (cat === 'Serbest') return true;
-  if (n.includes('SERBEST')) return true;
-  if (n.includes('YABANCI MENKUL')) return true;
-  if (n.includes('NITELIKLI YATIRIMCI') || n.includes('NİTELİKLİ YATIRIMCI')) return true;
-  return false;
 }
 
 function ExtLink({ title, description, url }: { title: string; description: string; url: string }) {

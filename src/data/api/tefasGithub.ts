@@ -226,11 +226,36 @@ function normalizeFundCategory(rawCategory: string, name: string): FundCategory 
  */
 function computeTefasOpenClient(category: string, name: string): boolean {
   const cat = (category || '').trim();
-  const n = (name || '').toUpperCase();
+  // Locale-aware uppercase: Turkish i -> İ
+  const n = (name || '').toLocaleUpperCase('tr-TR');
+  const c = cat.toLocaleUpperCase('tr-TR');
+
+  // Kategori bazli
   if (cat === 'Serbest') return false;
+  if (c.includes('SERBEST')) return false;
+
+  // Isim bazli — TEFAS'a kapali fon tipleri
   if (n.includes('SERBEST')) return false;
   if (n.includes('YABANCI MENKUL')) return false;
-  if (n.includes('NITELIKLI YATIRIMCI') || n.includes('NİTELİKLİ YATIRIMCI')) return false;
+  if (n.includes('NİTELİKLİ YATIRIMCI') || n.includes('NITELIKLI YATIRIMCI')) return false;
+
+  // SEPET HESAP fonlari (banka ozel, sadece kendi musterilerine acik)
+  // orn: ZA2 = "KUVEYT TURK PORTFOY IKINCI SEPET HESAP PARA PIYASASI KATILIM FONU"
+  if (n.includes('SEPET HESAP')) return false;
+
+  // Garantili / Koruma amacli — getiri garantili ozel fonlar
+  if (n.includes('GARANTİLİ') || n.includes('GARANTILI')) return false;
+  if (n.includes('KORUMA AMAÇLI') || n.includes('KORUMA AMACLI')) return false;
+
+  // Bireysel Emeklilik (BES) fonlari — TEFAS'tan degil, BES sirketinden
+  if (n.includes('EMEKLİLİK') || n.includes('EMEKLILIK')) return false;
+  if (c.includes('EMEKLİLİK') || c.includes('EMEKLILIK')) return false;
+
+  // Girisim Sermayesi + Gayrimenkul YF — nitelikli yatirimci
+  if (n.includes('GİRİŞİM SERMAYESİ') || n.includes('GIRISIM SERMAYESI')) return false;
+  if (n.includes('GAYRİMENKUL YATIRIM') || n.includes('GAYRIMENKUL YATIRIM')) return false;
+  if (c.includes('GAYRİMENKUL') || c.includes('GAYRIMENKUL')) return false;
+
   return true;
 }
 

@@ -104,27 +104,59 @@ def is_tefas_open(name: str, category: str) -> bool:
 
     TEFAS'a kapali fonlar:
       - Serbest Fonlar (SPK nitelikli yatirimci kosulu: 10M TL+ net varlik)
-      - Yabanci Menkul Kiymetler Serbest Fonu (bazi turleri)
-      - Garantili Fonlar (bazi turleri)
-      - 'Hisse Senedi Serbest', 'Doviz Serbest', 'Eurobond Serbest' gibi serbest turlu hibridler
+      - Yabanci Menkul Kiymetler Serbest Fonu
+      - Sepet Hesap fonlari (banka ozel, sadece kendi musterileri)
+      - Garantili / Koruma amacli fonlar
+      - Bireysel Emeklilik (BES) fonlari
+      - Girisim Sermayesi YF + Gayrimenkul YF (nitelikli yatirimci)
 
-    Heuristic:
-      1. Resmi kategori 'Serbest' ise -> kapali
-      2. Isim icinde 'SERBEST' kelimesi ic geciyorsa -> kapali (hibrid serbest fonlar)
-      3. 'YABANCI MENKUL KIYMETLER' iceriyorsa -> kapali
-      4. 'NITELIKLI YATIRIMCI' iceriyorsa -> kapali
-      5. Diger hepsi -> acik
+    Heuristic (isim/kategori bazli, sirayla):
+      1. cat == 'Serbest' veya icinde SERBEST -> kapali
+      2. Isim SERBEST -> kapali (hibrid)
+      3. YABANCI MENKUL -> kapali
+      4. NITELIKLI YATIRIMCI -> kapali
+      5. SEPET HESAP -> kapali (ornek: ZA2 KUVEYT TURK SEPET HESAP)
+      6. GARANTILI / KORUMA AMACLI -> kapali
+      7. EMEKLILIK -> kapali (BES sirketinden alinir)
+      8. GIRISIM SERMAYESI / GAYRIMENKUL YATIRIM -> kapali
+      9. Diger hepsi -> acik
     """
     cat = (category or '').strip()
     n = (name or '').upper()
-    if cat == 'Serbest':
+    c = cat.upper()
+
+    # 1-2: Serbest
+    if cat == 'Serbest' or 'SERBEST' in c:
         return False
     if 'SERBEST' in n:
         return False
+    # 3: Yabanci menkul
     if 'YABANCI MENKUL' in n or 'YABANCI MENKULLER' in n:
         return False
+    # 4: Nitelikli yatirimci
     if 'NITELIKLI YATIRIMCI' in n or 'NİTELİKLİ YATIRIMCI' in n:
         return False
+    # 5: Sepet hesap
+    if 'SEPET HESAP' in n:
+        return False
+    # 6: Garantili / Koruma amacli
+    if 'GARANTİLİ' in n or 'GARANTILI' in n:
+        return False
+    if 'KORUMA AMAÇLI' in n or 'KORUMA AMACLI' in n:
+        return False
+    # 7: BES emeklilik fonlari
+    if 'EMEKLİLİK' in n or 'EMEKLILIK' in n:
+        return False
+    if 'EMEKLİLİK' in c or 'EMEKLILIK' in c:
+        return False
+    # 8: Girisim sermayesi + Gayrimenkul
+    if 'GİRİŞİM SERMAYESİ' in n or 'GIRISIM SERMAYESI' in n:
+        return False
+    if 'GAYRİMENKUL YATIRIM' in n or 'GAYRIMENKUL YATIRIM' in n:
+        return False
+    if 'GAYRİMENKUL' in c or 'GAYRIMENKUL' in c:
+        return False
+
     return True
 
 

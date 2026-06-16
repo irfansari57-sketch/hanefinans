@@ -101,8 +101,8 @@ export function buildPortfolio(profile: RiskProfile, allFunds: FundPerformance[]
     }
     if (funds.length === 0) continue;
 
-    // Bu kategoriden kac fon secelim
-    const fundCount = (weight as number) >= 30 ? 2 : 1;
+    // Bu kategoriden kac fon secelim (esik %25 -> daha fazla cesitlilik)
+    const fundCount = (weight as number) >= 25 ? 2 : 1;
 
     // Son 1Y getirisine gore desc sirala
     const top = [...funds]
@@ -125,6 +125,32 @@ export function buildPortfolio(profile: RiskProfile, allFunds: FundPerformance[]
 
     // 6 fonu gectik mi dur
     if (result.length >= 6) break;
+  }
+
+  // 5. MIN 5 FON GARANTISI — eksik fon varsa tradable havuzdan en iyi
+  // performansli fonlarla doldur (cesitlendirme). Boylelikle bazi kategorilerin
+  // (orn. Katilim + Hisse Senedi) bos olmasi durumunda portfoy 3'te kalmaz.
+  const MIN_FUNDS = 5;
+  if (result.length < MIN_FUNDS && tradable.length > result.length) {
+    const usedCodes = new Set(result.map((r) => r.fund.code));
+    const filler = [...tradable]
+      .filter((f) => !usedCodes.has(f.code))
+      .sort((a, b) => (b.year ?? -Infinity) - (a.year ?? -Infinity));
+
+    const needed = Math.min(MIN_FUNDS - result.length, filler.length);
+    // Filler agirligi: ortalama %5 (toplam ~%25 kalan, max 5 fon icin %5 her biri)
+    const fillerWeight = 5;
+
+    for (let i = 0; i < needed; i++) {
+      const f = filler[i];
+      const cat = ((f.category ?? 'Diğer').trim()) as TargetCategory;
+      result.push({
+        fund: f,
+        weightPct: fillerWeight,
+        category: cat,
+        rationale: buildRationale(f, cat, fillerWeight) + ' · ek cesitlendirme',
+      });
+    }
   }
 
   return {

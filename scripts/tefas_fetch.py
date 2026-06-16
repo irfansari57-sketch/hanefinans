@@ -99,6 +99,35 @@ def fetch_history_range(ftype: str, end_date: datetime, days_back: int = 14) -> 
     return None
 
 
+def is_tefas_open(name: str, category: str) -> bool:
+    """Fonun TEFAS uzerinden alinip alinamayacagini doner.
+
+    TEFAS'a kapali fonlar:
+      - Serbest Fonlar (SPK nitelikli yatirimci kosulu: 10M TL+ net varlik)
+      - Yabanci Menkul Kiymetler Serbest Fonu (bazi turleri)
+      - Garantili Fonlar (bazi turleri)
+      - 'Hisse Senedi Serbest', 'Doviz Serbest', 'Eurobond Serbest' gibi serbest turlu hibridler
+
+    Heuristic:
+      1. Resmi kategori 'Serbest' ise -> kapali
+      2. Isim icinde 'SERBEST' kelimesi ic geciyorsa -> kapali (hibrid serbest fonlar)
+      3. 'YABANCI MENKUL KIYMETLER' iceriyorsa -> kapali
+      4. 'NITELIKLI YATIRIMCI' iceriyorsa -> kapali
+      5. Diger hepsi -> acik
+    """
+    cat = (category or '').strip()
+    n = (name or '').upper()
+    if cat == 'Serbest':
+        return False
+    if 'SERBEST' in n:
+        return False
+    if 'YABANCI MENKUL' in n or 'YABANCI MENKULLER' in n:
+        return False
+    if 'NITELIKLI YATIRIMCI' in n or 'NİTELİKLİ YATIRIMCI' in n:
+        return False
+    return True
+
+
 def categorize_fund(name: str) -> str:
     """
     Fon isminden kategori çıkar — TEFAS'ın resmi kategorilerini tefasfon
@@ -394,6 +423,7 @@ def main() -> int:
             "code": str(code),
             "name": fund_name,
             "category": fund_category,
+            "tefasOpen": is_tefas_open(fund_name, fund_category),
             "nav": latest_nav,
             "date": iso_date,
             "marketCap": float(last_row.get(cols['mcap'], 0) or 0) if cols['mcap'] else None,
@@ -424,6 +454,6 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except Exception as e:
-        print(f"\n❌ Yakalanmamış hata: {type(e).__name__}: {e}", file=sys.stderr)
+        print(f"\n❌ Yakalanmamis hata: {type(e).__name__}: {e}", file=sys.stderr)
         traceback.print_exc()
         sys.exit(1)

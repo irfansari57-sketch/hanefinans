@@ -96,6 +96,12 @@ export interface FundPerformance {
   name?: string;
   category: FundCategory;
   tefas: boolean;
+  /**
+   * TEFAS uzerinden alinip alinamayacagi.
+   * false ise Serbest Fon vs (SPK nitelikli yatirimci: 10M TL+ net varlik, 2026 ocak guncel).
+   * Backend `is_tefas_open()` heuristic'i ile hesaplanir.
+   */
+  tefasOpen?: boolean;
   day: number;
   week: number;
   month: number;

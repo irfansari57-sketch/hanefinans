@@ -21,7 +21,18 @@ export function FundsPage() {
   const watched = useLiveQuery(() => fundsRepo.list(), []) ?? [];
   const watchedCodes = useMemo(() => new Set(watched.map((f) => f.code)), [watched]);
 
-  const [tab, setTab] = useState<'all' | 'watched'>('all');
+  // 3 tab: 'tefas' (TEFAS Acik, default) | 'serbest' (Nitelikli yatirimci) | 'watched' (Takipte)
+  // localStorage'da kullanici tercihi tutulur.
+  const [tab, setTab] = useState<'tefas' | 'serbest' | 'watched'>(() => {
+    try {
+      const saved = localStorage.getItem('fa.funds.tab');
+      if (saved === 'tefas' || saved === 'serbest' || saved === 'watched') return saved;
+    } catch { /* */ }
+    return 'tefas';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('fa.funds.tab', tab); } catch { /* */ }
+  }, [tab]);
   const [toDelete, setToDelete] = useState<FundEntry | null>(null);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('week');
@@ -71,8 +82,26 @@ export function FundsPage() {
         } as FundPerformance;
       });
     }
+    // 'tefas' tab: tefasOpen=true olanlar (default true varsayilir geriye uyumluluk icin)
+    // 'serbest' tab: tefasOpen=false olanlar (Nitelikli yatirimci fonlari)
+    if (tab === 'tefas') {
+      return source.filter((f) => f.tefasOpen !== false);
+    }
+    if (tab === 'serbest') {
+      return source.filter((f) => f.tefasOpen === false);
+    }
     return source;
   }, [tab, watched, liveFunds]);
+
+  // 3 tab sayaclari — header'da rozet olarak gosterilir.
+  const tabCounts = useMemo(() => {
+    const source = liveFunds ?? [];
+    return {
+      tefas: source.filter((f) => f.tefasOpen !== false).length,
+      serbest: source.filter((f) => f.tefasOpen === false).length,
+      watched: watched.length,
+    };
+  }, [liveFunds, watched]);
 
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
@@ -175,16 +204,24 @@ export function FundsPage() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
           <button
-            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'all' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
-            onClick={() => setTab('all')}
+            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'tefas' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
+            onClick={() => setTab('tefas')}
+            title="TEFAS uzerinden alinabilen fonlar"
           >
-            Tüm Fonlar ({liveFunds?.length ?? 0})
+            TEFAS Açık ({tabCounts.tefas})
+          </button>
+          <button
+            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'serbest' ? 'bg-bg-card text-warning' : 'text-slate-400 hover:text-slate-200')}
+            onClick={() => setTab('serbest')}
+            title="Nitelikli yatirimci kosulu — SPK 2026 ocak guncel"
+          >
+            Serbest ({tabCounts.serbest})
           </button>
           <button
             className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'watched' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
             onClick={() => setTab('watched')}
           >
-            Takipte ({watched.length})
+            Takipte ({tabCounts.watched})
           </button>
         </div>
 
@@ -216,6 +253,27 @@ export function FundsPage() {
           </div>
         </div>
       </div>
+
+      {/* Serbest tab uyari banner — SPK nitelikli yatirimci kosulu */}
+      {tab === 'serbest' && (
+        <div className="mb-4 rounded-xl border border-warning/40 bg-warning/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={20} className="mt-0.5 shrink-0 text-warning" />
+            <div className="flex-1 text-xs leading-relaxed text-slate-300">
+              <h3 className="text-sm font-semibold text-warning">Sadece Nitelikli Yatırımcılar İçin</h3>
+              <p className="mt-1">
+                Bu fonlar <strong>TEFAS üzerinden alınamaz</strong>. Yalnızca SPK tarafından tanımlı
+                <strong className="text-warning"> nitelikli yatırımcılar</strong> (en az
+                <strong className="text-warning"> 10 milyon TL net varlık</strong> — SPK 2026 Ocak güncel)
+                bu fonlara doğrudan ilgili portföy yönetim şirketinden katılabilir.
+              </p>
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                Listelenen veriler bilgilendirme amaçlıdır — yatırım tavsiyesi değildir.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Takipte tab — 6 ozet kart: Takipteki, Gun, 1Hafta, 1Ay, 3Ay, 1Yil (Hisseler ile ayni) */}
       {tab === 'watched' && sorted.length > 0 && (() => {

@@ -11,6 +11,11 @@ export interface TefasFundData {
   code: string;
   name: string;
   category: string;
+  /**
+   * TEFAS uzerinden alinip alinamayacagi.
+   * Backend `is_tefas_open()` heuristic'i ile hesaplanir; false = Serbest Fon vs.
+   */
+  tefasOpen?: boolean;
   nav: number;
   date: string;
   marketCap?: number;
@@ -283,6 +288,7 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       name: f.name,
       category: normalizeFundCategory(f.category, f.name),
       tefas: true,
+      tefasOpen: f.tefasOpen ?? true,
       day: day == null ? NaN : day,
       week: week == null ? NaN : week,
       month: month == null ? NaN : month,

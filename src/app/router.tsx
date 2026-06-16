@@ -93,6 +93,7 @@ const AlertsPage            = lazyWithRetry(() => import('@/features/alerts/Aler
 const PredictionsPage       = lazyWithRetry(() => import('@/features/predictions/PredictionsPage').then((m) => ({ default: m.PredictionsPage })));
 const AdBannerPreviewPage   = lazyWithRetry(() => import('@/features/preview/AdBannerPreviewPage').then((m) => ({ default: m.AdBannerPreviewPage })));
 const EconomicCalendarPage  = lazyWithRetry(() => import('@/features/calendar/EconomicCalendarPage').then((m) => ({ default: m.EconomicCalendarPage })));
+const RiskProfilePage       = lazyWithRetry(() => import('@/features/riskProfile/RiskProfilePage').then((m) => ({ default: m.RiskProfilePage })));
 
 const withSuspense = (node: React.ReactNode) => (
   <Suspense fallback={<PageSkeleton />}>{node}</Suspense>
@@ -115,6 +116,8 @@ export const router = createBrowserRouter([
       { path: 'macro/:symbol', element: withSuspense(<MacroDetailPage />) },
       { path: 'watchlist', element: withSuspense(<WatchlistPage />) },
       { path: 'alarmlar', element: withSuspense(<AlertsPage />) },
+      { path: 'tahmin', element: withSuspense(<PredictionsPage />) },
+      { path: 'risk-profili', element: withSuspense(<RiskProfilePage />) },
       { path: 'tahmin', element: withSuspense(<PredictionsPage />) },
       { path: 'takvim', element: withSuspense(<EconomicCalendarPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },

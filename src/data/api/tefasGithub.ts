@@ -219,6 +219,21 @@ function normalizeFundCategory(rawCategory: string, name: string): FundCategory 
   return (cat || 'Serbest') as FundCategory;
 }
 
+/**
+ * Backend feed'de `tefasOpen` yoksa (eski cron'lar) client-side ayni heuristic.
+ * Backend `is_tefas_open()` ile bire bir ayni kural seti — guncel kosul:
+ * SPK 2026 Ocak nitelikli yatirimci 10M TL+ net varlik kosulu.
+ */
+function computeTefasOpenClient(category: string, name: string): boolean {
+  const cat = (category || '').trim();
+  const n = (name || '').toUpperCase();
+  if (cat === 'Serbest') return false;
+  if (n.includes('SERBEST')) return false;
+  if (n.includes('YABANCI MENKUL')) return false;
+  if (n.includes('NITELIKLI YATIRIMCI') || n.includes('NİTELİKLİ YATIRIMCI')) return false;
+  return true;
+}
+
 function computeDayChangeFromHistory(history: Array<{ date: string; price: number }>): number | null {
   if (!Array.isArray(history) || history.length < 2) return null;
   const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
@@ -288,7 +303,7 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       name: f.name,
       category: normalizeFundCategory(f.category, f.name),
       tefas: true,
-      tefasOpen: f.tefasOpen ?? true,
+      tefasOpen: f.tefasOpen ?? computeTefasOpenClient(f.category, f.name),
       day: day == null ? NaN : day,
       week: week == null ? NaN : week,
       month: month == null ? NaN : month,

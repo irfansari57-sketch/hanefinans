@@ -116,7 +116,33 @@ def fetch_tefas_open_codes() -> "set[str]":
                 file=sys.stderr,
                 flush=True,
             )
-            return set()
+
+    # LAST RESORT: repo'daki cache JSON (data/tefas-open-codes.json)
+    # Hem Takasbank hem curl_cffi fail olursa bu liste devreye girer.
+    # Bu dosya manuel guncellenir (Takasbank Excel'inden cikarilir).
+    if response_content is None:
+        cache_path = "data/tefas-open-codes.json"
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                cache_data = json.load(f)
+            cache_codes = set(str(c).strip().upper() for c in cache_data.get("codes", []))
+            if cache_codes:
+                print(
+                    f"[fetch_tefas_open_codes] Cache JSON'dan yukleniyor "
+                    f"({cache_data.get('updatedAt', 'tarih yok')}): {len(cache_codes)} fon",
+                    flush=True,
+                )
+                for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK"):
+                    in_list = chk in cache_codes
+                    print(f"[fetch_tefas_open_codes] (cache) {chk} listede mi? {in_list}", flush=True)
+                return cache_codes
+        except Exception as e:
+            print(
+                f"[fetch_tefas_open_codes] Cache JSON da yok ({e}) - heuristic fallback",
+                file=sys.stderr,
+                flush=True,
+            )
+        return set()
 
     try:
         wb = openpyxl.load_workbook(

@@ -136,8 +136,14 @@ def is_tefas_open(name: str, category: str) -> bool:
     # 4: Nitelikli yatirimci
     if 'NITELIKLI YATIRIMCI' in n or 'NİTELİKLİ YATIRIMCI' in n:
         return False
-    # 5: Sepet hesap
+    # 5: Sepet hesap / Paylasimli hesap / Ozel fon (banka ozel)
     if 'SEPET HESAP' in n:
+        return False
+    if 'PAYLAŞIMLI HESAP' in n or 'PAYLASIMLI HESAP' in n:
+        return False
+    if 'PAYLAŞIM HESAP' in n or 'PAYLASIM HESAP' in n:
+        return False
+    if 'ÖZEL FON' in n or 'OZEL FON' in n:
         return False
     # 6: Garantili / Koruma amacli
     if 'GARANTİLİ' in n or 'GARANTILI' in n:

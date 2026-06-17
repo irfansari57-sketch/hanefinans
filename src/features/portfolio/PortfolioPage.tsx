@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, PiggyBank,
+  Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, PiggyBank, Pencil,
 } from 'lucide-react';
 import { FundsPanel } from './FundsPanel';
 import { useAuth, isPro } from '@/store/auth';
@@ -56,6 +56,7 @@ export function PortfolioPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [toDelete, setToDelete] = useState<PortfolioPosition | null>(null);
+  const [toEdit, setToEdit] = useState<PortfolioPosition | null>(null);
 
   // AI analysis
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -363,13 +364,22 @@ export function PortfolioPage() {
                       {r.changePct != null ? `${r.changePct >= 0 ? '+' : ''}${r.changePct.toFixed(2)}%` : '—'}
                     </td>
                     <td className="px-3 py-2.5 text-center">
-                      <button
-                        onClick={() => setToDelete(r)}
-                        className="rounded p-1 text-danger/70 hover:bg-danger/10 hover:text-danger"
-                        title="Sil"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      <div className="inline-flex items-center gap-0.5">
+                        <button
+                          onClick={() => setToEdit(r)}
+                          className="rounded p-1 text-slate-400 hover:bg-accent/10 hover:text-accent"
+                          title="Duzenle"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => setToDelete(r)}
+                          className="rounded p-1 text-danger/70 hover:bg-danger/10 hover:text-danger"
+                          title="Sil"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -383,6 +393,17 @@ export function PortfolioPage() {
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Pozisyon Ekle" size="md">
         <AddPositionForm onClose={() => setAddOpen(false)} />
+      </Modal>
+
+      <Modal open={!!toEdit} onClose={() => setToEdit(null)} title={`${toEdit?.symbol ?? ''} - Duzenle`} size="md">
+        {toEdit && (
+          <EditPositionForm
+            position={toEdit}
+            currentPrice={stockMap.get(toEdit.symbol)?.price}
+            name={stockMap.get(toEdit.symbol)?.name}
+            onClose={() => setToEdit(null)}
+          />
+        )}
       </Modal>
 
       <Modal open={importOpen} onClose={() => setImportOpen(false)} title="CSV / Excel ile Toplu İçe Aktar" size="lg">
@@ -544,6 +565,95 @@ ASELS	250	75.20`}
   );
 }
 
+function EditPositionForm({ position, currentPrice, name, onClose }: {
+  position: PortfolioPosition;
+  currentPrice?: number;
+  name?: string;
+  onClose: () => void;
+}) {
+  const [lot, setLot] = useState(position.lot.toString());
+  const [avgPrice, setAvgPrice] = useState(position.avgPrice.toString());
+  const [note, setNote] = useState(position.note ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const lotNum = parseFloat(lot.replace(',', '.'));
+    const priceNum = parseFloat(avgPrice.replace(',', '.'));
+    if (!Number.isFinite(lotNum) || lotNum <= 0 || !Number.isFinite(priceNum) || priceNum <= 0) {
+      toast.error('Geçersiz giriş', 'Lot ve ortalama fiyat zorunlu, pozitif olmalı');
+      return;
+    }
+    if (!position.id) {
+      toast.error('Kayıt bulunamadı');
+      return;
+    }
+    setSaving(true);
+    try {
+      await db.portfolio.update(position.id, {
+        lot: lotNum,
+        avgPrice: priceNum,
+        note: note.trim() || undefined,
+      });
+      toast.success(`${position.symbol} güncellendi`, `${lotNum} lot @ ${priceNum}₺`);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs text-slate-300">
+        <strong className="text-accent">{position.symbol}</strong>
+        {name && <span className="ml-2 text-slate-400">{name}</span>}
+        {currentPrice && (
+          <div className="mt-1 text-[11px] text-slate-400">
+            Mevcut fiyat: <strong className="text-slate-200">{currentPrice.toFixed(2)}₺</strong>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Lot Adedi">
+          <input
+            className="input"
+            type="number"
+            value={lot}
+            onChange={(e) => setLot(e.target.value)}
+            min="0"
+            step="any"
+            autoFocus
+          />
+        </Field>
+        <Field label="Ortalama Maliyet (₺)">
+          <input
+            className="input"
+            type="number"
+            value={avgPrice}
+            onChange={(e) => setAvgPrice(e.target.value)}
+            min="0"
+            step="any"
+          />
+        </Field>
+      </div>
+      <Field label="Not (opsiyonel)">
+        <input
+          className="input"
+          placeholder="ör. Uzun vade için aldım"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </Field>
+      <div className="flex justify-end gap-2 pt-2">
+        <button className="btn-secondary" onClick={onClose}>İptal</button>
+        <button className="btn-primary" onClick={save} disabled={saving}>
+          {saving ? 'Kaydediliyor…' : 'Kaydet'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AddPositionForm({ onClose }: { onClose: () => void }) {
   const [symbol, setSymbol] = useState('');
   const [lot, setLot] = useState('');
@@ -596,16 +706,33 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
             maxLength={6}
           />
           {suggestions.length > 0 && symbol.length >= 2 && (
-            <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-bg-card shadow-xl max-h-48 overflow-y-auto">
+            <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-bg-card shadow-xl max-h-60 overflow-y-auto">
               {suggestions.map((s) => (
                 <button
                   key={s.symbol}
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); setSymbol(s.symbol); }}
-                  className="flex w-full items-center justify-between px-3 py-2 text-xs hover:bg-bg-soft"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setSymbol(s.symbol);
+                    if (s.price > 0 && !avgPrice) setAvgPrice(s.price.toString());
+                  }}
+                  className="flex w-full items-start justify-between gap-2 px-3 py-2 text-xs hover:bg-bg-soft"
                 >
-                  <span className="font-mono font-semibold text-accent">{s.symbol}</span>
-                  <span className="text-slate-400 text-[11px]">{s.name}</span>
+                  <div className="min-w-0 flex-1 text-left">
+                    <span className="font-mono font-semibold text-accent">{s.symbol}</span>
+                    <div className="text-slate-400 text-[10px] truncate">{s.name}</div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-mono text-[11px] font-bold text-slate-100 tabular-nums">
+                      {s.price > 0 ? `${s.price.toFixed(2)}₺` : '—'}
+                    </div>
+                    <div className={cn(
+                      'text-[10px] font-bold tabular-nums',
+                      (s.changePct ?? 0) >= 0 ? 'text-success' : 'text-danger',
+                    )}>
+                      {Number.isFinite(s.changePct) ? `${(s.changePct as number) >= 0 ? '+' : ''}${(s.changePct as number).toFixed(2)}%` : ''}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>

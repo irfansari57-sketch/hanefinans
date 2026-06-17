@@ -102,6 +102,10 @@ export interface FundPerformance {
    * Backend `is_tefas_open()` heuristic'i ile hesaplanir.
    */
   tefasOpen?: boolean;
+  /** Anlik fiyat (NAV / pay degeri) - feed'den gelir, opsiyonel */
+  nav?: number;
+  /** NAV tarihi (YYYY-MM-DD) */
+  navDate?: string;
   day: number;
   week: number;
   month: number;

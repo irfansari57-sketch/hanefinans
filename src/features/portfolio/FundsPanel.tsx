@@ -1,5 +1,5 @@
 /**
- * Portfoyum -> Fonlar paneli.
+ * Portfoyum -> Fonlar paneli (ekle/duzenle/sil).
  *
  * - TEFAS feed'inden fon arama (kod/isim)
  * - Pay adedi + ortalama NAV ile pozisyon ekleme
@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -60,6 +60,7 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
   const [addOpen, setAddOpen] = useState(false);
   const [toDelete, setToDelete] = useState<PortfolioPosition | null>(null);
+  const [toEdit, setToEdit] = useState<PortfolioPosition | null>(null);
 
   // Map for fast lookup
   const fundMap = useMemo(() => {
@@ -259,13 +260,22 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
                       {Number.isFinite(r.year) ? `${(r.year as number) >= 0 ? '+' : ''}${(r.year as number).toFixed(2)}%` : '—'}
                     </td>
                     <td className="px-3 py-2.5 text-center">
-                      <button
-                        onClick={() => setToDelete(r)}
-                        className="rounded p-1 text-danger/70 hover:bg-danger/10 hover:text-danger"
-                        title="Sil"
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      <div className="inline-flex items-center gap-0.5">
+                        <button
+                          onClick={() => setToEdit(r)}
+                          className="rounded p-1 text-slate-400 hover:bg-accent/10 hover:text-accent"
+                          title="Duzenle"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => setToDelete(r)}
+                          className="rounded p-1 text-danger/70 hover:bg-danger/10 hover:text-danger"
+                          title="Sil"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -277,6 +287,17 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Fon Ekle" size="md">
         <AddFundForm funds={funds} onClose={() => setAddOpen(false)} />
+      </Modal>
+
+      <Modal open={!!toEdit} onClose={() => setToEdit(null)} title={`${toEdit?.symbol ?? ''} - Duzenle`} size="md">
+        {toEdit && (
+          <EditFundForm
+            position={toEdit}
+            currentNav={fundMap.get(toEdit.symbol)?.nav}
+            fundName={fundMap.get(toEdit.symbol)?.name}
+            onClose={() => setToEdit(null)}
+          />
+        )}
       </Modal>
 
       <ConfirmDialog
@@ -317,6 +338,95 @@ function Box({ label, value, sub, tone }: {
   );
 }
 
+function EditFundForm({ position, currentNav, fundName, onClose }: {
+  position: PortfolioPosition;
+  currentNav?: number;
+  fundName?: string;
+  onClose: () => void;
+}) {
+  const [lot, setLot] = useState(position.lot.toString());
+  const [avgPrice, setAvgPrice] = useState(position.avgPrice.toString());
+  const [note, setNote] = useState(position.note ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const lotNum = parseFloat(lot.replace(',', '.'));
+    const priceNum = parseFloat(avgPrice.replace(',', '.'));
+    if (!Number.isFinite(lotNum) || lotNum <= 0 || !Number.isFinite(priceNum) || priceNum <= 0) {
+      toast.error('Gecersiz giris', 'Adet ve ortalama NAV zorunlu, pozitif olmali');
+      return;
+    }
+    if (!position.id) {
+      toast.error('Kayit bulunamadi');
+      return;
+    }
+    setSaving(true);
+    try {
+      await db.portfolio.update(position.id, {
+        lot: lotNum,
+        avgPrice: priceNum,
+        note: note.trim() || undefined,
+      });
+      toast.success(`${position.symbol} guncellendi`, `${lotNum} adet @ ${priceNum}₺`);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs text-slate-300">
+        <strong className="text-accent">{position.symbol}</strong>
+        {fundName && <span className="ml-2 text-slate-400">{fundName}</span>}
+        {currentNav && (
+          <div className="mt-1 text-[11px] text-slate-400">
+            Bugunki NAV: <strong className="text-slate-200">{currentNav.toFixed(4)}₺</strong>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Pay Adedi">
+          <input
+            className="input"
+            type="number"
+            value={lot}
+            onChange={(e) => setLot(e.target.value)}
+            min="0"
+            step="any"
+            autoFocus
+          />
+        </Field>
+        <Field label="Ortalama NAV (₺/pay)">
+          <input
+            className="input"
+            type="number"
+            value={avgPrice}
+            onChange={(e) => setAvgPrice(e.target.value)}
+            min="0"
+            step="any"
+          />
+        </Field>
+      </div>
+      <Field label="Not (opsiyonel)">
+        <input
+          className="input"
+          placeholder="ör. Aylik duzenli alim"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </Field>
+      <div className="flex justify-end gap-2 pt-2">
+        <button className="btn-secondary" onClick={onClose}>Iptal</button>
+        <button className="btn-primary" onClick={save} disabled={saving}>
+          {saving ? 'Kaydediliyor…' : 'Kaydet'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: () => void }) {
   const [code, setCode] = useState('');
   const [lot, setLot] = useState('');
@@ -336,6 +446,14 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
     ? selectedFund.tefasOpen === false
       || computeTefasOpenClient(selectedFund.category ?? '', selectedFund.name ?? '') === false
     : false;
+
+  // Fon secildiginde avgPrice'i mevcut NAV ile default doldur (kullanici degistirebilir)
+  const pickFund = (f: FundPerformance) => {
+    setCode(f.code);
+    if (f.nav && !avgPrice) {
+      setAvgPrice(f.nav.toString());
+    }
+  };
 
   const save = async () => {
     const sym = code.trim().toUpperCase();
@@ -384,7 +502,7 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
                   <button
                     key={f.code}
                     type="button"
-                    onMouseDown={(e) => { e.preventDefault(); setCode(f.code); }}
+                    onMouseDown={(e) => { e.preventDefault(); pickFund(f); }}
                     className="flex w-full items-start justify-between gap-2 px-3 py-2 text-xs hover:bg-bg-soft"
                   >
                     <div className="min-w-0 flex-1 text-left">
@@ -398,12 +516,17 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
                       </div>
                       <div className="text-[10px] text-slate-400 truncate">{f.name}</div>
                     </div>
-                    <span className={cn(
-                      'shrink-0 text-[10px] font-bold tabular-nums',
-                      (f.year ?? 0) >= 0 ? 'text-success' : 'text-danger',
-                    )}>
-                      {Number.isFinite(f.year) ? `${(f.year as number) >= 0 ? '+' : ''}${(f.year as number).toFixed(1)}%` : '—'}
-                    </span>
+                    <div className="shrink-0 text-right">
+                      <div className="font-mono text-[11px] font-bold text-slate-100 tabular-nums">
+                        {f.nav ? `${f.nav.toFixed(4)}₺` : '—'}
+                      </div>
+                      <div className={cn(
+                        'text-[10px] font-bold tabular-nums',
+                        (f.year ?? 0) >= 0 ? 'text-success' : 'text-danger',
+                      )}>
+                        {Number.isFinite(f.year) ? `${(f.year as number) >= 0 ? '+' : ''}${(f.year as number).toFixed(1)}%` : '—'}
+                      </div>
+                    </div>
                   </button>
                 );
               })}
@@ -431,11 +554,14 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
             step="any"
           />
         </Field>
-        <Field label="Ortalama NAV (₺/pay)">
+        <Field
+          label="Ortalama NAV (₺/pay)"
+          hint={selectedFund?.nav ? `Bugunki NAV: ${selectedFund.nav.toFixed(4)}₺ (otomatik dolduruldu)` : undefined}
+        >
           <input
             className="input"
             type="number"
-            placeholder="2.85"
+            placeholder={selectedFund?.nav ? selectedFund.nav.toFixed(4) : '2.85'}
             value={avgPrice}
             onChange={(e) => setAvgPrice(e.target.value)}
             min="0"

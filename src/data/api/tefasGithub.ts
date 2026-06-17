@@ -242,6 +242,12 @@ export function computeTefasOpenClient(category: string, name: string): boolean 
   // SEPET HESAP fonlari (banka ozel, sadece kendi musterilerine acik)
   // orn: ZA2 = "KUVEYT TURK PORTFOY IKINCI SEPET HESAP PARA PIYASASI KATILIM FONU"
   if (n.includes('SEPET HESAP')) return false;
+  // PAYLASIMLI HESAP — KHP gibi banka ozel paylasimli hesap fonlari
+  // orn: KHP = "KUVEYT TURK PORTFOY PAYLASIMLI HESAP PARA PIYASASI KATILIM FONU"
+  if (n.includes('PAYLAŞIMLI HESAP') || n.includes('PAYLASIMLI HESAP')) return false;
+  if (n.includes('PAYLAŞIM HESAP') || n.includes('PAYLASIM HESAP')) return false;
+  // OZEL FON (cogu nitelikli yatirimci veya banka ozeli)
+  if (n.includes('ÖZEL FON') || n.includes('OZEL FON')) return false;
 
   // Garantili / Koruma amacli — getiri garantili ozel fonlar
   if (n.includes('GARANTİLİ') || n.includes('GARANTILI')) return false;
@@ -324,7 +330,7 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
     // alanlari yazmiyor. UI'da +0.00% yerine "—" gosterelim ki kullanici "veri yok"
     // ile "gercek 0" karistirma. Bunun icin NaN doneriz (UI Number.isFinite check yapiyor).
 
-    // tefasOpen override mantigi:
+    // tefasOpen override mantigi (client wins for closed):
     //   - Client heuristic FALSE derse -> daima FALSE (cunku frontend kodu backend
     //     cron'undan daha guncel guncellenebilir; yeni eklenen kosullar (SEPET HESAP,
     //     EMEKLILIK vs.) backend feed'inde henuz olmayabilir)
@@ -338,6 +344,8 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       category: normalizeFundCategory(f.category, f.name),
       tefas: true,
       tefasOpen: finalOpen,
+      nav: typeof f.nav === 'number' && f.nav > 0 ? f.nav : undefined,
+      navDate: f.date || undefined,
       day: day == null ? NaN : day,
       week: week == null ? NaN : week,
       month: month == null ? NaN : month,

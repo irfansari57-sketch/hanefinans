@@ -53,18 +53,29 @@ _OPEN_CODES_FETCH_ATTEMPTED = False
 
 def fetch_tefas_open_codes() -> "set[str]":
     """TEFAS resmi BindComparisonFundReturns endpoint'inden islem goren fon
-    kodlarini doner. Hata durumunda bos set doner (caller heuristic'e duser).
+    kodlarini doner. curl-cffi + chrome131 impersonation kullanir (tefasfon
+    paketinin yontemi - TEFAS bot protection'i pass eder). Hata durumunda bos
+    set doner.
     """
+    # tefasfon zaten dependency oldugundan curl_cffi mevcut
+    try:
+        from curl_cffi import requests as cr
+    except ImportError:
+        print(
+            "[fetch_tefas_open_codes] HATA: curl_cffi import yok - heuristic fallback",
+            file=sys.stderr,
+            flush=True,
+        )
+        return set()
+
     url = "https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns"
     today = datetime.now().strftime("%d.%m.%Y")
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": "https://www.tefas.gov.tr/FonKarsilastirma.aspx",
-        "User-Agent": "Mozilla/5.0 (compatible; HaneFinans/1.0)",
-    }
-    # NOT: calismatipi 1 = "TEFAS'ta Islem Goren". calismatipi 2 = Serbest fonlar
-    # (nitelikli yatirimci). Biz sadece 1'i istiyoruz.
+    chrome_ua = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    )
+    # calismatipi 1 = "TEFAS'ta Islem Goren" yatirim fonlari
     payload = {
         "calismatipi": 1,
         "fontip": "YAT",
@@ -78,14 +89,36 @@ def fetch_tefas_open_codes() -> "set[str]":
         "strperiod": "1,1,1,1,1,1,1",
         "islemdurum": 1,
     }
+
     try:
-        r = requests.post(url, headers=headers, data=payload, timeout=25)
+        session = cr.Session(impersonate="chrome131")
+        session.headers.update({
+            "User-Agent": chrome_ua,
+            "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+        })
+        # Once portal sayfasini ziyaret et (cookie/session olusturmak icin)
+        session.get(
+            "https://www.tefas.gov.tr/FonKarsilastirma.aspx",
+            headers={"Accept": "text/html,application/xhtml+xml,*/*;q=0.8"},
+            timeout=30,
+        )
+        # Sonra API'ye POST
+        r = session.post(
+            url,
+            data=payload,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": "https://www.tefas.gov.tr/FonKarsilastirma.aspx",
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+            },
+            timeout=25,
+        )
         r.raise_for_status()
         j = r.json()
         items = j.get("data") or []
         codes: set[str] = set()
         for item in items:
-            # API icindeki kod alan adi - asagidaki adlarin biri olur
             code = (
                 item.get("FONKODU")
                 or item.get("FonKodu")
@@ -96,13 +129,17 @@ def fetch_tefas_open_codes() -> "set[str]":
             if code:
                 codes.add(str(code).strip().upper())
         print(
-            f"[fetch_tefas_open_codes] TEFAS resmi listesi: {len(codes)} fon",
+            f"[fetch_tefas_open_codes] TEFAS resmi liste (curl-cffi): {len(codes)} fon",
             flush=True,
         )
+        # Ornek: ilk 5 kodu yaz (sanity check)
+        if codes:
+            sample = sorted(codes)[:5]
+            print(f"[fetch_tefas_open_codes] Ornek kodlar: {sample}", flush=True)
         return codes
     except Exception as e:
         print(
-            f"[fetch_tefas_open_codes] HATA: {e} - heuristic fallback'a duser",
+            f"[fetch_tefas_open_codes] HATA: {type(e).__name__}: {e} - heuristic fallback",
             file=sys.stderr,
             flush=True,
         )

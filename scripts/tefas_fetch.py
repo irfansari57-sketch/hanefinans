@@ -52,90 +52,70 @@ _OPEN_CODES_FETCH_ATTEMPTED = False
 
 
 def fetch_tefas_open_codes() -> "set[str]":
-    """TEFAS resmi BindComparisonFundReturns endpoint'inden islem goren fon
-    kodlarini doner. curl-cffi + chrome131 impersonation kullanir (tefasfon
-    paketinin yontemi - TEFAS bot protection'i pass eder). Hata durumunda bos
-    set doner.
+    """Takasbank'in TEFAS Yatirim Fonlari Excel'inden TEFAS'ta islem goren tum
+    YAT fon kodlarini doner. Takasbank TEFAS'i isleten kurum oldugu icin bu liste
+    OTORITER: bir fon listede ise TEFAS'ta islem gorur, yoksa gormez.
+
+    Takasbank.com.tr farkli bir altyapida calistigi icin tefas.gov.tr'nin bot
+    korumasindan etkilenmez. Tek HTTP istegi (~150-300 KB xlsx).
+
+    Hata durumunda bos set doner -> caller bir sonraki katmana (heuristic) duser.
     """
-    # tefasfon zaten dependency oldugundan curl_cffi mevcut
+    # openpyxl pandas dependency'si olarak GitHub Actions runner'da kurulu
     try:
-        from curl_cffi import requests as cr
-    except ImportError:
+        import io
+        import openpyxl
+    except ImportError as e:
         print(
-            "[fetch_tefas_open_codes] HATA: curl_cffi import yok - heuristic fallback",
+            f"[fetch_tefas_open_codes] HATA: openpyxl import yok ({e}) - heuristic fallback",
             file=sys.stderr,
             flush=True,
         )
         return set()
 
-    url = "https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns"
-    today = datetime.now().strftime("%d.%m.%Y")
-    chrome_ua = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
+    url = (
+        "https://www.takasbank.com.tr/plugins/"
+        "ExcelExportTefasFundsTradingInvestmentPlatform?language=tr"
     )
-    # calismatipi 1 = "TEFAS'ta Islem Goren" yatirim fonlari
-    payload = {
-        "calismatipi": 1,
-        "fontip": "YAT",
-        "sfontur": "",
-        "kurucukod": "",
-        "fongrup": "",
-        "bastarih": today,
-        "bittarih": today,
-        "fonturkod": "",
-        "fonunvantip": "",
-        "strperiod": "1,1,1,1,1,1,1",
-        "islemdurum": 1,
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/131.0.0.0 Safari/537.36"
+        ),
+        "Accept": "*/*",
+        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
     }
 
     try:
-        session = cr.Session(impersonate="chrome131")
-        session.headers.update({
-            "User-Agent": chrome_ua,
-            "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
-        })
-        # Once portal sayfasini ziyaret et (cookie/session olusturmak icin)
-        session.get(
-            "https://www.tefas.gov.tr/FonKarsilastirma.aspx",
-            headers={"Accept": "text/html,application/xhtml+xml,*/*;q=0.8"},
-            timeout=30,
-        )
-        # Sonra API'ye POST
-        r = session.post(
-            url,
-            data=payload,
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": "https://www.tefas.gov.tr/FonKarsilastirma.aspx",
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-            },
-            timeout=25,
-        )
+        r = requests.get(url, headers=headers, timeout=30)
         r.raise_for_status()
-        j = r.json()
-        items = j.get("data") or []
+        wb = openpyxl.load_workbook(
+            io.BytesIO(r.content), read_only=True, data_only=True,
+        )
+        ws = wb.active
         codes: set[str] = set()
-        for item in items:
-            code = (
-                item.get("FONKODU")
-                or item.get("FonKodu")
-                or item.get("fon_kodu")
-                or item.get("KOD")
-                or item.get("Kod")
-            )
-            if code:
-                codes.add(str(code).strip().upper())
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i == 0:
+                continue  # Header satiri (Fon Adi, Fon Kodu)
+            # Sema: row[0]=Fon Adi, row[1]=Fon Kodu - kod 2. kolonda
+            if len(row) >= 2:
+                code = row[1]
+                if code and isinstance(code, str):
+                    codes.add(code.strip().upper())
+                elif code is not None:
+                    codes.add(str(code).strip().upper())
         print(
-            f"[fetch_tefas_open_codes] TEFAS resmi liste (curl-cffi): {len(codes)} fon",
+            f"[fetch_tefas_open_codes] Takasbank TEFAS listesi: {len(codes)} fon",
             flush=True,
         )
-        # Ornek: ilk 5 kodu yaz (sanity check)
         if codes:
             sample = sorted(codes)[:5]
             print(f"[fetch_tefas_open_codes] Ornek kodlar: {sample}", flush=True)
+            # Sanity check - EKL bilinen belirsiz fon
+            for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK"):
+                in_list = chk in codes
+                print(f"[fetch_tefas_open_codes] {chk} listede mi? {in_list}", flush=True)
         return codes
     except Exception as e:
         print(

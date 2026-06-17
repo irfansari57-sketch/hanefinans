@@ -678,14 +678,32 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
     }
     setSaving(true);
     try {
-      await db.portfolio.add({
-        symbol: sym,
-        lot: lotNum,
-        avgPrice: priceNum,
-        addedAt: Date.now(),
-        note: note.trim() || undefined,
-      });
-      toast.success(`${sym} eklendi`, `${lotNum} lot @ ${priceNum}₺`);
+      // Ayni sembol icin mevcut hisse pozisyonu var mi? (kind=fund haric)
+      const existing = await db.portfolio
+        .filter((p) => p.symbol === sym && p.kind !== 'fund')
+        .first();
+
+      if (existing && existing.id) {
+        // Agirlikli ortalama maliyet: (eski_lot * eski_avg + yeni_lot * yeni_avg) / (eski_lot + yeni_lot)
+        const totalLot = existing.lot + lotNum;
+        const weightedAvg = (existing.lot * existing.avgPrice + lotNum * priceNum) / totalLot;
+        await db.portfolio.update(existing.id, {
+          lot: totalLot,
+          avgPrice: weightedAvg,
+          note: note.trim() || existing.note,
+        });
+        toast.success(`${sym} guncellendi`,
+          `Toplam ${totalLot} lot · Yeni ort. maliyet ${weightedAvg.toFixed(2)}₺`);
+      } else {
+        await db.portfolio.add({
+          symbol: sym,
+          lot: lotNum,
+          avgPrice: priceNum,
+          addedAt: Date.now(),
+          note: note.trim() || undefined,
+        });
+        toast.success(`${sym} eklendi`, `${lotNum} lot @ ${priceNum}₺`);
+      }
       onClose();
     } finally {
       setSaving(false);

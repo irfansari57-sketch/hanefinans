@@ -93,18 +93,19 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
       if (!f) {
         return { ...p, cost };
       }
-      // NAV (current price/pay) — FundPerformance'da `price` yok, son fiyat day return'dan turetilemez.
-      // TEFAS feed'inden navStr veya last_price gelmiyor — bu yuzden kullaniciyi  uyaralim:
-      // Burada FundPerformance objesinin name/category bilgisini kullanip, NAV icin
-      // ayri bir helper kullanacagiz (loadFundsAsPerformanceDetailed gerekirse).
-      // Su an: pnl hesabini avgPrice * (1 + year/100) yaklasik degerle yapamayiz.
-      // Daha temiz yaklasim: her fon icin TEFAS feed'de price/nav alani olmali —
-      // sahip oldugumuz alanlardan rough hesap.
-      // Pragmatik fallback: avgPrice'i mevcut NAV varsayilan kabul, fakat
-      // FundPerformance ek field gerekiyor.
+      // Artik FundPerformance'da `nav` (anlik fiyat) field'i var (TEFAS feed'inden).
+      // marketValue = adet * mevcut NAV, pnl = marketValue - cost
+      const currentNav = f.nav;
+      const marketValue = (currentNav && currentNav > 0) ? p.lot * currentNav : undefined;
+      const pnl = marketValue != null ? marketValue - cost : undefined;
+      const pnlPct = pnl != null && cost > 0 ? (pnl / cost) * 100 : undefined;
       return {
         ...p,
         cost,
+        currentNav,
+        marketValue,
+        pnl,
+        pnlPct,
         name: f.name,
         category: f.category,
         tefasOpen: f.tefasOpen,
@@ -116,16 +117,21 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
     });
   }, [positions, fundMap]);
 
-  // Toplamlar — current NAV bilgisi olmadigi icin yalnizca maliyet + ortalama getiri
+  // Toplamlar — mevcut NAV feed'den (gercek), yoksa yaklasik (1Y getiri ile)
   const totals = useMemo(() => {
     let totalCost = 0;
     let totalValue = 0;
     let dailyChange = 0;
     for (const r of rows) {
       if (r.cost) totalCost += r.cost;
-      // Mevcut deger: avg * (1 + year/100) yaklasik (1 yillik)
-      // NOT: Bu kesin degil — TEFAS feed'inde live NAV olmadigi icin tahmini hesap.
-      if (r.cost && Number.isFinite(r.year)) {
+      // Oncelik: gercek marketValue (Adet * Mevcut NAV)
+      if (r.marketValue != null) {
+        totalValue += r.marketValue;
+        if (Number.isFinite(r.day)) {
+          dailyChange += r.marketValue * ((r.day as number) / 100);
+        }
+      } else if (r.cost && Number.isFinite(r.year)) {
+        // Fallback: NAV feed'de yoksa 1Y getiriyle yaklasik
         const approxValue = r.cost * (1 + (r.year as number) / 100);
         totalValue += approxValue;
         if (Number.isFinite(r.day)) {
@@ -179,7 +185,7 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
           </div>
           <p className="mt-3 text-[10px] text-slate-500">
             <AlertCircle size={10} className="inline mr-1" />
-            Fon mevcut degeri TEFAS feed'inden 1 yillik getiri ile yaklasik hesaplanir. Kesin NAV icin fon detay sayfasini kullanin.
+            Fon degeri TEFAS feed'inden gunluk NAV ile hesaplanir. Eski feed'lerde NAV yoksa 1Y getiri ile yaklasik hesaplanir.
           </p>
         </section>
       )}
@@ -204,12 +210,15 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
                 <th className="px-3 py-2.5 text-left">Fon</th>
                 <th className="px-3 py-2.5 text-right">Adet</th>
                 <th className="px-3 py-2.5 text-right">Ort. NAV</th>
+                <th className="px-3 py-2.5 text-right">Mevcut NAV</th>
                 <th className="px-3 py-2.5 text-right hidden md:table-cell">Maliyet</th>
+                <th className="px-3 py-2.5 text-right">Deger</th>
+                <th className="px-3 py-2.5 text-right">Kar/Zarar</th>
                 <th className="px-3 py-2.5 text-right hidden md:table-cell">Gun %</th>
                 <th className="px-3 py-2.5 text-right hidden lg:table-cell">Hafta %</th>
-                <th className="px-3 py-2.5 text-right hidden lg:table-cell">Ay %</th>
-                <th className="px-3 py-2.5 text-right">1 Yil %</th>
-                <th className="px-3 py-2.5 text-center w-12"></th>
+                <th className="px-3 py-2.5 text-right hidden xl:table-cell">Ay %</th>
+                <th className="px-3 py-2.5 text-right hidden xl:table-cell">1 Yil %</th>
+                <th className="px-3 py-2.5 text-center w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -218,6 +227,7 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
                 const dayTone = (r.day ?? 0) >= 0 ? 'text-success' : 'text-danger';
                 const weekTone = (r.week ?? 0) >= 0 ? 'text-success' : 'text-danger';
                 const monthTone = (r.month ?? 0) >= 0 ? 'text-success' : 'text-danger';
+                const pnlTone = (r.pnl ?? 0) >= 0 ? 'text-success' : 'text-danger';
                 return (
                   <tr key={r.id} className="hover:bg-bg-card">
                     <td className="px-3 py-2.5">
@@ -243,9 +253,25 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
                       {r.name && <div className="mt-0.5 text-[10px] text-slate-500 truncate max-w-[220px]">{r.name}</div>}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-slate-300">{r.lot}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-300">{formatMoney(r.avgPrice)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-300">{r.avgPrice.toFixed(4)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-100 font-medium">
+                      {r.currentNav != null ? r.currentNav.toFixed(4) : '—'}
+                    </td>
                     <td className="hidden md:table-cell px-3 py-2.5 text-right tabular-nums text-slate-400">
                       {r.cost != null ? formatMoney(r.cost) : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-100 font-medium">
+                      {r.marketValue != null ? formatMoney(r.marketValue) : '—'}
+                    </td>
+                    <td className={cn('px-3 py-2.5 text-right tabular-nums font-medium', pnlTone)}>
+                      {r.pnl != null ? (
+                        <>
+                          {r.pnl >= 0 ? '+' : ''}{formatMoney(r.pnl)}
+                          <div className="text-[10px] opacity-80">
+                            {(r.pnlPct ?? 0) >= 0 ? '+' : ''}{(r.pnlPct ?? 0).toFixed(2)}%
+                          </div>
+                        </>
+                      ) : '—'}
                     </td>
                     <td className={cn('hidden md:table-cell px-3 py-2.5 text-right tabular-nums', dayTone)}>
                       {Number.isFinite(r.day) ? `${(r.day as number) >= 0 ? '+' : ''}${(r.day as number).toFixed(2)}%` : '—'}
@@ -253,10 +279,10 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
                     <td className={cn('hidden lg:table-cell px-3 py-2.5 text-right tabular-nums', weekTone)}>
                       {Number.isFinite(r.week) ? `${(r.week as number) >= 0 ? '+' : ''}${(r.week as number).toFixed(2)}%` : '—'}
                     </td>
-                    <td className={cn('hidden lg:table-cell px-3 py-2.5 text-right tabular-nums', monthTone)}>
+                    <td className={cn('hidden xl:table-cell px-3 py-2.5 text-right tabular-nums', monthTone)}>
                       {Number.isFinite(r.month) ? `${(r.month as number) >= 0 ? '+' : ''}${(r.month as number).toFixed(2)}%` : '—'}
                     </td>
-                    <td className={cn('px-3 py-2.5 text-right tabular-nums font-medium', yearTone)}>
+                    <td className={cn('hidden xl:table-cell px-3 py-2.5 text-right tabular-nums font-medium', yearTone)}>
                       {Number.isFinite(r.year) ? `${(r.year as number) >= 0 ? '+' : ''}${(r.year as number).toFixed(2)}%` : '—'}
                     </td>
                     <td className="px-3 py-2.5 text-center">
@@ -465,15 +491,33 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
     }
     setSaving(true);
     try {
-      await db.portfolio.add({
-        kind: 'fund',
-        symbol: sym,
-        lot: lotNum,
-        avgPrice: priceNum,
-        addedAt: Date.now(),
-        note: note.trim() || undefined,
-      });
-      toast.success(`${sym} eklendi`, `${lotNum} adet @ ${priceNum}₺`);
+      // Ayni fon kodu icin mevcut pozisyon var mi?
+      const existing = await db.portfolio
+        .filter((p) => p.symbol === sym && p.kind === 'fund')
+        .first();
+
+      if (existing && existing.id) {
+        // Agirlikli ortalama NAV: (eski_adet * eski_nav + yeni_adet * yeni_nav) / toplam_adet
+        const totalLot = existing.lot + lotNum;
+        const weightedAvg = (existing.lot * existing.avgPrice + lotNum * priceNum) / totalLot;
+        await db.portfolio.update(existing.id, {
+          lot: totalLot,
+          avgPrice: weightedAvg,
+          note: note.trim() || existing.note,
+        });
+        toast.success(`${sym} guncellendi`,
+          `Toplam ${totalLot} adet · Yeni ort. NAV ${weightedAvg.toFixed(4)}₺`);
+      } else {
+        await db.portfolio.add({
+          kind: 'fund',
+          symbol: sym,
+          lot: lotNum,
+          avgPrice: priceNum,
+          addedAt: Date.now(),
+          note: note.trim() || undefined,
+        });
+        toast.success(`${sym} eklendi`, `${lotNum} adet @ ${priceNum}₺`);
+      }
       onClose();
     } finally {
       setSaving(false);

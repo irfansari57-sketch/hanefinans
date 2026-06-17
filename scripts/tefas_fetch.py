@@ -188,25 +188,31 @@ def fetch_history_range(ftype: str, end_date: datetime, days_back: int = 14) -> 
     return None
 
 
-def is_tefas_open(name: str, category: str, code: str = '') -> bool:
+def is_tefas_open(name: str, category: str, code: str = '', tefas_status_value=None) -> bool:
     """Fonun TEFAS uzerinden alinip alinamayacagini doner.
 
-    KARAR MANTIGI (sirali):
-      1. ONCELIK: TEFAS resmi "Islem Goren Fonlar" listesi (BindComparisonFundReturns
-         endpoint). Liste varsa: code in list -> True, yoksa False.
-         Bu sayede yeni cikan banka ozel fonlari (PAYLASIMLI HESAP, NEO FON vs.)
-         otomatik yakalanir, isim heuristic'ine bagli kalmaz.
-      2. FALLBACK: TEFAS sitesi erisilemezse asagidaki isim/kategori heuristic'i.
-
-    Heuristic kapsami (TEFAS'a kapali fon tipleri):
-      - Serbest Fonlar (SPK nitelikli yatirimci: 10M TL+ net varlik)
-      - Yabanci Menkul Kiymetler Serbest
-      - Sepet Hesap, Paylasimli Hesap, Ozel Fon (banka ozel)
-      - Garantili / Koruma amacli
-      - Bireysel Emeklilik (BES)
-      - Girisim Sermayesi YF + Gayrimenkul YF
+    KARAR MANTIGI (sirali, en kesin -> en zayif):
+      0. EN ONCELIK: tefasfon DataFrame'den dogrudan gelen 'TEFAS durumu' alani
+         (varsa). Tek tek isim yakalamaya gerek kalmaz, TEFAS'in resmi statusudur.
+      1. TEFAS resmi BindComparisonFundReturns endpoint listesi (cron baslangici)
+      2. FALLBACK: isim/kategori heuristic
     """
-    # 1) PRIMARY - TEFAS resmi liste
+    # 0) EN ONCELIK - tefasfon DataFrame'den gelen direkt status
+    if tefas_status_value is not None:
+        s = str(tefas_status_value).strip().upper()
+        # Bos / nan / None kontrolu
+        if s and s not in ('NAN', 'NONE', 'NULL'):
+            # Pozitif (TEFAS'ta acik)
+            if s in ('ACIK', 'AÇIK', 'AKTIF', 'AKTİF', 'TRUE', '1',
+                     'YES', 'EVET', 'ISLEMDE', 'İŞLEMDE', 'I', 'İ'):
+                return True
+            # Negatif (TEFAS'ta kapali)
+            if s in ('KAPALI', 'PASIF', 'PASİF', 'FALSE', '0',
+                     'NO', 'HAYIR', 'K', 'P'):
+                return False
+            # Bilinmeyen ifade -> bir sonraki kademeye dus
+
+    # 1) TEFAS resmi liste (BindComparisonFundReturns)
     open_codes = get_open_codes()
     if open_codes:
         return (code or '').strip().upper() in open_codes
@@ -332,6 +338,16 @@ def detect_columns(df: pd.DataFrame) -> dict[str, str | None]:
             'ted_pay_sayisi', 'pay_sayisi', 'number_of_shares', 'tedPaySayisi',
             'pay_adedi', 'share_count',
         ] if c in df.columns), None),
+        # TEFAS islem durumu — tefasfon paketi gerek varsa donduruyor.
+        # Olasi isimler: tefas_durumu, TEFASDurumu, islem_durumu, durum,
+        # platform_durumu, tefasIslemDurumu, alimDurumu, satimDurumu, alim_satim.
+        # Geniş bir liste arayalim; bulunursa toptan TEFAS Acik/Kapali kararini
+        # heuristic yerine bu kolondan veririz.
+        'tefas_status': next((c for c in df.columns if any(
+            kw in c.lower().replace('_', '').replace(' ', '')
+            for kw in ('tefasdurumu', 'tefasislem', 'islemdurumu', 'platformdurumu',
+                       'alimdurumu', 'alimsatim', 'fonisleme', 'tefasacik')
+        )), None),
     }
 
 
@@ -368,7 +384,17 @@ def main() -> int:
         print(f"\nDeniyor: fund_type={ftype!r} for 'last' anchor", flush=True)
         df = fetch_snapshot(ftype, anchors['last'])
         if df is not None and not df.empty:
-            print(f"  ✓ {ftype} ile başarılı: {len(df)} satır, sütunlar: {list(df.columns)[:8]}", flush=True)
+            print(f"  ✓ {ftype} ile başarılı: {len(df)} satır", flush=True)
+            print(f"  DEBUG: TUM kolonlar ({len(df.columns)} adet) = {list(df.columns)}", flush=True)
+            tefas_like = [c for c in df.columns if any(
+                kw in c.lower().replace('_', '').replace(' ', '')
+                for kw in ('tefas','durum','islem','platform','alim','satim')
+            )]
+            print(f"  DEBUG: TEFAS/durum iceren kolonlar = {tefas_like}", flush=True)
+            if tefas_like and len(df) > 0:
+                # Ornek deger goster
+                sample = df[tefas_like].iloc[0].to_dict()
+                print(f"  DEBUG: Ilk satir TEFAS-iliskli degerler = {sample}", flush=True)
             snapshots['last'] = df
             working_ftype = ftype
             break
@@ -552,7 +578,11 @@ def main() -> int:
             "code": str(code),
             "name": fund_name,
             "category": fund_category,
-            "tefasOpen": is_tefas_open(fund_name, fund_category, str(code)),
+            "tefasOpen": is_tefas_open(
+                fund_name, fund_category, str(code),
+                tefas_status_value=(last_row.get(cols['tefas_status'])
+                                    if cols.get('tefas_status') else None),
+            ),
             "nav": latest_nav,
             "date": iso_date,
             "marketCap": float(last_row.get(cols['mcap'], 0) or 0) if cols['mcap'] else None,

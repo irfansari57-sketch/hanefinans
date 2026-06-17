@@ -25,8 +25,97 @@ except ImportError as e:
     sys.exit(1)
 
 import pandas as pd
+import requests
 
 OUTPUT_PATH = "data/tefas.json"
+
+# ============================================================================
+# TEFAS resmi "isleme acik fonlar" listesi - tek noktadan toptan cozum.
+# ============================================================================
+#
+# Heuristic (isim/kategori bazli) yetersiz: yeni bir banka ozel "PAYLASIMLI HESAP"
+# veya "NEO FON" turu cikinca otomatik yakalanamaz.
+#
+# Cozum: TEFAS'in kendi "Fon Karsilastirma" sayfasi tum platformda islem goren
+# fonlari donduren bir POST endpoint sunar. Bu listeyi bir kere ceker, set'e
+# koyarız. Listede yoksa fon TEFAS'a kapalidir.
+#
+# Endpoint: POST https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns
+# Parametreler:
+#   - calismatipi=1     -> "TEFAS'ta Islem Goren" filter (resmi tanim)
+#   - fontip=YAT        -> Yatirim Fonu kategorisi (BES disinda)
+#   - bastarih,bittarih -> Bugun
+#   - strperiod         -> Donem getirileri (kullanmiyoruz, sadece liste icin)
+
+_OPEN_CODES_CACHE: "set[str] | None" = None
+_OPEN_CODES_FETCH_ATTEMPTED = False
+
+
+def fetch_tefas_open_codes() -> "set[str]":
+    """TEFAS resmi BindComparisonFundReturns endpoint'inden islem goren fon
+    kodlarini doner. Hata durumunda bos set doner (caller heuristic'e duser).
+    """
+    url = "https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns"
+    today = datetime.now().strftime("%d.%m.%Y")
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://www.tefas.gov.tr/FonKarsilastirma.aspx",
+        "User-Agent": "Mozilla/5.0 (compatible; HaneFinans/1.0)",
+    }
+    # NOT: calismatipi 1 = "TEFAS'ta Islem Goren". calismatipi 2 = Serbest fonlar
+    # (nitelikli yatirimci). Biz sadece 1'i istiyoruz.
+    payload = {
+        "calismatipi": 1,
+        "fontip": "YAT",
+        "sfontur": "",
+        "kurucukod": "",
+        "fongrup": "",
+        "bastarih": today,
+        "bittarih": today,
+        "fonturkod": "",
+        "fonunvantip": "",
+        "strperiod": "1,1,1,1,1,1,1",
+        "islemdurum": 1,
+    }
+    try:
+        r = requests.post(url, headers=headers, data=payload, timeout=25)
+        r.raise_for_status()
+        j = r.json()
+        items = j.get("data") or []
+        codes: set[str] = set()
+        for item in items:
+            # API icindeki kod alan adi - asagidaki adlarin biri olur
+            code = (
+                item.get("FONKODU")
+                or item.get("FonKodu")
+                or item.get("fon_kodu")
+                or item.get("KOD")
+                or item.get("Kod")
+            )
+            if code:
+                codes.add(str(code).strip().upper())
+        print(
+            f"[fetch_tefas_open_codes] TEFAS resmi listesi: {len(codes)} fon",
+            flush=True,
+        )
+        return codes
+    except Exception as e:
+        print(
+            f"[fetch_tefas_open_codes] HATA: {e} - heuristic fallback'a duser",
+            file=sys.stderr,
+            flush=True,
+        )
+        return set()
+
+
+def get_open_codes() -> "set[str]":
+    """Cached accessor - ilk cagrida fetch, sonrasinda set."""
+    global _OPEN_CODES_CACHE, _OPEN_CODES_FETCH_ATTEMPTED
+    if not _OPEN_CODES_FETCH_ATTEMPTED:
+        _OPEN_CODES_FETCH_ATTEMPTED = True
+        _OPEN_CODES_CACHE = fetch_tefas_open_codes()
+    return _OPEN_CODES_CACHE or set()
 
 
 def fmt_tr_date(d: datetime) -> str:
@@ -99,28 +188,30 @@ def fetch_history_range(ftype: str, end_date: datetime, days_back: int = 14) -> 
     return None
 
 
-def is_tefas_open(name: str, category: str) -> bool:
+def is_tefas_open(name: str, category: str, code: str = '') -> bool:
     """Fonun TEFAS uzerinden alinip alinamayacagini doner.
 
-    TEFAS'a kapali fonlar:
-      - Serbest Fonlar (SPK nitelikli yatirimci kosulu: 10M TL+ net varlik)
-      - Yabanci Menkul Kiymetler Serbest Fonu
-      - Sepet Hesap fonlari (banka ozel, sadece kendi musterileri)
-      - Garantili / Koruma amacli fonlar
-      - Bireysel Emeklilik (BES) fonlari
-      - Girisim Sermayesi YF + Gayrimenkul YF (nitelikli yatirimci)
+    KARAR MANTIGI (sirali):
+      1. ONCELIK: TEFAS resmi "Islem Goren Fonlar" listesi (BindComparisonFundReturns
+         endpoint). Liste varsa: code in list -> True, yoksa False.
+         Bu sayede yeni cikan banka ozel fonlari (PAYLASIMLI HESAP, NEO FON vs.)
+         otomatik yakalanir, isim heuristic'ine bagli kalmaz.
+      2. FALLBACK: TEFAS sitesi erisilemezse asagidaki isim/kategori heuristic'i.
 
-    Heuristic (isim/kategori bazli, sirayla):
-      1. cat == 'Serbest' veya icinde SERBEST -> kapali
-      2. Isim SERBEST -> kapali (hibrid)
-      3. YABANCI MENKUL -> kapali
-      4. NITELIKLI YATIRIMCI -> kapali
-      5. SEPET HESAP -> kapali (ornek: ZA2 KUVEYT TURK SEPET HESAP)
-      6. GARANTILI / KORUMA AMACLI -> kapali
-      7. EMEKLILIK -> kapali (BES sirketinden alinir)
-      8. GIRISIM SERMAYESI / GAYRIMENKUL YATIRIM -> kapali
-      9. Diger hepsi -> acik
+    Heuristic kapsami (TEFAS'a kapali fon tipleri):
+      - Serbest Fonlar (SPK nitelikli yatirimci: 10M TL+ net varlik)
+      - Yabanci Menkul Kiymetler Serbest
+      - Sepet Hesap, Paylasimli Hesap, Ozel Fon (banka ozel)
+      - Garantili / Koruma amacli
+      - Bireysel Emeklilik (BES)
+      - Girisim Sermayesi YF + Gayrimenkul YF
     """
+    # 1) PRIMARY - TEFAS resmi liste
+    open_codes = get_open_codes()
+    if open_codes:
+        return (code or '').strip().upper() in open_codes
+
+    # 2) FALLBACK - heuristic
     cat = (category or '').strip()
     n = (name or '').upper()
     c = cat.upper()
@@ -461,7 +552,7 @@ def main() -> int:
             "code": str(code),
             "name": fund_name,
             "category": fund_category,
-            "tefasOpen": is_tefas_open(fund_name, fund_category),
+            "tefasOpen": is_tefas_open(fund_name, fund_category, str(code)),
             "nav": latest_nav,
             "date": iso_date,
             "marketCap": float(last_row.get(cols['mcap'], 0) or 0) if cols['mcap'] else None,

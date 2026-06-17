@@ -12,7 +12,7 @@ import type { FundEntry } from '@/data/db';
 import { formatDateTR, formatRelative } from '@/lib/date';
 import { useEffect, useState, useMemo } from 'react';
 import { fetchTefasFund, isTefasWorkerConfigured, type TefasFundDetail } from '@/data/api/tefasWorker';
-import { fetchTefasFundByCode, isTefasGithubConfigured, type TefasFundData } from '@/data/api/tefasGithub';
+import { fetchTefasFundByCode, isTefasGithubConfigured, computeTefasOpenClient, type TefasFundData } from '@/data/api/tefasGithub';
 import { cn } from '@/lib/utils';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
@@ -137,6 +137,23 @@ export function FundDetailPage() {
                   {fund.category}
                 </span>
               )}
+              {(() => {
+                // TEFAS Kapali rozet: backend tefasOpen false VEYA client heuristic false
+                const cat = githubData?.category ?? fund.category ?? '';
+                const name = githubData?.name ?? fund.name ?? '';
+                const backendOpen = githubData?.tefasOpen;
+                const clientOpen = computeTefasOpenClient(cat, name);
+                const isClosed = backendOpen === false || clientOpen === false;
+                if (!isClosed) return null;
+                return (
+                  <span
+                    className="rounded-md border border-danger/40 bg-danger/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-danger"
+                    title="Bu fon TEFAS'ta islem gormez. SPK nitelikli yatirimci kosulu (10M TL+ net varlik) veya banka ozel fon olabilir. Fon kuruculusunun kendi platformundan veya yetkili araci kurumdan alinir."
+                  >
+                    TEFAS'ta Kapali
+                  </span>
+                );
+              })()}
             </div>
             {fund.name && <p className="mt-2 text-base text-slate-300">{fund.name}</p>}
             <p className="mt-1 text-[11px] text-slate-500">

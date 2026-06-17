@@ -224,7 +224,7 @@ function normalizeFundCategory(rawCategory: string, name: string): FundCategory 
  * Backend `is_tefas_open()` ile bire bir ayni kural seti — guncel kosul:
  * SPK 2026 Ocak nitelikli yatirimci 10M TL+ net varlik kosulu.
  */
-function computeTefasOpenClient(category: string, name: string): boolean {
+export function computeTefasOpenClient(category: string, name: string): boolean {
   const cat = (category || '').trim();
   // Locale-aware uppercase: Turkish i -> İ
   const n = (name || '').toLocaleUpperCase('tr-TR');
@@ -323,12 +323,21 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
     // Feed'de bazi fonlar icin 1d/1w `null` ve `history: []` doner — scraper bu
     // alanlari yazmiyor. UI'da +0.00% yerine "—" gosterelim ki kullanici "veri yok"
     // ile "gercek 0" karistirma. Bunun icin NaN doneriz (UI Number.isFinite check yapiyor).
+
+    // tefasOpen override mantigi:
+    //   - Client heuristic FALSE derse -> daima FALSE (cunku frontend kodu backend
+    //     cron'undan daha guncel guncellenebilir; yeni eklenen kosullar (SEPET HESAP,
+    //     EMEKLILIK vs.) backend feed'inde henuz olmayabilir)
+    //   - Client TRUE derse -> backend ne derse desin onu kullan
+    const clientOpen = computeTefasOpenClient(f.category, f.name);
+    const finalOpen = clientOpen === false ? false : (f.tefasOpen ?? true);
+
     return {
       code: f.code,
       name: f.name,
       category: normalizeFundCategory(f.category, f.name),
       tefas: true,
-      tefasOpen: f.tefasOpen ?? computeTefasOpenClient(f.category, f.name),
+      tefasOpen: finalOpen,
       day: day == null ? NaN : day,
       week: week == null ? NaN : week,
       month: month == null ? NaN : month,

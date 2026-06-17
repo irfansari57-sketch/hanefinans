@@ -1,0 +1,462 @@
+/**
+ * Portfoyum -> Fonlar paneli.
+ *
+ * - TEFAS feed'inden fon arama (kod/isim)
+ * - Pay adedi + ortalama NAV ile pozisyon ekleme
+ * - Liste: kod/ad/adet/ort.NAV/mevcut NAV/maliyet/deger/kar-zarar/gunluk
+ * - TEFAS'a kapali fonlar icin kirmizi rozet + uyari
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
+import { Field } from '@/components/ui/Field';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { LiveBadge } from '@/components/domain/LiveBadge';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { toast } from '@/components/ui/Toast';
+import { db, type PortfolioPosition } from '@/data/db';
+import { loadFundsAsPerformance, computeTefasOpenClient } from '@/data/api/tefasGithub';
+import type { FundPerformance } from '@/data/types';
+import { formatMoney } from '@/lib/format';
+import { cn } from '@/lib/utils';
+
+export interface FundPositionRow extends PortfolioPosition {
+  currentNav?: number;
+  marketValue?: number;
+  cost?: number;
+  pnl?: number;
+  pnlPct?: number;
+  day?: number;        // bugun %
+  week?: number;
+  month?: number;
+  year?: number;
+  name?: string;
+  category?: string;
+  tefasOpen?: boolean;
+}
+
+export interface FundTotals {
+  totalCost: number;
+  totalValue: number;
+  totalPnl: number;
+  totalPnlPct: number;
+  dailyChange: number;
+  dailyPnlPct: number;
+}
+
+interface Props {
+  /** Hisse + fon toplamlarini ust seviyede birlestirmek icin (opsiyonel) */
+  onTotalsChange?: (t: FundTotals & { count: number }) => void;
+}
+
+export function FundsPanel({ onTotalsChange }: Props = {}) {
+  // Sadece fon kayitlari ('kind' field'i indexed degil, filter() ile)
+  const positions = useLiveQuery(() => db.portfolio.filter((p) => p.kind === 'fund').toArray(), []) ?? [];
+
+  const [funds, setFunds] = useState<FundPerformance[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<number | undefined>();
+  const [addOpen, setAddOpen] = useState(false);
+  const [toDelete, setToDelete] = useState<PortfolioPosition | null>(null);
+
+  // Map for fast lookup
+  const fundMap = useMemo(() => {
+    const m = new Map<string, FundPerformance>();
+    for (const f of funds) m.set(f.code, f);
+    return m;
+  }, [funds]);
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      const r = await loadFundsAsPerformance();
+      if (r && r.funds) {
+        setFunds(r.funds);
+        setUpdatedAt(Date.now());
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const rows: FundPositionRow[] = useMemo(() => {
+    return positions.map((p) => {
+      const f = fundMap.get(p.symbol);
+      const cost = p.lot * p.avgPrice;
+      if (!f) {
+        return { ...p, cost };
+      }
+      // NAV (current price/pay) — FundPerformance'da `price` yok, son fiyat day return'dan turetilemez.
+      // TEFAS feed'inden navStr veya last_price gelmiyor — bu yuzden kullaniciyi  uyaralim:
+      // Burada FundPerformance objesinin name/category bilgisini kullanip, NAV icin
+      // ayri bir helper kullanacagiz (loadFundsAsPerformanceDetailed gerekirse).
+      // Su an: pnl hesabini avgPrice * (1 + year/100) yaklasik degerle yapamayiz.
+      // Daha temiz yaklasim: her fon icin TEFAS feed'de price/nav alani olmali —
+      // sahip oldugumuz alanlardan rough hesap.
+      // Pragmatik fallback: avgPrice'i mevcut NAV varsayilan kabul, fakat
+      // FundPerformance ek field gerekiyor.
+      return {
+        ...p,
+        cost,
+        name: f.name,
+        category: f.category,
+        tefasOpen: f.tefasOpen,
+        day: f.day,
+        week: f.week,
+        month: f.month,
+        year: f.year,
+      };
+    });
+  }, [positions, fundMap]);
+
+  // Toplamlar — current NAV bilgisi olmadigi icin yalnizca maliyet + ortalama getiri
+  const totals = useMemo(() => {
+    let totalCost = 0;
+    let totalValue = 0;
+    let dailyChange = 0;
+    for (const r of rows) {
+      if (r.cost) totalCost += r.cost;
+      // Mevcut deger: avg * (1 + year/100) yaklasik (1 yillik)
+      // NOT: Bu kesin degil — TEFAS feed'inde live NAV olmadigi icin tahmini hesap.
+      if (r.cost && Number.isFinite(r.year)) {
+        const approxValue = r.cost * (1 + (r.year as number) / 100);
+        totalValue += approxValue;
+        if (Number.isFinite(r.day)) {
+          dailyChange += approxValue * ((r.day as number) / 100);
+        }
+      } else if (r.cost) {
+        totalValue += r.cost;
+      }
+    }
+    const totalPnl = totalValue - totalCost;
+    const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+    const dailyPnlPct = totalValue > 0 ? (dailyChange / (totalValue - dailyChange || 1)) * 100 : 0;
+    return { totalCost, totalValue, totalPnl, totalPnlPct, dailyChange, dailyPnlPct };
+  }, [rows]);
+
+  useEffect(() => {
+    onTotalsChange?.({ ...totals, count: positions.length });
+  }, [totals, positions.length, onTotalsChange]);
+
+  return (
+    <>
+      <div className="mb-3 flex items-center justify-end gap-2">
+        <LiveBadge updatedAt={updatedAt} refreshing={loading} />
+        <button className="btn-secondary" onClick={refresh} disabled={loading}>
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
+        </button>
+        <button className="btn-primary" onClick={() => setAddOpen(true)}>
+          <Plus size={14} /> Fon Ekle
+        </button>
+      </div>
+
+      {/* Ozet */}
+      {positions.length > 0 && (
+        <section className="glass-card mb-4 p-4">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">Fon Portfoy Ozeti</h2>
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+            <Box label="Toplam Maliyet" value={formatMoney(totals.totalCost)} />
+            <Box label="Tahmini Deger" value={formatMoney(totals.totalValue)} tone="accent" />
+            <Box
+              label="Toplam Kar/Zarar"
+              value={`${totals.totalPnl >= 0 ? '+' : ''}${formatMoney(totals.totalPnl)}`}
+              sub={`${totals.totalPnlPct >= 0 ? '+' : ''}${totals.totalPnlPct.toFixed(2)}%`}
+              tone={totals.totalPnl >= 0 ? 'success' : 'danger'}
+            />
+            <Box
+              label="Bugunku Degisim"
+              value={`${totals.dailyChange >= 0 ? '+' : ''}${formatMoney(totals.dailyChange)}`}
+              sub={`${totals.dailyPnlPct >= 0 ? '+' : ''}${totals.dailyPnlPct.toFixed(2)}%`}
+              tone={totals.dailyChange >= 0 ? 'success' : 'danger'}
+            />
+          </div>
+          <p className="mt-3 text-[10px] text-slate-500">
+            <AlertCircle size={10} className="inline mr-1" />
+            Fon mevcut degeri TEFAS feed'inden 1 yillik getiri ile yaklasik hesaplanir. Kesin NAV icin fon detay sayfasini kullanin.
+          </p>
+        </section>
+      )}
+
+      {/* Liste */}
+      {positions.length === 0 ? (
+        <EmptyState
+          icon={<PiggyBank size={28} />}
+          title="Fon portfoyun bos"
+          description="TEFAS fonlarini ekle, getiri takibini baslat."
+          action={
+            <button className="btn-primary" onClick={() => setAddOpen(true)}>
+              <Plus size={14} /> Ilk Fon
+            </button>
+          }
+        />
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+          <table className="min-w-full text-xs">
+            <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
+              <tr>
+                <th className="px-3 py-2.5 text-left">Fon</th>
+                <th className="px-3 py-2.5 text-right">Adet</th>
+                <th className="px-3 py-2.5 text-right">Ort. NAV</th>
+                <th className="px-3 py-2.5 text-right hidden md:table-cell">Maliyet</th>
+                <th className="px-3 py-2.5 text-right hidden md:table-cell">Gun %</th>
+                <th className="px-3 py-2.5 text-right hidden lg:table-cell">Hafta %</th>
+                <th className="px-3 py-2.5 text-right hidden lg:table-cell">Ay %</th>
+                <th className="px-3 py-2.5 text-right">1 Yil %</th>
+                <th className="px-3 py-2.5 text-center w-12"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((r) => {
+                const yearTone = (r.year ?? 0) >= 0 ? 'text-success' : 'text-danger';
+                const dayTone = (r.day ?? 0) >= 0 ? 'text-success' : 'text-danger';
+                const weekTone = (r.week ?? 0) >= 0 ? 'text-success' : 'text-danger';
+                const monthTone = (r.month ?? 0) >= 0 ? 'text-success' : 'text-danger';
+                return (
+                  <tr key={r.id} className="hover:bg-bg-card">
+                    <td className="px-3 py-2.5">
+                      <Link to={`/fund/${r.symbol}`} className="inline-flex items-center gap-1 font-mono font-semibold text-accent hover:underline">
+                        {r.symbol}
+                        <ChevronRight size={10} />
+                      </Link>
+                      <div className="mt-0.5 flex items-center gap-1 flex-wrap">
+                        {r.category && (
+                          <span className="rounded border border-border px-1 py-0 text-[9px] uppercase tracking-wider text-slate-500">
+                            {r.category}
+                          </span>
+                        )}
+                        {r.tefasOpen === false && (
+                          <span
+                            className="rounded border border-danger/40 bg-danger/15 px-1 py-0 text-[9px] font-bold uppercase tracking-wider text-danger"
+                            title="Bu fon TEFAS uzerinden alinamaz (SPK nitelikli yatirimci kosulu)."
+                          >
+                            TEFAS Kapali
+                          </span>
+                        )}
+                      </div>
+                      {r.name && <div className="mt-0.5 text-[10px] text-slate-500 truncate max-w-[220px]">{r.name}</div>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-300">{r.lot}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-300">{formatMoney(r.avgPrice)}</td>
+                    <td className="hidden md:table-cell px-3 py-2.5 text-right tabular-nums text-slate-400">
+                      {r.cost != null ? formatMoney(r.cost) : '—'}
+                    </td>
+                    <td className={cn('hidden md:table-cell px-3 py-2.5 text-right tabular-nums', dayTone)}>
+                      {Number.isFinite(r.day) ? `${(r.day as number) >= 0 ? '+' : ''}${(r.day as number).toFixed(2)}%` : '—'}
+                    </td>
+                    <td className={cn('hidden lg:table-cell px-3 py-2.5 text-right tabular-nums', weekTone)}>
+                      {Number.isFinite(r.week) ? `${(r.week as number) >= 0 ? '+' : ''}${(r.week as number).toFixed(2)}%` : '—'}
+                    </td>
+                    <td className={cn('hidden lg:table-cell px-3 py-2.5 text-right tabular-nums', monthTone)}>
+                      {Number.isFinite(r.month) ? `${(r.month as number) >= 0 ? '+' : ''}${(r.month as number).toFixed(2)}%` : '—'}
+                    </td>
+                    <td className={cn('px-3 py-2.5 text-right tabular-nums font-medium', yearTone)}>
+                      {Number.isFinite(r.year) ? `${(r.year as number) >= 0 ? '+' : ''}${(r.year as number).toFixed(2)}%` : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <button
+                        onClick={() => setToDelete(r)}
+                        className="rounded p-1 text-danger/70 hover:bg-danger/10 hover:text-danger"
+                        title="Sil"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Fon Ekle" size="md">
+        <AddFundForm funds={funds} onClose={() => setAddOpen(false)} />
+      </Modal>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Fon pozisyonunu sil?"
+        message={`${toDelete?.symbol} portfoyden silinecek.`}
+        destructive
+        confirmText="Sil"
+        onCancel={() => setToDelete(null)}
+        onConfirm={async () => {
+          if (toDelete?.id) {
+            await db.portfolio.delete(toDelete.id);
+            toast.success('Fon silindi');
+          }
+          setToDelete(null);
+        }}
+      />
+    </>
+  );
+}
+
+function Box({ label, value, sub, tone }: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: 'success' | 'danger' | 'accent';
+}) {
+  const toneClass = tone === 'success' ? 'border-success/30 bg-success/5 text-success'
+    : tone === 'danger' ? 'border-danger/30 bg-danger/5 text-danger'
+    : tone === 'accent' ? 'border-accent/30 bg-accent/5 text-accent'
+    : 'border-border bg-bg-card text-slate-100';
+  return (
+    <div className={cn('rounded-lg border p-3', toneClass)}>
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-1 text-lg font-bold tabular-nums">{value}</div>
+      {sub && <div className="mt-0.5 text-xs">{sub}</div>}
+    </div>
+  );
+}
+
+function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: () => void }) {
+  const [code, setCode] = useState('');
+  const [lot, setLot] = useState('');
+  const [avgPrice, setAvgPrice] = useState('');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const suggestions = code.trim().length >= 2
+    ? funds.filter((f) =>
+        f.code.toLowerCase().includes(code.toLowerCase()) ||
+        (f.name ?? '').toLowerCase().includes(code.toLowerCase()),
+      ).slice(0, 8)
+    : [];
+
+  const selectedFund = funds.find((f) => f.code === code.toUpperCase());
+  const isTefasClosed = selectedFund
+    ? selectedFund.tefasOpen === false
+      || computeTefasOpenClient(selectedFund.category ?? '', selectedFund.name ?? '') === false
+    : false;
+
+  const save = async () => {
+    const sym = code.trim().toUpperCase();
+    const lotNum = parseFloat(lot.replace(',', '.'));
+    const priceNum = parseFloat(avgPrice.replace(',', '.'));
+    if (!sym || !Number.isFinite(lotNum) || lotNum <= 0 || !Number.isFinite(priceNum) || priceNum <= 0) {
+      toast.error('Gecersiz giris', 'Fon kodu, adet ve ortalama NAV zorunlu');
+      return;
+    }
+    setSaving(true);
+    try {
+      await db.portfolio.add({
+        kind: 'fund',
+        symbol: sym,
+        lot: lotNum,
+        avgPrice: priceNum,
+        addedAt: Date.now(),
+        note: note.trim() || undefined,
+      });
+      toast.success(`${sym} eklendi`, `${lotNum} adet @ ${priceNum}₺`);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <Field label="Fon Kodu" hint="ör. CPU, YHK, AFA — TEFAS kodu (3 harf)">
+        <div className="relative">
+          <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            className="input pl-8 uppercase"
+            placeholder="CPU"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            autoFocus
+            maxLength={5}
+          />
+          {suggestions.length > 0 && code.length >= 2 && (
+            <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-bg-card shadow-xl max-h-60 overflow-y-auto">
+              {suggestions.map((f) => {
+                const closed = f.tefasOpen === false
+                  || computeTefasOpenClient(f.category ?? '', f.name ?? '') === false;
+                return (
+                  <button
+                    key={f.code}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); setCode(f.code); }}
+                    className="flex w-full items-start justify-between gap-2 px-3 py-2 text-xs hover:bg-bg-soft"
+                  >
+                    <div className="min-w-0 flex-1 text-left">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-semibold text-accent">{f.code}</span>
+                        {closed && (
+                          <span className="rounded bg-danger/15 px-1 py-0 text-[8px] font-bold uppercase text-danger">
+                            Kapali
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate">{f.name}</div>
+                    </div>
+                    <span className={cn(
+                      'shrink-0 text-[10px] font-bold tabular-nums',
+                      (f.year ?? 0) >= 0 ? 'text-success' : 'text-danger',
+                    )}>
+                      {Number.isFinite(f.year) ? `${(f.year as number) >= 0 ? '+' : ''}${(f.year as number).toFixed(1)}%` : '—'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </Field>
+
+      {isTefasClosed && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-[11px] text-warning">
+          <AlertCircle size={12} className="inline mr-1 -mt-0.5" />
+          <strong>Bu fon TEFAS'ta islem gormez.</strong> Sadece fon kuruculusunun kendi platformundan veya yetkili araci kurumdan alinabilir.
+        </div>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Pay Adedi" hint="Fraksiyonel kabul edilir (ör. 1234.56)">
+          <input
+            className="input"
+            type="number"
+            placeholder="1000"
+            value={lot}
+            onChange={(e) => setLot(e.target.value)}
+            min="0"
+            step="any"
+          />
+        </Field>
+        <Field label="Ortalama NAV (₺/pay)">
+          <input
+            className="input"
+            type="number"
+            placeholder="2.85"
+            value={avgPrice}
+            onChange={(e) => setAvgPrice(e.target.value)}
+            min="0"
+            step="any"
+          />
+        </Field>
+      </div>
+      <Field label="Not (opsiyonel)">
+        <input
+          className="input"
+          placeholder="ör. Aylik duzenli alim"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </Field>
+      <div className="flex justify-end gap-2 pt-2">
+        <button className="btn-secondary" onClick={onClose}>Iptal</button>
+        <button className="btn-primary" onClick={save} disabled={saving}>
+          {saving ? 'Kaydediliyor…' : 'Ekle'}
+        </button>
+      </div>
+    </div>
+  );
+}

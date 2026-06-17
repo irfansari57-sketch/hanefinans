@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  Wallet, Plus, Trash2, RefreshCw, TrendingUp, TrendingDown, ChevronRight, Search, Sparkles, Upload, FileText,
+  Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, PiggyBank,
 } from 'lucide-react';
+import { FundsPanel } from './FundsPanel';
 import { useAuth, isPro } from '@/store/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -32,7 +33,23 @@ interface PositionRow extends PortfolioPosition {
 }
 
 export function PortfolioPage() {
-  const positions = useLiveQuery(() => db.portfolio.toArray(), []) ?? [];
+  // Tab: 'stocks' = hisse pozisyonlari, 'funds' = fon pozisyonlari (ayri panel)
+  const [tab, setTab] = useState<'stocks' | 'funds'>(() => {
+    try {
+      const saved = localStorage.getItem('fa.portfolio.tab');
+      return saved === 'funds' ? 'funds' : 'stocks';
+    } catch { return 'stocks'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('fa.portfolio.tab', tab); } catch { /* */ }
+  }, [tab]);
+
+  // Tum kayitlar — sayac icin
+  const allPositions = useLiveQuery(() => db.portfolio.toArray(), []) ?? [];
+  // Bu sayfa hisse listesi mantigi calistirir; fon kayitlari ayri panel'de gosterilir.
+  const positions = useMemo(() => allPositions.filter((p) => p.kind !== 'fund'), [allPositions]);
+  const fundCount = useMemo(() => allPositions.filter((p) => p.kind === 'fund').length, [allPositions]);
+
   const [stockMap, setStockMap] = useState<Map<string, Stock>>(new Map());
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();
@@ -124,20 +141,60 @@ export function PortfolioPage() {
         title="Portföyüm"
         subtitle="Pozisyonlarını ekle, canlı kâr/zarar takibi yap. Veriler tarayıcına kaydedilir."
         actions={
-          <div className="flex items-center gap-2">
-            <LiveBadge updatedAt={updatedAt} refreshing={loading} />
-            <button className="btn-secondary" onClick={refresh} disabled={loading || positions.length === 0}>
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
-            </button>
-            <button className="btn-secondary" onClick={() => setImportOpen(true)}>
-              <Upload size={14} /> CSV İçe Aktar
-            </button>
-            <button className="btn-primary" onClick={() => setAddOpen(true)}>
-              <Plus size={14} /> Pozisyon Ekle
-            </button>
-          </div>
+          tab === 'stocks' ? (
+            <div className="flex items-center gap-2">
+              <LiveBadge updatedAt={updatedAt} refreshing={loading} />
+              <button className="btn-secondary" onClick={refresh} disabled={loading || positions.length === 0}>
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
+              </button>
+              <button className="btn-secondary" onClick={() => setImportOpen(true)}>
+                <Upload size={14} /> CSV İçe Aktar
+              </button>
+              <button className="btn-primary" onClick={() => setAddOpen(true)}>
+                <Plus size={14} /> Pozisyon Ekle
+              </button>
+            </div>
+          ) : null
         }
       />
+
+      {/* Tab switcher — Hisseler / Fonlar */}
+      <div className="mb-4 flex items-center gap-2 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setTab('stocks')}
+          className={cn(
+            'flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition',
+            tab === 'stocks'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-slate-400 hover:text-slate-200',
+          )}
+        >
+          <Wallet size={13} /> Hisseler
+          <span className="rounded-full bg-bg-card px-1.5 py-0.5 text-[10px] tabular-nums">
+            {positions.length}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('funds')}
+          className={cn(
+            'flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition',
+            tab === 'funds'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-slate-400 hover:text-slate-200',
+          )}
+        >
+          <PiggyBank size={13} /> Fonlar
+          <span className="rounded-full bg-bg-card px-1.5 py-0.5 text-[10px] tabular-nums">
+            {fundCount}
+          </span>
+        </button>
+      </div>
+
+      {tab === 'funds' && <FundsPanel />}
+
+      {tab === 'stocks' && (<>
 
       {/* AI Portföy Analizi */}
       {positions.length > 0 && (
@@ -321,6 +378,8 @@ export function PortfolioPage() {
           </table>
         </div>
       )}
+
+      </>)}
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Pozisyon Ekle" size="md">
         <AddPositionForm onClose={() => setAddOpen(false)} />

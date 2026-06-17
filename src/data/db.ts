@@ -95,9 +95,14 @@ export interface UserAccount {
 
 export interface PortfolioPosition {
   id?: number;
-  symbol: string;        // BIST hisse kodu
-  lot: number;           // adet
-  avgPrice: number;      // ortalama maliyet (₺/lot)
+  /** Yatirim turu — eski kayitlar icin undefined = 'stock' kabul edilir. */
+  kind?: 'stock' | 'fund';
+  /** BIST hisse kodu VEYA TEFAS fon kodu (örn. THYAO, KFZ, CPU) */
+  symbol: string;
+  /** Hisse: lot adedi · Fon: pay adedi (fraksiyonel olabilir, ondalik kabul) */
+  lot: number;
+  /** Ortalama maliyet — Hisse: ₺/lot · Fon: ₺/pay (NAV) */
+  avgPrice: number;
   addedAt: number;
   note?: string;
 }

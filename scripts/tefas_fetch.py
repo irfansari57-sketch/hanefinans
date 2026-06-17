@@ -87,11 +87,40 @@ def fetch_tefas_open_codes() -> "set[str]":
         "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
     }
 
+    # curl_cffi ile chrome131 impersonation (Takasbank bot protection icin yedek).
+    # Once duz requests dene; 403/401 alirsa curl_cffi'a dus.
+    response_content = None
     try:
         r = requests.get(url, headers=headers, timeout=30)
-        r.raise_for_status()
+        if r.status_code == 200:
+            response_content = r.content
+        else:
+            print(
+                f"[fetch_tefas_open_codes] requests {r.status_code} - curl_cffi'a dusuluyor",
+                flush=True,
+            )
+    except Exception as e:
+        print(f"[fetch_tefas_open_codes] requests basarisiz ({e}) - curl_cffi'a dusuluyor", flush=True)
+
+    if response_content is None:
+        try:
+            from curl_cffi import requests as cr
+            session = cr.Session(impersonate="chrome131")
+            r2 = session.get(url, headers=headers, timeout=30)
+            r2.raise_for_status()
+            response_content = r2.content
+            print("[fetch_tefas_open_codes] curl_cffi ile basarili", flush=True)
+        except Exception as e:
+            print(
+                f"[fetch_tefas_open_codes] curl_cffi de basarisiz: {type(e).__name__}: {e}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return set()
+
+    try:
         wb = openpyxl.load_workbook(
-            io.BytesIO(r.content), read_only=True, data_only=True,
+            io.BytesIO(response_content), read_only=True, data_only=True,
         )
         ws = wb.active
         codes: set[str] = set()

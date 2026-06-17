@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, PiggyBank, Pencil,
+  Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, PiggyBank, Pencil, History,
 } from 'lucide-react';
 import { FundsPanel } from './FundsPanel';
+import { TxnHistoryModal } from './TxnHistoryModal';
 import { useAuth, isPro } from '@/store/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -57,6 +58,7 @@ export function PortfolioPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [toDelete, setToDelete] = useState<PortfolioPosition | null>(null);
   const [toEdit, setToEdit] = useState<PortfolioPosition | null>(null);
+  const [toViewHistory, setToViewHistory] = useState<PortfolioPosition | null>(null);
 
   // AI analysis
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -366,6 +368,13 @@ export function PortfolioPage() {
                     <td className="px-3 py-2.5 text-center">
                       <div className="inline-flex items-center gap-0.5">
                         <button
+                          onClick={() => setToViewHistory(r)}
+                          className="rounded p-1 text-slate-400 hover:bg-accent/10 hover:text-accent"
+                          title="Islem gecmisi"
+                        >
+                          <History size={12} />
+                        </button>
+                        <button
                           onClick={() => setToEdit(r)}
                           className="rounded p-1 text-slate-400 hover:bg-accent/10 hover:text-accent"
                           title="Duzenle"
@@ -405,6 +414,8 @@ export function PortfolioPage() {
           />
         )}
       </Modal>
+
+      <TxnHistoryModal position={toViewHistory} onClose={() => setToViewHistory(null)} />
 
       <Modal open={importOpen} onClose={() => setImportOpen(false)} title="CSV / Excel ile Toplu İçe Aktar" size="lg">
         <CsvImportForm onClose={() => setImportOpen(false)} />
@@ -654,10 +665,19 @@ function EditPositionForm({ position, currentPrice, name, onClose }: {
   );
 }
 
+function todayDateStr(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function AddPositionForm({ onClose }: { onClose: () => void }) {
   const [symbol, setSymbol] = useState('');
   const [lot, setLot] = useState('');
   const [avgPrice, setAvgPrice] = useState('');
+  const [executedDate, setExecutedDate] = useState<string>(todayDateStr());
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -678,11 +698,14 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
     }
     setSaving(true);
     try {
+      const now = Date.now();
+      const executedAt = executedDate ? new Date(executedDate).getTime() : now;
       // Ayni sembol icin mevcut hisse pozisyonu var mi? (kind=fund haric)
       const existing = await db.portfolio
         .filter((p) => p.symbol === sym && p.kind !== 'fund')
         .first();
 
+      let positionId: number;
       if (existing && existing.id) {
         // Agirlikli ortalama maliyet: (eski_lot * eski_avg + yeni_lot * yeni_avg) / (eski_lot + yeni_lot)
         const totalLot = existing.lot + lotNum;
@@ -692,18 +715,30 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
           avgPrice: weightedAvg,
           note: note.trim() || existing.note,
         });
+        positionId = existing.id;
         toast.success(`${sym} guncellendi`,
           `Toplam ${totalLot} lot · Yeni ort. maliyet ${weightedAvg.toFixed(2)}₺`);
       } else {
-        await db.portfolio.add({
+        positionId = (await db.portfolio.add({
           symbol: sym,
           lot: lotNum,
           avgPrice: priceNum,
-          addedAt: Date.now(),
+          addedAt: now,
           note: note.trim() || undefined,
-        });
+        })) as number;
         toast.success(`${sym} eklendi`, `${lotNum} lot @ ${priceNum}₺`);
       }
+      // Islem gecmisine yeni alim kaydi (her durumda)
+      await db.portfolioTxns.add({
+        positionId,
+        kind: 'stock',
+        symbol: sym,
+        lot: lotNum,
+        price: priceNum,
+        executedAt,
+        note: note.trim() || undefined,
+        createdAt: now,
+      });
       onClose();
     } finally {
       setSaving(false);
@@ -781,6 +816,15 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
           />
         </Field>
       </div>
+      <Field label="İşlem Tarihi" hint="Bugünden geriye dönük tarih girebilirsin">
+        <input
+          className="input"
+          type="date"
+          value={executedDate}
+          max={todayDateStr()}
+          onChange={(e) => setExecutedDate(e.target.value)}
+        />
+      </Field>
       <Field label="Not (opsiyonel)">
         <input
           className="input"

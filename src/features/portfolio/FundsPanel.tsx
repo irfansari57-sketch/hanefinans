@@ -9,7 +9,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil, History } from 'lucide-react';
+import { TxnHistoryModal } from './TxnHistoryModal';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -61,6 +62,7 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
   const [addOpen, setAddOpen] = useState(false);
   const [toDelete, setToDelete] = useState<PortfolioPosition | null>(null);
   const [toEdit, setToEdit] = useState<PortfolioPosition | null>(null);
+  const [toViewHistory, setToViewHistory] = useState<PortfolioPosition | null>(null);
 
   // Map for fast lookup
   const fundMap = useMemo(() => {
@@ -288,6 +290,13 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
                     <td className="px-3 py-2.5 text-center">
                       <div className="inline-flex items-center gap-0.5">
                         <button
+                          onClick={() => setToViewHistory(r)}
+                          className="rounded p-1 text-slate-400 hover:bg-accent/10 hover:text-accent"
+                          title="Islem gecmisi"
+                        >
+                          <History size={12} />
+                        </button>
+                        <button
                           onClick={() => setToEdit(r)}
                           className="rounded p-1 text-slate-400 hover:bg-accent/10 hover:text-accent"
                           title="Duzenle"
@@ -325,6 +334,8 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
           />
         )}
       </Modal>
+
+      <TxnHistoryModal position={toViewHistory} onClose={() => setToViewHistory(null)} />
 
       <ConfirmDialog
         open={!!toDelete}
@@ -453,10 +464,19 @@ function EditFundForm({ position, currentNav, fundName, onClose }: {
   );
 }
 
+function todayDateStr(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: () => void }) {
   const [code, setCode] = useState('');
   const [lot, setLot] = useState('');
   const [avgPrice, setAvgPrice] = useState('');
+  const [executedDate, setExecutedDate] = useState<string>(todayDateStr());
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -491,11 +511,14 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
     }
     setSaving(true);
     try {
+      const now = Date.now();
+      const executedAt = executedDate ? new Date(executedDate).getTime() : now;
       // Ayni fon kodu icin mevcut pozisyon var mi?
       const existing = await db.portfolio
         .filter((p) => p.symbol === sym && p.kind === 'fund')
         .first();
 
+      let positionId: number;
       if (existing && existing.id) {
         // Agirlikli ortalama NAV: (eski_adet * eski_nav + yeni_adet * yeni_nav) / toplam_adet
         const totalLot = existing.lot + lotNum;
@@ -505,19 +528,31 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
           avgPrice: weightedAvg,
           note: note.trim() || existing.note,
         });
+        positionId = existing.id;
         toast.success(`${sym} guncellendi`,
           `Toplam ${totalLot} adet · Yeni ort. NAV ${weightedAvg.toFixed(4)}₺`);
       } else {
-        await db.portfolio.add({
+        positionId = (await db.portfolio.add({
           kind: 'fund',
           symbol: sym,
           lot: lotNum,
           avgPrice: priceNum,
-          addedAt: Date.now(),
+          addedAt: now,
           note: note.trim() || undefined,
-        });
+        })) as number;
         toast.success(`${sym} eklendi`, `${lotNum} adet @ ${priceNum}₺`);
       }
+      // Islem gecmisine yeni alim kaydi
+      await db.portfolioTxns.add({
+        positionId,
+        kind: 'fund',
+        symbol: sym,
+        lot: lotNum,
+        price: priceNum,
+        executedAt,
+        note: note.trim() || undefined,
+        createdAt: now,
+      });
       onClose();
     } finally {
       setSaving(false);
@@ -613,6 +648,15 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
           />
         </Field>
       </div>
+      <Field label="Islem Tarihi" hint="Bugunden geriye donuk tarih girebilirsin">
+        <input
+          className="input"
+          type="date"
+          value={executedDate}
+          max={todayDateStr()}
+          onChange={(e) => setExecutedDate(e.target.value)}
+        />
+      </Field>
       <Field label="Not (opsiyonel)">
         <input
           className="input"

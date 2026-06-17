@@ -107,6 +107,32 @@ export interface PortfolioPosition {
   note?: string;
 }
 
+/**
+ * Portfoy islem gecmisi - her alim/satim ayri kayit.
+ *
+ * Pozitif lot = alim, negatif = satim. Mevcut PortfolioPosition (toplam lot +
+ * ortalama maliyet) bu kayitlardan turetilir, ama UI'da kullanici Yatirim
+ * tarihlerini ve fiyat geçmişini gormek istedigi icin ayri saklanir.
+ */
+export interface PortfolioTxn {
+  id?: number;
+  /** Iliskili pozisyonun id'si - opsiyonel (eski kayitlar yok) */
+  positionId?: number;
+  /** 'stock' | 'fund' — pozisyonun tipiyle ayni */
+  kind?: 'stock' | 'fund';
+  /** BIST sembolü veya TEFAS fon kodu */
+  symbol: string;
+  /** Lot/pay sayisi (pozitif=alim, negatif=satim) */
+  lot: number;
+  /** Islem fiyati (lot basina TL) */
+  price: number;
+  /** Islem tarihi - kullanici secebilir (geriye donuk girişim) */
+  executedAt: number;
+  note?: string;
+  /** Kaydin yaratildigi an (audit) */
+  createdAt: number;
+}
+
 /** Tek seferlik ödeme veya abonelik yenileme kaydı. */
 export interface PaymentTransaction {
   id?: number;
@@ -153,6 +179,7 @@ class FinansAsistanDB extends Dexie {
   funds!: Table<FundEntry, number>;
   users!: Table<UserAccount, number>;
   portfolio!: Table<PortfolioPosition, number>;
+  portfolioTxns!: Table<PortfolioTxn, number>;
   transactions!: Table<PaymentTransaction, number>;
   subscriptions!: Table<Subscription, number>;
 
@@ -196,6 +223,18 @@ class FinansAsistanDB extends Dexie {
       funds: '++id, &code, addedAt, archived',
       users: '++id, &email, tier, createdAt',
       portfolio: '++id, symbol, addedAt',
+      transactions: '++id, userId, status, createdAt, iyzicoPaymentId',
+      subscriptions: '++id, userId, status, expiresAt, iyzicoSubscriptionId',
+    });
+    this.version(6).stores({
+      activity: '++id, timestamp, type, symbol, newsId',
+      notes: '++id, createdAt, updatedAt, symbol, newsId, pinned',
+      alerts: '++id, createdAt, symbol, enabled, triggeredAt',
+      bookmarks: '++id, &newsId, bookmarkedAt',
+      funds: '++id, &code, addedAt, archived',
+      users: '++id, &email, tier, createdAt',
+      portfolio: '++id, symbol, addedAt',
+      portfolioTxns: '++id, positionId, symbol, executedAt, createdAt',
       transactions: '++id, userId, status, createdAt, iyzicoPaymentId',
       subscriptions: '++id, userId, status, expiresAt, iyzicoSubscriptionId',
     });

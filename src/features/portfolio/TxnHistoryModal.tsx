@@ -2,14 +2,23 @@
  * Portfoyum -> Bir pozisyonun islem gecmisi modali.
  * Hem hisse hem fon icin ortak kullanim.
  */
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Trash2, Calendar, History } from 'lucide-react';
+import { Trash2, Calendar, History, Pencil, Check, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from '@/components/ui/Toast';
 import { db, type PortfolioPosition, type PortfolioTxn } from '@/data/db';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+
+function toDateInput(ms: number): string {
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 interface Props {
   position: PortfolioPosition | null;
@@ -24,6 +33,55 @@ function fmtDate(ms: number): string {
 }
 
 export function TxnHistoryModal({ position, onClose }: Props) {
+  // Inline edit state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editLot, setEditLot] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const startEdit = (t: PortfolioTxn) => {
+    if (!t.id) return;
+    setEditingId(t.id);
+    setEditDate(toDateInput(t.executedAt));
+    setEditLot(String(t.lot));
+    setEditPrice(String(t.price));
+    setEditNote(t.note ?? '');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDate('');
+    setEditLot('');
+    setEditPrice('');
+    setEditNote('');
+  };
+
+  const saveEdit = async () => {
+    if (editingId == null) return;
+    const lotNum = parseFloat(editLot.replace(',', '.'));
+    const priceNum = parseFloat(editPrice.replace(',', '.'));
+    if (!Number.isFinite(lotNum) || lotNum === 0 || !Number.isFinite(priceNum) || priceNum <= 0) {
+      toast.error('Gecersiz giris', 'Adet ve fiyat zorunlu, fiyat pozitif olmali');
+      return;
+    }
+    const executedAt = editDate ? new Date(editDate).getTime() : Date.now();
+    setSaving(true);
+    try {
+      await db.portfolioTxns.update(editingId, {
+        executedAt,
+        lot: lotNum,
+        price: priceNum,
+        note: editNote.trim() || undefined,
+      });
+      toast.success('Islem guncellendi');
+      cancelEdit();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // positionId varsa ona gore, yoksa symbol+kind ile filtre
   const txns = useLiveQuery(async () => {
     if (!position) return [] as PortfolioTxn[];
@@ -102,6 +160,77 @@ export function TxnHistoryModal({ position, onClose }: Props) {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {txns.map((t) => {
+                    const isEditing = editingId === t.id;
+                    if (isEditing) {
+                      // Inline edit modu
+                      const editLotNum = parseFloat(editLot.replace(',', '.'));
+                      const editPriceNum = parseFloat(editPrice.replace(',', '.'));
+                      const editTotal = (Number.isFinite(editLotNum) && Number.isFinite(editPriceNum))
+                        ? editLotNum * editPriceNum : 0;
+                      return (
+                        <tr key={t.id} className="bg-accent/5">
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="date"
+                              className="input text-[11px] py-1 px-2"
+                              value={editDate}
+                              max={toDateInput(Date.now())}
+                              onChange={(e) => setEditDate(e.target.value)}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="number"
+                              className="input text-[11px] py-1 px-2 text-right tabular-nums"
+                              value={editLot}
+                              onChange={(e) => setEditLot(e.target.value)}
+                              step="any"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="number"
+                              className="input text-[11px] py-1 px-2 text-right tabular-nums"
+                              value={editPrice}
+                              onChange={(e) => setEditPrice(e.target.value)}
+                              step="any"
+                              min="0"
+                            />
+                          </td>
+                          <td className="px-3 py-1.5 text-right tabular-nums text-slate-300 text-[11px]">
+                            {formatMoney(editTotal)}
+                          </td>
+                          <td className="hidden md:table-cell px-2 py-1.5">
+                            <input
+                              type="text"
+                              className="input text-[11px] py-1 px-2"
+                              placeholder="Not"
+                              value={editNote}
+                              onChange={(e) => setEditNote(e.target.value)}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <div className="inline-flex items-center gap-0.5">
+                              <button
+                                onClick={saveEdit}
+                                disabled={saving}
+                                className="rounded p-1 text-success hover:bg-success/15 disabled:opacity-30"
+                                title="Kaydet"
+                              >
+                                <Check size={12} />
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="rounded p-1 text-slate-400 hover:bg-bg-card hover:text-slate-200"
+                                title="Iptal"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
                     const total = t.lot * t.price;
                     const isBuy = t.lot >= 0;
                     return (
@@ -120,13 +249,22 @@ export function TxnHistoryModal({ position, onClose }: Props) {
                           {t.note ?? '—'}
                         </td>
                         <td className="px-3 py-2 text-center">
-                          <button
-                            onClick={() => handleDelete(t)}
-                            className="rounded p-1 text-danger/70 hover:bg-danger/10 hover:text-danger"
-                            title="Islemi sil"
-                          >
-                            <Trash2 size={11} />
-                          </button>
+                          <div className="inline-flex items-center gap-0.5">
+                            <button
+                              onClick={() => startEdit(t)}
+                              className="rounded p-1 text-slate-400 hover:bg-accent/10 hover:text-accent"
+                              title="Duzenle"
+                            >
+                              <Pencil size={11} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(t)}
+                              className="rounded p-1 text-danger/70 hover:bg-danger/10 hover:text-danger"
+                              title="Islemi sil"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -146,8 +284,9 @@ export function TxnHistoryModal({ position, onClose }: Props) {
           )}
 
           <p className="text-[10px] text-slate-500">
-            Islem silmek pozisyonun toplam lot ve ortalama maliyet hesabini etkilemez.
-            Pozisyon ozetini kalem ikonu ile manuel guncelleyebilirsin.
+            Islem duzenlemek veya silmek, pozisyonun toplam lot ve ortalama maliyet
+            hesabini otomatik guncellemez. Pozisyon ozetini ana liste satirindaki
+            kalem ikonu ile manuel guncelleyebilirsin.
           </p>
 
           <div className="flex justify-end pt-2">

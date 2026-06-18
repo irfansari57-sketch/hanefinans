@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil, History } from 'lucide-react';
 import { TxnHistoryModal } from './TxnHistoryModal';
+import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -185,6 +186,22 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
               tone={totals.dailyChange >= 0 ? 'success' : 'danger'}
             />
           </div>
+          {/* Pasta grafik dagilimi */}
+          {(() => {
+            const donutItems: DonutItem[] = rows
+              .filter((r) => (r.marketValue ?? r.cost ?? 0) > 0)
+              .map((r) => ({
+                label: r.symbol,
+                value: r.marketValue ?? r.cost ?? 0,
+                sublabel: r.name ?? r.category,
+              }));
+            if (donutItems.length === 0) return null;
+            return (
+              <div className="mt-4 rounded-lg border border-border bg-bg-soft p-4">
+                <PortfolioDonut items={donutItems} title="Fon Dağılımı (Değer Bazında)" />
+              </div>
+            );
+          })()}
           <p className="mt-3 text-[10px] text-slate-500">
             <AlertCircle size={10} className="inline mr-1" />
             Fon degeri TEFAS feed'inden gunluk NAV ile hesaplanir. Eski feed'lerde NAV yoksa 1Y getiri ile yaklasik hesaplanir.

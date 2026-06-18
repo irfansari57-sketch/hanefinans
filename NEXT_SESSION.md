@@ -1,7 +1,45 @@
 # NEXT SESSION — Hane Finans
 
-> Son guncelleme: 17 Haziran 2026, 23:45
+> Son guncelleme: 18 Haziran 2026
 > Bu dosya, bir sonraki Cowork seansinda nereden devam edilecegini gosterir.
+
+---
+
+## BU SEANSDA NE BITTI? (18 Haziran)
+
+### Fonlar sayfasi: TEFAS sutunu + "TEFAS Kapali" tab
+- `FundsPage.tsx`: TEFAS sutunu (yesil Check / kirmizi X) — Semsiye/Kategori ile Gun % arasinda
+- "Serbest" tab adi -> **"TEFAS Kapali"** (kullanici "Serbest" ifadesini anlamiyordu)
+- TEFAS Kapali tab: kirmizi danger tema
+- Banner 3 madde: Serbest fonlar (SPK 10M TL), Banka ozel/sepet hesap, BES/girisim/gayrimenkul
+
+### Frontend cache JSON kesin garanti (TLY/EKL fix)
+- `tefasGithub.ts` `ensureOpenCodes()` async loader: `tefas-open-codes.json` cache fetch
+- `mapTefasToPerformance` cache-wins logic — backend cron icin gec calismasi sorun olmaz
+- 1012 fonun kesin listesi frontend'de oturuyor
+- Heuristic minimuma indirildi: sadece EMEKLILIK, GIRISIM SERMAYESI, GAYRIMENKUL
+
+### Portfoy donut chart (Pasta grafik dagilim)
+- `PortfolioDonut.tsx` (yeni component): SVG-based, recharts'siz, ~3KB
+- 12 renkli palet, "Diger" grupland (8+ fon)
+- Hover: 4px disa shift + merkez detay
+- Legend: yuzde + deger
+- Hem **FundsPanel**'a hem **PortfolioPage**'e entegre
+
+### Portfoy Cloud Sync (D1)
+- `functions/migrations/011_portfolio.sql`: `portfolio_positions` + `portfolio_txns` tablolari (CASCADE delete)
+- `functions/api/portfolio/index.ts`: GET (positions + txns) + POST (server-side agirlikli ortalama)
+- `functions/api/portfolio/[id].ts`: PUT (update) + DELETE
+- `src/data/portfolioSync.ts`: `cloudFetch`, `cloudAddPosition`, `cloudUpdatePosition`, `cloudDeletePosition`, `migrateDexieToCloud`, `cloudToDexiePosition`, `cloudToDexieTxn`, `shouldUseCloud`
+- `Layout.tsx`: kullanici login olunca otomatik cloud sync (Dexie'yi ezer, Dexie'de veri varsa one-time migration)
+- **PortfolioPage** + **FundsPanel**: AddForm/EditForm/Delete -> auth'lu kullanicida cloud, anonimde Dexie
+
+### KRITIK: 011 migration calistirilmali
+```powershell
+cd C:\dev\hanefinans
+npx wrangler d1 execute hanefinans-db --remote --file=functions/migrations/011_portfolio.sql
+```
+Bu komut **bir kez** calistirilmadan cloud sync uretimde calismaz (POST 500 doner, Dexie fallback'a duser).
 
 ---
 
@@ -58,6 +96,24 @@
 ---
 
 ## YARIN ILK YAPILACAK (mutlaka)
+
+### 0. D1 portfolio migration calistir (5 dk) — KRITIK
+```powershell
+cd C:\dev\hanefinans
+npx wrangler d1 execute hanefinans-db --remote --file=functions/migrations/011_portfolio.sql
+```
+Beklenen cikti: "Executed N queries... in M ms"
+Bunsuz cloud sync API'leri 500 doner (frontend Dexie fallback'a duser ama bulut yok).
+
+### 0.5. Build + push (bu seansin save sync paketi)
+```powershell
+cd C:\dev\hanefinans
+npm run build
+git add src/features/portfolio/PortfolioPage.tsx src/features/portfolio/FundsPanel.tsx
+git commit -m "portfoy: save/update/delete D1 sync (hisse + fon)"
+git push
+```
+Sandbox truncation oldugu icin commit Cowork seansinda yapilamadi, **bu paket henuz push'lanmamis** olabilir. `git status` ile kontrol et.
 
 ### 1. TEFAS Cache cozumu DOGRULA (5 dk)
 1. https://github.com/irfansari57-sketch/hanefinans/actions/workflows/tefas-fetch.yml
@@ -154,7 +210,10 @@ git push origin main
 
 | Konu | Durum |
 |---|---|
-| TEFAS Acik/Kapali | Cache cozumu hazir, cron tetikleme bekliyor |
+| TEFAS Acik/Kapali | Frontend cache JSON kesin (1012 fon), backend cron destek |
+| Fonlar sayfasi TEFAS sutunu + Kapali tab | TAMAM |
+| Portfoy pasta grafik (donut) | TAMAM (hisse+fon) |
+| Portfoy D1 cloud sync | KOD HAZIR, migration + push bekliyor |
 | Portfoyum (Hisse+Fon+Gecmis+Edit) | TAMAM, production'da |
 | Risk Profili + Katilim | TAMAM |
 | FundDetailPage badge | TAMAM |

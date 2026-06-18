@@ -160,6 +160,8 @@ def fetch_tefas_open_codes() -> "set[str]":
                     codes.add(code.strip().upper())
                 elif code is not None:
                     codes.add(str(code).strip().upper())
+        if not codes:
+            raise ValueError("Excel parse 0 kod cikardi - cache fallback")
         print(
             f"[fetch_tefas_open_codes] Takasbank TEFAS listesi: {len(codes)} fon",
             flush=True,
@@ -167,17 +169,33 @@ def fetch_tefas_open_codes() -> "set[str]":
         if codes:
             sample = sorted(codes)[:5]
             print(f"[fetch_tefas_open_codes] Ornek kodlar: {sample}", flush=True)
-            # Sanity check - EKL bilinen belirsiz fon
-            for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK"):
+            for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK", "TLY"):
                 in_list = chk in codes
                 print(f"[fetch_tefas_open_codes] {chk} listede mi? {in_list}", flush=True)
         return codes
     except Exception as e:
+        # Excel parse fail (HTML hata sayfasi vs.) - cache JSON'a dus
         print(
-            f"[fetch_tefas_open_codes] HATA: {type(e).__name__}: {e} - heuristic fallback",
+            f"[fetch_tefas_open_codes] Excel parse hatasi ({type(e).__name__}: {e}) - cache JSON deneniyor",
             file=sys.stderr,
             flush=True,
         )
+        cache_path = "data/tefas-open-codes.json"
+        try:
+            with open(cache_path, encoding="utf-8") as cf:
+                cache_data = json.load(cf)
+            cache_codes = set(str(c).strip().upper() for c in cache_data.get("codes", []))
+            if cache_codes:
+                print(
+                    f"[fetch_tefas_open_codes] (excel fail) Cache JSON: "
+                    f"{len(cache_codes)} fon ({cache_data.get('updatedAt', '?')})",
+                    flush=True,
+                )
+                for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK", "TLY"):
+                    print(f"[fetch_tefas_open_codes] (cache) {chk} listede mi? {chk in cache_codes}", flush=True)
+                return cache_codes
+        except Exception as ce:
+            print(f"[fetch_tefas_open_codes] Cache JSON da fail ({ce})", file=sys.stderr, flush=True)
         return set()
 
 
@@ -289,37 +307,16 @@ def is_tefas_open(name: str, category: str, code: str = '', tefas_status_value=N
     if open_codes:
         return (code or '').strip().upper() in open_codes
 
-    # 2) FALLBACK - heuristic
-    cat = (category or '').strip()
+    # 2) FALLBACK - MINIMAL heuristic
+    # KALDIRILAN kalıplar: SERBEST/SEPET/PAYLASIM/OZEL/YABANCI MENKUL/
+    # NITELIKLI YATIRIMCI/GARANTILI/KORUMA AMACLI. Takasbank otorite listesinde
+    # bu kelimeleri iceren onlarca gercek TEFAS-acik fon var (TLY/CAH/AUV/BS1).
+    # KALAN kalıplar (gercekten TEFAS sistemi disi):
+    #   - EMEKLILIK (BES) - BEFAS'tan alinir
+    #   - GIRISIM SERMAYESI YF + GAYRIMENKUL YF - nitelikli yatirimci
     n = (name or '').upper()
-    c = cat.upper()
+    c = (category or '').upper()
 
-    # 1-2: Serbest
-    if cat == 'Serbest' or 'SERBEST' in c:
-        return False
-    if 'SERBEST' in n:
-        return False
-    # 3: Yabanci menkul
-    if 'YABANCI MENKUL' in n or 'YABANCI MENKULLER' in n:
-        return False
-    # 4: Nitelikli yatirimci
-    if 'NITELIKLI YATIRIMCI' in n or 'NİTELİKLİ YATIRIMCI' in n:
-        return False
-    # 5: Sepet hesap / Paylasimli hesap / Ozel fon (banka ozel)
-    if 'SEPET HESAP' in n:
-        return False
-    if 'PAYLAŞIMLI HESAP' in n or 'PAYLASIMLI HESAP' in n:
-        return False
-    if 'PAYLAŞIM HESAP' in n or 'PAYLASIM HESAP' in n:
-        return False
-    if 'ÖZEL FON' in n or 'OZEL FON' in n:
-        return False
-    # 6: Garantili / Koruma amacli
-    if 'GARANTİLİ' in n or 'GARANTILI' in n:
-        return False
-    if 'KORUMA AMAÇLI' in n or 'KORUMA AMACLI' in n:
-        return False
-    # 7: BES emeklilik fonlari
     if 'EMEKLİLİK' in n or 'EMEKLILIK' in n:
         return False
     if 'EMEKLİLİK' in c or 'EMEKLILIK' in c:

@@ -57,6 +57,37 @@ let cache: { fetchedAt: number; data: TefasFeed } | null = null;
 let lastError: TefasFeedFetchResult | null = null;
 const CACHE_TTL_MS = 5 * 60_000;
 
+// Takasbank otorite "TEFAS Acik Fonlar" cache - tefas-open-codes.json'dan yuklenir.
+// Kod listede ise TEFAS acik, yoksa kapali. Backend cron'a bagimli degil.
+let openCodesCache: Set<string> | null = null;
+let openCodesFetchPromise: Promise<void> | null = null;
+
+async function ensureOpenCodes(): Promise<void> {
+  if (openCodesCache !== null) return;
+  if (openCodesFetchPromise) return openCodesFetchPromise;
+  openCodesFetchPromise = (async () => {
+    try {
+      // FEED_URL pattern'ine gore tefas-open-codes.json URL'i turet.
+      const url = FEED_URL.replace(/tefas\.json(\?.*)?$/, 'tefas-open-codes.json$1');
+      if (!url || url === FEED_URL) {
+        openCodesCache = new Set();
+        return;
+      }
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) {
+        openCodesCache = new Set();
+        return;
+      }
+      const data = await r.json() as { codes?: string[] };
+      const codes = Array.isArray(data.codes) ? data.codes : [];
+      openCodesCache = new Set(codes.map((c) => String(c).trim().toUpperCase()));
+    } catch {
+      openCodesCache = new Set();
+    }
+  })();
+  return openCodesFetchPromise;
+}
+
 // LastGood snapshot: hafta sonu / network hatasında son başarılı feed'i tutar.
 // TEFAS hafta sonu NAV yayınlamaz; Cuma 23:59 (TR) feed'i Pazartesi açılışa kadar
 // "kilit" gibi davranır. Bu sayede Cumartesi/Pazar fonlarda "Gün %", "1 Hafta %"
@@ -315,8 +346,19 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
     //     cron'undan daha guncel guncellenebilir; yeni eklenen kosullar (SEPET HESAP,
     //     EMEKLILIK vs.) backend feed'inde henuz olmayabilir)
     //   - Client TRUE derse -> backend ne derse desin onu kullan
-    const clientOpen = computeTefasOpenClient(f.category, f.name);
-    const finalOpen = clientOpen === false ? false : (f.tefasOpen ?? true);
+    // tefasOpen kararı - 3 katmanlı (en kesin -> en zayif):
+    //   1. Cache JSON (Takasbank otorite 1012 fon): kod listede ise true, yoksa false
+    //   2. Backend feed tefasOpen (cron yazdiysa)
+    //   3. Client heuristic (BES/Girisim/Gayrimenkul)
+    const codeUp = (f.code || '').trim().toUpperCase();
+    let finalOpen: boolean;
+    if (openCodesCache && openCodesCache.size > 0) {
+      finalOpen = openCodesCache.has(codeUp);
+    } else if (f.tefasOpen !== undefined) {
+      finalOpen = f.tefasOpen;
+    } else {
+      finalOpen = computeTefasOpenClient(f.category, f.name);
+    }
 
     return {
       code: f.code,
@@ -342,7 +384,8 @@ export async function loadFundsAsPerformance(): Promise<{
   funds: FundPerformance[];
   updatedAt: string;
 } | null> {
-  const feed = await fetchTefasFeed();
+  // Cache JSON ile feed'i paralel yukle (cache otorite TEFAS Acik karari icin)
+  const [feed] = await Promise.all([fetchTefasFeed(), ensureOpenCodes()]);
   if (!feed) return null;
   return { funds: mapTefasToPerformance(feed.funds), updatedAt: feed.updatedAt };
 }
@@ -351,7 +394,7 @@ export async function loadFundsAsPerformance(): Promise<{
 export async function loadFundsAsPerformanceDetailed(): Promise<TefasFeedFetchResult & {
   funds?: FundPerformance[];
 }> {
-  const result = await fetchTefasFeedDetailed();
+  const [result] = await Promise.all([fetchTefasFeedDetailed(), ensureOpenCodes()]);
   if (!result.feed) return result;
   return { ...result, funds: mapTefasToPerformance(result.feed.funds) };
 }

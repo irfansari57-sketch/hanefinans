@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { PiggyBank, Search, Star, AlertCircle, ArrowUpDown } from 'lucide-react';
+import { PiggyBank, Search, Star, AlertCircle, ArrowUpDown, Check, X } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { Pagination } from '@/components/ui/Pagination';
@@ -355,6 +355,7 @@ export function FundsPage() {
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <SortableHeader label="Kod" sortKey="code" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />
                   <th className="px-2 py-2.5 text-left hidden sm:table-cell">Şemsiye / Kategori</th>
+                  <th className="px-2 py-2.5 text-center">TEFAS</th>
                   <SortableHeader label="Gün %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="1 Hafta %" sortKey="week" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="1 Ay %" sortKey="month" activeKey={sortKey} dir={sortDir} onClick={setSort} />
@@ -475,6 +476,17 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
           )}
           <span className="truncate text-[11px] text-slate-400 max-w-[200px]">{fund.name}</span>
         </div>
+      </td>
+      <td className="px-2 py-2 text-center">
+        {fund.tefasOpen === false ? (
+          <span title="TEFAS'ta islem gormez" className="inline-grid h-5 w-5 place-items-center rounded-full bg-danger/15 text-danger">
+            <X size={12} strokeWidth={3} />
+          </span>
+        ) : (
+          <span title="TEFAS'ta islem gorur" className="inline-grid h-5 w-5 place-items-center rounded-full bg-success/15 text-success">
+            <Check size={12} strokeWidth={3} />
+          </span>
+        )}
       </td>
       <PerfCell value={fund.day} />
       <PerfCell value={fund.week} />

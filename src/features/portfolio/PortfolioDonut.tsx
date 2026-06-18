@@ -55,10 +55,24 @@ export function PortfolioDonut({
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const { slices, sumTotal } = useMemo(() => {
-    const sum = total ?? items.reduce((s, it) => s + Math.max(0, it.value), 0);
+    // Once ayni label'a sahip dilimleri aggregate et (KTJ + KTJ -> tek KTJ)
+    const aggregated = new Map<string, DonutItem>();
+    for (const it of items) {
+      if (it.value <= 0) continue;
+      const key = it.label;
+      const cur = aggregated.get(key);
+      if (cur) {
+        cur.value += it.value;
+        // sublabel kalir (ilk gelen, genelde isim/kategori ayni)
+      } else {
+        aggregated.set(key, { label: it.label, value: it.value, sublabel: it.sublabel });
+      }
+    }
+    const aggregatedArr = Array.from(aggregated.values());
+    const sum = total ?? aggregatedArr.reduce((s, it) => s + it.value, 0);
     if (sum <= 0) return { slices: [] as Array<DonutItem & { pct: number; color: string }>, sumTotal: 0 };
     // Buyukten kucuge sirala
-    const sorted = [...items].filter((it) => it.value > 0).sort((a, b) => b.value - a.value);
+    const sorted = aggregatedArr.sort((a, b) => b.value - a.value);
     if (groupSmall && sorted.length > 8) {
       const big = sorted.slice(0, 7);
       const smallSum = sorted.slice(7).reduce((s, it) => s + it.value, 0);
@@ -153,23 +167,23 @@ export function PortfolioDonut({
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
             {hovered ? (
               <>
-                <div className="font-mono text-base font-bold text-slate-100">
+                <div className="font-mono text-lg font-extrabold text-white">
                   %{hovered.pct.toFixed(1)}
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-400 truncate max-w-[100px]">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 truncate max-w-[110px]">
                   {hovered.label}
                 </div>
-                <div className="mt-0.5 font-mono text-[11px] tabular-nums text-accent">
+                <div className="mt-0.5 font-mono text-xs font-bold tabular-nums text-accent">
                   {formatMoney(hovered.value)}
                 </div>
               </>
             ) : (
               <>
-                <div className="text-[10px] uppercase tracking-wider text-slate-500">Toplam</div>
-                <div className="mt-0.5 font-mono text-sm font-bold tabular-nums text-slate-100">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Toplam</div>
+                <div className="mt-0.5 font-mono text-base font-extrabold tabular-nums text-white">
                   {formatMoney(sumTotal)}
                 </div>
-                <div className="text-[10px] text-slate-500">{slices.length} kalem</div>
+                <div className="text-[10px] text-slate-400">{slices.length} kalem</div>
               </>
             )}
           </div>
@@ -184,24 +198,26 @@ export function PortfolioDonut({
               onMouseEnter={() => setHoverIdx(i)}
               onMouseLeave={() => setHoverIdx(null)}
               className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs transition',
+                'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition',
                 hoverIdx === i ? 'bg-bg-card' : 'hover:bg-bg-card/60',
               )}
             >
               <span
-                className="h-3 w-3 shrink-0 rounded-sm"
+                className="h-3.5 w-3.5 shrink-0 rounded-sm"
                 style={{ backgroundColor: slice.color }}
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-semibold text-slate-100 truncate">{slice.label}</span>
-                  <span className="text-[10px] text-slate-500 shrink-0">%{slice.pct.toFixed(1)}</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-sm font-bold text-white truncate">{slice.label}</span>
+                  <span className="text-[11px] font-semibold text-slate-300 shrink-0 tabular-nums">
+                    %{slice.pct.toFixed(1)}
+                  </span>
                 </div>
                 {slice.sublabel && (
-                  <div className="truncate text-[10px] text-slate-500">{slice.sublabel}</div>
+                  <div className="truncate text-[11px] text-slate-400 leading-tight">{slice.sublabel}</div>
                 )}
               </div>
-              <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-300">
+              <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-slate-50">
                 {formatMoney(slice.value)}
               </span>
             </button>

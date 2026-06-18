@@ -119,6 +119,46 @@ export function Layout() {
   const admin = isAdmin(user);
   const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
+  // Portfoy cloud sync — login olunca Dexie ↔ D1 senkronize et
+  // Anonim kullanicilarin Dexie verisi: ilk login'de Cloud'a tasinir, sonra Cloud authoritative.
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    (async () => {
+      try {
+        const { cloudFetch, migrateDexieToCloud, cloudToDexiePosition, cloudToDexieTxn } =
+          await import('@/data/portfolioSync');
+        const { db } = await import('@/data/db');
+
+        // 1. Dexie'de cloud'a tasinmamis veri var mi?
+        const localCount = await db.portfolio.count();
+        const cloudData = await cloudFetch();
+        if (localCount > 0 && cloudData.positions.length === 0) {
+          // Anonim olarak girilen veri var, cloud bos -> tasi
+          await migrateDexieToCloud();
+        }
+
+        // 2. Cloud authoritative: Dexie'yi cloud ile yenile
+        const fresh = await cloudFetch();
+        if (!alive) return;
+        await db.transaction('rw', db.portfolio, db.portfolioTxns, async () => {
+          await db.portfolio.clear();
+          for (const p of fresh.positions) {
+            await db.portfolio.add(cloudToDexiePosition(p));
+          }
+          await db.portfolioTxns.clear();
+          for (const t of fresh.txns) {
+            await db.portfolioTxns.add(cloudToDexieTxn(t));
+          }
+        });
+      } catch (e) {
+        // Sessiz fail - kullanici offline veya endpoint yok, Dexie kullanmaya devam
+        console.warn('[portfolio-sync] failed:', e);
+      }
+    })();
+    return () => { alive = false; };
+  }, [user]);
+
   const visibleNavGroups = navGroups
     .map((g) => ({ ...g, items: g.items.filter((it) => !it.adminOnly || admin) }))
     .filter((g) => g.items.length > 0);

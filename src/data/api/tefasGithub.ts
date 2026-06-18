@@ -225,19 +225,39 @@ function normalizeFundCategory(rawCategory: string, name: string): FundCategory 
  * SPK 2026 Ocak nitelikli yatirimci 10M TL+ net varlik kosulu.
  */
 export function computeTefasOpenClient(category: string, name: string): boolean {
-  // MINIMAL heuristic - sadece backend `tefasOpen` undefined ise fallback.
-  // KALDIRILAN kalıplar (Takasbank otorite listesinde gercek acik fonlar var):
-  //   - SERBEST (TLY, CAH, AUV, BS1, P1A, DA1 vs.)
-  //   - SEPET HESAP / PAYLASIM HESAP / OZEL FON (banka ozel ama Takasbank listede)
-  //   - YABANCI MENKUL / NITELIKLI YATIRIMCI / GARANTILI / KORUMA AMACLI
-  // KALAN kalıplar (gercekten TEFAS sistemi disi):
-  //   - EMEKLILIK (BES) - BEFAS'tan alinir
-  //   - GIRISIM SERMAYESI YF + GAYRIMENKUL YF - nitelikli yatirimci
+  const cat = (category || '').trim();
+  // Locale-aware uppercase: Turkish i -> İ
   const n = (name || '').toLocaleUpperCase('tr-TR');
-  const c = (category || '').toLocaleUpperCase('tr-TR');
+  const c = cat.toLocaleUpperCase('tr-TR');
 
+  // Kategori bazli
+  if (cat === 'Serbest') return false;
+  if (c.includes('SERBEST')) return false;
+
+  // Isim bazli — TEFAS'a kapali fon tipleri
+  if (n.includes('SERBEST')) return false;
+  if (n.includes('YABANCI MENKUL')) return false;
+  if (n.includes('NİTELİKLİ YATIRIMCI') || n.includes('NITELIKLI YATIRIMCI')) return false;
+
+  // SEPET HESAP fonlari (banka ozel, sadece kendi musterilerine acik)
+  // orn: ZA2 = "KUVEYT TURK PORTFOY IKINCI SEPET HESAP PARA PIYASASI KATILIM FONU"
+  if (n.includes('SEPET HESAP')) return false;
+  // PAYLASIMLI HESAP — KHP gibi banka ozel paylasimli hesap fonlari
+  // orn: KHP = "KUVEYT TURK PORTFOY PAYLASIMLI HESAP PARA PIYASASI KATILIM FONU"
+  if (n.includes('PAYLAŞIMLI HESAP') || n.includes('PAYLASIMLI HESAP')) return false;
+  if (n.includes('PAYLAŞIM HESAP') || n.includes('PAYLASIM HESAP')) return false;
+  // OZEL FON (cogu nitelikli yatirimci veya banka ozeli)
+  if (n.includes('ÖZEL FON') || n.includes('OZEL FON')) return false;
+
+  // Garantili / Koruma amacli — getiri garantili ozel fonlar
+  if (n.includes('GARANTİLİ') || n.includes('GARANTILI')) return false;
+  if (n.includes('KORUMA AMAÇLI') || n.includes('KORUMA AMACLI')) return false;
+
+  // Bireysel Emeklilik (BES) fonlari — TEFAS'tan degil, BES sirketinden
   if (n.includes('EMEKLİLİK') || n.includes('EMEKLILIK')) return false;
   if (c.includes('EMEKLİLİK') || c.includes('EMEKLILIK')) return false;
+
+  // Girisim Sermayesi + Gayrimenkul YF — nitelikli yatirimci
   if (n.includes('GİRİŞİM SERMAYESİ') || n.includes('GIRISIM SERMAYESI')) return false;
   if (n.includes('GAYRİMENKUL YATIRIM') || n.includes('GAYRIMENKUL YATIRIM')) return false;
   if (c.includes('GAYRİMENKUL') || c.includes('GAYRIMENKUL')) return false;

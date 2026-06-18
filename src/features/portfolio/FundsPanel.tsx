@@ -12,6 +12,34 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil, History } from 'lucide-react';
 import { TxnHistoryModal } from './TxnHistoryModal';
 import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
+import {
+  shouldUseCloud,
+  cloudAddPosition,
+  cloudUpdatePosition,
+  cloudDeletePosition,
+  cloudFetch,
+  cloudToDexiePosition,
+  cloudToDexieTxn,
+} from '@/data/portfolioSync';
+
+/** Cloud'tan veriyi cek, Dexie'yi yenile */
+async function syncFundsFromCloud(): Promise<void> {
+  try {
+    const fresh = await cloudFetch();
+    await db.transaction('rw', db.portfolio, db.portfolioTxns, async () => {
+      await db.portfolio.clear();
+      for (const p of fresh.positions) {
+        await db.portfolio.add(cloudToDexiePosition(p));
+      }
+      await db.portfolioTxns.clear();
+      for (const t of fresh.txns) {
+        await db.portfolioTxns.add(cloudToDexieTxn(t));
+      }
+    });
+  } catch (e) {
+    console.warn('[funds-sync] refresh failed:', e);
+  }
+}
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -363,7 +391,17 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
           if (toDelete?.id) {
-            await db.portfolio.delete(toDelete.id);
+            if (shouldUseCloud()) {
+              try {
+                await cloudDeletePosition(toDelete.id);
+                await syncFundsFromCloud();
+              } catch (e) {
+                console.warn('[funds] cloud delete failed, falling back to Dexie:', e);
+                await db.portfolio.delete(toDelete.id);
+              }
+            } else {
+              await db.portfolio.delete(toDelete.id);
+            }
             toast.success('Fon silindi');
           }
           setToDelete(null);
@@ -416,6 +454,22 @@ function EditFundForm({ position, currentNav, fundName, onClose }: {
     }
     setSaving(true);
     try {
+      // CLOUD PATH (auth varsa)
+      if (shouldUseCloud()) {
+        try {
+          await cloudUpdatePosition(position.id, {
+            lot: lotNum,
+            avgPrice: priceNum,
+            note: note.trim() || undefined,
+          });
+          await syncFundsFromCloud();
+          toast.success(`${position.symbol} guncellendi (bulutta)`, `${lotNum} adet @ ${priceNum}₺`);
+          onClose();
+          return;
+        } catch (e) {
+          console.warn('[funds] cloud update failed, falling back to Dexie:', e);
+        }
+      }
       await db.portfolio.update(position.id, {
         lot: lotNum,
         avgPrice: priceNum,
@@ -530,6 +584,27 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
     try {
       const now = Date.now();
       const executedAt = executedDate ? new Date(executedDate).getTime() : now;
+
+      // CLOUD PATH (auth varsa): server agirlikli ortalama yapar
+      if (shouldUseCloud()) {
+        try {
+          await cloudAddPosition({
+            kind: 'fund',
+            symbol: sym,
+            lot: lotNum,
+            avgPrice: priceNum,
+            note: note.trim() || undefined,
+            executedAt,
+          });
+          await syncFundsFromCloud();
+          toast.success(`${sym} kaydedildi (bulutta)`, `${lotNum} adet @ ${priceNum}₺`);
+          onClose();
+          return;
+        } catch (e) {
+          console.warn('[funds] cloud add failed, falling back to Dexie:', e);
+        }
+      }
+
       // Ayni fon kodu icin mevcut pozisyon var mi?
       const existing = await db.portfolio
         .filter((p) => p.symbol === sym && p.kind === 'fund')

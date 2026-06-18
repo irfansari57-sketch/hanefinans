@@ -16,6 +16,37 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { toast } from '@/components/ui/Toast';
 import { db, type PortfolioPosition } from '@/data/db';
+import {
+  shouldUseCloud,
+  cloudAddPosition,
+  cloudUpdatePosition,
+  cloudDeletePosition,
+  cloudFetch,
+  cloudToDexiePosition,
+  cloudToDexieTxn,
+} from '@/data/portfolioSync';
+
+/**
+ * Cloud + Dexie senkron: cloud'tan veriyi çek, Dexie'yi yenile.
+ * Save işlemi sonrası Dexie'nin cloud ile tutarlı olması için çağrılır.
+ */
+async function syncFromCloud(): Promise<void> {
+  try {
+    const fresh = await cloudFetch();
+    await db.transaction('rw', db.portfolio, db.portfolioTxns, async () => {
+      await db.portfolio.clear();
+      for (const p of fresh.positions) {
+        await db.portfolio.add(cloudToDexiePosition(p));
+      }
+      await db.portfolioTxns.clear();
+      for (const t of fresh.txns) {
+        await db.portfolioTxns.add(cloudToDexieTxn(t));
+      }
+    });
+  } catch (e) {
+    console.warn('[portfolio-sync] refresh failed:', e);
+  }
+}
 import { loadStocks } from '@/data/services';
 import { MOCK_STOCKS } from '@/data/mock';
 import type { Stock } from '@/data/types';
@@ -448,7 +479,17 @@ export function PortfolioPage() {
         onCancel={() => setToDelete(null)}
         onConfirm={async () => {
           if (toDelete?.id) {
-            await db.portfolio.delete(toDelete.id);
+            if (shouldUseCloud()) {
+              try {
+                await cloudDeletePosition(toDelete.id);
+                await syncFromCloud();
+              } catch (e) {
+                console.warn('[portfolio] cloud delete failed, falling back to Dexie:', e);
+                await db.portfolio.delete(toDelete.id);
+              }
+            } else {
+              await db.portfolio.delete(toDelete.id);
+            }
             toast.success('Pozisyon silindi');
           }
           setToDelete(null);
@@ -618,6 +659,22 @@ function EditPositionForm({ position, currentPrice, name, onClose }: {
     }
     setSaving(true);
     try {
+      // CLOUD PATH (auth varsa)
+      if (shouldUseCloud()) {
+        try {
+          await cloudUpdatePosition(position.id, {
+            lot: lotNum,
+            avgPrice: priceNum,
+            note: note.trim() || undefined,
+          });
+          await syncFromCloud();
+          toast.success(`${position.symbol} güncellendi (bulutta)`, `${lotNum} lot @ ${priceNum}₺`);
+          onClose();
+          return;
+        } catch (e) {
+          console.warn('[portfolio] cloud update failed, falling back to Dexie:', e);
+        }
+      }
       await db.portfolio.update(position.id, {
         lot: lotNum,
         avgPrice: priceNum,
@@ -718,6 +775,28 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
     try {
       const now = Date.now();
       const executedAt = executedDate ? new Date(executedDate).getTime() : now;
+
+      // CLOUD PATH (auth varsa): server agirlikli ortalama yapar, sonra Dexie sync
+      if (shouldUseCloud()) {
+        try {
+          await cloudAddPosition({
+            kind: 'stock',
+            symbol: sym,
+            lot: lotNum,
+            avgPrice: priceNum,
+            note: note.trim() || undefined,
+            executedAt,
+          });
+          await syncFromCloud();
+          toast.success(`${sym} kaydedildi (bulutta)`, `${lotNum} lot @ ${priceNum}₺`);
+          onClose();
+          return;
+        } catch (e) {
+          console.warn('[portfolio] cloud add failed, falling back to Dexie:', e);
+          // Cloud fail — Dexie path'ine düş
+        }
+      }
+
       // Ayni sembol icin mevcut hisse pozisyonu var mi? (kind=fund haric)
       const existing = await db.portfolio
         .filter((p) => p.symbol === sym && p.kind !== 'fund')

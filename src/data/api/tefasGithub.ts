@@ -330,13 +330,17 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
     // alanlari yazmiyor. UI'da +0.00% yerine "—" gosterelim ki kullanici "veri yok"
     // ile "gercek 0" karistirma. Bunun icin NaN doneriz (UI Number.isFinite check yapiyor).
 
-    // tefasOpen override mantigi (client wins for closed):
-    //   - Client heuristic FALSE derse -> daima FALSE (cunku frontend kodu backend
-    //     cron'undan daha guncel guncellenebilir; yeni eklenen kosullar (SEPET HESAP,
-    //     EMEKLILIK vs.) backend feed'inde henuz olmayabilir)
-    //   - Client TRUE derse -> backend ne derse desin onu kullan
-    const clientOpen = computeTefasOpenClient(f.category, f.name);
-    const finalOpen = clientOpen === false ? false : (f.tefasOpen ?? true);
+    // tefasOpen mantigi (BACKEND WINS, 17 Haziran Takasbank entegrasyonu sonrasi):
+    //   - Backend cron Takasbank otorite listesini kullaniyor (1012 fon kesin)
+    //   - Backend `tefasOpen` deger varsa: HER DURUMDA onu kullan
+    //   - Backend undefined dondurmusse (eski cron, henuz guncellenmemis): client
+    //     heuristic fallback (PAYLASIMLI HESAP, SEPET HESAP vs.)
+    //   - NOT: Eski "client wins for closed" mantigi TLY gibi gercek acik fonlari
+    //     yanlis 'kapali' isaretliyordu (SERBEST kelimesi her zaman kapali demek
+    //     degil — TERA PORTFOY BIRINCI SERBEST FON Takasbank listesinde var)
+    const finalOpen = f.tefasOpen !== undefined
+      ? f.tefasOpen
+      : computeTefasOpenClient(f.category, f.name);
 
     return {
       code: f.code,

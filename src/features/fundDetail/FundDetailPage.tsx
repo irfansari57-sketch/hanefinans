@@ -138,12 +138,20 @@ export function FundDetailPage() {
                 </span>
               )}
               {(() => {
-                // TEFAS Kapali rozet: backend tefasOpen false VEYA client heuristic false
-                const cat = githubData?.category ?? fund.category ?? '';
-                const name = githubData?.name ?? fund.name ?? '';
+                // TEFAS Kapali rozet (BACKEND WINS):
+                //   - Backend tefasOpen false ise -> kapali
+                //   - Backend undefined ise -> client heuristic fallback
+                //   - Backend true ise -> kapali rozet GOSTERME (TLY gibi gercek
+                //     acik fonlar Takasbank otorite listesinde var)
                 const backendOpen = githubData?.tefasOpen;
-                const clientOpen = computeTefasOpenClient(cat, name);
-                const isClosed = backendOpen === false || clientOpen === false;
+                let isClosed: boolean;
+                if (backendOpen !== undefined) {
+                  isClosed = backendOpen === false;
+                } else {
+                  const cat = githubData?.category ?? fund.category ?? '';
+                  const name = githubData?.name ?? fund.name ?? '';
+                  isClosed = computeTefasOpenClient(cat, name) === false;
+                }
                 if (!isClosed) return null;
                 return (
                   <span

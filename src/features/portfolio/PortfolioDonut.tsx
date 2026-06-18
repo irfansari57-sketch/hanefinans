@@ -167,7 +167,7 @@ export function PortfolioDonut({
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
             {hovered ? (
               <>
-                <div className="font-mono text-lg font-extrabold text-white">
+                <div className="font-mono text-lg font-extrabold text-slate-100">
                   %{hovered.pct.toFixed(1)}
                 </div>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 truncate max-w-[110px]">
@@ -180,7 +180,7 @@ export function PortfolioDonut({
             ) : (
               <>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Toplam</div>
-                <div className="mt-0.5 font-mono text-base font-extrabold tabular-nums text-white">
+                <div className="mt-0.5 font-mono text-base font-extrabold tabular-nums text-slate-100">
                   {formatMoney(sumTotal)}
                 </div>
                 <div className="text-[10px] text-slate-400">{slices.length} kalem</div>
@@ -208,7 +208,7 @@ export function PortfolioDonut({
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-sm font-bold text-white truncate">{slice.label}</span>
+                  <span className="font-mono text-sm font-bold text-slate-100 truncate">{slice.label}</span>
                   <span className="text-[11px] font-semibold text-slate-300 shrink-0 tabular-nums">
                     %{slice.pct.toFixed(1)}
                   </span>
@@ -217,7 +217,7 @@ export function PortfolioDonut({
                   <div className="truncate text-[11px] text-slate-400 leading-tight">{slice.sublabel}</div>
                 )}
               </div>
-              <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-slate-50">
+              <span className="shrink-0 font-mono text-sm font-bold tabular-nums text-slate-100">
                 {formatMoney(slice.value)}
               </span>
             </button>

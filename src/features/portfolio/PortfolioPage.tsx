@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { FundsPanel } from './FundsPanel';
 import { TxnHistoryModal } from './TxnHistoryModal';
+import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
 import { useAuth, isPro } from '@/store/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -297,6 +298,23 @@ export function PortfolioPage() {
               tone={totals.dailyChange >= 0 ? 'success' : 'danger'}
             />
           </div>
+
+          {/* Hisse dagilim pasta grafigi */}
+          {(() => {
+            const donutItems: DonutItem[] = rows
+              .filter((r) => (r.marketValue ?? r.cost ?? 0) > 0)
+              .map((r) => ({
+                label: r.symbol,
+                value: r.marketValue ?? r.cost ?? 0,
+                sublabel: r.name ?? r.sector,
+              }));
+            if (donutItems.length === 0) return null;
+            return (
+              <div className="mt-4 rounded-lg border border-border bg-bg-soft p-4">
+                <PortfolioDonut items={donutItems} title="Hisse Dağılımı (Değer Bazında)" />
+              </div>
+            );
+          })()}
         </section>
       )}
 

@@ -160,6 +160,10 @@ def fetch_tefas_open_codes() -> "set[str]":
                     codes.add(code.strip().upper())
                 elif code is not None:
                     codes.add(str(code).strip().upper())
+        if not codes:
+            # Excel parse basariyla yapildi ama hic kod cikmadi — muhtemelen
+            # endpoint HTML hata sayfasi donduruyordu. Cache JSON'a dus.
+            raise ValueError("Excel parse 0 kod cikardi - cache fallback")
         print(
             f"[fetch_tefas_open_codes] Takasbank TEFAS listesi: {len(codes)} fon",
             flush=True,
@@ -167,17 +171,37 @@ def fetch_tefas_open_codes() -> "set[str]":
         if codes:
             sample = sorted(codes)[:5]
             print(f"[fetch_tefas_open_codes] Ornek kodlar: {sample}", flush=True)
-            # Sanity check - EKL bilinen belirsiz fon
-            for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK"):
+            for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK", "TLY"):
                 in_list = chk in codes
                 print(f"[fetch_tefas_open_codes] {chk} listede mi? {in_list}", flush=True)
         return codes
     except Exception as e:
         print(
-            f"[fetch_tefas_open_codes] HATA: {type(e).__name__}: {e} - heuristic fallback",
+            f"[fetch_tefas_open_codes] Excel parse hatasi ({type(e).__name__}: {e}) - cache JSON deneniyor",
             file=sys.stderr,
             flush=True,
         )
+        # FALLBACK: data/tefas-open-codes.json cache
+        cache_path = "data/tefas-open-codes.json"
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                cache_data = json.load(f)
+            cache_codes = set(str(c).strip().upper() for c in cache_data.get("codes", []))
+            if cache_codes:
+                print(
+                    f"[fetch_tefas_open_codes] Cache JSON ({cache_data.get('updatedAt', '?')}): "
+                    f"{len(cache_codes)} fon",
+                    flush=True,
+                )
+                for chk in ("EKL", "AAL", "ZA2", "KHP", "KFZ", "CPU", "YHK", "TLY"):
+                    print(f"[fetch_tefas_open_codes] (cache) {chk} listede mi? {chk in cache_codes}", flush=True)
+                return cache_codes
+        except Exception as ce:
+            print(
+                f"[fetch_tefas_open_codes] Cache JSON da basarisiz ({ce}) - heuristic fallback",
+                file=sys.stderr,
+                flush=True,
+            )
         return set()
 
 
@@ -289,42 +313,20 @@ def is_tefas_open(name: str, category: str, code: str = '', tefas_status_value=N
     if open_codes:
         return (code or '').strip().upper() in open_codes
 
-    # 2) FALLBACK - heuristic
-    cat = (category or '').strip()
+    # 2) FALLBACK - MINIMAL heuristic
+    # NOT: 'SERBEST', 'SEPET HESAP', 'PAYLASIMLI HESAP', 'OZEL FON' kalıplarini
+    # KALDIRDIK çunku Takasbank otorite listesinde bu kelimeleri iceren onlarca
+    # gercek TEFAS-acik fon var (TLY, CAH, AUV, BS1 vs.). Heuristic yanlis pozitif
+    # uretiyordu. Artik sadece HEDEFTEN EMIN OLDUGUMUZ kategoriler:
+    #   - BES (Emeklilik) - BEFAS'tan alinir, TEFAS'tan degil
+    #   - Girisim Sermayesi YF + Gayrimenkul YF - nitelikli yatirimci (>10M TL)
+    # Cache veya Takasbank baglantisi tutamazsa default 'acik' kabul edip
+    # kullaniciyi yanlis kapali isaretle yanlitmiyoruz.
     n = (name or '').upper()
-    c = cat.upper()
+    c = (category or '').upper()
 
-    # 1-2: Serbest
-    if cat == 'Serbest' or 'SERBEST' in c:
+    if 'EMEKLİLİK' in n or 'EMEKLILIK' in n or 'EMEKLİLİK' in c or 'EMEKLILIK' in c:
         return False
-    if 'SERBEST' in n:
-        return False
-    # 3: Yabanci menkul
-    if 'YABANCI MENKUL' in n or 'YABANCI MENKULLER' in n:
-        return False
-    # 4: Nitelikli yatirimci
-    if 'NITELIKLI YATIRIMCI' in n or 'NİTELİKLİ YATIRIMCI' in n:
-        return False
-    # 5: Sepet hesap / Paylasimli hesap / Ozel fon (banka ozel)
-    if 'SEPET HESAP' in n:
-        return False
-    if 'PAYLAŞIMLI HESAP' in n or 'PAYLASIMLI HESAP' in n:
-        return False
-    if 'PAYLAŞIM HESAP' in n or 'PAYLASIM HESAP' in n:
-        return False
-    if 'ÖZEL FON' in n or 'OZEL FON' in n:
-        return False
-    # 6: Garantili / Koruma amacli
-    if 'GARANTİLİ' in n or 'GARANTILI' in n:
-        return False
-    if 'KORUMA AMAÇLI' in n or 'KORUMA AMACLI' in n:
-        return False
-    # 7: BES emeklilik fonlari
-    if 'EMEKLİLİK' in n or 'EMEKLILIK' in n:
-        return False
-    if 'EMEKLİLİK' in c or 'EMEKLILIK' in c:
-        return False
-    # 8: Girisim sermayesi + Gayrimenkul
     if 'GİRİŞİM SERMAYESİ' in n or 'GIRISIM SERMAYESI' in n:
         return False
     if 'GAYRİMENKUL YATIRIM' in n or 'GAYRIMENKUL YATIRIM' in n:

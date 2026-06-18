@@ -165,3 +165,99 @@ export function cloudToDexieTxn(c: CloudTxn): PortfolioTxn & { id: number } {
 export function shouldUseCloud(): boolean {
   return !!useAuth.getState().user;
 }
+
+/**
+ * Duplicate pozisyon tarama: ayni symbol + kind icin >1 kayit varsa onlari listele.
+ * Returns: { totalDupes, groups } — groups[i] = [pos1, pos2, ...] (en az 2 elemanli)
+ */
+export function findDuplicateGroups(
+  positions: PortfolioPosition[],
+  kind: 'stock' | 'fund' | 'all' = 'all',
+): { totalDupes: number; groups: PortfolioPosition[][] } {
+  const map = new Map<string, PortfolioPosition[]>();
+  for (const p of positions) {
+    if (kind !== 'all' && (p.kind ?? 'stock') !== kind) continue;
+    const key = `${p.kind ?? 'stock'}::${p.symbol}`;
+    const list = map.get(key);
+    if (list) list.push(p);
+    else map.set(key, [p]);
+  }
+  const groups: PortfolioPosition[][] = [];
+  let totalDupes = 0;
+  for (const list of map.values()) {
+    if (list.length > 1) {
+      groups.push(list);
+      totalDupes += list.length - 1;
+    }
+  }
+  return { totalDupes, groups };
+}
+
+/**
+ * Bir duplicate grubu birlestir:
+ *   - lot = sum(lot_i)
+ *   - avgPrice = weighted avg (sum(lot_i * price_i) / sum(lot_i))
+ *   - Ilk pozisyon (en eski id) update edilir, geri kalanlar silinir
+ *   - Cloud + Dexie ikisinde de senkron tutar
+ */
+export async function mergeDuplicateGroup(
+  group: PortfolioPosition[],
+): Promise<{ kept: number; removed: number }> {
+  if (group.length < 2) return { kept: group.length, removed: 0 };
+
+  let totalLot = 0;
+  let weightedSum = 0;
+  for (const p of group) {
+    totalLot += p.lot;
+    weightedSum += p.lot * p.avgPrice;
+  }
+  const weightedAvg = totalLot > 0 ? weightedSum / totalLot : 0;
+
+  const sorted = [...group].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  const keeper = sorted[0];
+  const drops = sorted.slice(1);
+  if (!keeper?.id) return { kept: 0, removed: 0 };
+
+  const useCloud = shouldUseCloud();
+  if (useCloud) {
+    try {
+      await cloudUpdatePosition(keeper.id, {
+        lot: totalLot,
+        avgPrice: weightedAvg,
+        note: keeper.note,
+      });
+      for (const d of drops) {
+        if (d.id) await cloudDeletePosition(d.id);
+      }
+    } catch (e) {
+      console.warn('[dedupe] cloud merge failed, Dexie fallback:', e);
+    }
+  }
+
+  await db.transaction('rw', db.portfolio, async () => {
+    await db.portfolio.update(keeper.id!, { lot: totalLot, avgPrice: weightedAvg });
+    for (const d of drops) {
+      if (d.id) await db.portfolio.delete(d.id);
+    }
+  });
+
+  return { kept: 1, removed: drops.length };
+}
+
+/** Tum duplicate gruplari sirayla birlestir. UI banner'inda tek tikla calistirilir. */
+export async function mergeAllDuplicates(
+  positions: PortfolioPosition[],
+  kind: 'stock' | 'fund' | 'all' = 'all',
+): Promise<{ groupsMerged: number; positionsRemoved: number }> {
+  const { groups } = findDuplicateGroups(positions, kind);
+  let groupsMerged = 0;
+  let positionsRemoved = 0;
+  for (const g of groups) {
+    const r = await mergeDuplicateGroup(g);
+    if (r.removed > 0) {
+      groupsMerged++;
+      positionsRemoved += r.removed;
+    }
+  }
+  return { groupsMerged, positionsRemoved };
+}

@@ -20,6 +20,8 @@ import {
   cloudFetch,
   cloudToDexiePosition,
   cloudToDexieTxn,
+  findDuplicateGroups,
+  mergeAllDuplicates,
 } from '@/data/portfolioSync';
 
 /** Cloud'tan veriyi cek, Dexie'yi yenile */
@@ -92,6 +94,26 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
   const [toDelete, setToDelete] = useState<PortfolioPosition | null>(null);
   const [toEdit, setToEdit] = useState<PortfolioPosition | null>(null);
   const [toViewHistory, setToViewHistory] = useState<PortfolioPosition | null>(null);
+
+  // Duplicate fon kaydi tarama + tek tikla birlestir
+  const dupes = useMemo(() => findDuplicateGroups(positions, 'fund'), [positions]);
+  const [merging, setMerging] = useState(false);
+  const handleMergeDupes = async () => {
+    if (merging) return;
+    setMerging(true);
+    try {
+      const r = await mergeAllDuplicates(positions, 'fund');
+      if (r.positionsRemoved > 0) {
+        toast.success('Birlestirildi', `${r.groupsMerged} fon, ${r.positionsRemoved} kayit silindi`);
+      } else {
+        toast.info('Duplicate yok');
+      }
+    } catch (e) {
+      toast.error('Birlestirme hatasi', String((e as Error).message ?? e));
+    } finally {
+      setMerging(false);
+    }
+  };
 
   // Map for fast lookup
   const fundMap = useMemo(() => {
@@ -193,6 +215,27 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
           <Plus size={14} /> Fon Ekle
         </button>
       </div>
+
+      {/* Duplicate uyarisi — ayni fon 2+ kayit */}
+      {dupes.totalDupes > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+          <div className="flex items-center gap-2 text-warning">
+            <span className="font-semibold">Dikkat:</span>
+            <span className="text-slate-200">
+              {dupes.groups.length} fonda toplam {dupes.totalDupes} fazla kayit var.
+              Birlestirince agirlikli ortalama NAV hesaplanir.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleMergeDupes}
+            disabled={merging}
+            className="btn-primary shrink-0 text-xs disabled:opacity-50"
+          >
+            {merging ? 'Birlestiriliyor...' : 'Birlestir'}
+          </button>
+        </div>
+      )}
 
       {/* Ozet */}
       {positions.length > 0 && (

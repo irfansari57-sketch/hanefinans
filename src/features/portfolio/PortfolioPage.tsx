@@ -24,6 +24,8 @@ import {
   cloudFetch,
   cloudToDexiePosition,
   cloudToDexieTxn,
+  findDuplicateGroups,
+  mergeAllDuplicates,
 } from '@/data/portfolioSync';
 
 /**
@@ -144,6 +146,26 @@ export function PortfolioPage() {
       };
     });
   }, [positions, stockMap]);
+
+  // Duplicate detect — ayni hisse 2+ kayit varsa banner cik
+  const dupes = useMemo(() => findDuplicateGroups(positions, 'stock'), [positions]);
+  const [merging, setMerging] = useState(false);
+  const handleMergeDupes = async () => {
+    if (merging) return;
+    setMerging(true);
+    try {
+      const r = await mergeAllDuplicates(positions, 'stock');
+      if (r.positionsRemoved > 0) {
+        toast.success('Birlestirildi', `${r.groupsMerged} sembol, ${r.positionsRemoved} kayit silindi`);
+      } else {
+        toast.info('Duplicate yok');
+      }
+    } catch (e) {
+      toast.error('Birlestirme hatasi', String((e as Error).message ?? e));
+    } finally {
+      setMerging(false);
+    }
+  };
 
   const totals = useMemo(() => {
     let totalCost = 0;
@@ -307,6 +329,27 @@ export function PortfolioPage() {
             </div>
           )}
         </section>
+      )}
+
+      {/* Duplicate uyarisi — ayni hisse 2+ kayit */}
+      {dupes.totalDupes > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+          <div className="flex items-center gap-2 text-warning">
+            <span className="font-semibold">Dikkat:</span>
+            <span className="text-slate-200">
+              {dupes.groups.length} hissede toplam {dupes.totalDupes} fazla kayit var.
+              Birlestirince agirlikli ortalama maliyet hesaplanir.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleMergeDupes}
+            disabled={merging}
+            className="btn-primary shrink-0 text-xs disabled:opacity-50"
+          >
+            {merging ? 'Birlestiriliyor...' : 'Birlestir'}
+          </button>
+        </div>
       )}
 
       {/* Özet */}

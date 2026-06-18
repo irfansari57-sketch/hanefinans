@@ -11,6 +11,12 @@ import { toast } from '@/components/ui/Toast';
 import { db, type PortfolioPosition, type PortfolioTxn } from '@/data/db';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import {
+  shouldUseCloud,
+  cloudUpdateTxn,
+  cloudDeleteTxn,
+  recalcPositionFromTxns,
+} from '@/data/portfolioSync';
 
 function toDateInput(ms: number): string {
   const d = new Date(ms);
@@ -69,13 +75,31 @@ export function TxnHistoryModal({ position, onClose }: Props) {
     const executedAt = editDate ? new Date(editDate).getTime() : Date.now();
     setSaving(true);
     try {
+      // Cloud once: txn'i guncelle (auth varsa)
+      if (shouldUseCloud()) {
+        try {
+          await cloudUpdateTxn(editingId, {
+            executedAt,
+            lot: lotNum,
+            price: priceNum,
+            note: editNote.trim() || undefined,
+          });
+        } catch (e) {
+          console.warn('[txn] cloud update fail, Dexie fallback:', e);
+        }
+      }
+      // Dexie de senkron
       await db.portfolioTxns.update(editingId, {
         executedAt,
         lot: lotNum,
         price: priceNum,
         note: editNote.trim() || undefined,
       });
-      toast.success('Islem guncellendi');
+      // Ana pozisyon yeniden hesapla (lot+avg) -- ana ekranda yansisin
+      if (position?.id) {
+        await recalcPositionFromTxns(position.id);
+      }
+      toast.success('Islem guncellendi', 'Pozisyon ozeti otomatik yenilendi');
       cancelEdit();
     } finally {
       setSaving(false);
@@ -114,8 +138,20 @@ export function TxnHistoryModal({ position, onClose }: Props) {
   const handleDelete = async (txn: PortfolioTxn) => {
     if (!txn.id) return;
     if (!confirm(`${fmtDate(txn.executedAt)} tarihindeki ${txn.lot} ${unitLabel.toLowerCase()} islemi silinsin mi?`)) return;
+    // Cloud once (auth varsa)
+    if (shouldUseCloud()) {
+      try {
+        await cloudDeleteTxn(txn.id);
+      } catch (e) {
+        console.warn('[txn] cloud delete fail, Dexie fallback:', e);
+      }
+    }
     await db.portfolioTxns.delete(txn.id);
-    toast.success('Islem silindi', 'Toplam pozisyonu manuel duzenlemen gerekebilir.');
+    // Ana pozisyonu yeniden hesapla
+    if (position?.id) {
+      await recalcPositionFromTxns(position.id);
+    }
+    toast.success('Islem silindi', 'Pozisyon ozeti otomatik yenilendi');
   };
 
   return (
@@ -284,9 +320,8 @@ export function TxnHistoryModal({ position, onClose }: Props) {
           )}
 
           <p className="text-[10px] text-slate-500">
-            Islem duzenlemek veya silmek, pozisyonun toplam lot ve ortalama maliyet
-            hesabini otomatik guncellemez. Pozisyon ozetini ana liste satirindaki
-            kalem ikonu ile manuel guncelleyebilirsin.
+            Islem duzenle/sil sonrasi ana pozisyonun toplam lot ve ortalama maliyeti
+            otomatik yeniden hesaplanir. Tum islemler silinirse pozisyon da kapanir.
           </p>
 
           <div className="flex justify-end pt-2">

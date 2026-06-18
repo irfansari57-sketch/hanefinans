@@ -105,6 +105,68 @@ export async function cloudDeletePosition(id: number): Promise<void> {
   if (!r.ok) throw new Error(r.error ?? 'Cloud delete fail');
 }
 
+/** Cloud'da tek bir islemi (txn) guncelle */
+export async function cloudUpdateTxn(
+  id: number,
+  input: { executedAt?: number; lot?: number; price?: number; note?: string },
+): Promise<void> {
+  const r = await api(`/api/portfolio/txns/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  if (!r.ok) throw new Error(r.error ?? 'Cloud txn update fail');
+}
+
+/** Cloud'da tek bir islemi (txn) sil */
+export async function cloudDeleteTxn(id: number): Promise<void> {
+  const r = await api(`/api/portfolio/txns/${id}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error(r.error ?? 'Cloud txn delete fail');
+}
+
+/**
+ * Verilen pozisyon icin kalan tum islemlerin (Dexie'den) lot/fiyat agirlikli ortalamasini
+ * tekrar hesaplar ve pozisyonu update eder. Hem Dexie hem cloud (auth varsa).
+ * Eger txn kalmadiysa pozisyonu sil.
+ */
+export async function recalcPositionFromTxns(positionId: number): Promise<void> {
+  const txns = await db.portfolioTxns.filter((t) => t.positionId === positionId).toArray();
+
+  // Hicbir islem kalmadi -> pozisyonu sil
+  if (txns.length === 0) {
+    if (shouldUseCloud()) {
+      try { await cloudDeletePosition(positionId); } catch { /* ignore, Dexie temizle */ }
+    }
+    await db.portfolio.delete(positionId);
+    return;
+  }
+
+  let totalLot = 0;
+  let weightedSum = 0;
+  for (const t of txns) {
+    totalLot += t.lot;
+    weightedSum += t.lot * t.price;
+  }
+  const avgPrice = totalLot > 0 ? weightedSum / totalLot : 0;
+
+  if (totalLot <= 0) {
+    // Net pozisyon 0 veya negatif -> kapali pozisyon. Sil.
+    if (shouldUseCloud()) {
+      try { await cloudDeletePosition(positionId); } catch { /* */ }
+    }
+    await db.portfolio.delete(positionId);
+    return;
+  }
+
+  if (shouldUseCloud()) {
+    try {
+      await cloudUpdatePosition(positionId, { lot: totalLot, avgPrice });
+    } catch (e) {
+      console.warn('[recalc] cloud update fail, Dexie fallback:', e);
+    }
+  }
+  await db.portfolio.update(positionId, { lot: totalLot, avgPrice });
+}
+
 /**
  * Ilk login: Dexie'deki mevcut pozisyonlari cloud'a tasi.
  * Sadece anonim kullaniciyken kaydedilmis veriyi koruma garantisi icin.

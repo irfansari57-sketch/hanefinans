@@ -211,11 +211,11 @@ export function FundsPage() {
             TEFAS Açık ({tabCounts.tefas})
           </button>
           <button
-            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'serbest' ? 'bg-bg-card text-warning' : 'text-slate-400 hover:text-slate-200')}
+            className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'serbest' ? 'bg-bg-card text-danger' : 'text-slate-400 hover:text-slate-200')}
             onClick={() => setTab('serbest')}
             title="Nitelikli yatirimci kosulu — SPK 2026 ocak guncel"
           >
-            Serbest ({tabCounts.serbest})
+            TEFAS Kapalı ({tabCounts.serbest})
           </button>
           <button
             className={cn('rounded-md px-3 py-1.5 text-sm transition', tab === 'watched' ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200')}
@@ -254,20 +254,22 @@ export function FundsPage() {
         </div>
       </div>
 
-      {/* Serbest tab uyari banner — SPK nitelikli yatirimci kosulu */}
+      {/* TEFAS Kapalı tab uyari banner */}
       {tab === 'serbest' && (
-        <div className="mb-4 rounded-xl border border-warning/40 bg-warning/10 p-4">
+        <div className="mb-4 rounded-xl border border-danger/40 bg-danger/5 p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle size={20} className="mt-0.5 shrink-0 text-warning" />
+            <AlertCircle size={20} className="mt-0.5 shrink-0 text-danger" />
             <div className="flex-1 text-xs leading-relaxed text-slate-300">
-              <h3 className="text-sm font-semibold text-warning">Sadece Nitelikli Yatırımcılar İçin</h3>
+              <h3 className="text-sm font-semibold text-danger">TEFAS'ta İşlem Görmeyen Fonlar</h3>
               <p className="mt-1">
-                Bu fonlar <strong>TEFAS üzerinden alınamaz</strong>. Yalnızca SPK tarafından tanımlı
-                <strong className="text-warning"> nitelikli yatırımcılar</strong> (en az
-                <strong className="text-warning"> 10 milyon TL net varlık</strong> — SPK 2026 Ocak güncel)
-                bu fonlara doğrudan ilgili portföy yönetim şirketinden katılabilir.
+                Bu fonlar <strong>TEFAS üzerinden alınamaz</strong>. Aşağıdaki türler bu kategoriye girer:
               </p>
-              <p className="mt-1.5 text-[11px] text-slate-400">
+              <ul className="mt-1.5 ml-4 list-disc text-[11px] text-slate-400 space-y-0.5">
+                <li><strong>Serbest fonlar:</strong> SPK nitelikli yatırımcı şartı (en az 10 milyon TL net varlık — SPK 2026 Ocak) — fonun kuruculuk portföy yönetim şirketinden alınır</li>
+                <li><strong>Banka özel fonları:</strong> Sadece ilgili bankanın kendi müşterilerine açık (sepet hesap, paylaşımlı hesap vs.)</li>
+                <li><strong>Emeklilik (BES), girişim sermayesi, gayrimenkul YF:</strong> Farklı platformlardan alınır</li>
+              </ul>
+              <p className="mt-2 text-[11px] text-slate-500">
                 Listelenen veriler bilgilendirme amaçlıdır — yatırım tavsiyesi değildir.
               </p>
             </div>

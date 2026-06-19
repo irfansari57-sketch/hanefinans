@@ -22,8 +22,8 @@ import { buildPortfolio, type PortfolioRecommendation } from '@/lib/portfolioBui
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import type { FundPerformance } from '@/data/types';
 
-type StepKey = 'age' | 'horizon' | 'tolerance' | 'goal' | 'experience' | 'principle';
-const STEPS: StepKey[] = ['age', 'horizon', 'tolerance', 'goal', 'experience', 'principle'];
+type StepKey = 'age' | 'horizon' | 'tolerance' | 'goal' | 'experience' | 'principle' | 'qualified';
+const STEPS: StepKey[] = ['age', 'horizon', 'tolerance', 'goal', 'experience', 'principle', 'qualified'];
 
 const QUESTIONS: Record<StepKey, {
   title: string;
@@ -86,6 +86,15 @@ const QUESTIONS: Record<StepKey, {
     options: [
       { value: 'standard', label: 'Standart', hint: 'Tüm fon kategorileri uygun (faiz dahil)' },
       { value: 'participation', label: 'Katılım (Faizsiz)', hint: 'Sadece Katılım Endeksi, Altın ve Kıymetli Maden fonları' },
+    ],
+  },
+  qualified: {
+    title: 'SPK Nitelikli Yatirimci statunuz var mi?',
+    subtitle:
+      'SPK II-13.1 mevzuati uyarinca toplam yatirilabilir varligi 10 milyon TL+ (TL/doviz/altin/hisse/fon) olan kisiler nitelikli yatirimci sayilir. Bu statu Serbest fonlar (TEFAS Kapali) gibi nitelikli yatirimci sart fonlara erisim hakki verir.',
+    options: [
+      { value: 'no', label: 'Hayır / Bilmiyorum', hint: 'Sadece TEFAS\'ta açık fonlar önerilecek (varsayılan)' },
+      { value: 'yes', label: 'Evet, nitelikli yatırımcıyım', hint: 'Serbest fonlar (TEFAS Kapalı) da öneriye dahil olacak' },
     ],
   },
 };
@@ -182,6 +191,11 @@ export function RiskProfilePage() {
                 {profile.principle === 'participation' && (
                   <span className="rounded-md bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success">
                     Katılım (Faizsiz)
+                  </span>
+                )}
+                {profile.qualified === 'yes' && (
+                  <span className="rounded-md bg-purple-500/15 px-2 py-0.5 text-[10px] font-bold text-purple-300" title="SPK II-13.1 nitelikli yatirimci - Serbest fonlar dahil">
+                    Nitelikli Yatırımcı
                   </span>
                 )}
               </div>

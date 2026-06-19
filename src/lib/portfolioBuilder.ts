@@ -62,15 +62,20 @@ function isParticipationCompliant(fund: FundPerformance): boolean {
  * Profil ve fon listesinden 4-6 fonluk portfoy onerisi olusturur.
  */
 export function buildPortfolio(profile: RiskProfile, allFunds: FundPerformance[]): PortfolioRecommendation {
-  // 1. Sadece TEFAS acik + son 1Y getirisi gecerli fonlar
-  // STRICT: tefasOpen === true sart. undefined gelirse riske girme (kullanici
-  // alamayacagi fonu onerme - ZA2 gibi banka ozel "sepet hesap" fonlarini
-  // filtre disi birak).
-  let tradable = allFunds.filter((f) =>
-    f.tefasOpen === true
-    && Number.isFinite(f.year)
-    && (f.year as number) > -50, // anormal kayipli fonlari ele
-  );
+  // 1. Erisilebilir fon havuzu:
+  //    - Standart kullanici: SADECE tefasOpen===true
+  //    - Nitelikli yatirimci (qualified===yes, SPK II-13.1, 10M TL+ varlik):
+  //      Serbest fonlar (TEFAS Kapali olanlar) DA dahil
+  // STRICT: nitelikli olmayan kullaniciya undefined gelse de gostermeyiz.
+  const isQualified = profile.qualified === 'yes';
+  let tradable = allFunds.filter((f) => {
+    const accessible = isQualified
+      ? f.tefasOpen === true || f.tefasOpen === false  // her ikisi de gosterilir (nitelikli erisir)
+      : f.tefasOpen === true;
+    return accessible
+      && Number.isFinite(f.year)
+      && (f.year as number) > -50; // anormal kayipli fonlari ele
+  });
 
   // 1b. Katilim principle ise sadece uyumlu fonlar
   if (profile.principle === 'participation') {

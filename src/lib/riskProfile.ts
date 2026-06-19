@@ -24,6 +24,16 @@ export type Experience = 'beginner' | 'intermediate' | 'experienced' | 'professi
  */
 export type InvestmentPrinciple = 'standard' | 'participation';
 
+/**
+ * SPK Nitelikli Yatirimci statusu — 10M TL+ toplam yatirilabilir varlik beyani
+ * (mevduat + bono + hisse + fon + doviz + altin + serbest fonlar dahil).
+ * Bu statu kullaniciya TEFAS'ta normalde Kapali olan SERBEST fonlara
+ * (10M TL+ giris kosullu) erisim hakki verir.
+ *
+ * SPK II-13.1 — Yatirim Hizmetleri Tebligi gerekce.
+ */
+export type QualifiedInvestor = 'no' | 'yes';
+
 export interface RiskAnswers {
   age: AgeBracket;
   horizon: Horizon;
@@ -31,6 +41,8 @@ export interface RiskAnswers {
   goal: Goal;
   experience: Experience;
   principle: InvestmentPrinciple;
+  /** SPK nitelikli yatirimci statusu (default 'no') */
+  qualified: QualifiedInvestor;
 }
 
 export type RiskProfileLevel =
@@ -52,6 +64,8 @@ export interface RiskProfile {
   weights: Partial<Record<TargetCategory, number>>;
   /** Yatirim ilkesi - katilim secilirse portfoy faizsiz/etik fonlardan kurulur */
   principle: InvestmentPrinciple;
+  /** Nitelikli yatirimci statusu - 'yes' ise Serbest fonlar (TEFAS Kapali) da oneriye dahil */
+  qualified: QualifiedInvestor;
 }
 
 /** Risk profili icin portfoy hedef kategorileri. */
@@ -131,6 +145,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Altın': 10,
       },
       principle: 'standard',
+      qualified: 'no',
     };
   }
   if (score < 40) {
@@ -147,6 +162,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Altın': 5,
       },
       principle: 'standard',
+      qualified: 'no',
     };
   }
   if (score < 60) {
@@ -163,6 +179,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Kıymetli Maden': 10,
       },
       principle: 'standard',
+      qualified: 'no',
     };
   }
   if (score < 80) {
@@ -179,6 +196,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
         'Fon Sepeti': 5,
       },
       principle: 'standard',
+      qualified: 'no',
     };
   }
   return {
@@ -193,6 +211,7 @@ export function classifyRiskProfile(score: number): RiskProfile {
       'Fon Sepeti': 5,
     },
     principle: 'standard',
+    qualified: 'no',
   };
 }
 
@@ -209,6 +228,7 @@ export function buildRiskProfile(answers: RiskAnswers): RiskProfile {
   const score = computeRiskScore(answers);
   const base = classifyRiskProfile(score);
   base.principle = answers.principle;
+  base.qualified = answers.qualified;
 
   if (answers.principle === 'participation') {
     const newWeights: Partial<Record<TargetCategory, number>> = {};

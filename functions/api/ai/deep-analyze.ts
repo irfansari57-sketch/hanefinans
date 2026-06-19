@@ -189,8 +189,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       requiredTier: 'elite',
     }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   }
-  // Elite icin quota yok
-  const usedThisMonth = 0;
 
   // --- Parse body ---
   let body: DeepAnalyzeRequest;
@@ -216,9 +214,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       content_md: cached.content_md,
       cached: true,
       generated_at: cached.generated_at,
-      quota: tier === 'pro'
-        ? { used: usedThisMonth, limit: PRO_MONTHLY_LIMIT, remaining: PRO_MONTHLY_LIMIT - usedThisMonth }
-        : { used: 0, limit: -1, remaining: -1 }, // Elite = unlimited
+      quota: { used: 0, limit: -1, remaining: -1 }, // Elite = unlimited
     }), { headers: { 'Content-Type': 'application/json' } });
   }
 
@@ -267,16 +263,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .bind(user.id, body.symbol, contentMd, MODEL, tokensInput, tokensOutput, generated_at)
     .run();
 
-  // Pro quota'yi guncelle (1 arttir)
-  if (tier === 'pro') usedThisMonth++;
-
+  // Elite = limitsiz, kota guncellemesi yok
   return new Response(JSON.stringify({
     ok: true,
     content_md: contentMd,
     cached: false,
     generated_at,
-    quota: tier === 'pro'
-      ? { used: usedThisMonth, limit: PRO_MONTHLY_LIMIT, remaining: PRO_MONTHLY_LIMIT - usedThisMonth }
-      : { used: 0, limit: -1, remaining: -1 },
+    quota: { used: 0, limit: -1, remaining: -1 },
   }), { headers: { 'Content-Type': 'application/json' } });
 };

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from '@/components/ui/Toast';
-import { useAuth, isPro } from '@/store/auth';
+import { useAuth, isElite } from '@/store/auth';
 
 // lightweight-charts heavy (~200KB) — lazy load
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
@@ -111,7 +111,7 @@ export function StockDetailPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const user = useAuth((s) => s.user);
-  const proUser = isPro(user);
+  const proUser = isElite(user);
 
   // User-specific data from IndexedDB
   const notes = useLiveQuery(() => notesRepo.bySymbol(sym), [sym]) ?? [];
@@ -498,7 +498,7 @@ export function StockDetailPage() {
               className="btn-primary"
               onClick={generateAiAnalysis}
               disabled={aiLoading || (!proUser && !!user)}
-              title={!proUser && user ? 'PRO/ELITE üyelere özel' : 'AI analiz üret'}
+              title={!proUser && user ? 'Sadece ELITE üyelere özel' : 'AI analiz üret'}
             >
               {aiLoading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
               {aiLoading ? 'Analiz üretiliyor…' : 'AI Analizi Üret'}
@@ -513,7 +513,7 @@ export function StockDetailPage() {
 
         {!proUser && user && !aiAnalysis && (
           <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
-            🔒 AI analiz PRO/ELITE üyelere özel.{' '}
+            🔒 AI analiz Sadece ELITE üyelere özel.{' '}
             <Link to="/uyelik" className="underline">PRO'ya yükselt →</Link>
           </div>
         )}

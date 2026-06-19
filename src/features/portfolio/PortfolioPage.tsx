@@ -7,7 +7,7 @@ import {
 import { FundsPanel } from './FundsPanel';
 import { TxnHistoryModal } from './TxnHistoryModal';
 import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
-import { useAuth, isPro } from '@/store/auth';
+import { useAuth, isElite } from '@/store/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
@@ -98,7 +98,7 @@ export function PortfolioPage() {
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const user = useAuth((s) => s.user);
-  const proUser = isPro(user);
+  const proUser = isElite(user);
 
   const refresh = async () => {
     if (positions.length === 0) {
@@ -301,7 +301,7 @@ export function PortfolioPage() {
                   }
                 }}
                 disabled={aiLoading || (!proUser && !!user)}
-                title={!proUser && user ? 'PRO/ELITE üyelere özel' : 'Portföyünü AI ile analiz et'}
+                title={!proUser && user ? 'Sadece ELITE üyelere özel' : 'Portföyünü AI ile analiz et'}
               >
                 {aiLoading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 {aiLoading ? 'Analiz üretiliyor…' : 'AI Analizi Üret'}
@@ -316,7 +316,7 @@ export function PortfolioPage() {
 
           {!proUser && user && !aiAnalysis && (
             <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
-              🔒 PRO/ELITE üyelere özel. <Link to="/uyelik" className="underline">Yükselt →</Link>
+              🔒 Sadece ELITE üyelere özel. <Link to="/uyelik" className="underline">Yükselt →</Link>
             </div>
           )}
 

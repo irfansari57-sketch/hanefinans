@@ -181,28 +181,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const user = auth.user as UserRow & { id: number };
   const tier = user.tier;
 
-  // --- Free tier: paywall ---
-  if (tier === 'free') {
+  // --- AI Derin Analiz sadece ELITE uyelere acik (Free + Pro paywall) ---
+  if (tier !== 'elite') {
     return new Response(JSON.stringify({
       ok: false, error: 'tier_required',
-      message: 'AI Derin Analiz Pro ve Elite uyelere ozel. Pro: ayda 2 analiz, Elite: limitsiz.',
-      requiredTier: 'pro',
+      message: 'AI Derin Analiz sadece Elite uyelere ozeldir (limitsiz analiz).',
+      requiredTier: 'elite',
     }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   }
-
-  // --- Pro: aylik 2 quota ---
-  let usedThisMonth = 0;
-  if (tier === 'pro') {
-    usedThisMonth = await checkProMonthlyQuota(env.DB, user.id);
-    if (usedThisMonth >= PRO_MONTHLY_LIMIT) {
-      return new Response(JSON.stringify({
-        ok: false, error: 'quota_exceeded',
-        message: `Bu ay icin Pro Derin Analiz kotanız (${PRO_MONTHLY_LIMIT}/${PRO_MONTHLY_LIMIT}) doldu. Elite'a yukseltin, limitsiz analiz alın.`,
-        quota: { used: usedThisMonth, limit: PRO_MONTHLY_LIMIT, remaining: 0 },
-        requiredTier: 'elite',
-      }), { status: 429, headers: { 'Content-Type': 'application/json' } });
-    }
-  }
+  // Elite icin quota yok
+  const usedThisMonth = 0;
 
   // --- Parse body ---
   let body: DeepAnalyzeRequest;

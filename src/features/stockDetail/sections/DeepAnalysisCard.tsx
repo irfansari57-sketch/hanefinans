@@ -88,8 +88,8 @@ export function DeepAnalysisCard(props: Props) {
     }
   }
 
-  // Free tier paywall
-  if (tier === 'free') {
+  // Free + Pro tier paywall — AI Derin Analiz sadece ELITE'a acik
+  if (tier !== 'elite') {
     return (
       <div className="rounded-xl border border-warning/30 bg-gradient-to-br from-warning/5 to-transparent p-5">
         <div className="flex items-start gap-3 mb-3">
@@ -111,8 +111,7 @@ export function DeepAnalysisCard(props: Props) {
         <div className="flex items-center gap-2 text-sm">
           <Lock size={14} className="text-warning" />
           <span className="text-slate-300">
-            <strong className="text-warning">Pro</strong> (ayda 2 analiz) veya{' '}
-            <strong className="text-warning">Elite</strong> (limitsiz) gerekli.
+            Sadece <strong className="text-warning">Elite</strong> uyeligine acik (limitsiz analiz).
           </span>
         </div>
         <a
@@ -120,7 +119,7 @@ export function DeepAnalysisCard(props: Props) {
           className="mt-3 inline-flex items-center gap-2 rounded-lg bg-warning px-4 py-2 text-sm font-bold text-bg-base hover:brightness-110 transition"
         >
           <Crown size={14} />
-          Uyelige Yukselt
+          Elite'a Yukselt
         </a>
       </div>
     );

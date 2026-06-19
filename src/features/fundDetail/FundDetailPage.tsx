@@ -179,11 +179,11 @@ export function FundDetailPage() {
       {(() => {
         const saved = readRiskProfile();
         if (!saved) return null;
-        const cat = githubData?.category ?? fund.category;
+        const cat = githubData?.category ?? fund.category ?? '';
         const name = githubData?.name ?? fund.name ?? fundCode;
         const open = (githubData?.tefasOpen !== undefined)
           ? githubData.tefasOpen
-          : computeTefasOpenClient(cat, name) ?? undefined;
+          : (computeTefasOpenClient(cat, name) ?? undefined);
         const s = evaluateFundSuitability(cat, name, open, saved.profile);
         const styles: Record<SuitabilityLevel, { bg: string; border: string; text: string; Icon: typeof Info }> = {
           good:     { bg: 'bg-success/10',  border: 'border-success/40',  text: 'text-success',  Icon: CheckCircle2 },

@@ -135,14 +135,7 @@ export function DeepAnalysisCard(props: Props) {
           <h3 className="text-base font-bold text-slate-100">AI Derin Analiz</h3>
           <p className="text-[11px] text-slate-400">
             Premium kapsamli analiz: teknik + makro + finansal + senaryo.
-            {tier === 'pro' && quota && quota.limit > 0 && (
-              <span className="ml-1">
-                · <strong className={cn(quota.remaining > 0 ? 'text-success' : 'text-warning')}>
-                  {quota.used}/{quota.limit}
-                </strong> kullanildi
-              </span>
-            )}
-            {tier === 'elite' && <span className="ml-1">· <strong className="text-warning">Elite</strong> · limitsiz</span>}
+            <span className="ml-1">· <strong className="text-warning">Elite</strong> · limitsiz</span>
           </p>
         </div>
       </div>
@@ -197,17 +190,15 @@ export function DeepAnalysisCard(props: Props) {
               {cached && <span className="ml-2 text-warning">· 24h cache</span>}
             </div>
             {/* Elite icin yeniden olustur (cache bypass eklensin sonra) */}
-            {tier === 'elite' && (
-              <button
-                type="button"
-                onClick={generateAnalysis}
-                className="inline-flex items-center gap-1 hover:text-accent transition"
-                title="Cache'i bypass et + yeniden uret"
-              >
-                <RefreshCw size={11} />
-                Yenile
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={generateAnalysis}
+              className="inline-flex items-center gap-1 hover:text-accent transition"
+              title="Cache'i bypass et + yeniden uret"
+            >
+              <RefreshCw size={11} />
+              Yenile
+            </button>
           </div>
         </>
       )}

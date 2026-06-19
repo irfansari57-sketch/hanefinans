@@ -21,6 +21,7 @@ import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidg
 import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
 import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight } from 'lucide-react';
 import { readRiskProfile } from '@/lib/riskProfile';
+import { PortfolioPanelSummary } from './PortfolioPanelSummary';
 import { usePinnedSection } from '@/lib/usePinnedSection';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
@@ -484,112 +485,13 @@ export function PanelPage() {
         </details>
       )}
 
-      {/* Takip Listem — pinnable accordion, AI Agent'larin ustunde */}
-      <PinnableAccordion
-        id="panel-watchlist"
-        title="Takip Listem"
-        icon={<Newspaper size={16} />}
-        iconColorClass="bg-accent/15 text-accent"
-      >
-        <div className="flex items-center justify-end mb-2">
-          <SourceBadge source={stocksSource} />
-        </div>
-        {watchlistStocks.length === 0 ? (
-          <p className="px-1 py-3 text-xs text-slate-500">
-            Listende hisse yok. <Link to="/watchlist" className="text-accent hover:underline">Hisse ekle</Link>
-          </p>
-        ) : (
-          <div className="divide-y divide-border">
-            {watchlistStocks.map((s) => (
-              <StockRow key={s.symbol} stock={s} />
-            ))}
-          </div>
-        )}
-      </PinnableAccordion>
+      {/* Portfoyum Ozeti — auth'lu kullanici icin yan yana Hisse + Fon karti */}
+      <PortfolioPanelSummary isLoggedIn={!!user} />
 
       {/* Ekonomik Takvim — sadece mobilde göster (desktop sağ rail'de var) */}
       <div className="mb-5 lg:hidden">
         <EconomicCalendarWidget compact maxItems={5} daysAhead={14} collapsible />
       </div>
-
-      {/* AI Agent'lar — PRO/Elite üyelere özel, akordeon + pin */}
-      {proUser ? (
-        <section className="mb-5">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-warning flex items-center gap-1.5">
-              <Sparkles size={14} /> AI Agent'lar
-            </h2>
-            <span className="text-[11px] text-slate-500">— başlığa tıkla aç/kapa, pinlersen her açılışta açık gelir</span>
-          </div>
-          <PinnableAccordion
-            id="agent-sentiment"
-            title="Sentiment Agent"
-            description="Hisse bazlı haber duyarlılığı (Claude Haiku)"
-            icon={<Activity size={16} />}
-            iconColorClass="bg-success/15 text-success"
-          >
-            <SentimentAgentCard />
-          </PinnableAccordion>
-          <PinnableAccordion
-            id="agent-news"
-            title="News Agent"
-            description="Günün top 5 etki haberi + AI özet"
-            icon={<Newspaper size={16} />}
-            iconColorClass="bg-accent/15 text-accent"
-          >
-            <NewsAgentCard />
-          </PinnableAccordion>
-          <PinnableAccordion
-            id="agent-macro"
-            title="Macro Agent"
-            description="Risk skoru + makro yorum"
-            icon={<BarChart3 size={16} />}
-            iconColorClass="bg-warning/15 text-warning"
-          >
-            <MacroAgentCard />
-          </PinnableAccordion>
-          <PinnableAccordion
-            id="agent-indicator"
-            title="Indicator Agent"
-            description="Teknik sinyal tarayıcı"
-            icon={<Sparkles size={16} />}
-            iconColorClass="bg-accent/15 text-accent"
-          >
-            <IndicatorAgentCard />
-          </PinnableAccordion>
-        </section>
-      ) : (
-        <Link
-          to="/uyelik"
-          className="mb-5 block rounded-xl border border-warning/30 bg-gradient-to-br from-warning/5 to-accent/5 p-5 transition hover:border-warning/60 hover:from-warning/10 hover:to-accent/10"
-        >
-          <div className="flex items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
-              <Radio size={24} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-slate-100">AI Agent'lar</h2>
-                <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning">
-                  PRO Özel
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-slate-300 leading-relaxed">
-                Claude Haiku tabanlı 4 yapay zeka asistanı — günlük piyasaya tam görünürlük.
-              </p>
-              <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2 text-xs text-slate-400">
-                <div className="flex items-start gap-1.5"><span className="text-accent">[S]</span><span><strong className="text-slate-300">Sentiment</strong> — hisse bazlı haber duyarlılığı</span></div>
-                <div className="flex items-start gap-1.5"><span className="text-accent">[N]</span><span><strong className="text-slate-300">News</strong> — günün top 5 etki haberi</span></div>
-                <div className="flex items-start gap-1.5"><span className="text-accent">[M]</span><span><strong className="text-slate-300">Macro</strong> — risk skoru + yorum</span></div>
-                <div className="flex items-start gap-1.5"><span className="text-accent">[I]</span><span><strong className="text-slate-300">Indicator</strong> — teknik sinyal tarayıcı</span></div>
-              </div>
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-warning px-3 py-1.5 text-xs font-bold text-bg shadow-lg shadow-warning/30">
-                PRO'ya Yükselt -&gt;
-              </div>
-            </div>
-          </div>
-        </Link>
-      )}
     </>
   );
 }

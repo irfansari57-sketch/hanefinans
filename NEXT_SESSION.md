@@ -1,7 +1,35 @@
 # NEXT SESSION — Hane Finans
 
-> Son guncelleme: 18 Haziran 2026
+> Son guncelleme: 19 Haziran 2026 (Cowork plugin tamamlandi)
 > Bu dosya, bir sonraki Cowork seansinda nereden devam edilecegini gosterir.
+
+---
+
+## BU SEANSDA NE BITTI? (19 Haziran)
+
+### Cowork Plugin (yayinda - test bekliyor)
+- **Repo:** https://github.com/irfansari57-sketch/hanefinans-cowork-plugin
+- 9 skill: bist-snapshot, stock-deep-dive, tefas-fon-arama, bist-strong-buy, doviz-emtia-bulteni, fon-onerisi, portfoy-analiz, gunluk-brief, piyasa-haberleri
+- 7 slash command: /piyasa, /hisse, /fon, /strongbuy, /doviz, /fononeri, /brief, /haberler
+- marketplace.json + README + LICENSE (MIT)
+- Veri kaynaklari: /api/yahoo/snapshot, /data/tefas.json, /api/agents/briefing, /api/news, /data/broker-recommendations.json
+- Ana repo'da .gitignore'a `hanefinans-plugin/` eklendi — plugin sadece kendi repo'sunda yasiyor
+
+**INSTALL DURUMU:**
+- Cowork desktop Plugin Directory sadece Anthropic & Partners gosteriyor (custom marketplace yok henuz)
+- Claude Code CLI yolu: Claude Pro/Max abonelik gerektiriyor (ELITE tier yetmedi)
+- Yolar:
+  - A) Cowork custom marketplace destegi gelene kadar bekle (en mantikli)
+  - B) Anthropic Console API key + Claude Code CLI ($5 free credit)
+  - C) Claude Pro al ($20/ay) -> Claude Code dahil
+
+**SONRAKI SEANS:** Cowork custom marketplace destegi gelmis mi kontrol et; gelmediyse plugin'i Anthropic partner programina basvur (https://www.anthropic.com/partners)
+
+### Txn auto-recalc cloud sync (push edildi - canli)
+- `functions/api/portfolio/txns/[id].ts` cloud PUT/DELETE endpoint
+- `portfolioSync.ts`: cloudUpdateTxn, cloudDeleteTxn, recalcPositionFromTxns
+- `TxnHistoryModal.tsx`: delete/edit sonrasi cloud + Dexie sync + pozisyon recalc
+- Commit `2a435d1` push edildi (Cloudflare deploy aktif)
 
 ---
 

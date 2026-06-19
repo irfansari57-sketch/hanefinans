@@ -7,11 +7,13 @@
    Renkler 'r g b' formatinda (Tailwind alpha-value uyumlulugu icin).
    ============================================================ */
 :root {
-  /* Dark theme (default) — koyu mavi finans estetigi */
-  --c-bg: 11 18 32;
-  --c-bg-soft: 15 23 42;
-  --c-bg-card: 17 26 46;
-  --c-border: 31 42 68;
+  /* Dark theme (default) — koyu mavi finans estetigi
+     Eski (11 18 32) cok boguk hissettiriyordu — slate-900/800 araligina cikarildi.
+     Hala dark ama gozu yormayan, premium ve nefes alan tonlar. */
+  --c-bg: 20 27 45;          /* ~slate-900 + biraz daha acik */
+  --c-bg-soft: 26 35 58;     /* yumusak yuzeyler (input/satir hover/yardimci) */
+  --c-bg-card: 30 41 65;     /* kart/glass yuzeyleri (slate-800 tonu) */
+  --c-border: 51 65 95;      /* daha kontrastlı sınır — slate-600/700 */
   --c-accent: 34 211 238;
   --c-accent-fg: 2 44 51;
   --c-success: 34 197 94;

@@ -17,8 +17,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Briefcase, TrendingUp, TrendingDown, PiggyBank, ChevronRight } from 'lucide-react';
 import { db } from '@/data/db';
 import { loadStocks } from '@/data/services';
-import { loadFundsAsPerformance, type FundPerformance } from '@/data/api/tefasGithub';
-import type { Stock } from '@/data/types';
+import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
+import type { Stock, FundPerformance } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 

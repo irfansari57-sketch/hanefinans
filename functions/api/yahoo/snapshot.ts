@@ -41,7 +41,18 @@ interface YahooChartResult {
   };
 }
 
-function parseYahooBody(body: string): { price: number; changePct: number; prev: number; updatedAt: number; name?: string } | null {
+/**
+ * BIST endeksleri (XU100, XU030, XUSIN, XUMAL, XUTUM...) icin gunluk
+ * degisim genellikle %5'i gecmez. Yahoo bazen yanlis previousClose ile
+ * +6%, +7% gibi yanlis degerler donduruyor. Bu sembollerde sanity check
+ * yapariz.
+ */
+function isBistIndex(symbol: string | undefined): boolean {
+  if (!symbol) return false;
+  return /^XU\d{3}/i.test(symbol) || symbol.startsWith('^XU');
+}
+
+function parseYahooBody(body: string, symbolHint?: string): { price: number; changePct: number; prev: number; updatedAt: number; name?: string } | null {
   try {
     const json = JSON.parse(body) as YahooChartResult;
     const result = json.chart?.result?.[0];
@@ -91,7 +102,33 @@ function parseYahooBody(body: string): { price: number; changePct: number; prev:
     } else {
       prev = price;
     }
-    const changePct = prev > 0 && prev !== price ? ((price - prev) / prev) * 100 : 0;
+    let changePct = prev > 0 && prev !== price ? ((price - prev) / prev) * 100 : 0;
+
+    // BIST endeksi sanity check — gunluk |%5|'i gecen degisim Yahoo veri hatasi
+    // ihtimali yuksek. Fallback'leri sirayla dene; hala absurd ise 0 don.
+    if (isBistIndex(symbolHint) && Math.abs(changePct) > 5) {
+      let altPrev: number | undefined;
+      // 1) chartPreviousClose dene
+      if (meta.chartPreviousClose && meta.chartPreviousClose > 0) {
+        const pct = Math.abs((price - meta.chartPreviousClose) / meta.chartPreviousClose) * 100;
+        if (pct <= 5) altPrev = meta.chartPreviousClose;
+      }
+      // 2) validCloses[1] dene (eger varsa)
+      if (altPrev === undefined && validCloses.length >= 2) {
+        const c1 = validCloses[1];
+        const pct = Math.abs((price - c1) / c1) * 100;
+        if (pct <= 5) altPrev = c1;
+      }
+      if (altPrev !== undefined) {
+        prev = altPrev;
+        changePct = ((price - prev) / prev) * 100;
+      } else {
+        // Hicbir gecerli prev bulunamadi — gunluk degisim gosterilemez
+        prev = price;
+        changePct = 0;
+      }
+    }
+
     const updatedAt = meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now();
     return { price, changePct, prev, updatedAt, name: meta.shortName ?? meta.longName };
   } catch {
@@ -130,7 +167,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     if (seen.has(symbol)) continue; // ORDER BY desc => en yenisini al
     seen.add(symbol);
 
-    const q = parseYahooBody(row.payload);
+    const q = parseYahooBody(row.payload, symbol);
     if (!q) continue;
     quotes[symbol] = q;
     parsedCount++;

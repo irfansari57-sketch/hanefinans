@@ -19,7 +19,7 @@ import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
-import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight } from 'lucide-react';
+import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight, Briefcase } from 'lucide-react';
 import { readRiskProfile } from '@/lib/riskProfile';
 import { PortfolioPanelSummary } from './PortfolioPanelSummary';
 import { usePinnedSection } from '@/lib/usePinnedSection';
@@ -485,8 +485,19 @@ export function PanelPage() {
         </details>
       )}
 
-      {/* Portfoyum Ozeti — auth'lu kullanici icin yan yana Hisse + Fon karti */}
-      <PortfolioPanelSummary isLoggedIn={!!user} />
+      {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti */}
+      {user && (
+        <PinnableAccordion
+          id="panel-portfolio"
+          title="Portföyüm"
+          description="Hisse + Fon ozet, gunluk degisim ve toplam kar/zarar"
+          icon={<Briefcase size={16} />}
+          iconColorClass="bg-accent/15 text-accent"
+          defaultOpen
+        >
+          <PortfolioPanelSummary isLoggedIn={!!user} />
+        </PinnableAccordion>
+      )}
 
       {/* Ekonomik Takvim — sadece mobilde göster (desktop sağ rail'de var) */}
       <div className="mb-5 lg:hidden">

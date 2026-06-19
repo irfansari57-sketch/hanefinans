@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Briefcase, TrendingUp, TrendingDown, PiggyBank, ChevronRight } from 'lucide-react';
+import { Briefcase, TrendingUp, PiggyBank, ChevronRight } from 'lucide-react';
 import { db } from '@/data/db';
 import { loadStocks } from '@/data/services';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
@@ -141,7 +141,7 @@ export function PortfolioPanelSummary({ isLoggedIn }: Props) {
     return (
       <Link
         to="/portfoy"
-        className="mb-5 flex items-center gap-3 rounded-xl border border-border bg-bg-soft/40 p-4 transition hover:border-accent/40 hover:bg-bg-soft/60"
+        className="flex items-center gap-3 rounded-xl border border-border bg-bg-soft/40 p-4 transition hover:border-accent/40 hover:bg-bg-soft/60"
       >
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent">
           <Briefcase size={18} />
@@ -156,34 +156,22 @@ export function PortfolioPanelSummary({ isLoggedIn }: Props) {
   }
 
   return (
-    <section className="mb-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-          <Briefcase size={14} className="text-accent" /> Portföyüm
-        </h2>
-        <Link to="/portfoy" className="text-[11px] font-medium text-accent hover:underline inline-flex items-center gap-1">
-          Detaylı görünüm <ChevronRight size={12} />
-        </Link>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {/* HİSSELER */}
-        <SummaryCard
-          title="Hisseler"
-          icon={<TrendingUp size={14} />}
-          summary={stockSummary}
-          empty="Hisse pozisyonu yok"
-          href="/portfoy"
-        />
-        {/* FONLAR */}
-        <SummaryCard
-          title="Fonlar"
-          icon={<PiggyBank size={14} />}
-          summary={fundSummary}
-          empty="Fon pozisyonu yok"
-          href="/portfoy"
-        />
-      </div>
-    </section>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <SummaryCard
+        title="Hisseler"
+        icon={<TrendingUp size={15} />}
+        summary={stockSummary}
+        empty="Hisse pozisyonu yok"
+        href="/portfoy"
+      />
+      <SummaryCard
+        title="Fonlar"
+        icon={<PiggyBank size={15} />}
+        summary={fundSummary}
+        empty="Fon pozisyonu yok"
+        href="/portfoy"
+      />
+    </div>
   );
 }
 
@@ -202,7 +190,7 @@ function SummaryCard({
 }) {
   if (summary.count === 0) {
     return (
-      <div className="rounded-xl border border-border bg-bg-soft/30 p-4 text-center text-xs text-slate-500">
+      <div className="rounded-xl border border-border bg-bg-soft/30 p-5 text-center text-xs text-slate-500">
         {empty}
       </div>
     );
@@ -212,19 +200,35 @@ function SummaryCard({
   return (
     <Link
       to={href}
-      className="group relative overflow-hidden rounded-xl border border-border bg-bg-soft/40 p-3.5 transition hover:border-accent/30 hover:bg-bg-soft/60"
+      className={cn(
+        // 3D premium kart: gradient + ic glow + dis shadow + hover lift
+        'group relative overflow-hidden rounded-2xl border border-accent/20 p-4 transition-all duration-300',
+        'bg-gradient-to-br from-bg-card via-bg-card/95 to-bg-soft/80',
+        'shadow-[0_8px_24px_-6px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]',
+        'hover:border-accent/40 hover:shadow-[0_14px_32px_-8px_rgba(34,211,238,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]',
+        'hover:-translate-y-0.5',
+      )}
     >
+      {/* Üst köşe ışık parlaması */}
+      <div className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-accent/12 blur-3xl" />
+      {/* Alt köşe gölge derinligi */}
+      <div className="pointer-events-none absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-accent/8 blur-2xl" />
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="flex items-center gap-1.5">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-accent/15 text-accent">{icon}</span>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">{title}</span>
+      <div className="relative flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent/15 text-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]">
+            {icon}
+          </span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-200">{title}</span>
           <span className="text-[10px] text-slate-500">· {summary.count} pozisyon</span>
         </div>
+        <ChevronRight size={14} className="text-slate-500 transition group-hover:text-accent group-hover:translate-x-0.5" />
       </div>
+
       {/* Metrikler 3'lu */}
-      <div className="grid grid-cols-3 gap-2 mb-2.5">
-        <Metric label="Değer" value={formatMoney(summary.totalValue)} tone="accent" />
+      <div className="relative grid grid-cols-3 gap-2.5">
+        <Metric label="DEĞER" value={formatMoney(summary.totalValue)} tone="accent" big />
         <Metric
           label="K/Z"
           value={`${pnlPos ? '+' : ''}${formatMoney(summary.pnl)}`}
@@ -232,58 +236,23 @@ function SummaryCard({
           tone={pnlPos ? 'success' : 'danger'}
         />
         <Metric
-          label="Bugün"
+          label="BUGÜN"
           value={`${dailyPos ? '+' : ''}${formatMoney(summary.dailyChange)}`}
           sub={`${dailyPos ? '+' : ''}${summary.dailyChangePct.toFixed(2)}%`}
           tone={dailyPos ? 'success' : 'danger'}
         />
       </div>
-      {/* En guclu / zayif */}
-      {(summary.topGain || summary.topLoss) && (
-        <div className="grid grid-cols-2 gap-2 border-t border-border/50 pt-2">
-          {summary.topGain && (
-            <MiniRow
-              label="En güçlü"
-              symbol={summary.topGain.symbol}
-              pnlPct={summary.topGain.pnlPct}
-              tone="success"
-            />
-          )}
-          {summary.topLoss && summary.topLoss.symbol !== summary.topGain?.symbol && (
-            <MiniRow
-              label="En zayıf"
-              symbol={summary.topLoss.symbol}
-              pnlPct={summary.topLoss.pnlPct}
-              tone="danger"
-            />
-          )}
-        </div>
-      )}
     </Link>
   );
 }
 
-function Metric({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'accent' | 'success' | 'danger' }) {
+function Metric({ label, value, sub, tone, big }: { label: string; value: string; sub?: string; tone?: 'accent' | 'success' | 'danger'; big?: boolean }) {
   const colorClass = tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-danger' : tone === 'accent' ? 'text-accent' : 'text-slate-200';
   return (
     <div className="min-w-0">
-      <div className="text-[9px] uppercase tracking-wider text-slate-500 truncate">{label}</div>
-      <div className={cn('mt-0.5 font-mono text-xs font-bold tabular-nums truncate', colorClass)}>{value}</div>
-      {sub && <div className={cn('text-[10px] font-semibold tabular-nums', colorClass)}>{sub}</div>}
-    </div>
-  );
-}
-
-function MiniRow({ label, symbol, pnlPct, tone }: { label: string; symbol: string; pnlPct: number; tone: 'success' | 'danger' }) {
-  const Icon = tone === 'success' ? TrendingUp : TrendingDown;
-  return (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <Icon size={11} className={tone === 'success' ? 'text-success shrink-0' : 'text-danger shrink-0'} />
-      <span className="text-[10px] text-slate-500 shrink-0">{label}</span>
-      <span className="font-mono text-[11px] font-bold text-slate-200 truncate">{symbol}</span>
-      <span className={cn('ml-auto font-mono text-[11px] font-bold tabular-nums', tone === 'success' ? 'text-success' : 'text-danger')}>
-        {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
-      </span>
+      <div className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500 truncate">{label}</div>
+      <div className={cn('mt-1 font-mono font-extrabold tabular-nums truncate drop-shadow-sm', big ? 'text-sm' : 'text-xs', colorClass)}>{value}</div>
+      {sub && <div className={cn('text-[10px] font-bold tabular-nums', colorClass)}>{sub}</div>}
     </div>
   );
 }

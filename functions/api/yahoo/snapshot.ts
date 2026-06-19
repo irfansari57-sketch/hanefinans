@@ -60,20 +60,34 @@ function parseYahooBody(body: string): { price: number; changePct: number; prev:
     if (price == null && validCloses.length > 0) price = validCloses[0];
     if (price == null || !Number.isFinite(price) || price <= 0) return null;
 
+    // PREV CLOSE SECIMI — onceligi meta.previousClose'a ver
+    //
+    // Yahoo'da meta.previousClose her zaman "bir onceki tamamlanmis seans kapanisi"ni
+    // verir. BU EN GUVENILIR FIELD'dir.
+    //
+    // BIST endeksleri (XU100, XU030) icin onceki kod yanlistı:
+    // closes array'inde son 2 valid close alip beforeClose'u baz aliyordu.
+    // Ama Yahoo'da closes[-2] bazen cok eski bir gun olabiliyor (hafta sonu
+    // sonrasi, tatil sonrasi vb.) — bu durumda yanlis prev secilip
+    // changePct +2-3% gibi yanlis cikiyordu (gercek -0.63% iken).
+    //
+    // Sıralama:
+    //   1) meta.previousClose (Yahoo'nun resmi alanı)
+    //   2) meta.chartPreviousClose (fallback)
+    //   3) validCloses[1] (closes array son 2'sinden bir oncesi)
+    //   4) price (last resort, changePct=0)
     let prev: number;
-    if (validCloses.length >= 2) {
+    if (meta.previousClose && meta.previousClose > 0) {
+      prev = meta.previousClose;
+    } else if (meta.chartPreviousClose && meta.chartPreviousClose > 0) {
+      prev = meta.chartPreviousClose;
+    } else if (validCloses.length >= 2) {
       const lastClose = validCloses[0];
       const beforeClose = validCloses[1];
-      // Percent-based threshold (%0.1) — Yahoo bazen weekend/holiday'de
-      // price === lastClose donduruyor (rounding 0.0001 sapmasiyla absolute
-      // threshold patliyor). Bu durumda beforeClose'u baz al ki son is gunu
-      // hareketi gosterilsin.
+      // Eger price ~ lastClose ise (piyasa kapali, son close yeni), beforeClose'a dus.
+      // Aksi durumda lastClose son tamamlanmis kapanistir, prev=lastClose.
       const pctDiff = Math.abs(price - lastClose) / lastClose;
       prev = pctDiff < 0.001 ? beforeClose : lastClose;
-    } else if (meta.previousClose && meta.previousClose > 0 && Math.abs((meta.previousClose - price) / price) > 0.001) {
-      prev = meta.previousClose;
-    } else if (meta.chartPreviousClose && meta.chartPreviousClose > 0 && Math.abs((meta.chartPreviousClose - price) / price) > 0.001) {
-      prev = meta.chartPreviousClose;
     } else {
       prev = price;
     }

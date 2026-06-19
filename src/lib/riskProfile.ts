@@ -269,6 +269,68 @@ export function saveRiskProfile(answers: RiskAnswers, profile: RiskProfile): voi
   } catch { /* quota */ }
 }
 
+/**
+ * Bir fonun kullanicinin risk profiline uygunlugunu degerlendirir.
+ *
+ * Skala:
+ *   'good'      — kategori onerilen agirlikta + erisilebilir (yesil)
+ *   'caution'   — kategori profilde yok ama alinabilir (sari)
+ *   'blocked'   — TEFAS Kapali + kullanici nitelikli degil (kirmizi)
+ *   'mismatch'  — Katilim profili ama fon faiz iceren bir kategoriden (turuncu)
+ *
+ * Mevcut TargetCategory ile fon.category dogrudan ayni stringde olmali
+ * (FundsPage'de "Katılım", "Hisse Senedi" vs. ile uyumlu).
+ */
+export type SuitabilityLevel = 'good' | 'caution' | 'blocked' | 'mismatch';
+
+export interface SuitabilityResult {
+  level: SuitabilityLevel;
+  /** UI'da kart altinda gozukecek tek cumlelik yorum */
+  message: string;
+}
+
+export function evaluateFundSuitability(
+  fundCategory: string | undefined,
+  fundName: string,
+  fundTefasOpen: boolean | undefined,
+  profile: RiskProfile,
+): SuitabilityResult {
+  // 1. TEFAS Kapali + nitelikli degil -> bloklu
+  if (fundTefasOpen === false && profile.qualified !== 'yes') {
+    return {
+      level: 'blocked',
+      message: 'Bu fon TEFAS\'ta işleme kapalı. Nitelikli yatırımcı statünüz yok — şu an alamazsınız.',
+    };
+  }
+  // 2. Katilim profili + fon ismi/kategori faiz icerigi var -> uyumsuz
+  if (profile.principle === 'participation') {
+    const nameUp = (fundName ?? '').toLocaleUpperCase('tr-TR');
+    const cat = (fundCategory ?? '').toLocaleUpperCase('tr-TR');
+    const isParticipationFriendly = nameUp.includes('KATILIM')
+      || cat.includes('KATILIM') || cat.includes('ALTIN') || cat.includes('KIYMETLİ MADEN');
+    if (!isParticipationFriendly) {
+      return {
+        level: 'mismatch',
+        message: 'Katılım ilkeniz var. Bu fon faiz içeren bir kategoride olabilir — katılım fonu yerine değerlendirin.',
+      };
+    }
+  }
+  // 3. Profilin onerilen kategorisinde mi?
+  const cat = (fundCategory ?? '').trim();
+  const weights = profile.weights;
+  if (cat && weights[cat as TargetCategory] && (weights[cat as TargetCategory] ?? 0) > 0) {
+    return {
+      level: 'good',
+      message: `Bu kategori profilinizde önerilen ağırlıkta (%${weights[cat as TargetCategory]}). Profilinize uygun.`,
+    };
+  }
+  // 4. Profil disinda ama alinabilir
+  return {
+    level: 'caution',
+    message: 'Bu kategori profilinizde ana ağırlıklardan biri değil. Çeşitlilik için küçük pay olarak değerlendirilebilir.',
+  };
+}
+
 export function readRiskProfile(): SavedRiskProfile | null {
   try {
     const raw = localStorage.getItem(LS_KEY);

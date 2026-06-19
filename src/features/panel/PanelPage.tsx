@@ -19,7 +19,8 @@ import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
-import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff } from 'lucide-react';
+import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight } from 'lucide-react';
+import { readRiskProfile } from '@/lib/riskProfile';
 import { usePinnedSection } from '@/lib/usePinnedSection';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
@@ -113,6 +114,11 @@ export function PanelPage() {
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
   const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
+  // Risk profili kayitli mi? Yoksa CTA goster.
+  const [hasRiskProfile, setHasRiskProfile] = useState(() => readRiskProfile() != null);
+  useEffect(() => {
+    setHasRiskProfile(readRiskProfile() != null);
+  }, [user]);
 
   // SWR cache — 24 saatlik TTL ile son bilinen veri her zaman gosterilir.
   // Cache yoksa skeleton, varsa anlik render + arka planda yenileme.
@@ -315,6 +321,26 @@ export function PanelPage() {
 
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
+
+      {/* Risk Profili CTA — sadece auth'lu kullanici icin, profili kayitli degilse */}
+      {user && !hasRiskProfile && (
+        <Link
+          to="/risk-profili"
+          className="mb-5 flex items-center gap-3 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-4 transition hover:border-accent/60 hover:bg-accent/10"
+        >
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/20 text-accent">
+            <Shield size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold text-slate-100">Risk profilinizi 2 dakikada belirleyin</div>
+            <div className="text-[11px] text-slate-400 leading-tight">
+              7 soruluk anket — yaş, vade, risk toleransı, hedef + SPK nitelikli yatırımcı kontrolü.
+              Sonunda kişiselleştirilmiş TEFAS fon paketi.
+            </div>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-accent" />
+        </Link>
+      )}
 
       {/* Piyasa Özeti — premium 3 sütun (Endeks+Döviz / Metal / Kripto), satır clickable */}
       <PinnableAccordion

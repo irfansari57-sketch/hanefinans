@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, ArrowLeft, ArrowRight, RotateCcw, Sparkles, CheckCircle2, PieChart } from 'lucide-react';
+import { Shield, ArrowLeft, ArrowRight, RotateCcw, Sparkles, CheckCircle2, PieChart, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { SeoHead } from '@/components/seo/SeoHead';
@@ -301,10 +301,37 @@ export function RiskProfilePage() {
           )}
         </PremiumCard>
 
-        <div className="rounded-xl border border-warning/30 bg-warning/5 p-3 text-[11px] text-slate-400">
-          <strong className="text-warning">Uyari:</strong> Bu oneriler kisisel risk profil analizine dayalidir,
-          yatirim tavsiyesi degildir. Yatirim kararlarinizi kendi arastirmaniz ve gerekirse SPK lisansli
-          bir danismanla yapiniz.
+        {/* SPK / SPL mevzuat uyarisi — yatirim tavsiyesi degildir */}
+        <div className="rounded-xl border-2 border-warning/50 bg-warning/10 p-4 mt-4">
+          <div className="flex items-start gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-warning/20 text-warning">
+              <AlertTriangle size={18} />
+            </div>
+            <div className="flex-1 space-y-2 text-xs leading-relaxed">
+              <div className="font-bold text-warning text-sm uppercase tracking-wider">
+                Önemli Bilgilendirme — Yatırım Tavsiyesi Değildir
+              </div>
+              <p className="text-slate-200">
+                Bu sayfadaki tüm öneriler, kişisel risk profil anketinizden ve TEFAS açık verilerinden
+                üretilen <strong>bilgilendirici analizdir</strong>. SPK mevzuatı çerçevesinde
+                <strong> yatırım tavsiyesi sayılmaz</strong>.
+              </p>
+              <p className="text-slate-300">
+                Geçmiş getiriler gelecekteki performansın garantisi değildir. Yatırım kararlarınızı
+                kendi araştırmanız ve risk değerlendirmenizle alınız; gerektiğinde{' '}
+                <strong className="text-slate-100">SPK lisanslı bir yatırım danışmanına</strong>{' '}
+                danışınız.
+              </p>
+              <p className="text-[11px] text-slate-400 pt-1 border-t border-warning/20">
+                Hane Finans, Sermaye Piyasası Kurulu (SPK) tarafından yatırım danışmanlığı yetkisi
+                verilen bir kuruluş değildir. SPK&apos;nın yetkili kuruluş listesi için:{' '}
+                <a href="https://www.spk.gov.tr/Sayfa/AltSayfa/187" target="_blank" rel="noreferrer"
+                  className="text-accent underline hover:text-accent/80">
+                  spk.gov.tr
+                </a>
+              </p>
+            </div>
+          </div>
         </div>
       </>
     );

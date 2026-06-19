@@ -13,6 +13,8 @@ import { formatDateTR, formatRelative } from '@/lib/date';
 import { useEffect, useState, useMemo } from 'react';
 import { fetchTefasFund, isTefasWorkerConfigured, type TefasFundDetail } from '@/data/api/tefasWorker';
 import { fetchTefasFundByCode, isTefasGithubConfigured, computeTefasOpenClient, type TefasFundData } from '@/data/api/tefasGithub';
+import { readRiskProfile, evaluateFundSuitability, type SuitabilityLevel } from '@/lib/riskProfile';
+import { CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
@@ -172,6 +174,43 @@ export function FundDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Risk Profili Uygunluk Rozeti — kullanici risk profili kaydetmisse */}
+      {(() => {
+        const saved = readRiskProfile();
+        if (!saved) return null;
+        const cat = githubData?.category ?? fund.category;
+        const name = githubData?.name ?? fund.name ?? fundCode;
+        const open = (githubData?.tefasOpen !== undefined)
+          ? githubData.tefasOpen
+          : computeTefasOpenClient(cat, name) ?? undefined;
+        const s = evaluateFundSuitability(cat, name, open, saved.profile);
+        const styles: Record<SuitabilityLevel, { bg: string; border: string; text: string; Icon: typeof Info }> = {
+          good:     { bg: 'bg-success/10',  border: 'border-success/40',  text: 'text-success',  Icon: CheckCircle2 },
+          caution:  { bg: 'bg-warning/10',  border: 'border-warning/40',  text: 'text-warning',  Icon: AlertTriangle },
+          mismatch: { bg: 'bg-orange-500/10', border: 'border-orange-500/40', text: 'text-orange-300', Icon: AlertTriangle },
+          blocked:  { bg: 'bg-danger/10',   border: 'border-danger/40',   text: 'text-danger',   Icon: XCircle },
+        };
+        const cfg = styles[s.level];
+        const labels: Record<SuitabilityLevel, string> = {
+          good: 'Profilinize Uygun',
+          caution: 'Profil Dışı — Çeşitlilik için olabilir',
+          mismatch: 'Katılım İlkenizle Uyumsuz Olabilir',
+          blocked: 'Şu Anda Alamazsınız',
+        };
+        return (
+          <div className={cn('mb-4 flex items-start gap-3 rounded-lg border p-3', cfg.bg, cfg.border)}>
+            <cfg.Icon size={20} className={cn('shrink-0 mt-0.5', cfg.text)} />
+            <div className="flex-1 text-xs">
+              <div className={cn('font-bold text-sm', cfg.text)}>{labels[s.level]}</div>
+              <div className="mt-0.5 text-slate-300 leading-relaxed">{s.message}</div>
+              <Link to="/risk-profili" className="mt-1 inline-block text-[11px] underline text-slate-400 hover:text-slate-200">
+                Risk profilim ({saved.profile.label})
+              </Link>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Canlı TEFAS verisi — GitHub feed birinci, CF Worker yedek */}
       {githubData ? (

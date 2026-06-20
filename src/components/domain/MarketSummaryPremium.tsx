@@ -39,7 +39,11 @@ function formatValue(m: MacroIndicator): string {
 
 function Row({ m }: { m: MacroIndicator }) {
   const route = macroKeyToRoute(m.key);
-  const cp = m.changePct;
+  // BIST 100/30 defansif kontrol: gunluk degisim |%5|'i geciyorsa Yahoo
+  // veri hatasi muhtemel. Yanlis bilgi vermek yerine "—" goster.
+  const isBistIdx = m.key === 'BIST 100' || m.key === 'BIST 30';
+  const rawCp = m.changePct;
+  const cp = isBistIdx && rawCp != null && Math.abs(rawCp) > 5 ? null : rawCp;
   const isFinitePct = cp != null && Number.isFinite(cp);
   const isUp = isFinitePct && (cp as number) > 0;
   const isDown = isFinitePct && (cp as number) < 0;

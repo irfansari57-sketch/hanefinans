@@ -367,7 +367,7 @@ function PaywallRow({ isAnon, shown, hiddenCount }: { isAnon: boolean; shown: nu
               İlk <strong className="text-accent">{shown}</strong> fonu gördün. Sonraki <strong className="text-accent">5 fon</strong> için ücretsiz üye ol. Tamamı için PRO gerekli (toplam {hiddenCount} fon gizli).
             </span>
             <Link
-              to="/giris"
+              to="/auth/signup"
               className="inline-flex items-center gap-1 rounded-md bg-accent px-3 py-1.5 text-[11px] font-bold text-bg shadow hover:bg-accent/90"
             >
               Ücretsiz Üye Ol →

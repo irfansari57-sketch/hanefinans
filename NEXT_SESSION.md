@@ -5,6 +5,69 @@
 
 ---
 
+## 🎯 SONRAKI SEANS BASLANGICI: GOOGLE OAUTH AKTIVASYON
+
+Backend deploy edildi ve calisiyor (test: `/api/auth/oauth/google/start` =>
+"GOOGLE_OAUTH_CLIENT_ID env var eksik" donuyor — yani endpoint hazir).
+
+**Sirali 5 adimi tek tek yap, Claude'a her adimda dur:**
+
+### Adim 1: D1 Migration 012 (5 dk)
+CF dashboard -> D1 -> hanefinans-db -> Console:
+```sql
+ALTER TABLE users ADD COLUMN provider TEXT;
+ALTER TABLE users ADD COLUMN provider_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider
+  ON users(provider, provider_id) WHERE provider IS NOT NULL;
+```
+Run -> Claude'a "migration tamam" de.
+
+### Adim 2: Google Cloud Console Project (5 dk)
+1. https://console.cloud.google.com/
+2. Yeni proje: "Hane Finans"
+3. Sol menu -> APIs & Services -> OAuth consent screen
+4. External -> CREATE
+5. Doldur: App name, support email, home page (hanefinans.net), privacy
+   (hanefinans.net/legal/kvkk), terms (hanefinans.net/legal/uyelik-sozlesmesi)
+6. Authorized domains: hanefinans.net
+7. SAVE AND CONTINUE 3 kez -> BACK TO DASHBOARD
+
+### Adim 3: Google OAuth Client ID (3 dk)
+1. APIs & Services -> Credentials -> + CREATE CREDENTIALS -> OAuth client ID
+2. Web application, name: "Hane Finans Web"
+3. Authorized JS origins: hanefinans.net + hanefinans.pages.dev
+4. Authorized redirect URIs:
+   - https://hanefinans.net/api/auth/oauth/google/callback
+   - https://hanefinans.pages.dev/api/auth/oauth/google/callback
+5. CREATE -> Client ID + Client Secret KOPYALA (bir kerede ikisi gosteriliyor)
+
+### Adim 4: CF Pages Env Vars (2 dk)
+1. dash.cloudflare.com -> Workers & Pages -> hanefinans -> Settings -> Environment variables -> Production
+2. + Add variable:
+   - GOOGLE_OAUTH_CLIENT_ID = (Client ID) -- Plaintext
+   - GOOGLE_OAUTH_CLIENT_SECRET = (Client Secret) -- ENCRYPT
+3. Save
+4. Deployments -> en son deployment sag uc nokta -> Retry deployment
+
+### Adim 5: Test
+1. https://hanefinans.net/auth/login
+2. "Google ile devam et" butonuna bas
+3. Google login -> izin -> /panel'e otomatik gelmelisin
+4. CF D1 console:
+   ```sql
+   SELECT id, email, provider, created_at FROM users WHERE provider='google';
+   ```
+   Sen olmali.
+
+### Adim 6 (sonraki seans veya ileri tarih): Apple Sign In
+$99/yil Apple Developer Account gerekli. NEXT_SESSION.md'nin OAUTH SETUP
+bolumunde tam adim adim var. Apple'a hazirken Claude'a "Apple setup yapacam"
+de, ayni stilde rehberlik eder.
+
+---
+
+---
+
 ## OAUTH SETUP — KULLANICI EYLEMI GEREKLI
 
 Sosyal giris (Google + Apple) altyapisi tamamlandi. **Calismasi icin disardan

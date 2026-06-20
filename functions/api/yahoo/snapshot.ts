@@ -30,38 +30,32 @@ interface QuoteOut {
 // IS YATIRIM ENDEKS FEED — BIST endeksleri icin birincil kaynak (Yahoo bug fix)
 // ===========================================================================
 //
-// Endpoint: isyatirim.com.tr/_layouts/15/Isyatirim.Website/Common/Data.aspx/HisseTekil
-//   ?hisse=XU100&startdate=DD-MM-YYYY&enddate=DD-MM-YYYY
+// Endpoint: isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/IndexHistoricalAll
+//   ?period=1440&from=YYYYMMDDhhmmss&to=YYYYMMDDhhmmss&endeks=XU100
 //
-// Response: { value: [{ HGDG_TARIH, HGDG_KAPANIS, HGDG_AOF, ... }, ...] }
-//   - HGDG_TARIH formati: "13-06-2026" (DD-MM-YYYY) - kontrol icin
-//   - HGDG_KAPANIS: gunun kapanis degeri
+// Response: { data: [[timestamp_ms, close], ...] }
+//   - data[i][0]: epoch ms
+//   - data[i][1]: o gunun kapanis degeri
 //
-// Auth yok, rate limit yumusak. Yahoo'nun previousClose bug'ini ozellikle
-// BIST endekslerinde tetikledigi icin sadece BIST endekslerinde kullaniriz.
-// Yahoo backup kalsin (sanity check + diger semboller).
-interface IsYatirimRow {
-  HGDG_TARIH?: string;
-  HGDG_KAPANIS?: number;
+// urazakgul/isyatirimhisse Python wrapper kaynak kodu (FetchIndexData.py):
+//   BASE_URL_INDEX = "https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/IndexHistoricalAll"
+//   url = f"{BASE_URL_INDEX}?period=1440&from={start}&to={end}&endeks={idx}"
+//
+// 20 Hazi 2026'da canli dogrulandi: XU100=14734.50 (-%0.63), XU030=17019.86 (-%0.63)
+interface IsYatirimChartResponse {
+  data?: Array<[number, number]>; // [ts_ms, close]
+  timestamp?: string;
 }
 
-interface IsYatirimResponse {
-  value?: IsYatirimRow[];
-}
-
-function formatDateForIsYatirim(d: Date): string {
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
+function formatTimestampForIsYatirim(d: Date): string {
+  // YYYYMMDDhhmmss
   const yyyy = d.getFullYear();
-  return `${dd}-${mm}-${yyyy}`;
-}
-
-/** "DD-MM-YYYY" -> "YYYY-MM-DD" (ISO-like). Hatali girdi icin orijinali doner. */
-function parseHgdgDate(s: string | undefined): string {
-  if (!s) return '';
-  const m = /^(\d{2})-(\d{2})-(\d{4})/.exec(s);
-  if (!m) return s.slice(0, 10);
-  return `${m[3]}-${m[2]}-${m[1]}`;
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}${hh}${mi}${ss}`;
 }
 
 async function fetchIsYatirimIndex(
@@ -70,45 +64,62 @@ async function fetchIsYatirimIndex(
   // ".IS" sufix temizle (XU100.IS -> XU100)
   const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
   const now = new Date();
-  const startDate = new Date(now);
-  // 10 gun geriye - en az 2 acik gun yakalamaya yeter (hafta sonu + tatil dahil)
-  startDate.setDate(startDate.getDate() - 14);
+  const start = new Date(now);
+  // 14 gun geriye - en az 2 islem gunu yakalamaya yeter (hafta sonu + tatil dahil)
+  start.setDate(start.getDate() - 14);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 0);
 
   const url = new URL(
-    'https://www.isyatirim.com.tr/_layouts/15/Isyatirim.Website/Common/Data.aspx/HisseTekil',
+    'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/IndexHistoricalAll',
   );
-  url.searchParams.set('hisse', sym);
-  url.searchParams.set('startdate', formatDateForIsYatirim(startDate));
-  url.searchParams.set('enddate', formatDateForIsYatirim(now));
+  url.searchParams.set('period', '1440'); // 1440 dakika = gunluk
+  url.searchParams.set('from', formatTimestampForIsYatirim(start));
+  url.searchParams.set('to', formatTimestampForIsYatirim(end));
+  url.searchParams.set('endeks', sym);
 
   try {
     const resp = await fetch(url.toString(), {
       headers: {
         'Accept': 'application/json, text/plain, */*',
-        'User-Agent': 'Mozilla/5.0 (compatible; HaneFinans/1.0)',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx',
       },
-      // Cloudflare edge cache - 5 dakika yeterli (BIST seans saatlerinde bile)
+      // 5 dakika edge cache yeterli
       cf: { cacheTtl: 300, cacheEverything: true } as RequestInitCfProperties,
     });
-    if (!resp.ok) return null;
-    const data = (await resp.json()) as IsYatirimResponse;
-    const rows = (data.value ?? []).filter(
-      (r) => Number.isFinite(r.HGDG_KAPANIS) && (r.HGDG_KAPANIS as number) > 0,
+    if (!resp.ok) {
+      console.warn(`[isYatirim] ${sym} HTTP ${resp.status}`);
+      return null;
+    }
+    const text = await resp.text();
+    if (!text || text.length < 10) return null;
+    let parsed: IsYatirimChartResponse;
+    try {
+      parsed = JSON.parse(text) as IsYatirimChartResponse;
+    } catch {
+      console.warn(`[isYatirim] ${sym} non-JSON: ${text.slice(0, 80)}`);
+      return null;
+    }
+    const rows = (parsed.data ?? []).filter(
+      (r) => Array.isArray(r) && r.length >= 2 && Number.isFinite(r[1]) && r[1] > 0,
     );
     if (rows.length === 0) return null;
 
-    // Tarihe gore ascending sort - "DD-MM-YYYY" string compare yanlis olur,
-    // o yuzden parseHgdgDate ile YYYY-MM-DD'e cevirip karsilastir.
-    rows.sort((a, b) => parseHgdgDate(a.HGDG_TARIH).localeCompare(parseHgdgDate(b.HGDG_TARIH)));
+    // Zaten timestamp sirasi geliyor ama emin olalim
+    rows.sort((a, b) => a[0] - b[0]);
     const last = rows[rows.length - 1];
-    const prevRow = rows.length >= 2 ? rows[rows.length - 2] : last;
+    const prev = rows.length >= 2 ? rows[rows.length - 2] : last;
     return {
-      price: last.HGDG_KAPANIS as number,
-      prev: prevRow.HGDG_KAPANIS as number,
-      updatedAt: Date.now(),
-      asOf: parseHgdgDate(last.HGDG_TARIH),
+      price: last[1],
+      prev: prev[1],
+      updatedAt: last[0] || Date.now(),
+      asOf: new Date(last[0]).toISOString().slice(0, 10),
     };
-  } catch {
+  } catch (e) {
+    console.warn(`[isYatirim] ${sym} fail:`, e);
     return null;
   }
 }

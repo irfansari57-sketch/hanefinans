@@ -8,9 +8,124 @@
  *      ARKA PLANDA upstream'i tetikle (ctx.waitUntil), D1'i güncelle
  *   4. D1 yok: upstream'e gid, yaz, döndür [X-Source: UPSTREAM]
  *   5. Upstream 429/5xx + D1 stale varsa: STALE-D1 fallback
+ *
+ * BIST ENDEKS OVERRIDE (Yahoo previousClose bug fix — kalıcı çözüm):
+ *   XU100.IS, XU030.IS, XUSIN.IS, XUMAL.IS, XUTUM.IS sembolleri için
+ *   Yahoo'yu HİÇ ÇAĞIRMA — İş Yatırım IndexHistoricalAll feed'inden
+ *   veriyi çek ve Yahoo chart formatında response oluştur. Frontend
+ *   bu response'u Yahoo'dan gelmiş gibi parse eder (regularMarketPrice +
+ *   previousClose + indicators.quote[0].close[]). Edge + D1 cache bypass.
  */
 
 interface Env { DB?: D1Database; }
+
+// ============================================================================
+// BIST ENDEKS İş Yatırım Override (Yahoo bug fix)
+// ============================================================================
+const BIST_INDEX_NAMES: Record<string, string> = {
+  'XU100.IS': 'BIST 100',
+  'XU030.IS': 'BIST 30',
+  'XUSIN.IS': 'BIST SINAI',
+  'XUMAL.IS': 'BIST MALI',
+  'XUTUM.IS': 'BIST TUM',
+};
+
+function formatTsForIsYatirim(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+async function fetchIsYatirimSeries(
+  symbol: string,
+): Promise<Array<[number, number]> | null> {
+  const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(start.getDate() - 30); // 30 gun: 1mo range'i destekler
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 0);
+
+  const url = new URL(
+    'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/IndexHistoricalAll',
+  );
+  url.searchParams.set('period', '1440');
+  url.searchParams.set('from', formatTsForIsYatirim(start));
+  url.searchParams.set('to', formatTsForIsYatirim(end));
+  url.searchParams.set('endeks', sym);
+
+  try {
+    const resp = await fetch(url.toString(), {
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx',
+      },
+      cf: { cacheTtl: 180, cacheEverything: true } as RequestInitCfProperties,
+    });
+    if (!resp.ok) return null;
+    const text = await resp.text();
+    if (!text || text.length < 10) return null;
+    const parsed = JSON.parse(text) as { data?: Array<[number, number]> };
+    const rows = (parsed.data ?? []).filter(
+      (r) => Array.isArray(r) && r.length >= 2 && Number.isFinite(r[1]) && (r[1] as number) > 0,
+    );
+    if (rows.length === 0) return null;
+    rows.sort((a, b) => a[0] - b[0]);
+    return rows;
+  } catch {
+    return null;
+  }
+}
+
+function buildYahooChartFromIsYatirim(symbol: string, rows: Array<[number, number]>): string {
+  const last = rows[rows.length - 1];
+  const prev = rows.length >= 2 ? rows[rows.length - 2] : last;
+  const timestamp = rows.map((r) => Math.floor(r[0] / 1000));
+  const close = rows.map((r) => r[1]);
+  const payload = {
+    chart: {
+      result: [
+        {
+          meta: {
+            symbol,
+            currency: 'TRY',
+            exchangeName: 'BIST',
+            regularMarketPrice: last[1],
+            previousClose: prev[1],
+            chartPreviousClose: prev[1],
+            regularMarketTime: Math.floor(last[0] / 1000),
+            regularMarketDayHigh: last[1],
+            regularMarketDayLow: last[1],
+            regularMarketVolume: 0,
+            shortName: BIST_INDEX_NAMES[symbol] ?? symbol,
+            longName: BIST_INDEX_NAMES[symbol] ?? symbol,
+            firstTradeDate: timestamp[0] ?? 0,
+            gmtoffset: 10800,
+            timezone: 'TRT',
+            exchangeTimezoneName: 'Europe/Istanbul',
+          },
+          timestamp,
+          indicators: {
+            quote: [
+              {
+                open: close.slice(),
+                high: close.slice(),
+                low: close.slice(),
+                close: close.slice(),
+                volume: close.map(() => 0),
+              },
+            ],
+            adjclose: [{ adjclose: close.slice() }],
+          },
+        },
+      ],
+      error: null,
+    },
+  };
+  return JSON.stringify(payload);
+}
 
 interface CacheRow {
   payload: string;
@@ -97,6 +212,28 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const chartReq = parseChartRequest(path, url.search);
   const ctx = context as typeof context & { waitUntil?: (p: Promise<unknown>) => void };
   const waitUntil = ctx.waitUntil?.bind(ctx) ?? ((_p: Promise<unknown>) => undefined);
+
+  // === BIST ENDEKS OVERRIDE: Yahoo'yu HİÇ ÇAĞIRMA, İş Yatırım'dan üret ===
+  // XU100.IS, XU030.IS vb. için Yahoo'nun previousClose === regularMarketPrice
+  // bug'ı bu seviyede yokediliyor. Edge + D1 cache bypass — her zaman taze veri.
+  if (chartReq && BIST_INDEX_NAMES[chartReq.symbol.toUpperCase()]) {
+    const sym = chartReq.symbol.toUpperCase();
+    const rows = await fetchIsYatirimSeries(sym);
+    if (rows && rows.length >= 2) {
+      const body = buildYahooChartFromIsYatirim(sym, rows);
+      return new Response(body, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=180, s-maxage=180',
+          'Access-Control-Allow-Origin': '*',
+          'X-Source': 'ISYATIRIM-OVERRIDE',
+          'X-BIST-Override': '1',
+        },
+      });
+    }
+    // İş Yatırım başarısız → normal Yahoo akışına düş (fallback)
+  }
 
   // === EDGE CACHE ===
   const cache = caches.default;

@@ -69,8 +69,16 @@ interface PositionRow extends PortfolioPosition {
 
 export function PortfolioPage() {
   // Tab: 'stocks' = hisse pozisyonlari, 'funds' = fon pozisyonlari (ayri panel)
+  //
+  // Oncelik: URL query param (?tab=stocks|funds) > localStorage > 'stocks'.
+  // Panel sayfasindaki PortfolioPanelSummary kartlari /portfoy?tab=stocks veya
+  // /portfoy?tab=funds linkleriyle hangi tab'a gidilecegini belirtir.
   const [tab, setTab] = useState<'stocks' | 'funds'>(() => {
     try {
+      if (typeof window !== 'undefined') {
+        const fromUrl = new URLSearchParams(window.location.search).get('tab');
+        if (fromUrl === 'stocks' || fromUrl === 'funds') return fromUrl;
+      }
       const saved = localStorage.getItem('fa.portfolio.tab');
       return saved === 'funds' ? 'funds' : 'stocks';
     } catch { return 'stocks'; }

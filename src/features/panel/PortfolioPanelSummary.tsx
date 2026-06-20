@@ -162,14 +162,14 @@ export function PortfolioPanelSummary({ isLoggedIn }: Props) {
         icon={<TrendingUp size={15} />}
         summary={stockSummary}
         empty="Hisse pozisyonu yok"
-        href="/portfoy"
+        href="/portfoy?tab=stocks"
       />
       <SummaryCard
         title="Fonlar"
         icon={<PiggyBank size={15} />}
         summary={fundSummary}
         empty="Fon pozisyonu yok"
-        href="/portfoy"
+        href="/portfoy?tab=funds"
       />
     </div>
   );

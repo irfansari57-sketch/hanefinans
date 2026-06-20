@@ -11,7 +11,7 @@ import { loadMacro as loadMacroFx } from './macro';
 import { useAgents } from '@/store/agents';
 import { deriveSentimentFromNews } from './sentiment';
 
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_PREFIX = `fa.service.${CACHE_VERSION}.`;
 const STOCK_TTL_MS = 30_000;
 const NEWS_TTL_MS = 90_000;
@@ -28,6 +28,13 @@ const SENTIMENT_TTL_MS = 5 * 60_000;
       }
     }
     localStorage.removeItem('fa.macro.cache.v1');
+    // BIST snapshot fix (v8): PanelPage SWR cache'i de yenilensin — eski
+    // Yahoo previousClose bug'lı macro snapshot'lar bir kez sürülsün
+    const bistFixKey = 'hf.cache.bist-snapshot-v8-purged';
+    if (!localStorage.getItem(bistFixKey)) {
+      localStorage.removeItem('hf.cache.macro');
+      localStorage.setItem(bistFixKey, '1');
+    }
   } catch { /* ignore */ }
 })();
 
@@ -273,9 +280,32 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
     return fetchIndexYahoo(futSym);
   };
 
+  // BIST endeksleri için snapshot endpoint (İş Yatırım birincil kaynak)
+  // Yahoo'nun previousClose === regularMarketPrice bug'ını atlatmak için
+  // doğrudan /api/yahoo/snapshot'a düşüyoruz; backend orada XU100/XU030 için
+  // İş Yatırım IndexHistoricalAll feed'inden son işlem günü kapanışı + bir
+  // önceki kapanışı çekiyor. Snapshot başarısız olursa Yahoo'ya düşer.
+  const fetchBistFromSnapshot = async (
+    sym: 'XU100.IS' | 'XU030.IS',
+  ): Promise<{ value: number; changePct: number } | null> => {
+    try {
+      const r = await fetch(`/api/yahoo/snapshot?symbols=${sym}`, { cache: 'no-store' });
+      if (!r.ok) return null;
+      const j = (await r.json()) as Record<string, { price?: number; changePct?: number; source?: string }>;
+      const q = j[sym];
+      if (!q || !Number.isFinite(q.price) || !Number.isFinite(q.changePct)) return null;
+      if ((q.price as number) <= 0) return null;
+      return { value: q.price as number, changePct: q.changePct as number };
+    } catch { return null; }
+  };
+  const fetchBist100 = async () =>
+    (await fetchBistFromSnapshot('XU100.IS')) ?? (await fetchIndexYahoo(YAHOO_SYMBOLS.bist100));
+  const fetchBist30 = async () =>
+    (await fetchBistFromSnapshot('XU030.IS')) ?? (await fetchIndexYahoo(YAHOO_SYMBOLS.bist30));
+
   const [bist, bist30, brent, vix, silver, platinum, goldOz, btc, eth, xrp, doge] = await Promise.all([
-    fetchIndexYahoo(YAHOO_SYMBOLS.bist100),
-    fetchIndexYahoo(YAHOO_SYMBOLS.bist30),
+    fetchBist100(),
+    fetchBist30(),
     fetchIndexYahoo(YAHOO_SYMBOLS.brent),
     fetchIndexYahoo(YAHOO_SYMBOLS.vix),
     fetchMetal('XAG', 'XAG/USD', YAHOO_SYMBOLS.silver, 'SI=F'),

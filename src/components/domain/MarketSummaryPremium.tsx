@@ -53,7 +53,7 @@ function Row({ m }: { m: MacroIndicator }) {
       cp = 0;
     } else if (rawCp != null && Math.abs(rawCp) > 5) {
       // Hafta ici absurd hareket - "—" goster.
-      cp = null;
+      cp = undefined;
     }
   }
   const isFinitePct = cp != null && Number.isFinite(cp);

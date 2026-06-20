@@ -1,7 +1,248 @@
 # NEXT SESSION — Hane Finans
 
-> Son guncelleme: 19 Haziran 2026 (Cowork plugin tamamlandi)
+> Son guncelleme: 20 Haziran 2026 — Sosyal giris altyapisi hazir (Google + Apple)
 > Bu dosya, bir sonraki Cowork seansinda nereden devam edilecegini gosterir.
+
+---
+
+## OAUTH SETUP — KULLANICI EYLEMI GEREKLI
+
+Sosyal giris (Google + Apple) altyapisi tamamlandi. **Calismasi icin disardan
+credential set etmen gerekli**. Asagidaki adimlar:
+
+### 1) D1 Migration uygula
+Cloudflare dashboard -> D1 -> hanefinans-db -> Console:
+```sql
+ALTER TABLE users ADD COLUMN provider TEXT;
+ALTER TABLE users ADD COLUMN provider_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider
+  ON users(provider, provider_id) WHERE provider IS NOT NULL;
+```
+(Veya `wrangler d1 execute hanefinans-db --file=functions/migrations/012_oauth_provider.sql`)
+
+### 2) Google OAuth setup (5 dk, ucretsiz)
+
+1. https://console.cloud.google.com/ -> Yeni proje "Hane Finans" olustur
+2. Sol menu -> "APIs & Services" -> "OAuth consent screen":
+   - User Type: **External**
+   - App name: Hane Finans
+   - User support email: haneassistance@gmail.com
+   - App logo (opsiyonel): logo yukle
+   - Authorized domains: `hanefinans.net`
+   - Developer contact: haneassistance@gmail.com
+   - Save
+3. "APIs & Services" -> "Credentials" -> "Create Credentials" -> "OAuth client ID":
+   - Application type: **Web application**
+   - Name: Hane Finans Web
+   - Authorized JavaScript origins:
+     - `https://hanefinans.net`
+     - `https://hanefinans.pages.dev`
+   - Authorized redirect URIs:
+     - `https://hanefinans.net/api/auth/oauth/google/callback`
+     - `https://hanefinans.pages.dev/api/auth/oauth/google/callback`
+   - Create -> **Client ID + Client Secret** kopyala
+4. Cloudflare Pages -> hanefinans -> Settings -> Environment variables -> Production:
+   - `GOOGLE_OAUTH_CLIENT_ID` = (Google'dan aldigin Client ID)
+   - `GOOGLE_OAUTH_CLIENT_SECRET` = (Encrypted olarak isaretle) Client Secret
+5. Pages -> Deployments -> en son deployment -> "Retry deployment" (env var'lari aktif et)
+
+### 3) Apple Sign In setup (~30 dk, $99/yil)
+
+1. https://developer.apple.com/account/ -> Membership ($99/yil)
+2. **Certificates, IDs & Profiles** -> **Identifiers** -> "+" -> **App IDs**:
+   - Description: Hane Finans
+   - Bundle ID: `com.hanefinans.web` (explicit)
+   - Capabilities: "Sign In with Apple" check
+   - Continue -> Register
+3. **Identifiers** -> "+" -> **Services IDs**:
+   - Description: Hane Finans Web
+   - Identifier: `com.hanefinans.web.signin` (bu APPLE_SERVICE_ID olacak)
+   - Continue -> Register
+   - Detay -> "Sign In with Apple" check -> "Configure":
+     - Primary App ID: com.hanefinans.web
+     - Domains: hanefinans.net, hanefinans.pages.dev
+     - Return URLs: 
+       - `https://hanefinans.net/api/auth/oauth/apple/callback`
+       - `https://hanefinans.pages.dev/api/auth/oauth/apple/callback`
+     - Save -> Continue -> Save
+4. **Keys** -> "+" -> Key Name: "Hane Finans Sign In"
+   - "Sign In with Apple" check -> Configure -> Primary App ID: com.hanefinans.web -> Save
+   - Continue -> Register
+   - **.p8 dosyasini indir** (TEK SEFER!) -> Key ID'yi kopyala
+5. Team ID: developer.apple.com -> Membership -> Team ID
+6. Cloudflare Pages env vars:
+   - `APPLE_SERVICE_ID` = com.hanefinans.web.signin
+   - `APPLE_TEAM_ID` = (10-karakter)
+   - `APPLE_KEY_ID` = (10-karakter, .p8 dosyasinin Key ID'si)
+   - `APPLE_PRIVATE_KEY` = (Encrypted, .p8 dosyasinin tam icerigi - BEGIN/END PRIVATE KEY satirlari dahil)
+7. Retry deployment
+
+### 4) Test
+- https://hanefinans.net/auth/login -> "Google ile devam et" -> Google login -> /panel'e gelmelisin
+- "Apple ile devam et" -> Apple ID login -> /panel'e gelmelisin
+- Hata gelirse URL'de `?oauth_error=...` parametresi olur, AuthPage TR aciklamasini gosterir
+
+### 5) D1 dogrulama
+Cloudflare D1 console:
+```sql
+SELECT id, email, name, provider, provider_id, created_at FROM users WHERE provider IS NOT NULL;
+```
+
+### Mevcut hesaplarla calisma sekli
+- Email/password hesabin varsa ve Google'da ayni email ile login olursan -> Hesap **link** olur
+  (provider + provider_id eklenir, password korunur). Iki yontemle de girebilirsin.
+- Yeni Google user -> Otomatik signup, tier='free', email_verified=1.
+
+---
+
+---
+
+## BIST ENDEKS BUG -> KESIN COZUM (CANLI) ✅
+
+**Sorun (cozuldu):** Yahoo `previousClose === regularMarketPrice` bug'i BIST
+endekslerinde +2.17% gibi yanlis degisim gosteriyordu. Gercek: -0.63%.
+
+**Cozum (2 katmanli, kalici):**
+
+### Katman 1 — Snapshot endpoint (commit `e0d020d`)
+`functions/api/yahoo/snapshot.ts` icinde BIST endeksleri (XU100/XU030/XUSIN/
+XUMAL/XUTUM) icin Is Yatirim `ChartData.aspx/IndexHistoricalAll?period=1440`
+feed'inden veri cekiliyor. `QuoteOut`'a `source: 'isyatirim'` + `asOf: 'YYYY-MM-DD'`
+field'lari eklendi.
+
+### Katman 2 — Yahoo proxy override (son commit, 20 Haziran)
+`functions/api/yahoo/[[path]].ts` Pages Function'da BIST endeksleri icin
+**Yahoo'yu HIC CAGIRMA** — Is Yatirim'dan veriyi cek ve Yahoo chart formatinda
+response uret (`meta.regularMarketPrice`, `previousClose`, `chartPreviousClose`,
+`indicators.quote[0].close[]`, `timestamp[]`). Edge + D1 cache bypass; her zaman
+3dk fresh. Response header'da `X-Source: ISYATIRIM-OVERRIDE` ile dogrulanabilir.
+
+### Frontend (commit `0853e9a`)
+`loadMacroAll()` BIST 100/30 icin direkt Yahoo'ya gidiyordu; artik `/api/yahoo/
+snapshot` cagiriyor. Cache version v7 -> v8, eski SWR cache otomatik purge.
+
+### Sonuc (20 Haziran 2026 ogle)
+- BIST 100: 14.735 / -0.63% kirmizi (Cuma kapanis)
+- BIST 30:  17.020 / -0.63% kirmizi (Cuma kapanis)
+- TradingView + Google Finance ile ayni veri
+
+---
+
+## KALAN BIST TASK'LARI (sonraki seans)
+
+### #265 BIST Paket C — Frontend "Son kapanis (Cuma)" ribbon (45 dk)
+Backend artik snapshot cevabinda `asOf: 'YYYY-MM-DD'` ve `source: 'isyatirim'`
+donuyor. Frontend bunu gostermiyor — hafta sonu / tatil kullanici "neden hala
+Cuma fiyati?" diye dusunebilir. Eklenecek:
+
+1. `src/lib/marketCalendar.ts` (yeni): `isTradingHours(now, tz='Europe/Istanbul')`
+   helper. BIST 10:00-18:00 TR + 2026 tatil listesi hard-coded.
+2. `MarketSummaryPremium.tsx` Row component: BIST endeksi + piyasa kapaliysa
+   subtle ribbon: "Son kapanis · Cuma 18 Haz". `asOf`'tan turetilir.
+3. Macro tipleri (`data/types.ts`): `MacroIndicator`'a optional `asOf?: string`
+   + `source?: string` ekle. Backend zaten dondu — frontend type guvenligi icin.
+4. `loadMacroAll()` snapshot helper'inda `asOf` + `source`'u indicator'a yansit.
+
+### #267 BIST Paket E — Eski defansif kodlari sadelestir (30 dk)
+Kaynak guvenilir oldu, eski hack'ler artik gereksiz + bazi durumlarda yaniltici
+olabilir (ornegin gercekten %5+ hareket olsa "—" gosterir).
+
+Temizle:
+1. `MarketSummaryPremium.tsx` satir 47-49: `isBistIdx + abs(rawCp) > 10` defansif
+   sanity check'i kaldir. Artik Yahoo bug yok; gercek %5+ hareketleri "—" yapmamali.
+2. `snapshot.ts` icinde Yahoo cevabini |%5|+ esik ile reddedip `lastGood`'a
+   dusen fallback bloku — Is Yatirim oncelik aldigi icin pratikte hic calismiyor,
+   silinmesi temizlik.
+3. `services.ts` icindeki `hf.cache.bist-snapshot-v8-purged` tek seferlik purge
+   marker'i da, ~1 hafta sonra eski cache kullanicilari da gectikten sonra
+   silinebilir (kritik degil).
+4. Bu seansda eklenen `data/services.ts` `fetchBistFromSnapshot` helper'i artik
+   YEDEK rol oynuyor (Yahoo proxy zaten override yaptigi icin). Korunabilir
+   (defansif), ama kod yorumunu guncelle: "proxy override zaten yapildi, bu
+   helper sembolik tutarliligi saglar."
+
+### Test plani (her iki paket sonrasi)
+1. `/api/yahoo/v8/finance/chart/XU100.IS` -> response header `X-Source: ISYATIRIM-OVERRIDE`
+2. Panel'de hafta ici 14:30: BIST 100 yesil/kirmizi gercek anlik degisim
+3. Cumartesi/Pazar 11:00: BIST 100 = Cuma kapanis, ribbon "Son kapanis · Cuma DD MMM"
+4. Hafta ici tatil (10 Temmuz Kurban Bayrami): tatil oncesi son gun degeri + ribbon
+
+---
+
+## KRITIK ARASTIRMA: BIST endeks veri kaynagi (Task #262)
+
+**Sorun:** Yahoo `chart` v8 `meta.previousClose` BIST endeksleri (XU100/XU030) icin bazen 1-2 hafta onceki kapanisi donuyor -> sitede +2/+6/+7% yanlis degisim. Gercek: -0.63%. Mevcut backend %5+ fallback + frontend hafta sonu changePct=0 yamasi gecici.
+
+### Bulgu 1: Yahoo BIST bug'i yaygin mi?
+**Hayir, projeye ozgu bir kuyruk vakasi.** Topluluk biliyor ki:
+- 27 Tem 2020'de BIST endeks degerleri /100 boluindu, gecmis veri vendor'larda hala bozuk ([yfinance #1788](https://github.com/ranaroussi/yfinance/issues/1788), [LSEG forum](https://community.developers.lseg.com/discussion/67991/turkey-single-stock-prices-are-wrong-for-period-before-27-07-2020)).
+- `regularMarket*` field'lari endeksler icin desync olabilir ([yfinance #394](https://github.com/ranaroussi/yfinance/issues/394)).
+- BIST'in `previousClose` 1-2 hafta eski donmesi hakkinda public bug raporu **yok**. En yakin: yfinance #805 (host-bagimli cache).
+**Sonuc:** Yahoo'dan tek kaynak olarak vazgec; sekonder + tersiyer kaynak sart.
+
+### Bulgu 2: Alternatif veri kaynaklari (verdict + tek satir)
+- **Is Yatirim (`isyatirim.com.tr/_layouts/15/Isyatirim.Website/Common/Data.aspx/HisseTekil`)** — Ucretsiz, auth yok, JSON, XU100/XU030 destekli, tarih araligiyla sorgu, Python wrapper `urazakgul/isyatirimhisse` kanitli. ✅ **TAVSIYE - birincil**
+- **Bigpara unofficial (`bigpara.hurriyet.com.tr/api/v1/borsa/hisseyuzeysel/...` + `/api/v1/hisse/list`)** — JSON, auth yok, `prosman/bigpara-api` repo'sunda dokuman. Endeks endpoint'i ayni desende. ✅ **TAVSIYE - 1. fallback**
+- **Foreks pubsub (`web-paragaranti-pubsub.foreks.com/web-services/securities/...`)** — Bigpara/Doviz'in arkasindaki gercek feed; JSON, auth yok. ⚠️ **KOSULLU - 2. fallback** (resmi degil, kapanabilir)
+- **TradingView scanner (`scanner.tradingview.com/turkey/scan`, `tvDatafeed`)** — XU100/XU030 var, free tier ~15 dk gecikme. ⚠️ **KOSULLU** - ToS ihlali, prod'a koyma.
+- **EODHD (`eodhd.com`)** — BIST endeksleri (.IS), EOD ucretsiz trial 20 req/gun, paid $19.99/ay. ⚠️ **KOSULLU** - sadece tarihsel EOD icin acil cozum.
+- **Twelve Data (`exchange=XIST`)** — Free 800 req/gun ama BIST endeksleri paid. Grow $29/ay. ⚠️ **KOSULLU** - butce varsa.
+- **Borsa Istanbul DataStore** — Resmi ama paid (fiyatsiz), tek seferlik enterprise. ❌ **ATLA**.
+- **KAP (`kap.org.tr`)** — Sirket aciklamalari, endeks degeri yok. ❌ **ATLA**.
+- **Alpha Vantage** — Free 25 req/gun, XU100 sembolu net degil. ❌ **ATLA**.
+- **Polygon.io** — Sadece US. ❌ **ATLA**.
+- **Finnhub free** — US-skewed, BIST endeksleri paid. ❌ **ATLA**.
+- **Investing.com scrape** — Cloudflare WAF + TLS fingerprint, datacenter IP blok. ❌ **ATLA**.
+- **Mynet/BloombergHT HTML** — JSON yok, HTMLRewriter ile kazinabilir ama Is Yatirim varken gerek yok. ❌ **ATLA**.
+
+### Bulgu 3: Cloudflare mimari notlari
+- **HTMLRewriter** Workers'ta native, JSON yoksa kullanilabilir ([workers.tools](https://workers.tools/guides/2022-02-19-how-to-use-htmlrewriter-for-web-scraping)).
+- **Cloudflare Cron Triggers**: Free plan 5/account, Paid 250 — GH Actions'tan daha guvenilir ([Workers limits](https://developers.cloudflare.com/workers/platform/limits/)).
+- **D1 maliyet uyari**: Snapshot okumalari Cache API arkasina almazsan fatura katlanir.
+- **BIST saatleri**: Pzt-Cum 10:00-18:00 TR, no DST; 2026 tatil sayisi 14 ([Borsa Istanbul](https://www.borsaistanbul.com/en/markets/equity-market/trading-hours), [official holidays](https://www.borsaistanbul.com/en/official-holidays)).
+
+### Bulgu 4: Onerilen mimari
+```
+Snapshot cron (saatlik, Pzt-Cum 10-19 TR):
+  1) Is Yatirim HisseTekil endpoint -> JSON -> XU100/XU030 son 2 kapanis
+  2) Yahoo chart v8 (sanity check; %2'den fazla farkliysa Is Yatirim'i tut)
+  3) Bigpara hisseyuzeysel (fallback, ikisi de fail ederse)
+
+D1 yahoo_cache tablosu schema'sina kolon ekle:
+  source TEXT (yahoo|isyatirim|bigpara)
+  prev_close_date TEXT (YYYY-MM-DD — sanity icin)
+
+Hafta sonu (Cmt/Paz/tatil):
+  - "lastTradingDay" hesapla (Cuma veya son acik gun)
+  - O gunun close'unu ve o gunun changePct'sini goster
+  - Frontend zorla 0 yamasi KALDIR
+```
+
+### Bulgu 5: Sonraki seans icin eyleme donusur adimlar (30-60 dk paketler)
+
+**Paket A (60 dk) - HIZLI KAZANIM (bu hafta sonu):**
+1. `functions/api/yahoo/snapshot.ts` icine `fetchIsYatirimIndex(symbol)` helper ekle. Endpoint: `https://www.isyatirim.com.tr/_layouts/15/Isyatirim.Website/Common/Data.aspx/HisseTekil?hisse=XU100&startdate=DD-MM-YYYY&enddate=DD-MM-YYYY` (son 7 gun, JSON `value[]` array, `HGDG_KAPANIS` field).
+2. `isBistIndex(symbol)` true ise Yahoo yerine Is Yatirim'i CAGIR; `prev` = sondan onceki HGDG_KAPANIS, `price` = sonuncu.
+3. Yahoo'yu sanity check olarak tut — %2+ fark varsa Is Yatirim kazansin, log at.
+4. Frontend `forceWeekendChangePctZero` yamasini KALDIR.
+
+**Paket B (45 dk) - Fallback chain:**
+1. `fetchBigparaIndex(symbol)` ekle (`https://bigpara.hurriyet.com.tr/api/v1/borsa/hisseyuzeysel/XU100`).
+2. Try/catch zincir: Is Yatirim -> Bigpara -> Yahoo. Hangisi calistiysa D1'e `source` kolonuyla yaz.
+3. Migration `012_yahoo_cache_source.sql` yaz.
+
+**Paket C (45 dk) - Hafta sonu / tatil logic:**
+1. `src/lib/marketCalendar.ts`: `lastTradingDay(now, tz='Europe/Istanbul')` — tatiller hard-coded 2026 listesi.
+2. Snapshot endpoint cevabina `asOf: YYYY-MM-DD` ekle.
+3. Frontend ribbon: hafta sonu/tatilde "Son kapanis: 14.734,50 (Cuma), -0.63%" goster.
+
+**Paket D (30 dk) - Cron migration:**
+1. GH Actions cron'u Cloudflare Cron Trigger'a tasi (Workers `wrangler.toml` `[triggers] crons`).
+2. Pzt-Cum saatlik, Cmt/Paz once gun basi sweep.
+
+**Paket E (30 dk) - Verify + monitor:**
+1. `/api/yahoo/snapshot?symbol=XU100` cikti TradingView gercek degeriyle karsilastir (3 kez 24 saat boyunca).
+2. Sonuc OK -> #67 ve #73 (eski fallback hack) commit'lerini revert et / temizle.
 
 ---
 

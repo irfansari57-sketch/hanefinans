@@ -20,6 +20,97 @@ interface QuoteOut {
   prev: number;
   updatedAt: number;
   name?: string;
+  /** Veri kaynagi - default 'yahoo'. BIST endeksleri 'isyatirim' olabilir. */
+  source?: 'yahoo' | 'isyatirim';
+  /** Verinin gosterdigi seans tarihi (YYYY-MM-DD). Hafta sonu 'son acik gun' anlami. */
+  asOf?: string;
+}
+
+// ===========================================================================
+// IS YATIRIM ENDEKS FEED — BIST endeksleri icin birincil kaynak (Yahoo bug fix)
+// ===========================================================================
+//
+// Endpoint: isyatirim.com.tr/_layouts/15/Isyatirim.Website/Common/Data.aspx/HisseTekil
+//   ?hisse=XU100&startdate=DD-MM-YYYY&enddate=DD-MM-YYYY
+//
+// Response: { value: [{ HGDG_TARIH, HGDG_KAPANIS, HGDG_AOF, ... }, ...] }
+//   - HGDG_TARIH formati: "13-06-2026" (DD-MM-YYYY) - kontrol icin
+//   - HGDG_KAPANIS: gunun kapanis degeri
+//
+// Auth yok, rate limit yumusak. Yahoo'nun previousClose bug'ini ozellikle
+// BIST endekslerinde tetikledigi icin sadece BIST endekslerinde kullaniriz.
+// Yahoo backup kalsin (sanity check + diger semboller).
+interface IsYatirimRow {
+  HGDG_TARIH?: string;
+  HGDG_KAPANIS?: number;
+}
+
+interface IsYatirimResponse {
+  value?: IsYatirimRow[];
+}
+
+function formatDateForIsYatirim(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+/** "DD-MM-YYYY" -> "YYYY-MM-DD" (ISO-like). Hatali girdi icin orijinali doner. */
+function parseHgdgDate(s: string | undefined): string {
+  if (!s) return '';
+  const m = /^(\d{2})-(\d{2})-(\d{4})/.exec(s);
+  if (!m) return s.slice(0, 10);
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+async function fetchIsYatirimIndex(
+  symbol: string,
+): Promise<{ price: number; prev: number; updatedAt: number; asOf: string } | null> {
+  // ".IS" sufix temizle (XU100.IS -> XU100)
+  const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
+  const now = new Date();
+  const startDate = new Date(now);
+  // 10 gun geriye - en az 2 acik gun yakalamaya yeter (hafta sonu + tatil dahil)
+  startDate.setDate(startDate.getDate() - 14);
+
+  const url = new URL(
+    'https://www.isyatirim.com.tr/_layouts/15/Isyatirim.Website/Common/Data.aspx/HisseTekil',
+  );
+  url.searchParams.set('hisse', sym);
+  url.searchParams.set('startdate', formatDateForIsYatirim(startDate));
+  url.searchParams.set('enddate', formatDateForIsYatirim(now));
+
+  try {
+    const resp = await fetch(url.toString(), {
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (compatible; HaneFinans/1.0)',
+      },
+      // Cloudflare edge cache - 5 dakika yeterli (BIST seans saatlerinde bile)
+      cf: { cacheTtl: 300, cacheEverything: true } as RequestInitCfProperties,
+    });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as IsYatirimResponse;
+    const rows = (data.value ?? []).filter(
+      (r) => Number.isFinite(r.HGDG_KAPANIS) && (r.HGDG_KAPANIS as number) > 0,
+    );
+    if (rows.length === 0) return null;
+
+    // Tarihe gore ascending sort - "DD-MM-YYYY" string compare yanlis olur,
+    // o yuzden parseHgdgDate ile YYYY-MM-DD'e cevirip karsilastir.
+    rows.sort((a, b) => parseHgdgDate(a.HGDG_TARIH).localeCompare(parseHgdgDate(b.HGDG_TARIH)));
+    const last = rows[rows.length - 1];
+    const prevRow = rows.length >= 2 ? rows[rows.length - 2] : last;
+    return {
+      price: last.HGDG_KAPANIS as number,
+      prev: prevRow.HGDG_KAPANIS as number,
+      updatedAt: Date.now(),
+      asOf: parseHgdgDate(last.HGDG_TARIH),
+    };
+  } catch {
+    return null;
+  }
 }
 
 interface YahooChartResult {
@@ -169,10 +260,58 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
     const q = parseYahooBody(row.payload, symbol);
     if (!q) continue;
-    quotes[symbol] = q;
+    quotes[symbol] = { ...q, source: 'yahoo' };
     parsedCount++;
     if (row.updated_at > mostRecent) mostRecent = row.updated_at;
   }
+
+  // -------------------------------------------------------------------------
+  // BIST ENDEKS OVERRIDE (Paket A): Yahoo previousClose bug fix
+  //
+  // XU100/XU030/... icin Yahoo'nun verdigi degisim genelde yanlis. Is Yatirim
+  // HisseTekil endpoint'inden ayni endeksin son 2 kapanisini cekip Yahoo'nun
+  // entry'sini override ederiz. Yahoo'nun price'ini sanity check icin tutariz
+  // (eger %2'den fazla farkliysa logla - paket B'de fallback chain icin).
+  // -------------------------------------------------------------------------
+  const BIST_INDEX_SYMBOLS = ['XU100.IS', 'XU030.IS', 'XUSIN.IS', 'XUMAL.IS', 'XUTUM.IS'];
+  // Paralel fetch (en kotu senaryo 5 sembol x ~500ms cf-cache miss = 2.5s,
+  // tipik durum ~50ms cf-cache hit)
+  await Promise.all(
+    BIST_INDEX_SYMBOLS.map(async (symbol) => {
+      try {
+        const iy = await fetchIsYatirimIndex(symbol);
+        if (!iy) return; // Is Yatirim cevap vermezse Yahoo entry'si kalir
+        const yahoo = quotes[symbol];
+        // Sanity log - %2+ fiyat farki problem isareti
+        if (yahoo && yahoo.price > 0) {
+          const diff = Math.abs(iy.price - yahoo.price) / yahoo.price;
+          if (diff > 0.02) {
+            console.warn(
+              `[snapshot] ${symbol} Yahoo/IsYatirim %${(diff * 100).toFixed(2)} fark`,
+              { yahoo: yahoo.price, isYatirim: iy.price },
+            );
+          }
+        }
+        const changePct = iy.prev > 0 && iy.prev !== iy.price
+          ? ((iy.price - iy.prev) / iy.prev) * 100
+          : 0;
+        quotes[symbol] = {
+          price: iy.price,
+          prev: iy.prev,
+          changePct,
+          updatedAt: iy.updatedAt,
+          name: yahoo?.name ?? symbol.replace(/\.IS$/i, ''),
+          source: 'isyatirim',
+          asOf: iy.asOf,
+        };
+        // Eger Yahoo entry'si yoksa parsedCount'a ekle
+        if (!yahoo) parsedCount++;
+      } catch (e) {
+        // Network/parse hatasi - Yahoo entry'si yedek olarak kalir
+        console.warn(`[snapshot] Is Yatirim fetch fail for ${symbol}:`, e);
+      }
+    }),
+  );
 
   return new Response(
     JSON.stringify({

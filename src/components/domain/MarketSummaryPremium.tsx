@@ -39,11 +39,23 @@ function formatValue(m: MacroIndicator): string {
 
 function Row({ m }: { m: MacroIndicator }) {
   const route = macroKeyToRoute(m.key);
-  // BIST 100/30 defansif kontrol: gunluk degisim |%5|'i geciyorsa Yahoo
-  // veri hatasi muhtemel. Yanlis bilgi vermek yerine "—" goster.
+  // BIST 100/30 defansif kontrol
+  // 1) Hafta sonu (Cmt/Paz): BIST kapali, hicbir degisim olmaz → 0
+  // 2) Hafta ici |%5|+ degisim: Yahoo veri hatasi muhtemel → "—"
   const isBistIdx = m.key === 'BIST 100' || m.key === 'BIST 30';
   const rawCp = m.changePct;
-  const cp = isBistIdx && rawCp != null && Math.abs(rawCp) > 5 ? null : rawCp;
+  let cp = rawCp;
+  if (isBistIdx) {
+    const day = new Date().getDay(); // 0=Paz, 6=Cmt
+    const isWeekend = day === 0 || day === 6;
+    if (isWeekend) {
+      // Hafta sonu BIST kapali. Herhangi bir gunluk degisim Yahoo bug'idir.
+      cp = 0;
+    } else if (rawCp != null && Math.abs(rawCp) > 5) {
+      // Hafta ici absurd hareket - "—" goster.
+      cp = null;
+    }
+  }
   const isFinitePct = cp != null && Number.isFinite(cp);
   const isUp = isFinitePct && (cp as number) > 0;
   const isDown = isFinitePct && (cp as number) < 0;

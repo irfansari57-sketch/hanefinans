@@ -285,23 +285,45 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
   // doğrudan /api/yahoo/snapshot'a düşüyoruz; backend orada XU100/XU030 için
   // İş Yatırım IndexHistoricalAll feed'inden son işlem günü kapanışı + bir
   // önceki kapanışı çekiyor. Snapshot başarısız olursa Yahoo'ya düşer.
+  //
+  // Not: Yahoo proxy `[[path]].ts` zaten BIST endeksleri icin override
+  // uyguluyor (Yahoo'yu hic cagirmayip Is Yatirim'dan veri uretir). Bu helper
+  // ek bir guvenlik katmani — snapshot endpoint'i, asOf + source field'larini
+  // direkt sunar (Yahoo proxy override format'inda bunlar yok).
+  type BistSnapshotQuote = { value: number; changePct: number; asOf?: string; feedSource?: string };
   const fetchBistFromSnapshot = async (
     sym: 'XU100.IS' | 'XU030.IS',
-  ): Promise<{ value: number; changePct: number } | null> => {
+  ): Promise<BistSnapshotQuote | null> => {
     try {
       const r = await fetch(`/api/yahoo/snapshot?symbols=${sym}`, { cache: 'no-store' });
       if (!r.ok) return null;
-      const j = (await r.json()) as Record<string, { price?: number; changePct?: number; source?: string }>;
+      const j = (await r.json()) as Record<
+        string,
+        { price?: number; changePct?: number; source?: string; asOf?: string }
+      >;
       const q = j[sym];
       if (!q || !Number.isFinite(q.price) || !Number.isFinite(q.changePct)) return null;
       if ((q.price as number) <= 0) return null;
-      return { value: q.price as number, changePct: q.changePct as number };
+      return {
+        value: q.price as number,
+        changePct: q.changePct as number,
+        asOf: q.asOf,
+        feedSource: q.source,
+      };
     } catch { return null; }
   };
-  const fetchBist100 = async () =>
-    (await fetchBistFromSnapshot('XU100.IS')) ?? (await fetchIndexYahoo(YAHOO_SYMBOLS.bist100));
-  const fetchBist30 = async () =>
-    (await fetchBistFromSnapshot('XU030.IS')) ?? (await fetchIndexYahoo(YAHOO_SYMBOLS.bist30));
+  const fetchBist100 = async (): Promise<BistSnapshotQuote | null> => {
+    const fromSnap = await fetchBistFromSnapshot('XU100.IS');
+    if (fromSnap) return fromSnap;
+    const fromYahoo = await fetchIndexYahoo(YAHOO_SYMBOLS.bist100);
+    return fromYahoo ? { ...fromYahoo, feedSource: 'yahoo' } : null;
+  };
+  const fetchBist30 = async (): Promise<BistSnapshotQuote | null> => {
+    const fromSnap = await fetchBistFromSnapshot('XU030.IS');
+    if (fromSnap) return fromSnap;
+    const fromYahoo = await fetchIndexYahoo(YAHOO_SYMBOLS.bist30);
+    return fromYahoo ? { ...fromYahoo, feedSource: 'yahoo' } : null;
+  };
 
   const [bist, bist30, brent, vix, silver, platinum, goldOz, btc, eth, xrp, doge] = await Promise.all([
     fetchBist100(),
@@ -319,11 +341,27 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
 
   if (bist) {
     const i = base.findIndex((m) => m.key === 'BIST 100');
-    if (i >= 0) base[i] = { ...base[i], value: bist.value, changePct: bist.changePct, source: 'live', updatedAt: nowIso };
+    if (i >= 0) base[i] = {
+      ...base[i],
+      value: bist.value,
+      changePct: bist.changePct,
+      source: 'live',
+      updatedAt: nowIso,
+      asOf: bist.asOf,
+      feedSource: bist.feedSource,
+    };
   }
   if (bist30) {
     const i = base.findIndex((m) => m.key === 'BIST 30');
-    if (i >= 0) base[i] = { ...base[i], value: bist30.value, changePct: bist30.changePct, source: 'live', updatedAt: nowIso };
+    if (i >= 0) base[i] = {
+      ...base[i],
+      value: bist30.value,
+      changePct: bist30.changePct,
+      source: 'live',
+      updatedAt: nowIso,
+      asOf: bist30.asOf,
+      feedSource: bist30.feedSource,
+    };
   }
   if (brent) {
     const i = base.findIndex((m) => m.key === 'Brent');

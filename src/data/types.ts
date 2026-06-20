@@ -52,6 +52,19 @@ export interface MacroIndicator {
   source: 'live' | 'mock';
   subLabel?: string;
   updatedAt: string;
+  /**
+   * Verinin gosterdigi seans tarihi (YYYY-MM-DD).
+   * Hafta sonu / tatil oncesi son kapanis gunu icin "Son kapanis: Cuma 18 Haz"
+   * tipi label uretmek icin kullanilir (bkz. marketCalendar.asOfLabel).
+   * Backend snapshot endpoint'inden geliyorsa set edilir (BIST endeksleri).
+   */
+  asOf?: string;
+  /**
+   * Veriyi hangi besleme sagladi (defansif analitik / debug icin).
+   * BIST endeksleri 'isyatirim'; Yahoo akisinda 'yahoo'; diger besleme adlari da
+   * eklenebilir. UI gostermek icin zorunlu degil - gizli kalabilir.
+   */
+  feedSource?: 'isyatirim' | 'yahoo' | 'bigpara' | 'goldapi' | 'metalsapi' | 'tcmb' | string;
 }
 
 export type MarketEventType = 'cpi' | 'rate-decision' | 'fomc' | 'earnings' | 'data' | 'other';
@@ -81,7 +94,7 @@ export type FundCategory =
   | 'Kıymetli Madenler'
   | 'Borçlanma Araçları'
   | 'Katılım'
-  // Aşağıdakiler TEFAS feed'inden geliyor — sözel olarak yukarıdakilerden ayrı,
+  // Aşağıdakiler TEFAS feed'inden geliyor - sozel olarak yukarıdakilerden ayrı,
   // ekran ve filtre tarafında ayrı kategori olarak gösterilir.
   | 'Altın'
   | 'Gümüş'
@@ -99,7 +112,7 @@ export interface FundPerformance {
   /**
    * TEFAS uzerinden alinip alinamayacagi.
    * false ise Serbest Fon vs (SPK nitelikli yatirimci: 10M TL+ net varlik, 2026 ocak guncel).
-   * Backend `is_tefas_open()` heuristic'i ile hesaplanir.
+   * Backend is_tefas_open() heuristic'i ile hesaplanir.
    */
   tefasOpen?: boolean;
   /** Anlik fiyat (NAV / pay degeri) - feed'den gelir, opsiyonel */

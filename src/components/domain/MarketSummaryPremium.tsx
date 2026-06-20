@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Minus, BarChart3, Coins, Bitcoin, ArrowUpRight } from 'lucide-react';
 import type { MacroIndicator } from '@/data/types';
 import { macroKeyToRoute } from '@/lib/macroRoutes';
+import { isBistOpen, asOfLabel } from '@/lib/marketCalendar';
 import { cn } from '@/lib/utils';
 
 /**
@@ -39,17 +40,20 @@ function formatValue(m: MacroIndicator): string {
 
 function Row({ m }: { m: MacroIndicator }) {
   const route = macroKeyToRoute(m.key);
-  // BIST 100/30 defansif sanity check (sadece veri kaynagi feilse)
-  //
-  // NOT: Paket A (Is Yatirim entegrasyonu) ile BIST endeksleri artik dogru
-  // son kapanis degisimini gosteriyor — hafta sonu zorla 0 yamasi kaldirildi.
-  // Sadece veri kaynagi feilse ve absurd deger gelirse "—" goster.
-  const isBistIdx = m.key === 'BIST 100' || m.key === 'BIST 30';
-  const rawCp = m.changePct;
-  const cp = isBistIdx && rawCp != null && Math.abs(rawCp) > 10 ? undefined : rawCp;
+  // Veri kaynagi guvenilir: BIST endeksleri Is Yatirim feed'inden, Yahoo proxy
+  // override sayesinde Yahoo previousClose bug'i tamamen yok. Eski |%10|+
+  // defansif sanity check'i kaldirildi — gercek %5+ hareketler "—" gostermesin.
+  const cp = m.changePct;
   const isFinitePct = cp != null && Number.isFinite(cp);
   const isUp = isFinitePct && (cp as number) > 0;
   const isDown = isFinitePct && (cp as number) < 0;
+
+  // BIST endeksleri icin piyasa kapaliysa (hafta sonu / tatil / saat disi)
+  // backend snapshot'tan gelen asOf'u kullaniciya yumusak bir ribbon ile bildir.
+  // "Son kapanis · Cuma 18 Haz" — kullanici neden hala ayni fiyati gordugunu anlasin.
+  const isBistIdx = m.key === 'BIST 100' || m.key === 'BIST 30';
+  const showAsOfRibbon = isBistIdx && !!m.asOf && !isBistOpen();
+  const asOfText = showAsOfRibbon && m.asOf ? asOfLabel(m.asOf) : null;
 
   const content = (
     <div className="flex items-center justify-between gap-2 py-1.5 sm:py-2">
@@ -63,6 +67,11 @@ function Row({ m }: { m: MacroIndicator }) {
         <div className="mt-0.5 text-sm font-bold tabular-nums text-slate-100 drop-shadow-sm sm:text-base">
           {formatValue(m)}
         </div>
+        {asOfText && (
+          <div className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500 sm:text-[10px]">
+            {`Son kapanis - ${asOfText}`}
+          </div>
+        )}
       </div>
       <div className="shrink-0">
         {!isFinitePct ? (

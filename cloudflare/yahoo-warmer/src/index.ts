@@ -23,6 +23,112 @@ const CHUNK_SIZE = 50;
 
 const CRYPTO_SYMBOLS = ['BTC-USD', 'ETH-USD', 'XRP-USD', 'DOGE-USD'] as const;
 
+// ============================================================================
+// BIST ENDEKS Is Yatirim Override (Yahoo previousClose bug fix - kalici)
+// ============================================================================
+// Pages Function [[path]].ts ayni override'i istek seviyesinde uyguluyor.
+// Burada Worker katmaninda da ayni mantigi tekrarliyoruz cunku yahoo-warmer
+// her 10 dakikada Yahoo'dan BIST endeks verisi cekip D1'e yaziyordu (hatali).
+// D1'i diger endpoint'ler de okuyabilir - tek dogru kaynak Is Yatirim.
+const BIST_INDEX_NAMES: Record<string, string> = {
+  'XU100.IS': 'BIST 100',
+  'XU030.IS': 'BIST 30',
+  'XUSIN.IS': 'BIST SINAI',
+  'XUMAL.IS': 'BIST MALI',
+  'XUTUM.IS': 'BIST TUM',
+};
+
+function formatTsForIsYatirim(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+async function fetchBistIndexFromIsYatirim(
+  symbol: string,
+): Promise<{ ok: boolean; status: number; body: string }> {
+  const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(start.getDate() - 30);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 0);
+
+  const url = new URL(
+    'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/IndexHistoricalAll',
+  );
+  url.searchParams.set('period', '1440');
+  url.searchParams.set('from', formatTsForIsYatirim(start));
+  url.searchParams.set('to', formatTsForIsYatirim(end));
+  url.searchParams.set('endeks', sym);
+
+  try {
+    const resp = await fetch(url.toString(), {
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        'User-Agent': USER_AGENT,
+        'Referer': 'https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx',
+      },
+    });
+    if (!resp.ok) return { ok: false, status: resp.status, body: '' };
+    const text = await resp.text();
+    const parsed = JSON.parse(text) as { data?: Array<[number, number]> };
+    const rows = (parsed.data ?? []).filter(
+      (r) => Array.isArray(r) && r.length >= 2 && Number.isFinite(r[1]) && (r[1] as number) > 0,
+    );
+    if (rows.length < 2) return { ok: false, status: 502, body: '' };
+    rows.sort((a, b) => a[0] - b[0]);
+    const last = rows[rows.length - 1];
+    const prev = rows[rows.length - 2];
+    const timestamp = rows.map((r) => Math.floor(r[0] / 1000));
+    const close = rows.map((r) => r[1]);
+    const yahooLike = {
+      chart: {
+        result: [
+          {
+            meta: {
+              symbol,
+              currency: 'TRY',
+              exchangeName: 'BIST',
+              regularMarketPrice: last[1],
+              previousClose: prev[1],
+              chartPreviousClose: prev[1],
+              regularMarketTime: Math.floor(last[0] / 1000),
+              regularMarketDayHigh: last[1],
+              regularMarketDayLow: last[1],
+              regularMarketVolume: 0,
+              shortName: BIST_INDEX_NAMES[symbol] ?? symbol,
+              longName: BIST_INDEX_NAMES[symbol] ?? symbol,
+              firstTradeDate: timestamp[0] ?? 0,
+              gmtoffset: 10800,
+              timezone: 'TRT',
+              exchangeTimezoneName: 'Europe/Istanbul',
+            },
+            timestamp,
+            indicators: {
+              quote: [
+                {
+                  open: close.slice(),
+                  high: close.slice(),
+                  low: close.slice(),
+                  close: close.slice(),
+                  volume: close.map(() => 0),
+                },
+              ],
+              adjclose: [{ adjclose: close.slice() }],
+            },
+          },
+        ],
+        error: null,
+      },
+    };
+    return { ok: true, status: 200, body: JSON.stringify(yahooLike) };
+  } catch (e) {
+    return { ok: false, status: 0, body: JSON.stringify({ error: String(e) }) };
+  }
+}
+
 function cacheKey(symbol: string, range: string, interval: string): string {
   return `${symbol}:${range}:${interval}`;
 }
@@ -33,6 +139,12 @@ async function fetchYahoo(
   interval: string,
   timeoutMs = 8000,
 ): Promise<{ ok: boolean; status: number; body: string }> {
+  // BIST endeksleri icin Yahoo'yu HIC CAGIRMA - Is Yatirim'dan veri uret.
+  if (BIST_INDEX_NAMES[symbol.toUpperCase()]) {
+    const result = await fetchBistIndexFromIsYatirim(symbol.toUpperCase());
+    if (result.ok) return result;
+    // Is Yatirim basarisiz olursa Yahoo'ya dus (yine de hatali ama eski davranis).
+  }
   const url = `${YAHOO_BASE}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`;
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);

@@ -1,5 +1,5 @@
-/**
- * Cloudflare Pages Function — Doğal dil sorgudan filter spec üretir.
+﻿/**
+ * Cloudflare Pages Function â€” DoÄŸal dil sorgudan filter spec Ã¼retir.
  *
  * POST /api/ai/screener
  * Body: { query: string, dataset?: 'stocks' | 'funds' }
@@ -8,16 +8,16 @@
  *   quota: { tier, limit, used, remaining, resetAt, windowSec }
  * }
  *
- * Kullanıcının "BIST'te son 1 ayda %5+ getirili bankacılık hisseleri" gibi
- * doğal dil sorgusunu yapılandırılmış filtre objesine çevirir.
- * Frontend bu filtreyi lokal hisse/fon datasine uygular — hızlı, ucuz.
+ * KullanÄ±cÄ±nÄ±n "BIST'te son 1 ayda %5+ getirili bankacÄ±lÄ±k hisseleri" gibi
+ * doÄŸal dil sorgusunu yapÄ±landÄ±rÄ±lmÄ±ÅŸ filtre objesine Ã§evirir.
+ * Frontend bu filtreyi lokal hisse/fon datasine uygular â€” hÄ±zlÄ±, ucuz.
  *
- * Tier-aware kota (#Ö pricing): Her tier'ın günlük sorgu hakkı farklı —
- *   anon (login değil)  → 1 deneme/gün/IP
- *   free                → 3 sorgu/gün/kullanıcı
- *   pro                 → 30 sorgu/gün/kullanıcı
- *   elite               → 150 sorgu/gün/kullanıcı
- * Limit aşılırsa 429 + JSON içinde quota bilgisi → frontend upgrade prompt gösterir.
+ * Tier-aware kota (#Ã– pricing): Her tier'Ä±n gÃ¼nlÃ¼k sorgu hakkÄ± farklÄ± â€”
+ *   anon (login deÄŸil)  â†’ 1 deneme/gÃ¼n/IP
+ *   free                â†’ 3 sorgu/gÃ¼n/kullanÄ±cÄ±
+ *   pro                 â†’ 30 sorgu/gÃ¼n/kullanÄ±cÄ±
+ *   elite               â†’ 150 sorgu/gÃ¼n/kullanÄ±cÄ±
+ * Limit aÅŸÄ±lÄ±rsa 429 + JSON iÃ§inde quota bilgisi â†’ frontend upgrade prompt gÃ¶sterir.
  */
 
 import { quotaCheck, getClientIp } from '../../_rate-limit';
@@ -43,7 +43,7 @@ interface ScreenerSpec {
   limit: number;
   explanation: string;
   /**
-   * BIST endeks kapsamı — "BIST 100" / "BIST 30" sorgularında AI buraya yazar.
+   * BIST endeks kapsamÄ± â€” "BIST 100" / "BIST 30" sorgularÄ±nda AI buraya yazar.
    * Frontend `applySpec`'te BIST_100_SYMBOLS / BIST_30_SYMBOLS Set'iyle hard-filter.
    */
   scope?: 'XU100' | 'XU030';
@@ -56,9 +56,9 @@ interface AnthropicResponse {
 type Tier = 'anon' | 'free' | 'pro' | 'elite';
 
 interface TierQuotaConfig {
-  /** Günlük max sorgu sayısı. */
+  /** GÃ¼nlÃ¼k max sorgu sayÄ±sÄ±. */
   limit: number;
-  /** Pencere genişliği (saniye) — varsayılan 24 saat. */
+  /** Pencere geniÅŸliÄŸi (saniye) â€” varsayÄ±lan 24 saat. */
   windowSec: number;
 }
 
@@ -70,39 +70,39 @@ const TIER_QUOTAS: Record<Tier, TierQuotaConfig> = {
 };
 
 const STOCK_FIELDS = `
-HİSSE ALANLARI (dataset='stocks'):
-- symbol (string): hisse kodu (örn: GARAN, THYAO)
-- name (string): şirket adı
-- sector (string): sektör (örn: "Bankacılık", "Holding", "Ulaşım", "Savunma", "Otomotiv")
-- price (number): güncel fiyat (TL)
-- changePct (number): bugün % değişim
-- r1g (number): bugün % değişim (changePct ile aynı, alias)
-- r1h (number): 1 haftalık % değişim
-- r1a (number): 1 aylık % değişim
-- r3a (number): 3 aylık % değişim
-- r6a (number): 6 aylık % değişim
-- r1y (number): 1 yıllık % değişim
+HÄ°SSE ALANLARI (dataset='stocks'):
+- symbol (string): hisse kodu (Ã¶rn: GARAN, THYAO)
+- name (string): ÅŸirket adÄ±
+- sector (string): sektÃ¶r (Ã¶rn: "BankacÄ±lÄ±k", "Holding", "UlaÅŸÄ±m", "Savunma", "Otomotiv")
+- price (number): gÃ¼ncel fiyat (TL)
+- changePct (number): bugÃ¼n % deÄŸiÅŸim
+- r1g (number): bugÃ¼n % deÄŸiÅŸim (changePct ile aynÄ±, alias)
+- r1h (number): 1 haftalÄ±k % deÄŸiÅŸim
+- r1a (number): 1 aylÄ±k % deÄŸiÅŸim
+- r3a (number): 3 aylÄ±k % deÄŸiÅŸim
+- r6a (number): 6 aylÄ±k % deÄŸiÅŸim
+- r1y (number): 1 yÄ±llÄ±k % deÄŸiÅŸim
 `;
 
 const FUND_FIELDS = `
 FON ALANLARI (dataset='funds'):
 - code (string): fon kodu
-- name (string): fon adı
-- category (string): "Katılım" | "Hisse Senedi" | "Borçlanma Araçları" | "Karma" | "Değişken" | "Kıymetli Madenler" | "Para Piyasası" | "Fon Sepeti" | "Serbest"
-- day (number): bugün %
+- name (string): fon adÄ±
+- category (string): "KatÄ±lÄ±m" | "Hisse Senedi" | "BorÃ§lanma AraÃ§larÄ±" | "Karma" | "DeÄŸiÅŸken" | "KÄ±ymetli Madenler" | "Para PiyasasÄ±" | "Fon Sepeti" | "Serbest"
+- day (number): bugÃ¼n %
 - week (number): 1 hafta %
 - month (number): 1 ay %
 - threeMonth (number): 3 ay %
 - sixMonth (number): 6 ay %
-- ytd (number): yıl başından bugüne %
-- year (number): 1 yıl %
+- ytd (number): yÄ±l baÅŸÄ±ndan bugÃ¼ne %
+- year (number): 1 yÄ±l %
 `;
 
-const SYSTEM_PROMPT = `Sen Türk yatırımcısı için doğal dil sorgularını yapılandırılmış filtreye çeviren bir yardımcısın.
+const SYSTEM_PROMPT = `Sen TÃ¼rk yatÄ±rÄ±mcÄ±sÄ± iÃ§in doÄŸal dil sorgularÄ±nÄ± yapÄ±landÄ±rÄ±lmÄ±ÅŸ filtreye Ã§eviren bir yardÄ±mcÄ±sÄ±n.
 
-Kullanıcı Türkçe finansal sorgular yazar (örn. "son 1 ayda %5+ getirili bankacılık hisseleri", "katılım fonları arasında 1 yıl en iyi 10").
+KullanÄ±cÄ± TÃ¼rkÃ§e finansal sorgular yazar (Ã¶rn. "son 1 ayda %5+ getirili bankacÄ±lÄ±k hisseleri", "katÄ±lÄ±m fonlarÄ± arasÄ±nda 1 yÄ±l en iyi 10").
 
-Görevin: sorguyu analiz et, hisse mi fon mu olduğuna karar ver, filtreleri çıkar ve JSON döndür.
+GÃ¶revin: sorguyu analiz et, hisse mi fon mu olduÄŸuna karar ver, filtreleri Ã§Ä±kar ve JSON dÃ¶ndÃ¼r.
 
 ${STOCK_FIELDS}
 
@@ -110,21 +110,21 @@ ${FUND_FIELDS}
 
 KURALLAR:
 1) "dataset" mutlaka 'stocks' veya 'funds'. Belirsizse hisse varsay.
-2) Operatörler: '>', '>=', '<', '<=', '=', '!=', 'includes' (string contains), 'in' (string array içinde).
-3) Sektör/kategori için 'includes' veya '=' kullan. Türkçe ve İngilizce eşanlamlıları tanı (bank/bankacılık, holding, savunma/defense, otomotiv vb.).
-4) "En iyi/en yüksek" → sort dir='desc'. "En düşük/en kötü" → sort dir='asc'.
-5) "top N", "en iyi N" → limit=N. Belirtilmemişse hisse için 20, fon için 10.
-6) Sayısal değerleri normalize et: "%5" → 5, "%5'ten fazla" → > 5, "%5+" → >= 5.
-7) explanation alanına Türkçe kısa özet (max 100 karakter).
-8) BIST ENDEKS KAPSAMI: Kullanıcı "BIST 100" / "XU100" / "ana endeks" derse → scope:"XU100".
-   "BIST 30" / "XU030" / "büyük 30" derse → scope:"XU030". Belirtilmemişse scope alanını yazma (tüm BIST evreni).
-   Endeks SEKTÖR DEĞİL — yani "BIST 100 bankacılık" derse: scope:"XU100" + filters[sector includes Bankacılık].
-   Endeks kapsamı sektör filtresinden BAĞIMSIZ olarak çalışır.
+2) OperatÃ¶rler: '>', '>=', '<', '<=', '=', '!=', 'includes' (string contains), 'in' (string array iÃ§inde).
+3) SektÃ¶r/kategori iÃ§in 'includes' veya '=' kullan. TÃ¼rkÃ§e ve Ä°ngilizce eÅŸanlamlÄ±larÄ± tanÄ± (bank/bankacÄ±lÄ±k, holding, savunma/defense, otomotiv vb.).
+4) "En iyi/en yÃ¼ksek" â†’ sort dir='desc'. "En dÃ¼ÅŸÃ¼k/en kÃ¶tÃ¼" â†’ sort dir='asc'.
+5) "top N", "en iyi N" â†’ limit=N. BelirtilmemiÅŸse hisse iÃ§in 20, fon iÃ§in 10.
+6) SayÄ±sal deÄŸerleri normalize et: "%5" â†’ 5, "%5'ten fazla" â†’ > 5, "%5+" â†’ >= 5.
+7) explanation alanÄ±na TÃ¼rkÃ§e kÄ±sa Ã¶zet (max 100 karakter).
+8) BIST ENDEKS KAPSAMI: KullanÄ±cÄ± "BIST 100" / "XU100" / "ana endeks" derse â†’ scope:"XU100".
+   "BIST 30" / "XU030" / "bÃ¼yÃ¼k 30" derse â†’ scope:"XU030". BelirtilmemiÅŸse scope alanÄ±nÄ± yazma (tÃ¼m BIST evreni).
+   Endeks SEKTÃ–R DEÄžÄ°L â€” yani "BIST 100 bankacÄ±lÄ±k" derse: scope:"XU100" + filters[sector includes BankacÄ±lÄ±k].
+   Endeks kapsamÄ± sektÃ¶r filtresinden BAÄžIMSIZ olarak Ã§alÄ±ÅŸÄ±r.
 
-ÇIKTI: SADECE geçerli JSON, başka metin yok. Örnekler:
-{"dataset":"stocks","filters":[{"field":"sector","op":"includes","value":"Bankacılık"},{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"explanation":"Son 1 ayda %5+ getirili bankacılık hisseleri"}
-{"dataset":"stocks","filters":[{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"scope":"XU100","explanation":"BIST 100'de son 1 ayda %5+ artmış hisseler"}
-{"dataset":"stocks","filters":[],"sort":{"field":"r1y","dir":"desc"},"limit":10,"scope":"XU030","explanation":"BIST 30'da yıllık en iyi 10 hisse"}`;
+Ã‡IKTI: SADECE geÃ§erli JSON, baÅŸka metin yok. Ã–rnekler:
+{"dataset":"stocks","filters":[{"field":"sector","op":"includes","value":"BankacÄ±lÄ±k"},{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"explanation":"Son 1 ayda %5+ getirili bankacÄ±lÄ±k hisseleri"}
+{"dataset":"stocks","filters":[{"field":"r1a","op":">=","value":5}],"sort":{"field":"r1a","dir":"desc"},"limit":20,"scope":"XU100","explanation":"BIST 100'de son 1 ayda %5+ artmÄ±ÅŸ hisseler"}
+{"dataset":"stocks","filters":[],"sort":{"field":"r1y","dir":"desc"},"limit":10,"scope":"XU030","explanation":"BIST 30'da yÄ±llÄ±k en iyi 10 hisse"}`;
 
 function tierFromUser(user: { tier?: 'free' | 'pro' | 'elite' } | null): Tier {
   if (!user) return 'anon';
@@ -197,7 +197,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const identifier = auth?.user ? `u:${auth.user.id}` : `ip:${getClientIp(request)}`;
   const quotaConfig = TIER_QUOTAS[tier];
 
-  // D1 yoksa fail-open (dev/preview) — middleware zaten production'da fail-closed yapıyor.
+  // D1 yoksa fail-open (dev/preview) â€” middleware zaten production'da fail-closed yapÄ±yor.
   let quotaInfo;
   if (env.DB) {
     const check = await quotaCheck(
@@ -213,12 +213,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (!check.allowed) {
       const errorMsg =
         tier === 'anon'
-          ? 'Ücretsiz deneme hakkın bitti. Üye ol, günlük 3 sorgu hakkı kazan.'
+          ? 'Ãœcretsiz deneme hakkÄ±n bitti. Ãœye ol, gÃ¼nlÃ¼k 3 sorgu hakkÄ± kazan.'
           : tier === 'free'
-          ? `Günlük ${quotaConfig.limit} sorgu hakkın doldu. Pro\'ya geç, günlük ${TIER_QUOTAS.pro.limit} sorgu kullan.`
+          ? `GÃ¼nlÃ¼k ${quotaConfig.limit} sorgu hakkÄ±n doldu. Pro\'ya geÃ§, gÃ¼nlÃ¼k ${TIER_QUOTAS.pro.limit} sorgu kullan.`
           : tier === 'pro'
-          ? `Günlük ${quotaConfig.limit} sorgu hakkın doldu. Elite\'a geç, günlük ${TIER_QUOTAS.elite.limit} sorgu kullan.`
-          : `Günlük ${quotaConfig.limit} sorgu hakkın doldu. ${formatResetHint(check.resetAt)} sonra yenilenir.`;
+          ? `GÃ¼nlÃ¼k ${quotaConfig.limit} sorgu hakkÄ±n doldu. Elite\'a geÃ§, gÃ¼nlÃ¼k ${TIER_QUOTAS.elite.limit} sorgu kullan.`
+          : `GÃ¼nlÃ¼k ${quotaConfig.limit} sorgu hakkÄ±n doldu. ${formatResetHint(check.resetAt)} sonra yenilenir.`;
 
       return new Response(
         JSON.stringify({
@@ -244,9 +244,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }
   }
 
-  // Çok uzun sorguları kes (prompt injection + maliyet kontrolü)
+  // Ã‡ok uzun sorgularÄ± kes (prompt injection + maliyet kontrolÃ¼)
   const safeQuery = userQuery.slice(0, 500);
-  const datasetHint = body.dataset ? `\n\n(Kullanıcı ipucu: dataset='${body.dataset}' olmalı.)` : '';
+  const datasetHint = body.dataset ? `\n\n(KullanÄ±cÄ± ipucu: dataset='${body.dataset}' olmalÄ±.)` : '';
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -261,7 +261,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         max_tokens: 800,
         system: SYSTEM_PROMPT,
         messages: [
-          { role: 'user', content: `Sorgu: "${safeQuery}"${datasetHint}\n\nJSON döndür:` },
+          { role: 'user', content: `Sorgu: "${safeQuery}"${datasetHint}\n\nJSON dÃ¶ndÃ¼r:` },
         ],
       }),
     });
@@ -281,11 +281,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const aiRes = await r.json() as AnthropicResponse;
     const raw = aiRes.content?.[0]?.text?.trim() ?? '';
 
-    // JSON çıkar — bazen ```json bloklarıyla gelir, temizle
+    // JSON Ã§Ä±kar â€” bazen ```json bloklarÄ±yla gelir, temizle
     let jsonText = raw;
     const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (codeBlock) jsonText = codeBlock[1].trim();
-    // İlk { ve son } arasını al
+    // Ä°lk { ve son } arasÄ±nÄ± al
     const firstBrace = jsonText.indexOf('{');
     const lastBrace = jsonText.lastIndexOf('}');
     if (firstBrace >= 0 && lastBrace > firstBrace) {
@@ -298,7 +298,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     } catch (e) {
       return new Response(JSON.stringify({
         ok: false,
-        error: 'LLM JSON parse hatası',
+        error: 'LLM JSON parse hatasÄ±',
         raw: raw.slice(0, 300),
         quota: quotaInfo,
       }), {
@@ -307,11 +307,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       });
     }
 
-    // Güvenlik: spec sanity check
+    // GÃ¼venlik: spec sanity check
     if (!spec.dataset || !Array.isArray(spec.filters)) {
       return new Response(JSON.stringify({
         ok: false,
-        error: 'Geçersiz spec yapısı',
+        error: 'GeÃ§ersiz spec yapÄ±sÄ±',
         spec,
         quota: quotaInfo,
       }), {
@@ -369,7 +369,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 };
 
-/** "3 saat", "23 dk", "12 sn" gibi insancıl reset ipucu üretir. */
+/** "3 saat", "23 dk", "12 sn" gibi insancÄ±l reset ipucu Ã¼retir. */
 function formatResetHint(resetAtSec: number): string {
   const now = Math.floor(Date.now() / 1000);
   const secs = Math.max(0, resetAtSec - now);

@@ -163,6 +163,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
+  // === BUYUK try/catch - hicbir exception 502 HTML page'e cikmasin ===
+  try {
+
   if (!env.ANTHROPIC_API_KEY) {
     return new Response(JSON.stringify({ ok: false, error: 'ANTHROPIC_API_KEY not set' }), {
       status: 503,
@@ -346,6 +349,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       ok: false,
       error: `Network error: ${(e as Error).message}`,
       quota: quotaInfo,
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  } catch (outerErr) {
+    // ANY uncaught exception -> JSON 500 (CF 502 HTML yerine)
+    return new Response(JSON.stringify({
+      ok: false,
+      error: 'screener_uncaught',
+      message: (outerErr as Error)?.message ?? String(outerErr),
+      stack: ((outerErr as Error)?.stack ?? '').split('\n').slice(0, 3).join(' | '),
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

@@ -57,7 +57,7 @@ interface AnthropicResponse {
 
 const PRO_MONTHLY_LIMIT = 2;
 const CACHE_HOURS = 24;
-const MODEL = 'claude-sonnet-4-5-20250929';
+const MODEL = 'claude-sonnet-4-5';
 
 function startOfMonth(): number {
   const now = new Date();

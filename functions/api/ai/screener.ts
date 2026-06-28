@@ -143,6 +143,26 @@ function quotaPayload(tier: Tier, used: number, resetAt: number, config: TierQuo
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  // === DIAGNOSTIC: handler'a ulasiyor mu? ===
+  // Body'de {debug: true} varsa erken JSON 200 don. 502 hala HTML'se sorun
+  // Pages Functions level'da (bundle, routing). 200 JSON donerse handler ici sorun.
+  try {
+    const rawBody = await request.clone().json().catch(() => ({} as { debug?: boolean }));
+    if ((rawBody as { debug?: boolean })?.debug === true) {
+      return new Response(JSON.stringify({
+        ok: true,
+        diagnostic: 'handler_reached',
+        hasAnthropicKey: !!env.ANTHROPIC_API_KEY,
+        hasDb: !!env.DB,
+        timestamp: Date.now(),
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+  } catch (e) {
+    return new Response(JSON.stringify({
+      ok: false, error: `early_diagnostic_error: ${(e as Error).message}`,
+    }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+
   if (!env.ANTHROPIC_API_KEY) {
     return new Response(JSON.stringify({ ok: false, error: 'ANTHROPIC_API_KEY not set' }), {
       status: 503,

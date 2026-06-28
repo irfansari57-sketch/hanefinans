@@ -57,7 +57,7 @@ interface AnthropicResponse {
 
 const PRO_MONTHLY_LIMIT = 2;
 const CACHE_HOURS = 24;
-const MODEL = 'claude-sonnet-4-5';
+const MODEL = 'claude-3-5-sonnet-latest';
 
 function startOfMonth(): number {
   const now = new Date();
@@ -272,3 +272,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     quota: { used: 0, limit: -1, remaining: -1 },
   }), { headers: { 'Content-Type': 'application/json' } });
 };
+         

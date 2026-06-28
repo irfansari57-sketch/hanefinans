@@ -173,7 +173,7 @@ KURALLAR:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model: 'claude-3-5-haiku-latest',
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -240,7 +240,7 @@ KURALLAR:
   return jsonResponse({
     ok: true,
     generatedAt: new Date().toISOString(),
-    model: 'claude-haiku-4-5',
+    model: 'claude-3-5-haiku-latest',
     sourceNewsCount: news.length,
     items,
   }, 200, 3600);

@@ -341,4 +341,3 @@ function formatResetHint(resetAtSec: number): string {
   if (secs >= 60) return `${Math.ceil(secs / 60)} dk`;
   return `${secs} sn`;
 }
-         

@@ -272,4 +272,3 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     quota: { used: 0, limit: -1, remaining: -1 },
   }), { headers: { 'Content-Type': 'application/json' } });
 };
-         

@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-07-01T16:01:21.088150+00:00",
+  "fetchedAt": "2026-07-02T09:47:22.003934+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -8,7 +8,7 @@
       "initials": "İY",
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
-      "lastUpdate": "2026-07-01",
+      "lastUpdate": "2026-07-02",
       "recommendations": [
         {
           "symbol": "MPARK",
@@ -117,17 +117,17 @@
       "initials": "OY",
       "colorSeed": "#10b981",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "lastUpdate": "2026-07-01",
+      "lastUpdate": "2026-07-02",
       "recommendations": [],
       "ok": false,
       "debugLog": [
         "GET https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
         "HTTP 200, 4433475 bytes, type=application/pdf",
         "PDF text: 11493 chars",
-        "Claude: Claude returned 0 items but all were filtered out (invalid symbol/format)",
+        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ccd24HXxr7JFJmN9nAy3n'}",
         "Result: 0 recommendations"
       ],
-      "error": "Claude returned 0 items but all were filtered out (invalid symbol/format)"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ccd24HXxr7JFJmN9nAy3n'}"
     },
     {
       "brokerId": "kt-yatirim",
@@ -135,21 +135,21 @@
       "initials": "KT",
       "colorSeed": "#ec4899",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
-      "lastUpdate": "2026-07-01",
+      "lastUpdate": "2026-07-02",
       "recommendations": [],
       "portfolio": [],
       "ok": false,
       "debugLog": [
         "GET listing: https://kuveytturkyatirim.com.tr/arastirma-raporlari/",
-        "Listing HTTP 200, html size=645226 chars",
+        "Listing HTTP 200, html size=645224 chars",
         "Found 10 'gunluk-bulten' PDF pattern matches in listing",
-        "Latest PDF: /media/hhzlh3gx/gunluk-bulten_01072026.pdf",
-        "PDF HTTP 200, 3151702 bytes",
-        "PDF text: 1553 chars",
-        "Bülten Claude: Claude returned 0 items but all were filtered out (invalid symbol/format)",
+        "Latest PDF: /media/q3bgposo/gunluk-bulten_02072026.pdf",
+        "PDF HTTP 200, 4061129 bytes",
+        "PDF text: 2219 chars",
+        "Bülten Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ccd24XjVcjUgB5xHR45zD'}",
         "Recommendations: 0"
       ],
-      "error": "Claude returned 0 items but all were filtered out (invalid symbol/format)"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ccd24XjVcjUgB5xHR45zD'}"
     }
   ],
   "summary": {

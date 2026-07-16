@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-07-16T09:00:31.310638+00:00",
+  "fetchedAt": "2026-07-16T15:16:19.273029+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -128,10 +128,10 @@
         "GET https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
         "HTTP 200, 4433475 bytes, type=application/pdf",
         "PDF text: 11493 chars",
-        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5TowSiWp8Hv1SQdABAv'}",
+        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5xU4NknYJtNCX2YxVXC'}",
         "Result: 0 recommendations"
       ],
-      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5TowSiWp8Hv1SQdABAv'}"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5xU4NknYJtNCX2YxVXC'}"
     },
     {
       "brokerId": "kt-yatirim",
@@ -150,10 +150,10 @@
         "Latest PDF: /media/4dumtelj/gunluk-bulten_16072026.pdf",
         "PDF HTTP 200, 3598159 bytes",
         "PDF text: 1439 chars",
-        "Bülten Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5TpA6UVFPW6smiqE5CA'}",
+        "Bülten Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5xUHcEaAYr96LRSnDmn'}",
         "Recommendations: 0"
       ],
-      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5TpA6UVFPW6smiqE5CA'}"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cd5xUHcEaAYr96LRSnDmn'}"
     }
   ],
   "summary": {

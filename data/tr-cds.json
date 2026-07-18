@@ -1,12 +1,12 @@
 {
   "ok": true,
-  "value": 228.61,
+  "value": 228.63,
   "changeAbs": null,
   "changePct": null,
   "changeWindow": null,
-  "asOfDate": "17 Jul 2026 13:45 GMT+0",
+  "asOfDate": "18 Jul 2026 1:45 GMT+0",
   "history": null,
   "source": "worldgovernmentbonds.com",
   "parser": "bps-nearby",
-  "updatedAt": "2026-07-17T17:13:07.298319+00:00"
+  "updatedAt": "2026-07-18T06:06:13.318514+00:00"
 }

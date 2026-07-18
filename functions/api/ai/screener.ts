@@ -377,3 +377,5 @@ function formatResetHint(resetAtSec: number): string {
   if (secs >= 60) return `${Math.ceil(secs / 60)} dk`;
   return `${secs} sn`;
 }
+
+// force-refresh 2026-07-18_115644

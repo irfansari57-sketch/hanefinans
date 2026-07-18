@@ -29,6 +29,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FEATURES } from '@/lib/featureFlags';
 import { useAgents } from '@/store/agents';
 import { useAuth, isAdmin, isPro } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
@@ -68,7 +69,8 @@ const navGroups: NavGroup[] = [
       { to: '/panel', label: 'Panel', icon: LayoutDashboard },
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
-      { to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles },
+      // Akilli Sorgu: FEATURES.smartQuery kapaliyken menude gozukmez.
+      ...(FEATURES.smartQuery ? [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles }] : []),
       { to: '/risk-profili', label: 'Risk Profilim', icon: Shield },
       { to: '/tahmin', label: 'Oyunlarım', icon: Sparkles },
     ],

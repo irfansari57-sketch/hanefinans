@@ -358,7 +358,8 @@ export function AuthPage({ mode }: Props) {
             </button>
           </form>
 
-          {/* Sosyal giris bolumu - Google + Apple */}
+          {/* Sosyal giris bolumu - Google + Apple. Feature flag ile pasif tutulur. */}
+          {FEATURES.oauthSocialLogin && (
           <div className="mt-5">
             <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider text-slate-500">
               <div className="h-px flex-1 bg-border" />
@@ -393,6 +394,7 @@ export function AuthPage({ mode }: Props) {
               </button>
             </div>
           </div>
+          )}
 
           <p className="mt-4 text-center text-[10px] text-slate-500">
             Kayıt olarak yerel veri saklama koşullarını kabul etmiş olursun.

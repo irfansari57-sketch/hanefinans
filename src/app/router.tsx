@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { PageSkeleton } from '@/components/ui/Skeleton';
 import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary';
+import { FEATURES } from '@/lib/featureFlags';
 
 /**
  * Cloudflare Pages'e yeni build deploy edilince eski tarayıcı index.html'i
@@ -142,7 +143,8 @@ export const router = createBrowserRouter([
       { path: 'fund/:code', element: withSuspense(<FundDetailPage />) },
       { path: 'history', element: withSuspense(<HistoryPage />) },
       { path: 'smart-search', element: withSuspense(<SmartSearchPage />) },
-      { path: 'sorgu', element: withSuspense(<ScreenerPage />) },
+      // Akilli Sorgu: FEATURES.smartQuery ile korunur. Kapaliyken /panel'e redirect.
+      { path: 'sorgu', element: FEATURES.smartQuery ? withSuspense(<ScreenerPage />) : <Navigate to="/panel" replace /> },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
       { path: 'preview/ad-banner', element: withSuspense(<AdBannerPreviewPage />) },
       { path: 'auth/login', element: withSuspense(<LoginPage />) },

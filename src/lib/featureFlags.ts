@@ -24,4 +24,35 @@ export const FEATURES = {
    * 3. Bu flag'i true yap + redeploy
    */
   emailVerification: false,
+
+  /**
+   * Akilli Sorgu (/sorgu) sayfasi — Anthropic API ile dogal dil sorgu.
+   *
+   * KAPALI iken:
+   * - Sol menude "Akilli Sorgu" link gorunmez
+   * - Route direkt /panel'e redirect eder
+   * - Backend endpoint (/api/ai/screener) canlida kalir (test icin)
+   *
+   * ACMAK ICIN:
+   * 1. Anthropic Console'a git: https://console.anthropic.com/settings/billing
+   * 2. Kredi ekle (min $5, model basina ~$0.0003)
+   * 3. Bu flag'i true yap + redeploy
+   */
+  smartQuery: false,
+
+  /**
+   * Google + Apple ile sosyal giris (AuthPage butonlari).
+   *
+   * KAPALI iken:
+   * - AuthPage'de "veya" ayraci ve Google/Apple butonlari gorunmez
+   * - Backend OAuth endpoint'leri (/api/auth/oauth/*) canlida kalir
+   *
+   * ACMAK ICIN:
+   * 1. Google: console.cloud.google.com'da OAuth 2.0 Client ID olustur
+   * 2. Apple: developer.apple.com Sign In with Apple + .p8 key (opsiyonel)
+   * 3. CF Pages env vars: GOOGLE_OAUTH_CLIENT_ID + SECRET (+ Apple set)
+   * 4. Bu flag'i true yap + redeploy
+   * NEXT_SESSION.md'de tam kurulum adimlari var.
+   */
+  oauthSocialLogin: false,
 } as const;

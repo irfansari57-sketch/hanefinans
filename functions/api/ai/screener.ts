@@ -1,10 +1,10 @@
 /**
- * Cloudflare Pages Function — Doğal dil sorgudan filter spec üretir.
+ * Cloudflare Pages Function â€” DoÄŸal dil sorgudan filter spec Ã¼retir.
  * POST /api/ai/screener
  *
  * MINIMUM VERSION: auth/quota/rate-limit KALDIRILDI. Sadece Anthropic call.
- * Amaç: 502 crash'i çözmek — hangi dependency kırıyorsa onu ayıklamak.
- * Özellikler sonraki commit'lerde tek tek geri eklenecek.
+ * AmaÃ§: 502 crash'i Ã§Ã¶zmek â€” hangi dependency kÄ±rÄ±yorsa onu ayÄ±klamak.
+ * Ã–zellikler sonraki commit'lerde tek tek geri eklenecek.
  */
 
 interface Env {
@@ -93,7 +93,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         error: `Anthropic ${anthropicResp.status}`,
         detail: errText.slice(0, 300),
       }), {
-        status: 502, headers: { 'Content-Type': 'application/json' },
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -125,7 +125,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         error: 'LLM JSON parse hatasi',
         raw: raw.slice(0, 300),
       }), {
-        status: 502, headers: { 'Content-Type': 'application/json' },
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -133,7 +133,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return new Response(JSON.stringify({
         ok: false, error: 'Gecersiz spec yapisi', spec,
       }), {
-        status: 502, headers: { 'Content-Type': 'application/json' },
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
     if (spec.dataset !== 'stocks' && spec.dataset !== 'funds') spec.dataset = 'stocks';
@@ -157,7 +157,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       message: (outerErr as Error)?.message ?? String(outerErr),
       stack: ((outerErr as Error)?.stack ?? '').split('\n').slice(0, 3).join(' | '),
     }), {
-      status: 500,
+      status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }

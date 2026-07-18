@@ -1,4 +1,4 @@
--- Hane Finans Cloud Auth — Cloudflare D1 schema
+-- InvestLiq Cloud Auth — Cloudflare D1 schema
 -- Apply: wrangler d1 execute <db-name> --file=./functions/auth-schema.sql --remote
 -- (veya Cloudflare Dashboard → D1 → DB seç → "Query" tab → bu SQL'i yapıştır + Run)
 --

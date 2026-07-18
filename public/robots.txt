@@ -1,4 +1,4 @@
-# Hane Finans — robots.txt
+# InvestLiq — robots.txt
 # Reference: https://developers.google.com/search/docs/crawling-indexing/robots/intro
 
 User-agent: *
@@ -25,4 +25,4 @@ Disallow: /
 User-agent: CCBot
 Disallow: /
 
-Sitemap: https://hanefinans.net/sitemap.xml
+Sitemap: https://investliq.com/sitemap.xml

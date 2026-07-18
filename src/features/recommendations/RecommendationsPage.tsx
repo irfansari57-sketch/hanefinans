@@ -154,7 +154,7 @@ export function RecommendationsPage() {
         });
         const message = `🚨 <b>Yeni TAZE MA Üçlü Üst</b> (${tfLabel(tf)})\n\n` +
           lines.join('\n') +
-          `\n\n🌐 hanefinans.net/recommendations`;
+          `\n\n🌐 investliq.com/recommendations`;
         sendTelegram(message, 'HTML').catch(() => { /* sessizce geç */ });
       }
       try { localStorage.setItem(storageKey, JSON.stringify(currentTaze)); } catch { /* */ }

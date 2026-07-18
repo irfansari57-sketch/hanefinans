@@ -113,7 +113,7 @@ export function SettingsPage() {
     setTgTesting(true);
     setTgResult(null);
     const r = await sendTelegramMessage(
-      `*Hane Finans test* — admin bağlantı kontrolü 🎯\n_Zaman:_ ${new Date().toLocaleString('tr-TR')}`,
+      `*InvestLiq test* — admin bağlantı kontrolü 🎯\n_Zaman:_ ${new Date().toLocaleString('tr-TR')}`,
       { parseMode: 'Markdown' },
     );
     setTgResult({ ok: r.ok, msg: r.ok ? 'Telegram\'a mesaj gönderildi!' : r.error ?? 'Bilinmeyen hata' });
@@ -429,7 +429,7 @@ export function SettingsPage() {
         {admin && (
           <PinnableAccordion
             id="settings-admin-info"
-            title="Hane Finans — Sistem"
+            title="InvestLiq — Sistem"
             description="Sürüm, altyapı ve build bilgisi"
             icon={<Info size={14} />}
             iconColorClass="bg-warning/15 text-warning"

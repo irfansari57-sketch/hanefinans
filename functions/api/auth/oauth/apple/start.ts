@@ -11,7 +11,7 @@
  *   APPLE_PRIVATE_KEY      — Apple .p8 private key icerigi (PEM, BEGIN/END dahil)
  *
  * Redirect URI (Apple Service ID configuration'a kayit edilmeli):
- *   https://hanefinans.net/api/auth/oauth/apple/callback
+ *   https://investliq.com/api/auth/oauth/apple/callback
  *
  * NEXT_SESSION.md'de Apple Developer setup adim adim aciklamasi var.
  */

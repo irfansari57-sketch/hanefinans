@@ -102,7 +102,7 @@ export function PricingModal({ open, onClose }: Props) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Hane Finans — Üyelik Paketleri" size="xl">
+    <Modal open={open} onClose={onClose} title="InvestLiq — Üyelik Paketleri" size="xl">
       <p className="text-xs text-slate-400">
         Ücretsiz ile başla, ihtiyacın olunca yükselt. İptal kolay — her ay yenilenir.
       </p>

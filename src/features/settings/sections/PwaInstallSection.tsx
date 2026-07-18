@@ -40,7 +40,7 @@ export function PwaInstallSection() {
   return (
     <>
       <p className="text-xs leading-relaxed text-slate-400">
-        Hane Finans'ı bilgisayar/telefon ana ekranına ekle. Tarayıcı çubuğu olmaz,
+        InvestLiq'ı bilgisayar/telefon ana ekranına ekle. Tarayıcı çubuğu olmaz,
         tam ekran çalışır, ileride push bildirim için temel altyapı kurulur.
       </p>
 

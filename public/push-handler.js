@@ -21,11 +21,11 @@ self.addEventListener('push', (event) => {
     if (event.data) data = event.data.json();
   } catch (e) {
     // Plain text fallback
-    try { data = { title: 'Hane Finans', body: event.data ? event.data.text() : '' }; }
-    catch (e2) { data = { title: 'Hane Finans', body: '' }; }
+    try { data = { title: 'InvestLiq', body: event.data ? event.data.text() : '' }; }
+    catch (e2) { data = { title: 'InvestLiq', body: '' }; }
   }
 
-  const title = data.title || 'Hane Finans';
+  const title = data.title || 'InvestLiq';
   const body = data.body || '';
   const url = data.url || '/';
   const tag = data.tag || undefined;
@@ -82,5 +82,5 @@ self.addEventListener('message', (event) => {
     data: { url: url || '/' },
     requireInteraction: false,
   };
-  event.waitUntil(self.registration.showNotification(title || 'Hane Finans', options));
+  event.waitUntil(self.registration.showNotification(title || 'InvestLiq', options));
 });

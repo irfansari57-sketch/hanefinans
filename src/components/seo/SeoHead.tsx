@@ -11,7 +11,7 @@ import { Helmet } from 'react-helmet-async';
  * bazlı override yapar.
  */
 interface SeoHeadProps {
-  /** Sayfa başlığı — sonuna "| Hane Finans" otomatik eklenir. */
+  /** Sayfa başlığı — sonuna "| InvestLiq" otomatik eklenir. */
   title: string;
   /** Meta description (~150 karakter ideal). */
   description?: string;
@@ -23,8 +23,8 @@ interface SeoHeadProps {
   noindex?: boolean;
 }
 
-const SITE_NAME = 'Hane Finans';
-const SITE_URL = 'https://hanefinans.net';
+const SITE_NAME = 'InvestLiq';
+const SITE_URL = 'https://investliq.com';
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 
 export function SeoHead({

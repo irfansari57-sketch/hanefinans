@@ -323,7 +323,7 @@ export function RiskProfilePage() {
                 danışınız.
               </p>
               <p className="text-[11px] text-slate-400 pt-1 border-t border-warning/20">
-                Hane Finans, Sermaye Piyasası Kurulu (SPK) tarafından yatırım danışmanlığı yetkisi
+                InvestLiq, Sermaye Piyasası Kurulu (SPK) tarafından yatırım danışmanlığı yetkisi
                 verilen bir kuruluş değildir. SPK&apos;nın yetkili kuruluş listesi için:{' '}
                 <a href="https://www.spk.gov.tr/Sayfa/AltSayfa/187" target="_blank" rel="noreferrer"
                   className="text-accent underline hover:text-accent/80">

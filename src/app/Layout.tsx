@@ -366,12 +366,12 @@ export function Layout() {
           <Link to="/panel" className="md:hidden inline-flex items-center gap-2">
             <img
               src="/web-app-manifest-192x192.png?v=2"
-              alt="Hane Finans"
+              alt="InvestLiq"
               width={36}
               height={36}
               className="h-9 w-9 rounded-lg shadow-md"
             />
-            <span className="font-bold text-sm tracking-tight">Hane Finans</span>
+            <span className="font-bold text-sm tracking-tight">InvestLiq</span>
           </Link>
 
           <div className="relative flex-1 max-w-xl">
@@ -453,7 +453,7 @@ export function Layout() {
                 <div className="inline-flex flex-col items-center gap-1">
                   <img
                     src="/web-app-manifest-192x192.png?v=2"
-                    alt="Hane Finans"
+                    alt="InvestLiq"
                     width={56}
                     height={56}
                     className="h-14 w-14 rounded-xl shadow-md"
@@ -517,7 +517,7 @@ export function Layout() {
           {/* 2a. HaneFinans reklam videosu — herkese, sponsor (YouTube) ustunde */}
           <div>
             <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-              Hane Finans
+              InvestLiq
             </div>
             <AdVideo />
           </div>

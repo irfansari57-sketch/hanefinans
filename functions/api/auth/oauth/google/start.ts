@@ -9,7 +9,7 @@
  *   GOOGLE_OAUTH_CLIENT_SECRET — Google Cloud Console OAuth 2.0 Client Secret
  *
  * Redirect URI (Google Console'a kayit edilmeli):
- *   https://hanefinans.net/api/auth/oauth/google/callback
+ *   https://investliq.com/api/auth/oauth/google/callback
  */
 
 import { type Env } from '../../_utils';

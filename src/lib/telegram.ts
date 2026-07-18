@@ -86,6 +86,6 @@ export async function notifyPriceAlert(symbol: string, direction: 'above' | 'bel
     `🔔 <b>${symbol}</b> alarmı tetiklendi\n` +
     `Hedef: ${direction === 'above' ? '≥' : '≤'} ${threshold}₺\n` +
     `Mevcut fiyat: <b>${currentPrice.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}₺</b>\n\n` +
-    `<a href="https://hanefinans.net/stock/${symbol}">Detay sayfası →</a>`;
+    `<a href="https://investliq.com/stock/${symbol}">Detay sayfası →</a>`;
   await sendTelegram(text);
 }

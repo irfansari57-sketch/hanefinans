@@ -20,7 +20,7 @@ export const FEATURES = {
    * 2. Cloudflare Pages Settings → Environment variables:
    *    - RESEND_API_KEY = re_xxx...
    *    - AUTH_TOKEN_SECRET = 32+ karakter random (openssl rand -hex 32)
-   *    - RESEND_FROM_EMAIL = noreply@hanefinans.net (Resend domain verify gerekir)
+   *    - RESEND_FROM_EMAIL = noreply@investliq.com (Resend domain verify gerekir)
    * 3. Bu flag'i true yap + redeploy
    */
   emailVerification: false,

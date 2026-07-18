@@ -185,7 +185,7 @@ function InlinePreview({
             <div className="min-w-0">
               <div className="truncate text-[11px] font-bold text-white">Hane Mod Studio</div>
               {video?.hook && <div className="mt-0.5 truncate text-[10px] text-red-200/90">{video.hook}</div>}
-              {!video && <div className="mt-0.5 text-[10px] text-red-200/90">Hane Finans'ın resmi YouTube kanalı</div>}
+              {!video && <div className="mt-0.5 text-[10px] text-red-200/90">InvestLiq'ın resmi YouTube kanalı</div>}
             </div>
             <ExternalLink size={11} className="shrink-0 text-red-300 transition group-hover:translate-x-0.5 group-hover:text-white" />
           </div>
@@ -236,7 +236,7 @@ function InlinePreview({
         </div>
         <h3 className="mt-1.5 text-base font-bold text-white sm:text-lg">Hane Mod Studio</h3>
         <p className="mt-0.5 line-clamp-2 text-xs text-red-200/90 sm:text-sm">
-          {video?.title ?? 'Hane Finans\'ın resmi YouTube kanalı — yeni içerikler için takipte kal.'}
+          {video?.title ?? 'InvestLiq\'ın resmi YouTube kanalı — yeni içerikler için takipte kal.'}
         </p>
         <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white transition group-hover:bg-red-500">
           <Youtube size={12} /> Abone Ol

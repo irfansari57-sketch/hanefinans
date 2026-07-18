@@ -85,9 +85,9 @@ export const onRequestPost: PagesFunction<Env & {
   const origin = new URL(request.url).origin;
   const resetUrl = `${origin}/auth/reset-password?token=${encodeURIComponent(token)}`;
 
-  const fromEmail = env.RESEND_FROM_EMAIL ?? 'Hane Finans <onboarding@resend.dev>';
+  const fromEmail = env.RESEND_FROM_EMAIL ?? 'InvestLiq <onboarding@resend.dev>';
   const html = buildEmailHtml(email, resetUrl);
-  const text = `Hane Finans şifre sıfırlama\n\n${email} hesabın için şifre sıfırlama isteği aldık.\n\nBağlantı (30 dk geçerli):\n${resetUrl}\n\nSen istemediysen bu maili görmezden gel — şifren değişmeyecek.`;
+  const text = `InvestLiq şifre sıfırlama\n\n${email} hesabın için şifre sıfırlama isteği aldık.\n\nBağlantı (30 dk geçerli):\n${resetUrl}\n\nSen istemediysen bu maili görmezden gel — şifren değişmeyecek.`;
 
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -99,7 +99,7 @@ export const onRequestPost: PagesFunction<Env & {
       body: JSON.stringify({
         from: fromEmail,
         to: [email],
-        subject: 'Hane Finans — Şifre sıfırlama isteğin',
+        subject: 'InvestLiq — Şifre sıfırlama isteğin',
         html,
         text,
       }),
@@ -125,7 +125,7 @@ function buildEmailHtml(email: string, resetUrl: string): string {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Hane Finans — Şifre sıfırlama</title>
+<title>InvestLiq — Şifre sıfırlama</title>
 </head>
 <body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,Segoe UI,sans-serif;color:#cbd5e1;">
   <div style="max-width:520px;margin:0 auto;padding:32px 24px;background:#111a2e;border-radius:16px;margin-top:32px;border:1px solid #1f2a44;">
@@ -154,7 +154,7 @@ function buildEmailHtml(email: string, resetUrl: string): string {
     </p>
     <hr style="border:none;border-top:1px solid #1f2a44;margin:24px 0;" />
     <p style="font-size:11px;color:#475569;text-align:center;margin:0;">
-      Hane Dijital Teknoloji A.Ş. · <a href="https://hanefinans.net" style="color:#22d3ee;text-decoration:none;">hanefinans.net</a>
+      Hane Dijital Teknoloji A.Ş. · <a href="https://investliq.com" style="color:#22d3ee;text-decoration:none;">investliq.com</a>
     </p>
   </div>
 </body>

@@ -147,7 +147,7 @@ function buildBriefingText(parts: {
 }): string {
   const date = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' });
   const lines: string[] = [];
-  lines.push(`📊 *Hane Finans Brifingi*`);
+  lines.push(`📊 *InvestLiq Brifingi*`);
   lines.push(`_${date}_`);
   lines.push('');
 
@@ -335,7 +335,7 @@ function buildBriefingText(parts: {
     lines.push('');
   }
 
-  lines.push('🌐 Detay: hanefinans.net/panel');
+  lines.push('🌐 Detay: investliq.com/panel');
 
   let text = lines.join('\n');
   if (text.length > 4000) text = text.slice(0, 3997) + '...';

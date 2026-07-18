@@ -1,5 +1,5 @@
 /**
- * Hane Finans — service worker (PWA + offline fallback).
+ * InvestLiq — service worker (PWA + offline fallback).
  *
  * STRATEJİ:
  *   1) Push notification: /push-handler.js'den import edilir.

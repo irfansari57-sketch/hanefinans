@@ -154,8 +154,8 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 
-  // Brifing kendi başlığını (📊 *Hane Finans Brifingi*) içeriyor — onun ALTINA session
-  // alt başlığını yerleştir. Böylece Telegram bildirim önizlemesinde önce "Hane Finans
+  // Brifing kendi başlığını (📊 *InvestLiq Brifingi*) içeriyor — onun ALTINA session
+  // alt başlığını yerleştir. Böylece Telegram bildirim önizlemesinde önce "InvestLiq
   // Brifingi" görünür, kullanıcı bildirimi hangi proje gönderdi anında anlar.
   const fullText = injectSessionSubtitle(text, session);
 

@@ -48,7 +48,7 @@ export function NewsAgentCard({ maxStories = 5 }: { maxStories?: number }) {
         <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
           <Info size={12} className="mr-1 inline -mt-0.5" />
           News Agent şu anda ulaşılamıyor. Yerel dev sunucusunda Pages Functions
-          çalışmaz — production'da (<span className="font-mono">hanefinans.net</span>) görülür.
+          çalışmaz — production'da (<span className="font-mono">investliq.com</span>) görülür.
         </div>
       </div>
     );

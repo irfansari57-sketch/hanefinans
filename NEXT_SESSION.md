@@ -1,11 +1,134 @@
-# NEXT SESSION — Hane Finans
+# NEXT SESSION — InvestLiq (eski Hane Finans)
+
+---
+
+## 🚀 INVESTLIQ REBRAND OPERASYONU — DEVAM EDEN
+
+**Yeni marka:** InvestLiq  
+**Domain:** investliq.com (GoDaddy'de alındı, DNS henüz CF'ye yönlendirilmedi)  
+**Slogan:** Yatırımcılar İçin Akıllı Veri Platformu  
+**Logo:** Beyaz Q çember + yeşil elmas + magnifier sap
+
+### ✅ Bu seansda bitti (kod)
+- **Marka batch:** 29 dosyada "Hane Finans" → "InvestLiq"
+- **Domain batch:** 16 dosyada hanefinans.net/pages.dev → investliq.com/pages.dev
+- **Slogan:** Tüm SEO/JSON-LD/meta'da güncellendi
+- **Logo.tsx:** Yeni SVG (Q + elmas + magnifier)
+- **Email:** Legal sayfalarda destek@investliq.com placeholder
+
+### 🎯 KULLANICI EYLEMLERI (SIRAYLA)
+
+#### 1) GoDaddy → Cloudflare DNS (5 dk)
+1. GoDaddy hesabına gir: godaddy.com → My Products → investliq.com → Manage DNS
+2. **Nameservers** kısmını bul, "Change Nameservers" veya "I'll use my own" seç
+3. Cloudflare'in verdiği 2 nameserver'ı yaz (dashboard.cloudflare.com → domain ekle → gösterir)
+4. Save. DNS propagation 5-60 dk sürer.
+
+#### 2) Cloudflare Pages → investliq.com alias ekle (2 dk)
+1. dash.cloudflare.com → Workers & Pages → **hanefinans** projesi
+2. Custom domains → **Set up a custom domain** → `investliq.com`
+3. CF otomatik DNS record'u ayarlar (nameservers CF'ye çevrildikten sonra)
+4. SSL certificate ~5 dk içinde issue olur
+
+#### 3) hanefinans.net → investliq.com 301 redirect (3 dk)
+Iki yol var:
+- **A) CF Bulk Redirects (önerilen):** CF Dashboard → hanefinans.net zone → Rules → Redirect Rules → Yeni kural: `https://hanefinans.net/*` → `https://investliq.com/$1` (301 kalıcı)
+- **B) Pages projesi:** Custom domain olarak hanefinans.net'i de tut, `_redirects` dosyası: `/*  https://investliq.com/:splat  301`
+
+#### 4) Google OAuth Console — Redirect URL güncelle (2 dk)
+console.cloud.google.com → APIs & Services → Credentials → OAuth Client ID → Edit:
+- Authorized JS origins: `https://investliq.com` (ekle)
+- Authorized redirect URIs: `https://investliq.com/api/auth/oauth/google/callback` (ekle)
+- Eskiler kalabilir (hanefinans.net 301 redirect olduğu için son URL investliq.com olur)
+- Save
+
+#### 5) Apple Sign In Service ID (opsiyonel — sonraki adım)
+- Apple Developer'da Service ID'de Return URL güncelleme
+- Bundle ID `com.hanefinans.web` → `com.investliq.web` yeniden oluşturulabilir (opsiyonel)
+
+### 📋 KOD KALAN İŞLER (sonraki seans)
+
+- **HaneModAdBanner.tsx** component'i → **InvestLiqAdBanner.tsx** rename (import path'ler etkilenir)
+- **`hf-` CSS class prefix'leri** varsa `iq-` ile değiştir (Logo defs'te kalmış olabilir)
+- **Legal metinlerinde** InvestLiq marka koruma ibaresi ekle
+- **404 sayfası** InvestLiq brand
+- **PWA manifest** icon değişiklikleri
+- **og-image.svg** yeni logo ile
+- **Sitemap.xml** investliq.com URL'leri
+- **Meta description** güncelle (bazı sayfalarda)
+
+---
 
 > Son guncelleme: 20 Haziran 2026 — Sosyal giris altyapisi hazir (Google + Apple)
 > Bu dosya, bir sonraki Cowork seansinda nereden devam edilecegini gosterir.
 
 ---
 
-## 🎯 SONRAKI SEANS BASLANGICI: GOOGLE OAUTH AKTIVASYON
+## 🚨 SONRAKI SEANS BASLANGICI #1: /sorgu 502 BAD GATEWAY
+
+**Durum:** /sorgu sayfasi "Network: Unexpected token '<', '<!DOCTYPE'..." hatasi veriyor.
+Backend /api/ai/screener (ve /api/ai/deep-analyze) 502 Bad Gateway donuyor.
+CF Pages default HTML 502 page geliyor → frontend r.json() patliyor.
+
+**Bu seansda tespit edilen:** 28 Haziran 2026 deploy log'unda kesin hata:
+```
+✘ [ERROR] Unexpected "\x00"
+    functions/api/ai/analyze.ts:146:0
+```
+4 AI dosyasinda null byte vardi. Sandbox tarafindan tr -d '\000' ile temizledim
+ama commit/push yapildi mi belirsiz - kullanici cok uzun saat ugrasti, yorgun.
+
+**Sonraki seansda 5 dk'da cozmek icin:**
+
+### 1. Null byte var mi DOGRULA (PowerShell)
+```powershell
+cd C:\dev\hanefinans
+$files = @(
+  "functions\api\ai\screener.ts",
+  "functions\api\ai\deep-analyze.ts",
+  "functions\api\ai\analyze.ts",
+  "functions\api\ai\portfolio.ts"
+)
+foreach ($f in $files) {
+  $bytes = [System.IO.File]::ReadAllBytes($f)
+  $nulls = ($bytes | Where-Object {$_ -eq 0}).Count
+  Write-Host "$f : $nulls null bytes"
+}
+```
+
+### 2. Null byte VARSA temizle + push
+```powershell
+foreach ($f in $files) {
+  $content = [System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8)
+  $cleaned = $content -replace "`0", ""
+  $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllText($f, $cleaned, $utf8NoBom)
+}
+git add functions/api/ai/
+git commit -m "fix(ai): strip null bytes (PowerShell)"
+git push origin main
+```
+
+### 3. Null byte YOKSA - CF Pages dashboard log oku
+- dash.cloudflare.com → Workers & Pages → hanefinans
+- Deployments → en son deployment → "View build" → log paylaş
+- "Functions" tarayicinda hata cik
+
+### 4. Test (deploy bittikten 3 dk sonra)
+- hanefinans.net/sorgu → "Sorgula" tikla
+- 200 JSON gelmeli, "Network: Unexpected token..." kaybolmali
+
+**Notlar:**
+- Bu seansda model id'leri claude-3-5-haiku-latest + claude-3-5-sonnet-latest'e
+  cevrildi (commit 85b0645). Bu Anthropic resmi stable alias'lar.
+- 7 dosya bundle: 4 AI (screener, deep-analyze, analyze, portfolio) + 3 agents
+  (macro, news, sentiment). 3 agents'ta null byte yoktu.
+- Build basarisiz olunca CF Pages eski bundle'i serve etmiyor; tum AI endpoint'leri
+  502 veriyor (tum site degil - /api/auth/me, /api/yahoo/snapshot calisiyor).
+
+---
+
+## 🎯 SONRAKI SEANS BASLANGICI #2: GOOGLE OAUTH AKTIVASYON
 
 Backend deploy edildi ve calisiyor (test: `/api/auth/oauth/google/start` =>
 "GOOGLE_OAUTH_CLIENT_ID env var eksik" donuyor — yani endpoint hazir).

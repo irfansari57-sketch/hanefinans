@@ -10,9 +10,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 
 const COMPANY = {
   legalName: 'Hane Dijital Teknoloji A.Ş.',
-  brand: 'Hane Finans',
-  website: 'hanefinans.net',
-  supportEmail: 'destek@hanefinans.net',
+  brand: 'InvestLiq',
+  website: 'investliq.com',
+  supportEmail: 'destek@investliq.com',
   address: 'İstanbul, Türkiye', // TODO: tam adres ekle
   mersis: '', // TODO: MERSİS numarası
   taxNumber: '', // TODO: VKN
@@ -155,7 +155,7 @@ export function MesafeliPage() {
       <H2>2. Sözleşmenin Konusu</H2>
       <P>
         İşbu sözleşmenin konusu, Alıcı'nın {COMPANY.website} adresinden elektronik ortamda
-        sipariş verdiği <strong>Hane Finans dijital üyelik hizmetleri</strong> (PRO ve ELITE
+        sipariş verdiği <strong>InvestLiq dijital üyelik hizmetleri</strong> (PRO ve ELITE
         planları) ile ilgili olarak 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli
         Sözleşmeler Yönetmeliği hükümleri çerçevesinde tarafların hak ve yükümlülüklerinin
         belirlenmesidir.
@@ -163,7 +163,7 @@ export function MesafeliPage() {
 
       <H2>3. Hizmet Bilgileri</H2>
       <P>
-        Satın alınan hizmet, Hane Finans web platformunda sunulan finansal analiz, BIST/ABD/Kripto
+        Satın alınan hizmet, InvestLiq web platformunda sunulan finansal analiz, BIST/ABD/Kripto
         verisi takibi, AI destekli analiz ve diğer üyelik özelliklerini içerir. Detaylı özellikler
         ve fiyatlar üyelik sayfasında belirtilmiştir.
       </P>
@@ -220,9 +220,9 @@ export function UyelikSozlesmesiPage() {
 
       <H2>2. Hizmetin Kapsamı</H2>
       <P>
-        Hane Finans; BIST, ABD borsaları, kripto para, döviz, emtia ve TEFAS yatırım fonları için
+        InvestLiq; BIST, ABD borsaları, kripto para, döviz, emtia ve TEFAS yatırım fonları için
         veri görüntüleme, teknik analiz, AI destekli içerik üretimi ve eğitim materyalleri sunan bir
-        dijital platformdur. <strong>Hane Finans bir yatırım danışmanlığı kuruluşu değildir.</strong>
+        dijital platformdur. <strong>InvestLiq bir yatırım danışmanlığı kuruluşu değildir.</strong>
         Sermaye Piyasası Kurulu (SPK) tarafından yetkilendirilmemiştir.
       </P>
 

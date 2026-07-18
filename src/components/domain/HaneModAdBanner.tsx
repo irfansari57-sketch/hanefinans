@@ -251,7 +251,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
                 <div className="mt-0.5 truncate text-[10px] text-red-200/90">{video.hook}</div>
               )}
               {!hasVideos && (
-                <div className="mt-0.5 text-[10px] text-red-200/90">Hane Finans'ın resmi YouTube kanalı</div>
+                <div className="mt-0.5 text-[10px] text-red-200/90">InvestLiq'ın resmi YouTube kanalı</div>
               )}
             </div>
             <ExternalLink size={11} className="shrink-0 text-red-300 transition group-hover:translate-x-0.5 group-hover:text-white" />
@@ -347,7 +347,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
         </div>
         <h3 className="mt-1.5 text-base font-bold text-white sm:text-lg">{CHANNEL_NAME}</h3>
         <p className="mt-0.5 line-clamp-2 text-xs text-red-200/90 sm:text-sm">
-          {video?.title ?? video?.hook ?? 'Hane Finans\'ın resmi YouTube kanalı — yeni içerikler için takipte kal.'}
+          {video?.title ?? video?.hook ?? 'InvestLiq\'ın resmi YouTube kanalı — yeni içerikler için takipte kal.'}
         </p>
         <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white transition group-hover:bg-red-500">
           <Youtube size={12} /> Abone Ol

@@ -59,9 +59,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const exp = Date.now() + EXPIRY_MS;
   const token = await signToken({ email, code, exp }, env.AUTH_TOKEN_SECRET);
 
-  const fromEmail = env.RESEND_FROM_EMAIL ?? 'Hane Finans <onboarding@resend.dev>';
+  const fromEmail = env.RESEND_FROM_EMAIL ?? 'InvestLiq <onboarding@resend.dev>';
   const html = buildEmailHtml(code, email);
-  const text = `Hane Finans email doğrulama kodun: ${code}\n\nBu kod 15 dakika geçerli. Sen değilsen bu maili görmezden gel.`;
+  const text = `InvestLiq email doğrulama kodun: ${code}\n\nBu kod 15 dakika geçerli. Sen değilsen bu maili görmezden gel.`;
 
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -73,7 +73,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       body: JSON.stringify({
         from: fromEmail,
         to: [email],
-        subject: `Hane Finans doğrulama kodun: ${code}`,
+        subject: `InvestLiq doğrulama kodun: ${code}`,
         html,
         text,
       }),
@@ -97,7 +97,7 @@ function buildEmailHtml(code: string, email: string): string {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Hane Finans doğrulama kodun</title>
+<title>InvestLiq doğrulama kodun</title>
 </head>
 <body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,Segoe UI,sans-serif;color:#cbd5e1;">
   <div style="max-width:520px;margin:0 auto;padding:32px 24px;background:#111a2e;border-radius:16px;margin-top:32px;border:1px solid #1f2a44;">
@@ -119,7 +119,7 @@ function buildEmailHtml(code: string, email: string): string {
     </p>
     <hr style="border:none;border-top:1px solid #1f2a44;margin:24px 0;" />
     <p style="font-size:11px;color:#475569;text-align:center;margin:0;">
-      Hane Dijital Teknoloji A.Ş. · <a href="https://hanefinans.net" style="color:#22d3ee;text-decoration:none;">hanefinans.net</a>
+      Hane Dijital Teknoloji A.Ş. · <a href="https://investliq.com" style="color:#22d3ee;text-decoration:none;">investliq.com</a>
     </p>
   </div>
 </body>

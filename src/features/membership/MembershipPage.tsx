@@ -122,7 +122,7 @@ export function MembershipPage() {
   if (!user) {
     return (
       <>
-      <SeoHead title="Üyelik Planları" description="Hane Finans Free, Pro ve Elite üyelik planları. AI agent erişimi, push bildirimleri, gelişmiş öneriler." path="/uyelik" />
+      <SeoHead title="Üyelik Planları" description="InvestLiq Free, Pro ve Elite üyelik planları. AI agent erişimi, push bildirimleri, gelişmiş öneriler." path="/uyelik" />
 
         <PageHeader title="Üyelik" subtitle="Plan seçmek için önce hesabına gir veya ücretsiz hesap aç." />
         <div className="glass-card p-8 text-center">

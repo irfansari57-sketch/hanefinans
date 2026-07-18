@@ -1,5 +1,77 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
+> Son guncelleme: 18 Temmuz 2026 — seans DNS setup ortasinda kesildi
+
+---
+
+## 🎯 SONRAKI SEANS BASLANGIC — DNS SETUP DEVAMI
+
+**Kaldigimiz nokta:** Cloudflare'de investliq.com zone eklendi. Nameservers hazir:
+
+```
+arya.ns.cloudflare.com
+quinton.ns.cloudflare.com
+```
+
+Godaddy'de nameserver degisimi kaldi (kullanici sifre reset yapamadi).
+
+### DEVAM PLANI (5 adim, 15-20 dk)
+
+**Adim 1 — GoDaddy sifre reset (kullanici)**
+1. https://sso.godaddy.com/security/reset-password
+2. Domain'i aldigin email adresini gir (muhtemelen irfansari57@gmail.com)
+3. Gmail'e gelen linke tikla, yeni sifre olustur
+
+**Adim 2 — GoDaddy nameserver degisimi**
+1. sso.godaddy.com -> giris
+2. My Products -> investliq.com -> DNS
+3. Nameservers bolumu -> Change -> "I'll use my own nameservers"
+4. Girilecek:
+   - Nameserver 1: `arya.ns.cloudflare.com`
+   - Nameserver 2: `quinton.ns.cloudflare.com`
+5. Save. GoDaddy uyari verirse Confirm.
+6. NOT: Bu isleme MX kayitlarini etkilemez cunku Cloudflare zone otomatik olarak GoDaddy'deki MX'leri (Microsoft 365 Workspace) tarayip zone'a kopyaladi. Email `irfansari@investliq.com` calismaya devam eder.
+
+**Adim 3 — Cloudflare'de "I updated my nameservers" bas**
+1. dash.cloudflare.com -> investliq.com sayfasina don (bu sekme hala acik olmali)
+2. En altta mavi buton: **"I updated my nameservers"** (bekleyen)
+3. Cloudflare 5-30 dk icinde nameserver degisimini algilar
+4. Zone durumu "Pending" -> "Active" olur
+
+**Adim 4 — CF Pages'e investliq.com custom domain ekle**
+1. Cloudflare Dashboard -> Workers & Pages -> **hanefinans** projesi
+2. Sag ust: Custom domains sekmesi
+3. **Set up a custom domain** -> `investliq.com`
+4. CF otomatik DNS record'u ekler (nameserver zaten CF'de)
+5. SSL certificate ~5 dk icinde aktif
+6. Test: https://investliq.com -> InvestLiq sitesi acilmali
+
+**Adim 5 — hanefinans.net -> investliq.com 301 redirect**
+1. Dashboard -> hanefinans.net zone (mevcut CF zone)
+2. Rules -> Redirect Rules -> Create rule
+3. Ismini yaz: "Rebrand redirect"
+4. When incoming requests match:
+   - Field: Hostname
+   - Operator: equals
+   - Value: `hanefinans.net`
+5. Then:
+   - Type: Static
+   - URL: `https://investliq.com/$1`
+   - Status code: 301
+6. Save
+
+### DEVAMI (Adim 6-7, opsiyonel)
+
+**Adim 6 — Google OAuth Redirect URL**
+- console.cloud.google.com -> APIs & Services -> Credentials -> OAuth Client ID
+- Authorized JS origins: + `https://investliq.com`
+- Authorized redirect URIs: + `https://investliq.com/api/auth/oauth/google/callback`
+- (Eski hanefinans.net URL'leri sil VEYA tut - redirect ediyorsa fark etmez)
+
+**Adim 7 — Apple Sign In (ops)**
+- developer.apple.com -> Sign In with Apple Service ID -> Configure
+- Return URLs: + `https://investliq.com/api/auth/oauth/apple/callback`
+
 ---
 
 ## 🚀 INVESTLIQ REBRAND OPERASYONU — DEVAM EDEN

@@ -167,10 +167,13 @@ export function AuthPage({ mode }: Props) {
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-3">
           <Logo size={72} />
-          <h1 className="bg-gradient-to-r from-slate-100 via-slate-300 to-slate-500 bg-clip-text text-2xl font-bold tracking-tight text-transparent">
-            HANE FİNANS
+          <h1 className="text-2xl font-extrabold tracking-tight">
+            <span className="text-slate-900 dark:text-slate-100">Invest</span>
+            <span className="text-emerald-600 dark:text-emerald-400">Liq</span>
           </h1>
-          <p className="text-xs tracking-[0.3em] text-accent/80">VERİ · ANALİZ · FIRSAT</p>
+          <p className="text-[11px] tracking-[0.2em] font-semibold uppercase text-emerald-700 dark:text-accent/85">
+            Yatırımcılar İçin Akıllı Veri Platformu
+          </p>
         </div>
 
         {step === 'verify' ? (

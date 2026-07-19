@@ -1,5 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="fr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6ee7b7"/>
+      <stop offset="0.4" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="fd" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bbf7d0"/>
+      <stop offset="0.5" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#16a34a"/>
+    </linearGradient>
+    <radialGradient id="fg" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#22c55e" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#22c55e" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
   <rect width="64" height="64" rx="12" fill="#0f172a"/>
-  <polyline points="14,46 24,38 32,32 42,22 50,18" stroke="#22d3ee" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <polyline points="44,18 50,18 50,24" stroke="#22d3ee" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="27" cy="27" r="20" fill="url(#fg)"/>
+  <circle cx="27" cy="27" r="16" fill="none" stroke="url(#fr)" stroke-width="5"/>
+  <line x1="38" y1="38" x2="50" y2="50" stroke="url(#fr)" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="27,17 34,27 27,37 20,27" fill="url(#fd)" stroke="#86efac" stroke-width="0.6"/>
+  <circle cx="27" cy="27" r="1.2" fill="#ffffff" opacity="0.9"/>
 </svg>

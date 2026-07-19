@@ -452,15 +452,20 @@ export function Layout() {
               <div className="mb-3 flex shrink-0 items-center justify-between px-4">
                 <div className="inline-flex flex-col items-center gap-1">
                   <img
-                    src="/web-app-manifest-192x192.png?v=2"
+                    src="/web-app-manifest-192x192.png?v=3"
                     alt="InvestLiq"
                     width={56}
                     height={56}
                     className="h-14 w-14 rounded-xl shadow-md"
                   />
                   <div className="flex flex-col items-center leading-tight">
-                    <span className="text-sm font-extrabold tracking-tight">HANE FİNANS</span>
-                    <span className="mt-0.5 text-[10px] tracking-[0.18em] text-accent font-semibold">VERİ · ANALİZ · FIRSAT</span>
+                    <span className="text-sm font-extrabold tracking-tight">
+                      <span className="text-slate-900 dark:text-slate-100">Invest</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">Liq</span>
+                    </span>
+                    <span className="mt-0.5 text-[9px] tracking-[0.14em] font-semibold uppercase text-emerald-700 dark:text-accent">
+                      Yatırımcılar İçin Akıllı Veri Platformu
+                    </span>
                   </div>
                 </div>
                 <button

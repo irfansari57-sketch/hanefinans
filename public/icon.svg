@@ -4,82 +4,100 @@
       <stop offset="0" stop-color="#0e1830"/>
       <stop offset="1" stop-color="#0b1220"/>
     </linearGradient>
-    <radialGradient id="amber" cx="50%" cy="45%" r="55%">
-      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.42"/>
-      <stop offset="55%" stop-color="#22c55e" stop-opacity="0.12"/>
+    <radialGradient id="amber" cx="46%" cy="42%" r="58%">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.62"/>
+      <stop offset="45%" stop-color="#22c55e" stop-opacity="0.22"/>
       <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="ring3d" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#6ee7b7"/>
-      <stop offset="0.35" stop-color="#22c55e"/>
-      <stop offset="0.75" stop-color="#15803d"/>
+      <stop offset="0" stop-color="#a7f3d0"/>
+      <stop offset="0.18" stop-color="#4ade80"/>
+      <stop offset="0.45" stop-color="#16a34a"/>
+      <stop offset="0.78" stop-color="#14532d"/>
       <stop offset="1" stop-color="#052e16"/>
     </linearGradient>
     <linearGradient id="ringShine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.75"/>
-      <stop offset="0.32" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.18" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="0.4" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="diamond3d" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#bbf7d0"/>
-      <stop offset="0.4" stop-color="#4ade80"/>
-      <stop offset="0.72" stop-color="#16a34a"/>
+    <linearGradient id="ringInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#052e16" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#052e16" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="mag3d" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#dcfce7"/>
+      <stop offset="0.35" stop-color="#4ade80"/>
+      <stop offset="0.7" stop-color="#16a34a"/>
       <stop offset="1" stop-color="#14532d"/>
     </linearGradient>
-    <linearGradient id="diamondShine" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/>
-      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+    <linearGradient id="magShine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <filter id="outerGlow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="10"/>
+    <radialGradient id="magGlass" cx="35%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#4ade80" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#052e16" stop-opacity="0.35"/>
+    </radialGradient>
+    <filter id="outerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <filter id="sparkle" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="6"/>
+      <feGaussianBlur stdDeviation="4"/>
     </filter>
-    <filter id="diamondShadow" x="-50%" y="-50%" width="200%" height="200%">
+    <filter id="magShadow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
-      <feOffset dy="8"/>
-      <feComponentTransfer><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
+      <feOffset dx="2" dy="8"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.7"/></feComponentTransfer>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
 
-  <!-- Dark rounded square canvas -->
   <rect width="512" height="512" rx="90" fill="url(#bg)"/>
-  <!-- Emerald ambient hale -->
-  <circle cx="234" cy="234" r="240" fill="url(#amber)"/>
+  <circle cx="234" cy="230" r="260" fill="url(#amber)"/>
 
-  <!-- Sparkle stars -->
+  <!-- Sparkles -->
   <g filter="url(#sparkle)">
-    <circle cx="76" cy="112" r="7" fill="#4ade80" opacity="0.72"/>
-    <circle cx="428" cy="86" r="5.5" fill="#86efac" opacity="0.62"/>
-    <circle cx="60" cy="340" r="6" fill="#4ade80" opacity="0.58"/>
-    <circle cx="444" cy="410" r="7" fill="#86efac" opacity="0.68"/>
-    <circle cx="392" cy="60" r="4" fill="#ffffff" opacity="0.55"/>
-    <circle cx="112" cy="436" r="4" fill="#ffffff" opacity="0.55"/>
-    <circle cx="34" cy="234" r="4" fill="#22c55e" opacity="0.5"/>
-    <circle cx="476" cy="234" r="4.5" fill="#22c55e" opacity="0.55"/>
+    <circle cx="70" cy="104" r="9" fill="#4ade80" opacity="0.85"/>
+    <circle cx="436" cy="76" r="7.5" fill="#86efac" opacity="0.75"/>
+    <circle cx="52" cy="350" r="8" fill="#4ade80" opacity="0.7"/>
+    <circle cx="452" cy="418" r="10" fill="#86efac" opacity="0.8"/>
+    <circle cx="400" cy="52" r="5.5" fill="#ffffff" opacity="0.75"/>
+    <circle cx="104" cy="444" r="6" fill="#ffffff" opacity="0.7"/>
+    <circle cx="24" cy="222" r="5.5" fill="#22c55e" opacity="0.65"/>
+    <circle cx="486" cy="256" r="6.5" fill="#22c55e" opacity="0.7"/>
+  </g>
+  <g fill="#ffffff" opacity="0.7">
+    <path d="M94 94 L98 78 L102 94 L118 98 L102 102 L98 118 L94 102 L78 98 Z"/>
+    <path d="M424 424 L428 408 L432 424 L448 428 L432 432 L428 448 L424 432 L408 428 Z"/>
   </g>
 
-  <!-- Q ring 3D + outer glow -->
+  <!-- Dış Q ring -->
   <g filter="url(#outerGlow)">
-    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ring3d)" stroke-width="43"/>
-    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ringShine)" stroke-width="43"/>
+    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ring3d)" stroke-width="52"/>
+    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ringShine)" stroke-width="52"/>
+    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ringInner)" stroke-width="52" transform="rotate(180 234 234)"/>
   </g>
 
-  <!-- Inner emerald accent halka -->
-  <circle cx="234" cy="234" r="124" fill="none" stroke="#4ade80" stroke-width="3" opacity="0.55"/>
-
-  <!-- Magnifier sap (Q'nun kuyruğu) -->
+  <!-- Q dış kuyruk -->
   <g filter="url(#outerGlow)">
-    <line x1="324" y1="324" x2="420" y2="420" stroke="url(#ring3d)" stroke-width="43" stroke-linecap="round"/>
-    <line x1="324" y1="324" x2="420" y2="420" stroke="url(#ringShine)" stroke-width="43" stroke-linecap="round"/>
+    <line x1="328" y1="328" x2="432" y2="432" stroke="url(#ring3d)" stroke-width="52" stroke-linecap="round"/>
+    <line x1="328" y1="328" x2="432" y2="432" stroke="url(#ringShine)" stroke-width="52" stroke-linecap="round"/>
   </g>
 
-  <!-- Green diamond center -->
-  <g filter="url(#diamondShadow)">
-    <polygon points="234,154 290,234 234,314 178,234" fill="url(#diamond3d)" stroke="#86efac" stroke-width="3"/>
-    <polygon points="234,154 260,192 234,234 208,192" fill="url(#diamondShine)"/>
-    <circle cx="234" cy="234" r="6" fill="#ffffff" opacity="0.85"/>
+  <!-- Q iç kuyruk göstergesi -->
+  <line x1="308" y1="308" x2="272" y2="272" stroke="url(#mag3d)" stroke-width="20" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Mini büyüteç -->
+  <g filter="url(#magShadow)">
+    <circle cx="212" cy="212" r="65" fill="url(#magGlass)"/>
+    <circle cx="212" cy="212" r="65" fill="none" stroke="url(#mag3d)" stroke-width="20"/>
+    <circle cx="212" cy="212" r="65" fill="none" stroke="url(#magShine)" stroke-width="20"/>
+    <line x1="258" y1="258" x2="290" y2="290" stroke="url(#mag3d)" stroke-width="20" stroke-linecap="round"/>
+    <line x1="258" y1="258" x2="290" y2="290" stroke="url(#magShine)" stroke-width="20" stroke-linecap="round"/>
+    <ellipse cx="190" cy="190" rx="15" ry="9" fill="#ffffff" opacity="0.7" transform="rotate(-35 190 190)"/>
+    <circle cx="223" cy="184" r="4" fill="#ffffff" opacity="0.85"/>
   </g>
 </svg>

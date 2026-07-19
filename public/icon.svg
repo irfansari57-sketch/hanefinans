@@ -25,20 +25,16 @@
       <stop offset="0" stop-color="#052e16" stop-opacity="0.55"/>
       <stop offset="0.55" stop-color="#052e16" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="mag3d" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#dcfce7"/>
-      <stop offset="0.35" stop-color="#4ade80"/>
-      <stop offset="0.7" stop-color="#16a34a"/>
+    <radialGradient id="dot3d" cx="35%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#ecfdf5"/>
+      <stop offset="0.3" stop-color="#86efac"/>
+      <stop offset="0.7" stop-color="#22c55e"/>
       <stop offset="1" stop-color="#14532d"/>
-    </linearGradient>
-    <linearGradient id="magShine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
-      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <radialGradient id="magGlass" cx="35%" cy="30%" r="70%">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
-      <stop offset="0.45" stop-color="#4ade80" stop-opacity="0.15"/>
-      <stop offset="1" stop-color="#052e16" stop-opacity="0.35"/>
+    </radialGradient>
+    <radialGradient id="dotGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#4ade80" stop-opacity="0.7"/>
+      <stop offset="0.7" stop-color="#22c55e" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#22c55e" stop-opacity="0"/>
     </radialGradient>
     <filter id="outerGlow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="12"/>
@@ -47,10 +43,10 @@
     <filter id="sparkle" x="-100%" y="-100%" width="300%" height="300%">
       <feGaussianBlur stdDeviation="4"/>
     </filter>
-    <filter id="magShadow" x="-50%" y="-50%" width="200%" height="200%">
+    <filter id="dotShadow" x="-100%" y="-100%" width="300%" height="300%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
-      <feOffset dx="2" dy="8"/>
-      <feComponentTransfer><feFuncA type="linear" slope="0.7"/></feComponentTransfer>
+      <feOffset dx="2" dy="7"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.75"/></feComponentTransfer>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
@@ -58,7 +54,6 @@
   <rect width="512" height="512" rx="90" fill="url(#bg)"/>
   <circle cx="234" cy="230" r="260" fill="url(#amber)"/>
 
-  <!-- Sparkles -->
   <g filter="url(#sparkle)">
     <circle cx="70" cy="104" r="9" fill="#4ade80" opacity="0.85"/>
     <circle cx="436" cy="76" r="7.5" fill="#86efac" opacity="0.75"/>
@@ -74,30 +69,22 @@
     <path d="M424 424 L428 408 L432 424 L448 428 L432 432 L428 448 L424 432 L408 428 Z"/>
   </g>
 
-  <!-- Dış Q ring -->
   <g filter="url(#outerGlow)">
     <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ring3d)" stroke-width="52"/>
     <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ringShine)" stroke-width="52"/>
     <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ringInner)" stroke-width="52" transform="rotate(180 234 234)"/>
   </g>
 
-  <!-- Q dış kuyruk -->
   <g filter="url(#outerGlow)">
     <line x1="328" y1="328" x2="432" y2="432" stroke="url(#ring3d)" stroke-width="52" stroke-linecap="round"/>
     <line x1="328" y1="328" x2="432" y2="432" stroke="url(#ringShine)" stroke-width="52" stroke-linecap="round"/>
   </g>
 
-  <!-- Q iç kuyruk göstergesi -->
-  <line x1="308" y1="308" x2="272" y2="272" stroke="url(#mag3d)" stroke-width="20" stroke-linecap="round" opacity="0.9"/>
+  <circle cx="234" cy="234" r="60" fill="url(#dotGlow)"/>
 
-  <!-- Mini büyüteç -->
-  <g filter="url(#magShadow)">
-    <circle cx="212" cy="212" r="65" fill="url(#magGlass)"/>
-    <circle cx="212" cy="212" r="65" fill="none" stroke="url(#mag3d)" stroke-width="20"/>
-    <circle cx="212" cy="212" r="65" fill="none" stroke="url(#magShine)" stroke-width="20"/>
-    <line x1="258" y1="258" x2="290" y2="290" stroke="url(#mag3d)" stroke-width="20" stroke-linecap="round"/>
-    <line x1="258" y1="258" x2="290" y2="290" stroke="url(#magShine)" stroke-width="20" stroke-linecap="round"/>
-    <ellipse cx="190" cy="190" rx="15" ry="9" fill="#ffffff" opacity="0.7" transform="rotate(-35 190 190)"/>
-    <circle cx="223" cy="184" r="4" fill="#ffffff" opacity="0.85"/>
+  <g filter="url(#dotShadow)">
+    <circle cx="234" cy="234" r="36" fill="url(#dot3d)" stroke="#86efac" stroke-width="2"/>
+    <ellipse cx="222" cy="220" rx="14" ry="9" fill="#ffffff" opacity="0.72" transform="rotate(-35 222 220)"/>
+    <circle cx="230" cy="224" r="3.5" fill="#ffffff" opacity="0.95"/>
   </g>
 </svg>

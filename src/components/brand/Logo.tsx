@@ -8,10 +8,10 @@ interface LogoProps {
 }
 
 /**
- * InvestLiq — Q + iç mini büyüteç + Q kuyruğu içeri gösterge (v4).
+ * InvestLiq — Q ring + merkezde "i noktası" logo (v5).
  * - Chrome-emerald 3D dış halka + specular + contour
- * - İç mini büyüteç (analiz vurgusu) — lens + handle
- * - Q kuyruğu ringin içine hafif girip mini büyüteci işaret eder
+ * - Q kuyruğu sağ-alt (klasik Q formu)
+ * - Merkezde küçük 3D emerald sphere = "i" harfinin noktası
  * - Ambient glow + sparkle
  */
 export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
@@ -35,7 +35,7 @@ export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
 }
 
 function LogoIcon({ size = 40, className }: { size?: number; className?: string }) {
-  // ViewBox 120x120 — Q dış halka + Q kuyruğu (dışa) + iç mini büyüteç + kuyruk göstergesi (içe).
+  // ViewBox 120x120 — Q halkası + kuyruk + merkez i noktası.
   return (
     <svg
       width={size}
@@ -52,7 +52,7 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
           <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
         </radialGradient>
 
-        {/* Dış Q halkası — chrome-emerald 3D */}
+        {/* Q halkası — chrome-emerald 3D */}
         <linearGradient id="iq-ring-3d" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#a7f3d0" />
           <stop offset="18%" stopColor="#4ade80" />
@@ -74,28 +74,22 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
           <stop offset="55%" stopColor="#052e16" stopOpacity="0" />
         </linearGradient>
 
-        {/* Mini büyüteç — daha parlak emerald */}
-        <linearGradient id="iq-mag-3d" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#dcfce7" />
-          <stop offset="35%" stopColor="#4ade80" />
-          <stop offset="70%" stopColor="#16a34a" />
+        {/* i noktası — 3D sphere gradient */}
+        <radialGradient id="iq-dot-3d" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#ecfdf5" />
+          <stop offset="25%" stopColor="#86efac" />
+          <stop offset="60%" stopColor="#22c55e" />
           <stop offset="100%" stopColor="#14532d" />
-        </linearGradient>
-
-        {/* Mini büyüteç shine */}
-        <linearGradient id="iq-mag-shine" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
-          <stop offset="45%" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-
-        {/* Mini büyüteç iç glass */}
-        <radialGradient id="iq-mag-glass" cx="35%" cy="30%" r="70%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
-          <stop offset="45%" stopColor="#4ade80" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#052e16" stopOpacity="0.35" />
         </radialGradient>
 
-        {/* Outer glow */}
+        {/* i noktası glow */}
+        <radialGradient id="iq-dot-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#4ade80" stopOpacity="0.7" />
+          <stop offset="70%" stopColor="#22c55e" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+        </radialGradient>
+
+        {/* Outer glow filter */}
         <filter id="iq-outer-glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="3" result="b" />
           <feMerge>
@@ -109,12 +103,12 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
           <feGaussianBlur stdDeviation="1" />
         </filter>
 
-        {/* Mini büyüteç drop shadow */}
-        <filter id="iq-mag-shadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" />
-          <feOffset dx="0.5" dy="1.8" />
+        {/* i noktası drop shadow */}
+        <filter id="iq-dot-shadow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="1.4" />
+          <feOffset dx="0.4" dy="1.6" />
           <feComponentTransfer>
-            <feFuncA type="linear" slope="0.7" />
+            <feFuncA type="linear" slope="0.75" />
           </feComponentTransfer>
           <feMerge>
             <feMergeNode />
@@ -124,7 +118,7 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
       </defs>
 
       {/* Ambient emerald hale */}
-      <circle cx="56" cy="54" r="60" fill="url(#iq-ambient)" />
+      <circle cx="55" cy="55" r="60" fill="url(#iq-ambient)" />
 
       {/* Sparkle yıldızları */}
       <g filter="url(#iq-sparkle)">
@@ -142,7 +136,7 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
         <path d="M100 100 L101 96 L102 100 L106 101 L102 102 L101 106 L100 102 L96 101 Z" />
       </g>
 
-      {/* Dış Q halkası — chrome 3D */}
+      {/* Q halkası — chrome 3D */}
       <g filter="url(#iq-outer-glow)">
         <circle
           cx="55"
@@ -171,7 +165,7 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
         />
       </g>
 
-      {/* Q kuyruğu — dış (sağ alta uzayan sap) */}
+      {/* Q kuyruğu — sağ alta */}
       <g filter="url(#iq-outer-glow)">
         <line
           x1="77"
@@ -193,65 +187,16 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
         />
       </g>
 
-      {/* Q kuyruğu — iç uzantı (ringin içinden mini büyüteci gösterir) */}
-      <line
-        x1="72"
-        y1="72"
-        x2="64"
-        y2="64"
-        stroke="url(#iq-mag-3d)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        opacity="0.9"
-      />
+      {/* i noktası glow — arka aura */}
+      <circle cx="55" cy="55" r="14" fill="url(#iq-dot-glow)" />
 
-      {/* Mini büyüteç — merkez (piyasa analizi vurgusu) */}
-      <g filter="url(#iq-mag-shadow)">
-        {/* Lens dolgu (cam) */}
-        <circle cx="50" cy="50" r="15" fill="url(#iq-mag-glass)" />
-
-        {/* Lens dış çember — chrome */}
-        <circle
-          cx="50"
-          cy="50"
-          r="15"
-          fill="none"
-          stroke="url(#iq-mag-3d)"
-          strokeWidth="4.5"
-        />
-        {/* Lens shine */}
-        <circle
-          cx="50"
-          cy="50"
-          r="15"
-          fill="none"
-          stroke="url(#iq-mag-shine)"
-          strokeWidth="4.5"
-        />
-
-        {/* Büyüteç sapı — Q kuyruğuna doğru uzanır */}
-        <line
-          x1="60.5"
-          y1="60.5"
-          x2="68"
-          y2="68"
-          stroke="url(#iq-mag-3d)"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        <line
-          x1="60.5"
-          y1="60.5"
-          x2="68"
-          y2="68"
-          stroke="url(#iq-mag-shine)"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-
-        {/* Lens parıltı — sol üstte küçük beyaz noktalar (glass reflection) */}
-        <ellipse cx="45" cy="45" rx="3.5" ry="2.2" fill="#ffffff" opacity="0.7" transform="rotate(-35 45 45)" />
-        <circle cx="53" cy="43" r="1" fill="#ffffff" opacity="0.85" />
+      {/* i noktası — merkez 3D sphere */}
+      <g filter="url(#iq-dot-shadow)">
+        <circle cx="55" cy="55" r="8.5" fill="url(#iq-dot-3d)" stroke="#86efac" strokeWidth="0.6" />
+        {/* Highlight — sol üstte beyaz shine */}
+        <ellipse cx="52.5" cy="52" rx="3.5" ry="2.2" fill="#ffffff" opacity="0.75" transform="rotate(-35 52.5 52)" />
+        {/* Tiny bright dot */}
+        <circle cx="54" cy="53" r="0.8" fill="#ffffff" opacity="0.95" />
       </g>
     </svg>
   );

@@ -452,7 +452,7 @@ export function Layout() {
               <div className="mb-3 flex shrink-0 items-center justify-between px-4">
                 <div className="inline-flex flex-col items-center gap-1">
                   <img
-                    src="/web-app-manifest-192x192.png?v=6"
+                    src="/web-app-manifest-192x192.png?v=7"
                     alt="InvestLiq"
                     width={56}
                     height={56}

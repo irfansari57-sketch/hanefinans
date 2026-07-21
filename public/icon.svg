@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#0e1830"/>
-      <stop offset="1" stop-color="#0b1220"/>
-    </linearGradient>
-    <radialGradient id="amber" cx="46%" cy="42%" r="58%">
-      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.62"/>
-      <stop offset="45%" stop-color="#22c55e" stop-opacity="0.22"/>
+    <radialGradient id="bg" cx="45%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#132242"/>
+      <stop offset="55%" stop-color="#0e1830"/>
+      <stop offset="100%" stop-color="#080e1c"/>
+    </radialGradient>
+    <radialGradient id="amber" cx="46%" cy="42%" r="52%">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.65"/>
+      <stop offset="40%" stop-color="#22c55e" stop-opacity="0.28"/>
       <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="ring3d" x1="0" y1="0" x2="0" y2="1">
@@ -27,8 +28,8 @@
     </linearGradient>
     <radialGradient id="dot3d" cx="35%" cy="30%" r="70%">
       <stop offset="0" stop-color="#ecfdf5"/>
-      <stop offset="0.3" stop-color="#86efac"/>
-      <stop offset="0.7" stop-color="#22c55e"/>
+      <stop offset="0.25" stop-color="#86efac"/>
+      <stop offset="0.6" stop-color="#22c55e"/>
       <stop offset="1" stop-color="#14532d"/>
     </radialGradient>
     <radialGradient id="dotGlow" cx="50%" cy="50%" r="50%">
@@ -37,11 +38,11 @@
       <stop offset="1" stop-color="#22c55e" stop-opacity="0"/>
     </radialGradient>
     <filter id="outerGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="12"/>
+      <feGaussianBlur stdDeviation="13"/>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <filter id="sparkle" x="-100%" y="-100%" width="300%" height="300%">
-      <feGaussianBlur stdDeviation="4"/>
+      <feGaussianBlur stdDeviation="4.5"/>
     </filter>
     <filter id="dotShadow" x="-100%" y="-100%" width="300%" height="300%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
@@ -51,40 +52,49 @@
     </filter>
   </defs>
 
-  <rect width="512" height="512" rx="90" fill="url(#bg)"/>
-  <circle cx="234" cy="230" r="260" fill="url(#amber)"/>
+  <!-- Background — site-benzeri radial navy -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
 
+  <!-- Ambient emerald hale -->
+  <circle cx="235" cy="230" r="256" fill="url(#amber)"/>
+
+  <!-- Sparkle yıldızları — daha görünür -->
   <g filter="url(#sparkle)">
-    <circle cx="70" cy="104" r="9" fill="#4ade80" opacity="0.85"/>
-    <circle cx="436" cy="76" r="7.5" fill="#86efac" opacity="0.75"/>
-    <circle cx="52" cy="350" r="8" fill="#4ade80" opacity="0.7"/>
-    <circle cx="452" cy="418" r="10" fill="#86efac" opacity="0.8"/>
-    <circle cx="400" cy="52" r="5.5" fill="#ffffff" opacity="0.75"/>
-    <circle cx="104" cy="444" r="6" fill="#ffffff" opacity="0.7"/>
-    <circle cx="24" cy="222" r="5.5" fill="#22c55e" opacity="0.65"/>
-    <circle cx="486" cy="256" r="6.5" fill="#22c55e" opacity="0.7"/>
+    <circle cx="68" cy="102" r="10" fill="#4ade80" opacity="0.9"/>
+    <circle cx="435" cy="76" r="8" fill="#86efac" opacity="0.8"/>
+    <circle cx="51" cy="350" r="8.5" fill="#4ade80" opacity="0.75"/>
+    <circle cx="452" cy="418" r="11" fill="#86efac" opacity="0.85"/>
+    <circle cx="400" cy="51" r="6" fill="#ffffff" opacity="0.78"/>
+    <circle cx="102" cy="443" r="6.5" fill="#ffffff" opacity="0.72"/>
+    <circle cx="26" cy="222" r="6" fill="#22c55e" opacity="0.68"/>
+    <circle cx="486" cy="256" r="7" fill="#22c55e" opacity="0.72"/>
   </g>
-  <g fill="#ffffff" opacity="0.7">
-    <path d="M94 94 L98 78 L102 94 L118 98 L102 102 L98 118 L94 102 L78 98 Z"/>
-    <path d="M424 424 L428 408 L432 424 L448 428 L432 432 L428 448 L424 432 L408 428 Z"/>
+  <!-- Spike stars -->
+  <g fill="#ffffff" opacity="0.75">
+    <path d="M94 94 L98 76 L102 94 L120 98 L102 102 L98 120 L94 102 L76 98 Z"/>
+    <path d="M426 426 L430 408 L434 426 L452 430 L434 434 L430 452 L426 434 L408 430 Z"/>
   </g>
 
+  <!-- Q halkası — chrome 3D -->
   <g filter="url(#outerGlow)">
-    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ring3d)" stroke-width="52"/>
-    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ringShine)" stroke-width="52"/>
-    <circle cx="234" cy="234" r="145" fill="none" stroke="url(#ringInner)" stroke-width="52" transform="rotate(180 234 234)"/>
+    <circle cx="235" cy="235" r="145" fill="none" stroke="url(#ring3d)" stroke-width="52"/>
+    <circle cx="235" cy="235" r="145" fill="none" stroke="url(#ringShine)" stroke-width="52"/>
+    <circle cx="235" cy="235" r="145" fill="none" stroke="url(#ringInner)" stroke-width="52" transform="rotate(180 235 235)"/>
   </g>
 
+  <!-- Q kuyruğu -->
   <g filter="url(#outerGlow)">
-    <line x1="328" y1="328" x2="432" y2="432" stroke="url(#ring3d)" stroke-width="52" stroke-linecap="round"/>
-    <line x1="328" y1="328" x2="432" y2="432" stroke="url(#ringShine)" stroke-width="52" stroke-linecap="round"/>
+    <line x1="329" y1="329" x2="435" y2="435" stroke="url(#ring3d)" stroke-width="52" stroke-linecap="round"/>
+    <line x1="329" y1="329" x2="435" y2="435" stroke="url(#ringShine)" stroke-width="52" stroke-linecap="round"/>
   </g>
 
-  <circle cx="234" cy="234" r="60" fill="url(#dotGlow)"/>
+  <!-- i noktası glow -->
+  <circle cx="235" cy="235" r="60" fill="url(#dotGlow)"/>
 
+  <!-- i noktası — 3D emerald sphere -->
   <g filter="url(#dotShadow)">
-    <circle cx="234" cy="234" r="36" fill="url(#dot3d)" stroke="#86efac" stroke-width="2"/>
-    <ellipse cx="222" cy="220" rx="14" ry="9" fill="#ffffff" opacity="0.72" transform="rotate(-35 222 220)"/>
-    <circle cx="230" cy="224" r="3.5" fill="#ffffff" opacity="0.95"/>
+    <circle cx="235" cy="235" r="36" fill="url(#dot3d)" stroke="#86efac" stroke-width="2.5"/>
+    <ellipse cx="224" cy="222" rx="15" ry="9.5" fill="#ffffff" opacity="0.78" transform="rotate(-35 224 222)"/>
+    <circle cx="230" cy="226" r="3.5" fill="#ffffff" opacity="0.95"/>
   </g>
 </svg>

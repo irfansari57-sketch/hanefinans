@@ -101,16 +101,16 @@ function buildEmailHtml(code: string, email: string): string {
 </head>
 <body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,Segoe UI,sans-serif;color:#cbd5e1;">
   <div style="max-width:520px;margin:0 auto;padding:32px 24px;background:#111a2e;border-radius:16px;margin-top:32px;border:1px solid #1f2a44;">
-    <div style="text-align:center;font-size:20px;font-weight:700;color:#22d3ee;letter-spacing:0.5px;margin-bottom:24px;">
-      HANE FİNANS
+    <div style="text-align:center;font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-bottom:24px;">
+      <span style="color:#f1f5f9;">Invest</span><span style="color:#4ade80;">Liq</span>
     </div>
     <h1 style="font-size:18px;color:#f1f5f9;margin:0 0 12px;">E-posta doğrulama</h1>
     <p style="font-size:14px;line-height:1.6;color:#94a3b8;margin:0 0 20px;">
       <strong style="color:#cbd5e1;">${email}</strong> hesabını aktifleştirmek için aşağıdaki 6 haneli kodu siteye gir.
       Kod <strong style="color:#fbbf24;">15 dakika</strong> geçerlidir.
     </p>
-    <div style="text-align:center;background:#0f172a;border:2px dashed #22d3ee;border-radius:12px;padding:24px;margin:24px 0;">
-      <div style="font-size:36px;font-weight:800;letter-spacing:12px;color:#22d3ee;font-family:'SF Mono',Monaco,monospace;">
+    <div style="text-align:center;background:#0f172a;border:2px dashed #4ade80;border-radius:12px;padding:24px;margin:24px 0;">
+      <div style="font-size:36px;font-weight:800;letter-spacing:12px;color:#4ade80;font-family:'SF Mono',Monaco,monospace;">
         ${code}
       </div>
     </div>
@@ -119,7 +119,7 @@ function buildEmailHtml(code: string, email: string): string {
     </p>
     <hr style="border:none;border-top:1px solid #1f2a44;margin:24px 0;" />
     <p style="font-size:11px;color:#475569;text-align:center;margin:0;">
-      Hane Dijital Teknoloji A.Ş. · <a href="https://investliq.com" style="color:#22d3ee;text-decoration:none;">investliq.com</a>
+      InvestLiq · <a href="https://investliq.com" style="color:#4ade80;text-decoration:none;">investliq.com</a>
     </p>
   </div>
 </body>

@@ -119,7 +119,6 @@ export const router = createBrowserRouter([
       { path: 'alarmlar', element: withSuspense(<AlertsPage />) },
       { path: 'tahmin', element: withSuspense(<PredictionsPage />) },
       { path: 'risk-profili', element: withSuspense(<RiskProfilePage />) },
-      { path: 'tahmin', element: withSuspense(<PredictionsPage />) },
       { path: 'takvim', element: withSuspense(<EconomicCalendarPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },

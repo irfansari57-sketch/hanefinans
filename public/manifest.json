@@ -1,17 +1,17 @@
 {
-  "name": "InvestLiq — Financial Intelligence",
+  "name": "InvestLiq — Yatırımcılar İçin Akıllı Veri Platformu",
   "short_name": "InvestLiq",
   "description": "BIST hisseleri, TEFAS fonları, kripto, döviz ve makro göstergeler için canlı fiyat, günlük analiz ve teknik sinyaller.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#0e1830",
+  "theme_color": "#0e1830",
   "lang": "tr",
   "dir": "ltr",
   "categories": ["finance", "business", "productivity"],
-  "id": "hanefinans-app-v2",
+  "id": "investliq-app-v1",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png?v=7",

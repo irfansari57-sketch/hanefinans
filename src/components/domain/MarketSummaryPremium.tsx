@@ -69,7 +69,7 @@ function Row({ m }: { m: MacroIndicator }) {
         </div>
         {asOfText && (
           <div className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500 sm:text-[10px]">
-            {`Son kapanis - ${asOfText}`}
+            {`Son kapanış · ${asOfText}`}
           </div>
         )}
       </div>

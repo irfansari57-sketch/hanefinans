@@ -45,7 +45,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   // Turnstile (#Ö5) — Resend kota DoS savunması
-  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request));
+  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request), request);
   if (!turnstileOk) {
     return jsonResponse({ ok: false, error: 'Bot doğrulaması başarısız' }, 403);
   }

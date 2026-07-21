@@ -17,6 +17,7 @@ import type { Stock } from '@/data/types';
 import { useWatchlist } from '@/store/watchlist';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { SortableHeader } from '@/components/ui/SortableHeader';
 import { optimisticDelete } from '@/lib/optimisticUndo';
@@ -122,9 +123,9 @@ export function WatchlistPage() {
 
   useEffect(() => {
     fetchData(true);
-    const id = setInterval(() => fetchData(true), AUTO_REFRESH_MS);
-    return () => clearInterval(id);
   }, [fetchData]);
+  // Polling: 60sn; sekme arka plandayken durur, öne gelince tekrar başlar
+  useVisibleInterval(() => fetchData(true), AUTO_REFRESH_MS);
 
   // Dönem getirileri artık useYahooHistoricals ile (yukarıda) — manuel batch kaldırıldı.
 

@@ -12,6 +12,7 @@ import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, ty
 import type { OHLC } from '@/lib/indicators';
 import { formatCompact } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 // Multi-timeframe için BTC, ETH, BNB (Yahoo'da var)
@@ -120,13 +121,13 @@ export function CryptoPage() {
     const memoAge = cryptoMemo ? Date.now() - cryptoMemo.fetchedAt : Infinity;
     if (memoAge < CRYPTO_MEMO_TTL_MS) {
       setLoading(false);
-      const id = setInterval(refresh, 2 * 60_000);
-      return () => clearInterval(id);
+      return;
     }
     refresh();
-    const id = setInterval(refresh, 2 * 60_000); // 2 dakikada bir
-    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Polling: 2 dakikada bir; sekme arka plandayken durur
+  useVisibleInterval(refresh, 2 * 60_000);
 
   const filteredMovers = movers.filter((a) => showStables || !STABLE_COINS.includes(a.symbol));
   const topGainers = [...filteredMovers].sort((a, b) => b.change24h - a.change24h).slice(0, 10);

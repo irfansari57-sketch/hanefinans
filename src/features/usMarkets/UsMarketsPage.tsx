@@ -9,6 +9,7 @@ import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, ty
 import { ema, type OHLC } from '@/lib/indicators';
 import { US_STOCKS } from '@/data/usStocks';
 import { useAuth, isPro } from '@/store/auth';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { useWatchlist } from '@/store/watchlist';
 import { RecPoolStats, type PoolStatBoxData } from '@/components/domain/RecPoolStats';
 import { cn } from '@/lib/utils';
@@ -184,14 +185,13 @@ export function UsMarketsPage() {
     const memoAge = usMemo ? Date.now() - usMemo.fetchedAt : Infinity;
     if (memoAge < US_MEMO_TTL_MS) {
       setLoading(false);
-      const id = setInterval(refresh, 3 * 60_000);
-      return () => clearInterval(id);
+      return;
     }
     refresh();
-    const id = setInterval(refresh, 3 * 60_000); // 3 dk
-    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proUser]);
+  // Polling: 3 dakikada bir (yalnız PRO); sekme arka plandayken durur
+  useVisibleInterval(refresh, proUser ? 3 * 60_000 : null);
 
   // PRO gating
   if (!proUser) {

@@ -32,7 +32,7 @@ export const onRequestPost: PagesFunction<SignupEnv> = async ({ request, env }) 
   catch { return jsonResponse({ ok: false, error: 'Geçersiz JSON' }, 400); }
 
   // Turnstile (#Ö5) — bot/spam savunması. Secret yoksa skip.
-  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request));
+  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request), request);
   if (!turnstileOk) {
     return jsonResponse({ ok: false, error: 'Bot doğrulaması başarısız. Sayfayı yenileyip tekrar dene.' }, 403);
   }

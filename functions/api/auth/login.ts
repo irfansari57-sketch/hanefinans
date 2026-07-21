@@ -43,7 +43,7 @@ export const onRequestPost: PagesFunction<LoginEnv> = async ({ request, env }) =
   if (!email || !password) return jsonResponse({ ok: false, error: GENERIC_AUTH_ERROR }, 401);
 
   // Turnstile (#Ö5)
-  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request));
+  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request), request);
   if (!turnstileOk) {
     return jsonResponse({ ok: false, error: 'Bot doğrulaması başarısız. Sayfayı yenileyip tekrar dene.' }, 403);
   }

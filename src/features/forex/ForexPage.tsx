@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { fetchIndexYahoo } from '@/data/api/yahoo';
 import { FOREX_SYMBOLS, type ForexMeta } from '@/data/forexSymbols';
 import { cn } from '@/lib/utils';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 interface ForexQuote extends ForexMeta {
@@ -79,13 +80,13 @@ export function ForexPage() {
     const memoAge = forexMemo ? Date.now() - forexMemo.fetchedAt : Infinity;
     if (memoAge < FOREX_MEMO_TTL_MS) {
       setLoading(false);
-      const id = setInterval(refresh, 2 * 60_000);
-      return () => clearInterval(id);
+      return;
     }
     refresh();
-    const id = setInterval(refresh, 2 * 60_000); // 2 dakikada bir
-    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Polling: 2 dakikada bir; sekme arka plandayken durur
+  useVisibleInterval(refresh, 2 * 60_000);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

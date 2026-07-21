@@ -32,6 +32,7 @@ import { fetchHistoricalYahoo, computePeriodReturns } from '@/data/api/yahoo';
 import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches } from '@/data/services';
 import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance } from '@/data/types';
 import { usePersistedState } from '@/lib/usePersistedState';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
 import { daysUntil, formatDateShort } from '@/lib/date';
@@ -191,9 +192,9 @@ export function PanelPage() {
   useEffect(() => {
     // İlk yüklemede daima cache'i atla → eski mock değer asla görünmesin
     refresh(true);
-    const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
-    return () => clearInterval(id);
   }, [refresh]);
+  // Polling: sekme arka planda iken durur, öne gelince tekrar başlar
+  useVisibleInterval(() => refresh(true), AUTO_REFRESH_MS);
 
   // Sparkline veri fetch — TTL icinde memo'dan, degilse Yahoo'dan
   useEffect(() => {

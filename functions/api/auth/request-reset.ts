@@ -43,7 +43,7 @@ export const onRequestPost: PagesFunction<Env & {
   catch { return jsonResponse({ ok: false, error: 'Geçersiz istek' }, 400); }
 
   // Turnstile (#Ö5) — mail bombing / Resend kotası DoS savunması.
-  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request));
+  const turnstileOk = await verifyTurnstile(body.turnstileToken, env.TURNSTILE_SECRET_KEY, getClientIp(request), request);
   if (!turnstileOk) {
     // Bot olduğu için sahte 200 dön — enumeration için hata mesajı verme.
     return jsonResponse({ ok: true, sent: true }, 200);

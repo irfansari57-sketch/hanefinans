@@ -8,6 +8,7 @@ import { fetchIndexYahoo, ouncePriceToGramTRY } from '@/data/api/yahoo';
 import { loadMacroAll } from '@/data/services';
 import { fetchPalladiumGoldApi } from '@/data/api/goldapi';
 import { cn } from '@/lib/utils';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 interface CommodityRow {
@@ -127,13 +128,13 @@ export function CommoditiesPage() {
     const memoAge = commoditiesMemo ? Date.now() - commoditiesMemo.fetchedAt : Infinity;
     if (memoAge < COMMODITIES_MEMO_TTL_MS) {
       setLoading(false);
-      const id = setInterval(refresh, 5 * 60_000);
-      return () => clearInterval(id);
+      return;
     }
     refresh();
-    const id = setInterval(refresh, 5 * 60_000); // 5 dakikada bir
-    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Polling: 5 dakikada bir; sekme arka plandayken durur
+  useVisibleInterval(refresh, 5 * 60_000);
 
   const byCategory = (cat: CommodityRow['category']) => rows.filter((r) => r.category === cat);
 

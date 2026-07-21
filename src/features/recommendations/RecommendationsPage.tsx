@@ -24,6 +24,7 @@ import type { Stock, FundPerformance } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { useWatchlist } from '@/store/watchlist';
 import { cn } from '@/lib/utils';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { AnalystCommentary } from '@/components/domain/AnalystCommentary';
 import { MessageSquare } from 'lucide-react';
@@ -332,14 +333,13 @@ export function RecommendationsPage() {
     const memoAge = recsMemo ? Date.now() - recsMemo.fetchedAt : Infinity;
     if (memoAge < RECS_MEMO_TTL_MS) {
       setLoading(false);
-      const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
-      return () => clearInterval(id);
+      return;
     }
     refresh(true);
-    const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
-    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Polling: 2 dakikada bir; sekme arka plandayken durur
+  useVisibleInterval(() => refresh(true), AUTO_REFRESH_MS);
 
   // Fon Havuzu için TÜM fonları sakla; Trend Fonlar için ilk 10'u türet
   const [allFunds, setAllFunds] = useState<FundPerformance[]>([]);

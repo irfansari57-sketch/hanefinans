@@ -10,6 +10,7 @@ import { fetchIndexYahoo } from '@/data/api/yahoo';
 import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
 import { fetchTr10y, type Tr10yData } from '@/data/api/tr10y';
 import { useAuth, isPro } from '@/store/auth';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { cn } from '@/lib/utils';
 
 interface IndexItem {
@@ -181,14 +182,13 @@ export function GlobalPage() {
       setLoading(false);
       setTrCdsLoading(false);
       setTr10yLoading(false);
-      const id = setInterval(refresh, 3 * 60_000);
-      return () => clearInterval(id);
+      return;
     }
     refresh();
-    const id = setInterval(refresh, 3 * 60_000);
-    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proUser]);
+  // Polling: 3 dakikada bir (yalnız PRO); sekme arka plandayken durur
+  useVisibleInterval(refresh, proUser ? 3 * 60_000 : null);
 
   // PRO gating
   if (!proUser) {

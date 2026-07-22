@@ -1,0 +1,42 @@
+name: Warm Historical Cache
+
+# Yahoo warmer'ın /warm/historical endpoint'ini paginated olarak çağırır.
+# TUM sembolleri günde 1 kez :1y:1d cache'ine warm eder.
+# Cron trigger yetersiz kalırsa (30 dk timeout limit) veya elle tetikleme için.
+#
+# NOT: warmer'ın kendi cron'u zaten 30 15 * * 1-5 (18:30 TR, Mon-Fri) ile
+# çalışıyor. Bu workflow yedek + acil manuel warmer.
+
+on:
+  schedule:
+    - cron: '35 15 * * 1-5' # 18:35 TR, worker cron'un 5dk sonrası (yedek)
+  workflow_dispatch: # Manuel tetikleme (Actions sekmesi > Run workflow)
+
+jobs:
+  warm:
+    name: Warm 1y historical for all symbols
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Warm historical in batches of 50
+        run: |
+          WARMER_URL="https://hane-finans-yahoo-warmer.irfansari57.workers.dev/warm/historical"
+          TOTAL_SYMBOLS=500
+          BATCH=50
+
+          for START in $(seq 0 $BATCH $((TOTAL_SYMBOLS - 1))); do
+            echo "=== Batch start=$START count=$BATCH ==="
+            RESP=$(curl -s --max-time 60 "${WARMER_URL}?start=${START}&count=${BATCH}")
+            echo "$RESP"
+            # totalSymbols kontrolü — üstünü geçtiysek dur
+            TOTAL=$(echo "$RESP" | grep -oE '"totalSymbols":[0-9]+' | grep -oE '[0-9]+')
+            if [ -n "$TOTAL" ] && [ "$START" -ge "$TOTAL" ]; then
+              echo "All symbols processed (start=$START >= total=$TOTAL)"
+              break
+            fi
+            sleep 3 # rate-limit + Yahoo abuse önlem
+          done
+
+          echo "=== Final health check ==="
+          curl -s "https://hane-finans-yahoo-warmer.irfansari57.workers.dev/health" | tee /tmp/health.json

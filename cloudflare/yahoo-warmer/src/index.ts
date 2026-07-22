@@ -366,9 +366,26 @@ export default {
     }
 
     if (url.pathname === '/warm/historical') {
-      const popular = allWarmupSymbols().slice(0, 30);
-      const result = await warmBatch(env, popular, '1y', '1d', { concurrency: 3, batchDelayMs: 300 });
-      return Response.json({ success: true, ...result });
+      // Pagination: ?start=N&count=M — GH Actions ile TUM sembolleri tarar
+      // Default: ilk 30 (backward compat)
+      const all = allWarmupSymbols();
+      const start = parseInt(url.searchParams.get('start') ?? '', 10);
+      const count = parseInt(url.searchParams.get('count') ?? '', 10);
+      let chunk: readonly string[];
+      if (Number.isFinite(start) && start >= 0) {
+        const c = Number.isFinite(count) && count > 0 ? count : 50;
+        chunk = all.slice(start, start + c);
+      } else {
+        chunk = all.slice(0, 30);
+      }
+      const result = await warmBatch(env, chunk, '1y', '1d', { concurrency: 3, batchDelayMs: 300 });
+      return Response.json({
+        success: true,
+        chunkSize: chunk.length,
+        totalSymbols: all.length,
+        offset: Number.isFinite(start) ? start : 0,
+        ...result,
+      });
     }
 
     if (url.pathname === '/warm/spot-metals') {

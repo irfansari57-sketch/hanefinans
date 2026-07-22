@@ -43,6 +43,13 @@ async function clearEverythingAndReload() {
 export function RouteErrorBoundary() {
   const error = useRouteError();
   const [clearing, setClearing] = useState(false);
+  const [autoRecovering, setAutoRecovering] = useState(false);
+
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+
+  // Mesajı kontrol et — chunk fetch hatasıysa cache temizleme butonunu daha öne çıkar
+  const errMsgRaw = error instanceof Error ? error.message : String(error);
+  const looksLikeChunkError = /Failed to fetch dynamically imported module|Importing a module script failed|MIME type|ChunkLoadError|Loading chunk|Loading CSS chunk/i.test(errMsgRaw);
 
   useEffect(() => {
     // 404 değilse Sentry'ye gönder — 404 spam yapmasın
@@ -54,16 +61,43 @@ export function RouteErrorBoundary() {
     }
   }, [error]);
 
-  const is404 = isRouteErrorResponse(error) && error.status === 404;
-
-  // Mesajı kontrol et — chunk fetch hatasıysa cache temizleme butonunu daha öne çıkar
-  const errMsgRaw = error instanceof Error ? error.message : String(error);
-  const looksLikeChunkError = /Failed to fetch dynamically imported module|Importing a module script failed|MIME type/i.test(errMsgRaw);
+  // Chunk load fail → otomatik cache clear + reload (kullanıcı butona basmadan)
+  // Session başına max 1 kez tetiklenir (loop savunması)
+  useEffect(() => {
+    if (is404 || !looksLikeChunkError) return;
+    const KEY = 'iq.autoRecoverAttempted';
+    try {
+      if (sessionStorage.getItem(KEY)) return;
+      sessionStorage.setItem(KEY, String(Date.now()));
+    } catch {
+      return;
+    }
+    setAutoRecovering(true);
+    // Sentry event'in gitmesine izin ver (kısa gecikme), sonra clear+reload
+    const t = window.setTimeout(() => {
+      clearEverythingAndReload();
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [is404, looksLikeChunkError]);
 
   const onClearAndReload = async () => {
     setClearing(true);
     await clearEverythingAndReload();
   };
+
+  // Auto-recovery devrede: minimal loading UI
+  if (autoRecovering) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-bg-base p-4">
+        <div className="max-w-md text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-3 border-slate-700 border-t-emerald-400" />
+          <p className="mt-4 text-sm text-slate-400">
+            Yeni sürüm yükleniyor…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const errMsg = errMsgRaw;
   const errStack = error instanceof Error ? error.stack : undefined;

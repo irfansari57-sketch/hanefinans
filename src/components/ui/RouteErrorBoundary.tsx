@@ -24,8 +24,10 @@ async function clearEverythingAndReload() {
     }
   } catch { /* ignore */ }
   try {
-    // 3) Reload sayacini resetle (lazyWithRetry 3-deneme sınırı)
+    // 3) Reload sayacini resetle (lazyWithRetry 3-deneme sınırı + auto-recover guard)
     sessionStorage.removeItem('fa.chunkReloadHistory');
+    sessionStorage.removeItem('iq.autoRecoverLastAttempt');
+    sessionStorage.removeItem('iq.autoRecoverAttempted');
   } catch { /* ignore */ }
   // 4) Cache bypass ile sayfayı tekrar yükle
   window.location.replace(window.location.pathname + '?_=' + Date.now());
@@ -61,13 +63,15 @@ export function RouteErrorBoundary() {
     }
   }, [error]);
 
-  // Chunk load fail → otomatik cache clear + reload (kullanıcı butona basmadan)
-  // Session başına max 1 kez tetiklenir (loop savunması)
+  // Chunk load fail → otomatik cache clear + reload
+  // Loop savunması: son 30 saniye içinde denendiyse ATLAMA (kullanıcı manuel bassın).
+  // Bu, deploy sonrası anlık düzelmez ama backend sabitleşince otomatik kurtarır.
   useEffect(() => {
     if (is404 || !looksLikeChunkError) return;
-    const KEY = 'iq.autoRecoverAttempted';
+    const KEY = 'iq.autoRecoverLastAttempt';
     try {
-      if (sessionStorage.getItem(KEY)) return;
+      const last = Number(sessionStorage.getItem(KEY) || '0');
+      if (Date.now() - last < 30_000) return; // 30 sn dolmadan tekrar denemek → loop
       sessionStorage.setItem(KEY, String(Date.now()));
     } catch {
       return;

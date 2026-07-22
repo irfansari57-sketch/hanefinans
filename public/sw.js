@@ -3,8 +3,10 @@
  *
  * STRATEJİ:
  *   1) Push notification: /push-handler.js'den import edilir.
- *   2) Fetch için karma cache stratejisi:
- *      - /assets/*  (Vite hashed) → cache-first (içerik değişmez)
+ *   2) Fetch:
+ *      - /assets/*  (Vite hashed) → SW BYPASS (tarayıcı native HTTP cache)
+ *        Neden: deploy sonrası eski hash cache'te + network 404 → chunk load fail.
+ *        Vite build'de hash zaten var, browser HTTP cache yeterli.
  *      - /api/*     → network-first, fallback cache (online ise tazeyi al)
  *      - HTML nav   → network-first, fallback cache (offline'da son ziyaret)
  *      - diğer      → stale-while-revalidate (resim, font, ikon)
@@ -15,13 +17,14 @@
 
 /* global self, importScripts, caches */
 
-const CACHE_VERSION = 'v1';
-const STATIC_CACHE = `static-${CACHE_VERSION}`;     // /assets/* hashed
+const CACHE_VERSION = 'v2';
 const PAGES_CACHE  = `pages-${CACHE_VERSION}`;       // HTML + same-origin doc
 const API_CACHE    = `api-${CACHE_VERSION}`;          // /api/* GET response
+const STATIC_CACHE = `static-${CACHE_VERSION}`;     // resim, font
 
 const PRECACHE_URLS = [
   '/',
+  '/panel',
   '/manifest.json',
   '/favicon.svg',
 ];
@@ -57,11 +60,10 @@ self.addEventListener('fetch', (event) => {
   // SW'ın kendi dosyalarına dokunma
   if (url.pathname === '/sw.js' || url.pathname === '/push-handler.js') return;
 
-  // 1) Hashed asset'ler → cache-first
-  if (url.pathname.startsWith('/assets/')) {
-    event.respondWith(cacheFirst(req, STATIC_CACHE));
-    return;
-  }
+  // 1) Hashed asset'ler → SW BYPASS (tarayıcı native HTTP cache)
+  // Vite hash zaten deterministic; deploy sonrası eski hash 404 → chunk load fail
+  // olmasın diye SW dokunmuyor. HTTP Cache-Control header'ları (immutable) tarayıcıda yeterli.
+  if (url.pathname.startsWith('/assets/')) return;
 
   // 2) API → network-first
   if (url.pathname.startsWith('/api/')) {
@@ -79,19 +81,6 @@ self.addEventListener('fetch', (event) => {
   // 4) Diğer (resim, font) → stale-while-revalidate
   event.respondWith(staleWhileRevalidate(req, STATIC_CACHE));
 });
-
-async function cacheFirst(req, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(req);
-  if (cached) return cached;
-  try {
-    const fresh = await fetch(req);
-    if (fresh && fresh.ok) cache.put(req, fresh.clone());
-    return fresh;
-  } catch {
-    return cached || Response.error();
-  }
-}
 
 async function networkFirst(req, cacheName) {
   const cache = await caches.open(cacheName);

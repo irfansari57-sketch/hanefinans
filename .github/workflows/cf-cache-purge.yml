@@ -1,0 +1,68 @@
+name: CF Cache Purge on Deploy
+
+# Main'e her push sonrası CF edge cache'ini otomatik purge et.
+# CF Pages ~90 sn içinde deploy'u tamamlar; sonra purge tetiklenir.
+#
+# Bu, "browser'da stale index.html → chunk load fail" sorununu çözer.
+# Manuel dashboard'dan Purge Everything'e basmaya gerek kalmaz.
+#
+# Setup (bir kez):
+#   1. https://dash.cloudflare.com/profile/api-tokens → Create Token
+#   2. Custom token:
+#      - Permissions: Zone > Cache Purge > Purge
+#      - Zone Resources: Include > Specific zone > investliq.com
+#   3. Token'ı kopyala
+#   4. GitHub repo → Settings > Secrets and variables > Actions > New:
+#      - Name: CF_API_TOKEN, Value: <yapıştır>
+#      - Name: CF_ZONE_ID_INVESTLIQ, Value: <investliq.com Zone ID>
+#      - Name: CF_ZONE_ID_HANEFINANS, Value: <hanefinans.net Zone ID>
+#      (Zone ID: CF dashboard → domain overview sağ altta "Zone ID" görünür)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Manuel tetikleme için
+
+jobs:
+  purge:
+    name: Purge Cloudflare edge cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Wait for CF Pages deploy to propagate
+        # CF Pages typical build+deploy süresi 60-120sn. Emin olmak için 150 bekle.
+        run: sleep 150
+
+      - name: Purge investliq.com
+        if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID_INVESTLIQ != '' }}
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID_INVESTLIQ }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"purge_everything":true}' \
+            | tee /tmp/purge-response.json
+          if grep -q '"success":true' /tmp/purge-response.json; then
+            echo "✓ investliq.com cache purged"
+          else
+            echo "✗ Purge failed for investliq.com"
+            cat /tmp/purge-response.json
+            exit 1
+          fi
+
+      - name: Purge hanefinans.net (redirect zone)
+        if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID_HANEFINANS != '' }}
+        continue-on-error: true # Redirect zone; kritik değil
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID_HANEFINANS }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"purge_everything":true}' \
+            && echo "✓ hanefinans.net cache purged"
+
+      - name: Warn if secrets missing
+        if: ${{ secrets.CF_API_TOKEN == '' || secrets.CF_ZONE_ID_INVESTLIQ == '' }}
+        run: |
+          echo "::warning::CF_API_TOKEN veya CF_ZONE_ID_INVESTLIQ tanımlı değil — purge çalışmadı. Setup için workflow header'ına bak."

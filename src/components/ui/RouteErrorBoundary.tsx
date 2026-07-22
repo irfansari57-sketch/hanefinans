@@ -24,10 +24,9 @@ async function clearEverythingAndReload() {
     }
   } catch { /* ignore */ }
   try {
-    // 3) Reload sayacini resetle (lazyWithRetry 3-deneme sınırı + auto-recover guard)
+    // 3) Reload sayacini resetle (lazyWithRetry 3-deneme sınırı)
+    // ÖNEMLİ: iq.autoRecover* key'lerini SILMEK YOK — silinirse infinite loop olur.
     sessionStorage.removeItem('fa.chunkReloadHistory');
-    sessionStorage.removeItem('iq.autoRecoverLastAttempt');
-    sessionStorage.removeItem('iq.autoRecoverAttempted');
   } catch { /* ignore */ }
   // 4) Cache bypass ile sayfayı tekrar yükle
   window.location.replace(window.location.pathname + '?_=' + Date.now());
@@ -64,20 +63,20 @@ export function RouteErrorBoundary() {
   }, [error]);
 
   // Chunk load fail → otomatik cache clear + reload
-  // Loop savunması: son 30 saniye içinde denendiyse ATLAMA (kullanıcı manuel bassın).
-  // Bu, deploy sonrası anlık düzelmez ama backend sabitleşince otomatik kurtarır.
+  // Loop savunması: session başına MAX 1 auto-recover. Sonrası user manuel butonda.
+  // sessionStorage.clear() değil, key persistent — clearEverythingAndReload silmiyor artık.
   useEffect(() => {
     if (is404 || !looksLikeChunkError) return;
-    const KEY = 'iq.autoRecoverLastAttempt';
+    const KEY = 'iq.autoRecoverAttempts';
     try {
-      const last = Number(sessionStorage.getItem(KEY) || '0');
-      if (Date.now() - last < 30_000) return; // 30 sn dolmadan tekrar denemek → loop
-      sessionStorage.setItem(KEY, String(Date.now()));
+      const raw = sessionStorage.getItem(KEY);
+      const count = raw ? parseInt(raw, 10) : 0;
+      if (count >= 1) return; // Zaten bir kez denendi, kullanıcı manuel devam etsin
+      sessionStorage.setItem(KEY, String(count + 1));
     } catch {
       return;
     }
     setAutoRecovering(true);
-    // Sentry event'in gitmesine izin ver (kısa gecikme), sonra clear+reload
     const t = window.setTimeout(() => {
       clearEverythingAndReload();
     }, 600);

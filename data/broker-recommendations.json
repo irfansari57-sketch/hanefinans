@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-07-22T15:19:12.043528+00:00",
+  "fetchedAt": "2026-07-23T09:13:56.419287+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -8,14 +8,14 @@
       "initials": "İY",
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
-      "lastUpdate": "2026-07-22",
+      "lastUpdate": "2026-07-23",
       "recommendations": [
         {
           "symbol": "MPARK",
           "rating": "GÜÇLÜ AL",
           "targetPrice": 700.24,
           "stopLoss": null,
-          "thesis": "Mevcut 410.00₺ → hedef 700.24₺ (%71 potansiyel)",
+          "thesis": "Mevcut 407.75₺ → hedef 700.24₺ (%72 potansiyel)",
           "updatedAt": "2025-12-23"
         },
         {
@@ -23,7 +23,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 455.0,
           "stopLoss": null,
-          "thesis": "Mevcut 317.50₺ → hedef 455.00₺ (%43 potansiyel)",
+          "thesis": "Mevcut 321.00₺ → hedef 455.00₺ (%42 potansiyel)",
           "updatedAt": "2026-07-03"
         },
         {
@@ -31,7 +31,7 @@
           "rating": "AL",
           "targetPrice": 450.0,
           "stopLoss": null,
-          "thesis": "Mevcut 360.00₺ → hedef 450.00₺ (%25 potansiyel)",
+          "thesis": "Mevcut 370.00₺ → hedef 450.00₺ (%22 potansiyel)",
           "updatedAt": "2025-01-16"
         },
         {
@@ -47,7 +47,7 @@
           "rating": "AL",
           "targetPrice": 338.0,
           "stopLoss": null,
-          "thesis": "Mevcut 309.50₺ → hedef 338.00₺ (%9 potansiyel)",
+          "thesis": "Mevcut 313.75₺ → hedef 338.00₺ (%8 potansiyel)",
           "updatedAt": "2026-04-09"
         },
         {
@@ -55,7 +55,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 195.0,
           "stopLoss": null,
-          "thesis": "Mevcut 124.20₺ → hedef 195.00₺ (%57 potansiyel)",
+          "thesis": "Mevcut 125.90₺ → hedef 195.00₺ (%55 potansiyel)",
           "updatedAt": "2024-07-08"
         },
         {
@@ -63,7 +63,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 173.54,
           "stopLoss": null,
-          "thesis": "Mevcut 106.90₺ → hedef 173.54₺ (%62 potansiyel)",
+          "thesis": "Mevcut 109.50₺ → hedef 173.54₺ (%58 potansiyel)",
           "updatedAt": "2026-03-12"
         },
         {
@@ -71,7 +71,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 107.0,
           "stopLoss": null,
-          "thesis": "Mevcut 66.70₺ → hedef 107.00₺ (%60 potansiyel)",
+          "thesis": "Mevcut 66.55₺ → hedef 107.00₺ (%61 potansiyel)",
           "updatedAt": "2026-04-14"
         }
       ],
@@ -121,17 +121,17 @@
       "initials": "OY",
       "colorSeed": "#10b981",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "lastUpdate": "2026-07-22",
+      "lastUpdate": "2026-07-23",
       "recommendations": [],
       "ok": false,
       "debugLog": [
         "GET https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
         "HTTP 200, 4433475 bytes, type=application/pdf",
         "PDF text: 11493 chars",
-        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdHKY8QwdmLWQLFt6i4y9'}",
+        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdJjVV8qgrhP7wicNueNK'}",
         "Result: 0 recommendations"
       ],
-      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdHKY8QwdmLWQLFt6i4y9'}"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdJjVV8qgrhP7wicNueNK'}"
     },
     {
       "brokerId": "kt-yatirim",
@@ -139,21 +139,21 @@
       "initials": "KT",
       "colorSeed": "#ec4899",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
-      "lastUpdate": "2026-07-22",
+      "lastUpdate": "2026-07-23",
       "recommendations": [],
       "portfolio": [],
       "ok": false,
       "debugLog": [
         "GET listing: https://kuveytturkyatirim.com.tr/arastirma-raporlari/",
-        "Listing HTTP 200, html size=641088 chars",
-        "Found 10 'gunluk-bulten' PDF pattern matches in listing",
-        "Latest PDF: /media/fv4e0juo/gunluk-bulten_22072026.pdf",
-        "PDF HTTP 200, 3327238 bytes",
-        "PDF text: 1535 chars",
-        "Bülten Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdHKYUxD6CHFZarDUJAuj'}",
+        "Listing HTTP 200, html size=641122 chars",
+        "Found 12 'gunluk-bulten' PDF pattern matches in listing",
+        "Latest PDF: /media/55ojkhx5/gunluk-bulten_23072026.pdf",
+        "PDF HTTP 200, 3058627 bytes",
+        "PDF text: 2947 chars",
+        "Bülten Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdJjVooVxWv4JmAgJ4J3Y'}",
         "Recommendations: 0"
       ],
-      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdHKYUxD6CHFZarDUJAuj'}"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CdJjVooVxWv4JmAgJ4J3Y'}"
     }
   ],
   "summary": {

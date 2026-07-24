@@ -22,6 +22,7 @@ import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
 import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight, Briefcase } from 'lucide-react';
 import { readRiskProfile } from '@/lib/riskProfile';
 import { PortfolioPanelSummary } from './PortfolioPanelSummary';
+import { PortfolioHealthPanel } from './PortfolioHealthPanel';
 import { usePinnedSection } from '@/lib/usePinnedSection';
 import {
   MOCK_EVENTS, MOCK_SENTIMENT, MOCK_STOCKS, MOCK_MACRO_FALLBACK, MOCK_NEWS,
@@ -488,16 +489,21 @@ export function PanelPage() {
 
       {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti */}
       {user && (
-        <PinnableAccordion
-          id="panel-portfolio"
-          title="Portföyüm"
-          description="Hisse + Fon ozet, gunluk degisim ve toplam kar/zarar"
-          icon={<Briefcase size={16} />}
-          iconColorClass="bg-accent/15 text-accent"
-          defaultOpen
-        >
-          <PortfolioPanelSummary isLoggedIn={!!user} />
-        </PinnableAccordion>
+        <>
+          <div className="mb-5">
+            <PortfolioHealthPanel />
+          </div>
+          <PinnableAccordion
+            id="panel-portfolio"
+            title="Portföyüm"
+            description="Hisse + Fon ozet, gunluk degisim ve toplam kar/zarar"
+            icon={<Briefcase size={16} />}
+            iconColorClass="bg-accent/15 text-accent"
+            defaultOpen
+          >
+            <PortfolioPanelSummary isLoggedIn={!!user} />
+          </PinnableAccordion>
+        </>
       )}
 
       {/* Ekonomik Takvim — sadece mobilde göster (desktop sağ rail'de var) */}

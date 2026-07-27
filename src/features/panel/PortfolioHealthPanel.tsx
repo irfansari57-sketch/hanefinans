@@ -14,7 +14,7 @@ import { loadStocks } from '@/data/services';
 
 interface Snapshot {
   price?: number;
-  changePct30d?: number;
+  sector?: string;
 }
 
 export function PortfolioHealthPanel() {
@@ -39,7 +39,7 @@ export function PortfolioHealthPanel() {
         if (cancelled) return;
         const map = new Map<string, Snapshot>();
         res.data.forEach((s: Stock) => {
-          map.set(s.symbol, { price: s.price, changePct30d: s.periodReturns?.['1a'] });
+          map.set(s.symbol, { price: s.price, sector: s.sector });
         });
         setSnapshotMap(map);
       } catch {
@@ -53,13 +53,14 @@ export function PortfolioHealthPanel() {
 
   if (!user || positions.length === 0) return null;
 
-  const riskProfile = readRiskProfile();
-  const riskProfileTolerance =
-    riskProfile?.type === 'conservative'
+  const savedRisk = readRiskProfile();
+  const level = savedRisk?.profile?.level;
+  const riskProfileTolerance: 'low' | 'medium' | 'high' | null =
+    level === 'veryConservative' || level === 'conservative'
       ? 'low'
-      : riskProfile?.type === 'moderate'
+      : level === 'balanced'
       ? 'medium'
-      : riskProfile?.type === 'aggressive'
+      : level === 'growth' || level === 'aggressive'
       ? 'high'
       : null;
 
@@ -67,14 +68,12 @@ export function PortfolioHealthPanel() {
     const snap = snapshotMap.get(p.symbol);
     return {
       symbol: p.symbol,
-      name: p.name,
-      sector: (p as { sector?: string }).sector,
+      name: p.symbol,
+      sector: snap?.sector,
       kind: p.kind === 'fund' ? ('fund' as const) : ('stock' as const),
       lot: p.lot,
       avgPrice: p.avgPrice,
       currentPrice: snap?.price,
-      changePct30d: snap?.changePct30d,
-      tefasOpen: (p as { tefasOpen?: boolean }).tefasOpen,
     };
   });
 

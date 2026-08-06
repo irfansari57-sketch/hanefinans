@@ -1,59 +1,92 @@
 name: CF Cache Purge on Deploy
 
-# Main'e her push sonrası CF edge cache'ini otomatik purge et.
-# CF Pages ~90 sn içinde deploy'u tamamlar; sonra purge tetiklenir.
-#
-# Bu, "browser'da stale index.html → chunk load fail" sorununu çözer.
-# Manuel dashboard'dan Purge Everything'e basmaya gerek kalmaz.
+# Her push sonrası CF edge cache'ini güvenilir şekilde purge eder.
+# Yaklaşım: CF Pages API'sini polling ile bekle → deploy hazır olunca purge.
+# "Blind sleep" yerine gerçek deploy status kontrolü.
 #
 # Setup (bir kez):
 #   1. https://dash.cloudflare.com/profile/api-tokens → Create Token
-#   2. Custom token:
-#      - Permissions: Zone > Cache Purge > Purge
-#      - Zone Resources: Include > Specific zone > investliq.com
-#   3. Token'ı kopyala
-#   4. GitHub repo → Settings > Secrets and variables > Actions > New:
-#      - Name: CF_API_TOKEN, Value: <yapıştır>
-#      - Name: CF_ZONE_ID_INVESTLIQ, Value: <investliq.com Zone ID>
-#      - Name: CF_ZONE_ID_HANEFINANS, Value: <hanefinans.net Zone ID>
-#      (Zone ID: CF dashboard → domain overview sağ altta "Zone ID" görünür)
+#   2. Custom token permissions:
+#      - Account > Cloudflare Pages > Read (deploy status için)
+#      - Zone > Cache Purge > Purge (cache temizlemek için)
+#   3. Zone Resources: investliq.com + hanefinans.net
+#   4. GitHub Secrets:
+#      - CF_API_TOKEN
+#      - CF_ACCOUNT_ID (dash.cloudflare.com URL'sinden: /<ACCOUNT_ID>/pages)
+#      - CF_PAGES_PROJECT (proje adı: hanefinans)
+#      - CF_ZONE_ID_INVESTLIQ
+#      - CF_ZONE_ID_HANEFINANS
 
 on:
   push:
     branches: [main]
-  workflow_dispatch: # Manuel tetikleme için
+  workflow_dispatch:
 
 jobs:
   purge:
-    name: Purge Cloudflare edge cache
+    name: Wait for deploy then purge
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
 
     steps:
-      - name: Wait for CF Pages deploy to propagate
-        # CF Pages typical build+deploy süresi 60-120sn. Emin olmak için 150 bekle.
-        run: sleep 150
+      - name: Wait 90s (CF Pages deploy başlaması için)
+        run: sleep 90
+
+      - name: Poll CF Pages until deploy is live (max 8 dk)
+        id: wait_deploy
+        if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ACCOUNT_ID != '' && secrets.CF_PAGES_PROJECT != '' }}
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          echo "Waiting for CF Pages deploy of commit: $COMMIT_SHA"
+
+          for i in $(seq 1 32); do
+            RESP=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/pages/projects/${{ secrets.CF_PAGES_PROJECT }}/deployments?per_page=10")
+
+            # Aynı commit için Success statüs var mı?
+            MATCH=$(echo "$RESP" | grep -oE "\"deployment_trigger\":\{[^}]*\"commit_hash\":\"${COMMIT_SHA:0:8}[^\"]*\"[^}]*\}" | head -1)
+            STATUS=$(echo "$RESP" | grep -oE '"latest_stage":\{"name":"deploy","status":"[^"]+"' | head -1 | grep -oE '"status":"[^"]+"' | grep -oE '[a-z]+"' | tr -d '"')
+
+            echo "Attempt $i/32 — status: $STATUS"
+            if [ "$STATUS" = "success" ]; then
+              echo "✓ Deploy is live"
+              echo "deploy_ready=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            if [ "$STATUS" = "failure" ] || [ "$STATUS" = "canceled" ]; then
+              echo "✗ Deploy failed/canceled — purge yapmıyoruz"
+              echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+      - name: Ek 15s güvenlik payı (edge propagation)
+        if: ${{ steps.wait_deploy.outputs.deploy_ready == 'true' || secrets.CF_ACCOUNT_ID == '' }}
+        run: sleep 15
 
       - name: Purge investliq.com
         if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID_INVESTLIQ != '' }}
         run: |
-          curl --fail --silent --show-error \
+          RESP=$(curl --fail --silent --show-error \
             -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID_INVESTLIQ }}/purge_cache" \
             -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"purge_everything":true}' \
-            | tee /tmp/purge-response.json
-          if grep -q '"success":true' /tmp/purge-response.json; then
+            -d '{"purge_everything":true}')
+          echo "$RESP"
+          if echo "$RESP" | grep -q '"success":true'; then
             echo "✓ investliq.com cache purged"
           else
             echo "✗ Purge failed for investliq.com"
-            cat /tmp/purge-response.json
             exit 1
           fi
 
       - name: Purge hanefinans.net (redirect zone)
         if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID_HANEFINANS != '' }}
-        continue-on-error: true # Redirect zone; kritik değil
+        continue-on-error: true
         run: |
           curl --fail --silent --show-error \
             -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID_HANEFINANS }}/purge_cache" \
@@ -65,4 +98,4 @@ jobs:
       - name: Warn if secrets missing
         if: ${{ secrets.CF_API_TOKEN == '' || secrets.CF_ZONE_ID_INVESTLIQ == '' }}
         run: |
-          echo "::warning::CF_API_TOKEN veya CF_ZONE_ID_INVESTLIQ tanımlı değil — purge çalışmadı. Setup için workflow header'ına bak."
+          echo "::warning::Purge secret'ları eksik. CF_API_TOKEN + CF_ZONE_ID_INVESTLIQ set edilmemiş."

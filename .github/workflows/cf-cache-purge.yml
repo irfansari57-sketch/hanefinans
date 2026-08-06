@@ -1,26 +1,28 @@
 name: CF Cache Purge on Deploy
 
 # Her push sonrası CF edge cache'ini güvenilir şekilde purge eder.
-# Yaklaşım: CF Pages API'sini polling ile bekle → deploy hazır olunca purge.
-# "Blind sleep" yerine gerçek deploy status kontrolü.
+# CF Pages API polling ile deploy live olunca purge çalışır.
 #
-# Setup (bir kez):
-#   1. https://dash.cloudflare.com/profile/api-tokens → Create Token
-#   2. Custom token permissions:
-#      - Account > Cloudflare Pages > Read (deploy status için)
-#      - Zone > Cache Purge > Purge (cache temizlemek için)
-#   3. Zone Resources: investliq.com + hanefinans.net
-#   4. GitHub Secrets:
-#      - CF_API_TOKEN
-#      - CF_ACCOUNT_ID (dash.cloudflare.com URL'sinden: /<ACCOUNT_ID>/pages)
-#      - CF_PAGES_PROJECT (proje adı: hanefinans)
-#      - CF_ZONE_ID_INVESTLIQ
-#      - CF_ZONE_ID_HANEFINANS
+# Setup:
+#   Secrets: CF_API_TOKEN, CF_ACCOUNT_ID, CF_PAGES_PROJECT,
+#            CF_ZONE_ID_INVESTLIQ, CF_ZONE_ID_HANEFINANS
+#   CF_API_TOKEN permissions:
+#     - Account > Cloudflare Pages > Read
+#     - Zone > Cache Purge > Purge
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+env:
+  # GitHub Actions if: içinde secrets.NAME kullanılamaz.
+  # Secret'ları önce env'e mapleyip if içinde env'e bakarız.
+  CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+  CF_PAGES_PROJECT: ${{ secrets.CF_PAGES_PROJECT }}
+  CF_ZONE_ID_INVESTLIQ: ${{ secrets.CF_ZONE_ID_INVESTLIQ }}
+  CF_ZONE_ID_HANEFINANS: ${{ secrets.CF_ZONE_ID_HANEFINANS }}
 
 jobs:
   purge:
@@ -35,18 +37,21 @@ jobs:
 
       - name: Poll CF Pages until deploy is live (max 8 dk)
         id: wait_deploy
-        if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ACCOUNT_ID != '' && secrets.CF_PAGES_PROJECT != '' }}
+        env:
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          COMMIT_SHA="${{ github.sha }}"
-          echo "Waiting for CF Pages deploy of commit: $COMMIT_SHA"
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ACCOUNT_ID" ] || [ -z "$CF_PAGES_PROJECT" ]; then
+            echo "::warning::CF_API_TOKEN / CF_ACCOUNT_ID / CF_PAGES_PROJECT eksik — polling skip, direkt purge deneyeceğiz"
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
+          echo "Waiting for CF Pages deploy of commit: $COMMIT_SHA"
           for i in $(seq 1 32); do
             RESP=$(curl -s \
-              -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
-              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/pages/projects/${{ secrets.CF_PAGES_PROJECT }}/deployments?per_page=10")
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/pages/projects/$CF_PAGES_PROJECT/deployments?per_page=10")
 
-            # Aynı commit için Success statüs var mı?
-            MATCH=$(echo "$RESP" | grep -oE "\"deployment_trigger\":\{[^}]*\"commit_hash\":\"${COMMIT_SHA:0:8}[^\"]*\"[^}]*\}" | head -1)
             STATUS=$(echo "$RESP" | grep -oE '"latest_stage":\{"name":"deploy","status":"[^"]+"' | head -1 | grep -oE '"status":"[^"]+"' | grep -oE '[a-z]+"' | tr -d '"')
 
             echo "Attempt $i/32 — status: $STATUS"
@@ -56,8 +61,7 @@ jobs:
               break
             fi
             if [ "$STATUS" = "failure" ] || [ "$STATUS" = "canceled" ]; then
-              echo "✗ Deploy failed/canceled — purge yapmıyoruz"
-              echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
+              echo "✗ Deploy failed/canceled — purge iptal"
               exit 1
             fi
 
@@ -65,15 +69,17 @@ jobs:
           done
 
       - name: Ek 15s güvenlik payı (edge propagation)
-        if: ${{ steps.wait_deploy.outputs.deploy_ready == 'true' || secrets.CF_ACCOUNT_ID == '' }}
         run: sleep 15
 
       - name: Purge investliq.com
-        if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID_INVESTLIQ != '' }}
         run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ZONE_ID_INVESTLIQ" ]; then
+            echo "::warning::CF_API_TOKEN veya CF_ZONE_ID_INVESTLIQ eksik — purge skip"
+            exit 0
+          fi
           RESP=$(curl --fail --silent --show-error \
-            -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID_INVESTLIQ }}/purge_cache" \
-            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID_INVESTLIQ/purge_cache" \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"purge_everything":true}')
           echo "$RESP"
@@ -85,17 +91,15 @@ jobs:
           fi
 
       - name: Purge hanefinans.net (redirect zone)
-        if: ${{ secrets.CF_API_TOKEN != '' && secrets.CF_ZONE_ID_HANEFINANS != '' }}
         continue-on-error: true
         run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ZONE_ID_HANEFINANS" ]; then
+            echo "hanefinans zone yok/eksik — skip"
+            exit 0
+          fi
           curl --fail --silent --show-error \
-            -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID_HANEFINANS }}/purge_cache" \
-            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID_HANEFINANS/purge_cache" \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"purge_everything":true}' \
             && echo "✓ hanefinans.net cache purged"
-
-      - name: Warn if secrets missing
-        if: ${{ secrets.CF_API_TOKEN == '' || secrets.CF_ZONE_ID_INVESTLIQ == '' }}
-        run: |
-          echo "::warning::Purge secret'ları eksik. CF_API_TOKEN + CF_ZONE_ID_INVESTLIQ set edilmemiş."

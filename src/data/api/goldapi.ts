@@ -15,10 +15,28 @@ interface GoldApiResp {
 const BASE = 'https://www.goldapi.io/api';
 
 /**
+ * GoldAPI DE-FACTO DISABLED (Phase 1).
+ *
+ * Sebep: GoldAPI free tier 100 req/AY. Client-side her user browser'ı quota
+ * tüketiyor — yanlış mimari. Aylık limit dolunca tüm user'lara etki eder.
+ *
+ * Şimdilik: Yahoo XAUUSD=X / XAGUSD=X / GC=F / SI=F direct fallback chain
+ * (loadMacroAll içindeki fetchMetal) devrede — GoldAPI olmadan da çalışıyor.
+ *
+ * Phase 2 (planlanan): Backend /api/metals-spot endpoint + D1 cache + Yahoo
+ * primary + MetalPriceAPI fallback + cron. Client D1'den okur, tek fetch tüm
+ * user'lara yeter.
+ *
+ * Bu flag true olduğunda tüm GoldAPI fonksiyonları null döner.
+ */
+const GOLDAPI_DISABLED = true;
+
+/**
  * GoldAPI free tier'da XAU/TRY paritesi yok ama XAU/USD var.
  * USD bazında gram fiyatını alıp, USD/TRY ile çarparak TRY karşılığını üretiriz.
  */
 export async function fetchGramAltinTRY(usdToTry: number | null): Promise<{ value: number; changePct?: number } | null> {
+  if (GOLDAPI_DISABLED) return null;
   if (!API_KEYS.goldApi) return null;
   try {
     const res = await fetch(`${BASE}/XAU/USD`, {
@@ -39,6 +57,7 @@ export async function fetchGramAltinTRY(usdToTry: number | null): Promise<{ valu
  * `chp` = günlük yüzde değişim (Cuma kapanış vs Perşembe kapanış).
  */
 async function fetchMetalSpotUSD(pair: 'XAU' | 'XAG' | 'XPT' | 'XPD'): Promise<{ value: number; changePct: number } | null> {
+  if (GOLDAPI_DISABLED) return null;
   if (!API_KEYS.goldApi) return null;
   try {
     const res = await fetch(`${BASE}/${pair}/USD`, {
@@ -88,6 +107,7 @@ function writeGoldApiCache(data: GoldApiCache) {
  * 6 saatlik cache ile free tier kotasını yormaz.
  */
 export async function fetchSpotMetalsGoldApi(): Promise<GoldApiCache | null> {
+  if (GOLDAPI_DISABLED) return null;
   const cached = readGoldApiCache();
   if (cached) return cached;
   if (!API_KEYS.goldApi) return null;
@@ -145,6 +165,7 @@ function writePalladiumCache(data: PalladiumCache) {
  * 12 saat cache ile free tier 100/ay limiti içinde kalır.
  */
 export async function fetchPalladiumGoldApi(): Promise<{ value: number; changePct: number } | null> {
+  if (GOLDAPI_DISABLED) return null;
   const cached = readPalladiumCache();
   if (cached && cached.value && Number.isFinite(cached.value)) {
     return { value: cached.value, changePct: cached.changePct ?? 0 };

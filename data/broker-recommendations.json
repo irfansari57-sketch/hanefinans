@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-14T08:01:36.778948+00:00",
+  "fetchedAt": "2026-08-14T14:29:28.030808+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -128,10 +128,10 @@
         "GET https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
         "HTTP 200, 4433475 bytes, type=application/pdf",
         "PDF text: 11493 chars",
-        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ce2HnEi2kLb4roXqv7r6h'}",
+        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ce2oLxYV7B8ziardidaEc'}",
         "Result: 0 recommendations"
       ],
-      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ce2HnEi2kLb4roXqv7r6h'}"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ce2oLxYV7B8ziardidaEc'}"
     },
     {
       "brokerId": "kt-yatirim",
@@ -145,10 +145,15 @@
       "ok": false,
       "debugLog": [
         "GET listing: https://kuveytturkyatirim.com.tr/arastirma-raporlari/",
-        "Listing HTTP 403, html size=2437 chars",
-        "Bülten exception: HTTPError: 403 Client Error: Forbidden for url: https://kuveytturkyatirim.com.tr/arastirma-raporlari/"
+        "Listing HTTP 200, html size=399550 chars",
+        "Found 10 'gunluk-bulten' PDF pattern matches in listing",
+        "Latest PDF: /media/53chk1rz/gunluk-bulten_14082026.pdf",
+        "PDF HTTP 200, 2786372 bytes",
+        "PDF text: 1552 chars",
+        "Bülten Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ce2oMXC2APY4qPFXr6iRn'}",
+        "Recommendations: 0"
       ],
-      "error": "Bülten exception: HTTPError: 403 Client Error: Forbidden for url: https://kuveytturkyatirim.com.tr/arastirma-raporlari/"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Ce2oMXC2APY4qPFXr6iRn'}"
     }
   ],
   "summary": {

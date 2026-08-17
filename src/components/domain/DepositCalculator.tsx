@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Landmark, Info, TrendingUp, Wallet, Calculator, Calendar } from 'lucide-react';
+import { Landmark, Info, TrendingUp, Wallet, Calculator, Calendar, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
  * TL Mevduat Hesaplayıcı
  *
  * Bankacılık kuralları (2026 TR — güncel):
- *  - TL Vadeli Mevduat: Stopaj **%17.5** (sabit, güncel oran)
+ *  - TL Vadeli Mevduat: Stopaj default **%17.5** (kullanıcı isterse değiştirebilir,
+ *    gelecekte oran güncellenirse input üzerinden ayarlanır)
  *  - Klasik vadeler: 32/45/91/182/365 gün
  *  - Basit faiz (vade sonu tek ödeme) veya bileşik (kartopu) seçimi
  *
@@ -17,7 +18,7 @@ import { cn } from '@/lib/utils';
  *  Vade sonu: P + Net
  */
 
-const STOPAJ_PCT = 17.5;
+const DEFAULT_STOPAJ_PCT = 17.5;
 
 function formatMoney(v: number, decimals = 0): string {
   return new Intl.NumberFormat('tr-TR', {
@@ -28,25 +29,31 @@ function formatMoney(v: number, decimals = 0): string {
 
 interface DepositResult {
   brutFaiz: number;
-  stopaj: number;
+  stopajTutar: number;
   netFaiz: number;
   vadeSonu: number;
   yillikGetiri: number;
   netYillikGetiri: number;
 }
 
-function computeDeposit(amount: number, annualRate: number, termDays: number, compound: boolean): DepositResult {
+function computeDeposit(
+  amount: number,
+  annualRate: number,
+  termDays: number,
+  stopajPct: number,
+  compound: boolean,
+): DepositResult {
   if (amount <= 0 || termDays <= 0) {
-    return { brutFaiz: 0, stopaj: 0, netFaiz: 0, vadeSonu: amount, yillikGetiri: 0, netYillikGetiri: 0 };
+    return { brutFaiz: 0, stopajTutar: 0, netFaiz: 0, vadeSonu: amount, yillikGetiri: 0, netYillikGetiri: 0 };
   }
   const r = annualRate / 100;
   const t = termDays / 365;
   const brut = compound ? amount * (Math.pow(1 + r, t) - 1) : amount * r * t;
-  const stopajTutar = brut * (STOPAJ_PCT / 100);
+  const stopajTutar = brut * (stopajPct / 100);
   const net = brut - stopajTutar;
   return {
     brutFaiz: brut,
-    stopaj: stopajTutar,
+    stopajTutar,
     netFaiz: net,
     vadeSonu: amount + net,
     yillikGetiri: t > 0 ? (brut / amount / t) * 100 : 0,
@@ -66,19 +73,25 @@ export function DepositCalculator() {
   const [amount, setAmount] = useState(100_000);
   const [term, setTerm] = useState(32);
   const [rate, setRate] = useState(47);
+  const [stopajPct, setStopajPct] = useState(DEFAULT_STOPAJ_PCT);
   const [compound, setCompound] = useState(false);
 
   const result = useMemo(
-    () => computeDeposit(amount, rate, term, compound),
-    [amount, rate, term, compound],
+    () => computeDeposit(amount, rate, term, stopajPct, compound),
+    [amount, rate, term, stopajPct, compound],
   );
+
+  const isDefault = stopajPct === DEFAULT_STOPAJ_PCT;
 
   return (
     <section className="glass-card p-5">
       <div className="mb-3 flex items-center gap-2">
         <Wallet size={18} className="text-accent" />
         <h3 className="text-base font-bold text-slate-100">TL Vadeli Mevduat Hesaplayıcısı</h3>
-        <span className="ml-auto text-[10px] text-slate-500">Stopaj sabit %{STOPAJ_PCT}</span>
+        <span className="ml-auto text-[10px] text-slate-500">
+          Stopaj default %{DEFAULT_STOPAJ_PCT}
+          {!isDefault && <span className="ml-1 text-amber-400">(özelleştirilmiş)</span>}
+        </span>
       </div>
 
       {/* Kural bilgisi */}
@@ -86,9 +99,9 @@ export function DepositCalculator() {
         <div className="flex items-start gap-1.5">
           <Info size={11} className="mt-0.5 shrink-0 text-slate-500" />
           <span>
-            TL vadeli mevduatta güncel stopaj oranı <strong className="text-slate-200">%{STOPAJ_PCT}</strong>{' '}
-            (2024 sonrası tek oran). Klasik vade seçenekleri: 32, 45, 91, 182 ve 365 gün. Enflasyona karşı
-            reel getiri için TÜFE-endeksli mevduat da değerlendirilebilir.
+            TL vadeli mevduatta güncel stopaj oranı <strong className="text-slate-200">%{DEFAULT_STOPAJ_PCT}</strong>{' '}
+            (2024 sonrası tek oran). Bu oran mevzuat güncellenirse aşağıdaki alandan değiştirilebilir.
+            Klasik vade seçenekleri: 32, 45, 91, 182 ve 365 gün.
           </span>
         </div>
       </div>
@@ -118,8 +131,8 @@ export function DepositCalculator() {
         <Field label="Yıllık Faiz" suffix="%" value={rate} onChange={setRate} min={0} max={100} step={0.1} decimals={2} />
       </div>
 
-      {/* Bileşik faiz seçeneği */}
-      <div className="mt-3 flex items-center gap-2 text-[11px]">
+      {/* Stopaj + Bileşik faiz kontrol satırı */}
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">
         <label className="flex items-center gap-1.5 text-slate-400">
           <input
             type="checkbox"
@@ -130,6 +143,34 @@ export function DepositCalculator() {
           <span>Bileşik faiz</span>
           <span className="text-slate-600">(vade içi kartopu)</span>
         </label>
+
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="text-slate-500">Stopaj:</span>
+          <input
+            type="number"
+            value={stopajPct}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (Number.isFinite(v)) setStopajPct(Math.max(0, Math.min(50, v)));
+            }}
+            min={0}
+            max={50}
+            step={0.5}
+            className="w-16 rounded border border-slate-700/50 bg-bg-card px-1.5 py-0.5 text-center tabular-nums text-slate-200 focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <span className="text-slate-500">%</span>
+          {!isDefault && (
+            <button
+              type="button"
+              onClick={() => setStopajPct(DEFAULT_STOPAJ_PCT)}
+              className="ml-1 flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] text-accent hover:bg-accent/10"
+              title={`Varsayılana dön (%${DEFAULT_STOPAJ_PCT})`}
+            >
+              <RotateCcw size={10} />
+              <span>varsayılan</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Sonuçlar */}
@@ -143,8 +184,8 @@ export function DepositCalculator() {
         />
         <ResultCard
           icon={<Calculator size={14} />}
-          label={`Stopaj (%${STOPAJ_PCT})`}
-          value={formatMoney(result.stopaj)}
+          label={`Stopaj (%${stopajPct})`}
+          value={formatMoney(result.stopajTutar)}
           suffix="₺"
           color="bg-red-500/10 text-red-400 border-red-500/20"
         />

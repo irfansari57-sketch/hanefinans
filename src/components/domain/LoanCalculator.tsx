@@ -251,7 +251,7 @@ export function LoanCalculator() {
         />
         <ResultCard
           icon={<TrendingDown size={14} />}
-          label="Toplam Faiz+Vergi"
+          label="Toplam Vade Farkı+Vergi"
           value={formatMoney(result.totalInterest)}
           suffix="₺"
           color="bg-orange-500/10 text-orange-400 border-orange-500/20"
@@ -263,9 +263,9 @@ export function LoanCalculator() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span><Percent size={10} className="mr-1 inline" />Yıllık maliyet: %{(result.effectiveRate * 12).toFixed(2)}</span>
           <span>·</span>
-          <span>Faiz oranı çarpanı: {(result.totalInterest / amount).toFixed(2)}x</span>
+          <span>Vade farkı çarpanı: {(result.totalInterest / amount).toFixed(2)}x</span>
           <span>·</span>
-          <span>Toplam anapara ödenen faize oranı: %{amount > 0 ? ((result.totalInterest / amount) * 100).toFixed(0) : 0}</span>
+          <span>Toplam anapara ödenen vade farkı oranı: %{amount > 0 ? ((result.totalInterest / amount) * 100).toFixed(0) : 0}</span>
         </div>
       </div>
 
@@ -284,7 +284,7 @@ export function LoanCalculator() {
                 <thead className="bg-slate-900/60 text-slate-500 uppercase tracking-wider">
                   <tr>
                     <th className="p-2 text-left">Ay</th>
-                    <th className="p-2 text-right">Faiz</th>
+                    <th className="p-2 text-right">Vade Farkı</th>
                     <th className="p-2 text-right">Anapara</th>
                     <th className="p-2 text-right">Kalan Bakiye</th>
                   </tr>

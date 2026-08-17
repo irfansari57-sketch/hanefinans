@@ -349,8 +349,8 @@ const TOPICS: Topic[] = [
     videoQuery: 'konut kredisi hesaplama KKDF BSMV nedir',
     bullets: [
       'Konut kredisi: KKDF %0 + BSMV %0 (istisna kapsamı) — max 240 ay',
-      'Taşıt kredisi: KKDF %15 + BSMV %5 (toplam %20 vergi yükü) — max 48 ay',
-      'İhtiyaç kredisi: KKDF %15 + BSMV %5 — max 36 ay',
+      'Taşıt kredisi: KKDF %15 + BSMV %15 (toplam %30 vergi yükü) — max 48 ay',
+      'İhtiyaç kredisi: KKDF %15 + BSMV %15 — max 36 ay',
       'Efektif faiz = Aylık taban faiz × (1 + KKDF% + BSMV%)',
       'Aylık taksit annüite formülü: A = P × r × (1+r)ⁿ / ((1+r)ⁿ - 1)',
       'Amortisman: İlk aylarda faiz yüksek, anapara düşük; vade sonuna doğru tersine döner',
@@ -371,7 +371,7 @@ const TOPICS: Topic[] = [
     sections: [
       {
         heading: 'KKDF ve BSMV — Kredi Vergi Sistemi Nasıl Çalışır?',
-        body: '**KKDF (Kaynak Kullanımını Destekleme Fonu)** ve **BSMV (Banka ve Sigorta Muameleleri Vergisi)** krediler üzerinden alınan iki ayrı vergidir. Toplam etkileri faizin görünen oranına eklenip, bankanın gerçekten kestiği "efektif faiz"i oluşturur. **Konut kredisinde:** her ikisi de sıfırdır (istisna kapsamı — 2020 sonrası düzenlemesi, konut edindirme teşviği). Yani ilan edilen faiz aynı zamanda uygulanan faizdir. **Taşıt ve ihtiyaç kredisinde:** KKDF %15 ve BSMV %5 uygulanır, toplam %20 vergi yükü faiz üzerine biner. Örnek: bankanın ilan ettiği aylık taban faiz %4 ise, ihtiyaç kredisinde efektif faiz = %4 × 1.20 = **%4.80**\'dir. Aylık taksit hesaplaması bu efektif faiz üzerinden yapılır. Reklamda "aylık %3.5" gördüğünde, ihtiyaç kredisi için gerçek maliyetin %3.5 × 1.20 = %4.20 olduğunu unutma.',
+        body: '**KKDF (Kaynak Kullanımını Destekleme Fonu)** ve **BSMV (Banka ve Sigorta Muameleleri Vergisi)** krediler üzerinden alınan iki ayrı vergidir. Toplam etkileri faizin görünen oranına eklenip, bankanın gerçekten kestiği "efektif faiz"i oluşturur. **Konut kredisinde:** her ikisi de sıfırdır (istisna kapsamı — 2020 sonrası düzenlemesi, konut edindirme teşviği). Yani ilan edilen faiz aynı zamanda uygulanan faizdir. **Taşıt ve ihtiyaç kredisinde:** KKDF %15 ve BSMV %15 uygulanır, toplam **%30 vergi yükü** faiz üzerine biner. Örnek: bankanın ilan ettiği aylık taban faiz %4 ise, ihtiyaç kredisinde efektif faiz = %4 × 1.30 = **%5.20**\'dir. Aylık taksit hesaplaması bu efektif faiz üzerinden yapılır. Reklamda "aylık %3.5" gördüğünde, ihtiyaç kredisi için gerçek maliyetin %3.5 × 1.30 = %4.55 olduğunu unutma. Bu oranlar 2024-2026 döneminde dolarizasyon önlemi olarak yükseltildi.',
       },
       {
         heading: 'Annuite (Eşit Taksitli) Formülü — Bankaların Nasıl Hesapladığı',
@@ -393,23 +393,23 @@ const TOPICS: Topic[] = [
     icon: Landmark,
     tone: 'success',
     description:
-      'TL vadeli, döviz, KKM (kur korumalı) ve altın mevduat hesaplayıcısı. Stopaj oranları mevduat tipine göre otomatik uygulanır.',
-    videoQuery: 'mevduat faizi stopaj hesaplama KKM',
+      'TL vadeli mevduat hesaplayıcısı. Güncel stopaj oranı %17.5 sabit uygulanır. Basit ve bileşik faiz seçenekleri.',
+    videoQuery: 'TL vadeli mevduat faizi stopaj hesaplama',
     bullets: [
-      'TL Vadeli Mevduat: Stopaj %10 (2024 sonrası tek oran)',
-      'Döviz Mevduat (USD/EUR): Stopaj %25 — dolarizasyonu caydırıcı vergi',
-      'KKM (Kur Korumalı Mevduat): Stopaj %0 — hazine muafiyeti',
-      'Altın Mevduat: Faiz kısmına stopaj %25, gram altın olarak yatırıp gram olarak alırsın',
-      'Basit faiz: Brüt = P × r × (gün/365) — Bileşik: P × ((1+r)^(gün/365) - 1)',
+      'TL Vadeli Mevduat: Stopaj %17.5 (güncel oran, sabit)',
+      'Klasik vade seçenekleri: 32/45/91/182/365 gün',
+      'Basit faiz: Brüt = P × r × (gün/365)',
+      'Bileşik faiz: Brüt = P × ((1+r)^(gün/365) - 1)',
+      'Net kazanç = Brüt × (1 - 0.175)',
       'Reel getiri = Net getiri - Enflasyon (TÜFE)',
     ],
     keyTerms: [
-      { term: 'Stopaj', def: 'Devlet tarafından faiz gelirinden peşin kesilen vergi. Sen ekstra bir şey ödemezsin, banka keser.' },
+      { term: 'Stopaj', def: 'Devlet tarafından faiz gelirinden peşin kesilen vergi. TL vadeli mevduatta güncel oran %17.5.' },
       { term: 'Bileşik Faiz', def: 'Vade içinde biriken faizin de faiz getirisine dönmesi. Basit faize göre biraz daha yüksek getiri.' },
-      { term: 'KKM', def: 'Kur Korumalı Mevduat — TL yatırırsın, vade sonunda faiz veya kur artışı (yüksek olan) ödenir.' },
       { term: 'TMSF Garantisi', def: 'Tasarruf Mevduatı Sigorta Fonu — 950.000 ₺\'ye kadar mevduatı garanti eder (Şubat 2024 tavan).' },
       { term: 'Reel Faiz', def: 'Enflasyondan arındırılmış net getiri. Nominal faiz %50, enflasyon %45 ise reel faiz sadece %5.' },
       { term: 'Vade Bozma', def: 'Vadeden önce mevduatı çekmek. Faiz kaybı yaşarsın, ya sıfır ya vadesiz oranından hesap edilir.' },
+      { term: 'Efektif Yıllık Getiri', def: 'Bileşik faiz + stopaj kesintisi sonrası gerçek yıllık net getiri oranı.' },
     ],
     externalLinks: [
       { label: 'TCMB — Mevduat Faiz İstatistikleri', url: 'https://www.tcmb.gov.tr' },
@@ -418,24 +418,24 @@ const TOPICS: Topic[] = [
     ],
     sections: [
       {
-        heading: 'Mevduat Türleri ve Stopaj Kuralları',
-        body: '**TL Vadeli Mevduat:** 2024 sonrası tek stopaj oranı %10 uygulanır (öncesinde vadeye göre farklıydı). Klasik vade seçenekleri 32, 45, 91, 182 ve 365 gün. Bankalar en yüksek faizi genelde 32 gün ve 91 günde verir (kısa vadede TCMB politika faizine yakın). **Döviz Mevduat (USD/EUR):** Stopaj %25 — bilinçli olarak yüksek tutuluyor çünkü hükümet dolarizasyonu caydırmaya çalışıyor. Faiz oranları da düşük (%2-5/yıl). Kur riski senindir. **KKM (Kur Korumalı Mevduat):** Stopaj %0. TL bazlı, ama vade sonunda TL faiz getirisi ile kur artışı karşılaştırılır, hangisi yüksekse o ödenir. Kur çıkışını devlet karşılar (hazineden). 2021\'de dolarizasyonu tersine çevirmek için başladı, hala aktif. **Altın Mevduat:** Faiz oranı düşük (%0.5-2/yıl), gram altın olarak yatırırsın gram olarak çekersin. Asıl getirisi altın fiyat değişimi — faize gelen kısma %25 stopaj.',
+        heading: 'TL Vadeli Mevduat — Nasıl Çalışır?',
+        body: '**TL Vadeli Mevduat**, belirli bir süre için bankaya para yatırıp karşılığında sabit faiz getirisi aldığın en temel yatırım aracıdır. **Güncel stopaj oranı: %17.5** (sabit — vade fark etmez). Klasik vade seçenekleri: **32, 45, 91, 182 ve 365 gün.** Bankalar en yüksek faizi genelde 32 gün ve 91 günde verir (kısa vadede TCMB politika faizine yakın). Vadeyi bozarsan faiz kaybı yaşarsın — ya sıfırdan ya vadesiz hesap oranından hesaplanır (banka politikasına göre). Faiz vade sonunda tek ödeme (basit) veya vade içinde kartopu (bileşik) olarak biriktirilir. Türkiye\'de mevduat faizleri yüksek olduğu için bileşik ile basit arasındaki fark, uzun vadelerde ve otomatik yenilemede belirgin olur.',
+      },
+      {
+        heading: 'Basit vs Bileşik Faiz — Fark Ne?',
+        body: '**Basit faiz:** Vade boyunca sabit faiz oranından hesap yapılır. Formül: Brüt = P × r × (gün/365). Örnek: 100.000 TL, yıllık %47, 365 gün → Brüt = 47.000 TL. **Bileşik faiz:** Vade içinde biriken faiz de faiz kazanır (kartopu etkisi). Formül: Brüt = P × ((1+r)^(gün/365) - 1). Aynı örnek bileşikte: 100.000 TL × ((1.47)^1 - 1) = 47.000 TL — 1 yıllık tek vadede basit ile bileşik aynıdır. Ama **birden fazla dönem yenilendiğinde** fark büyür. 3 kez 121 gün yenilenen bileşik hesap, 365 gün basit hesaba göre belirgin daha fazla getirir. Kısa vade + otomatik yenileme = bileşik avantajı. Uzun tek vade = basit ile bileşik yaklaşık aynı.',
       },
       {
         heading: 'Nominal Faiz vs Reel Faiz — Enflasyon Tuzağı',
-        body: 'Reklamda "%50 mevduat faizi" gördüğünde ilk düşündüğün "vay be, param yarı yarıya büyür" olmasın. Gerçekte iki büyük kesinti var: **(1) Stopaj:** TL için %10, döviz için %25, altın için %25. **(2) Enflasyon:** Türkiye\'de yıllık enflasyon %35-70 arası dalgalanabiliyor (TÜFE). **Örnek hesap:** 100.000 TL yatırdın, yıllık %50 faiz aldın. Brüt kazanç 50.000 TL. Stopaj %10 = 5.000 TL. Net kazanç 45.000 TL, vade sonu 145.000 TL. Ama enflasyon %55 çıktıysa, 100.000 TL\'nin bugünkü alım gücüne göre 145.000 TL değil, **93.500 TL** eşdeğerine sahipsin — yani reel olarak %6.5 kayıptasın. **Reel faiz formülü:** (1 + nominal) / (1 + enflasyon) - 1. Reel getiri sağlamak için nominal faizin enflasyondan yüksek olması şart. Bu şart Türkiye\'de son 5 yılda sık sık ihlal edilmiştir.',
+        body: 'Reklamda "%50 mevduat faizi" gördüğünde ilk düşündüğün "vay be, param yarı yarıya büyür" olmasın. Gerçekte iki büyük kesinti var: **(1) Stopaj %17.5.** **(2) Enflasyon:** Türkiye\'de yıllık enflasyon %35-70 arası dalgalanabiliyor (TÜFE). **Örnek hesap:** 100.000 TL yatırdın, yıllık %50 faiz aldın. Brüt kazanç 50.000 TL. Stopaj %17.5 = 8.750 TL. Net kazanç 41.250 TL, vade sonu 141.250 TL. Ama enflasyon %55 çıktıysa, 100.000 TL\'nin bugünkü alım gücüne göre 141.250 TL değil, **91.100 TL** eşdeğerine sahipsin — yani reel olarak **%8.9 kayıptasın**. **Reel faiz formülü:** (1 + nominal × (1 - stopaj)) / (1 + enflasyon) - 1. Reel getiri sağlamak için nominal faizin enflasyondan bariz yüksek olması şart. Bu şart Türkiye\'de son 5 yılda sık sık ihlal edilmiştir. Reel kayıp durumunda TÜFE-endeksli mevduat (TÜFEX) veya kıymetli metal alternatifleri değerlendirilebilir.',
       },
       {
-        heading: 'KKM (Kur Korumalı Mevduat) — Nasıl Çalışır?',
-        body: 'KKM, 2021 sonunda TL\'nin çakılmasıyla başlayan özel bir üründür. **Mekanizması:** TL yatırırsın (mevcut TL veya döviz bozdurup TL). Banka sana normal TL vadeli faizini teklif eder. Vade sonunda 2 rakam karşılaştırılır: **(a)** TL faiz getirisi, **(b)** aynı sürede döviz kurunun artış getirisi. Hangisi yüksekse o sana ödenir. **Kritik nokta:** faizden fazlaysa kur farkı, aradaki farkı hazine (devlet bütçesi) karşılar. Yani banka batmaz, sen kaybetmezsin. **Stopaj %0** — büyük avantaj. **Riskler:** (1) TL çok değer kazanırsa (kur düşerse) sadece TL faizi alırsın, ekstra kur koruması işlemez. (2) Hazine yükü çok arttığı için hükümet bu ürünü uzun vadede kaldırma sinyalleri veriyor — vadeler artık daha kısıtlı. **Kim için mantıklı:** Kur riskinden çekinen ama döviz mevduat %25 stopajını ödemek istemeyen TL mudi. **Ne zaman mantıksız:** Sen zaten dövizi tutmak istiyorsan (dövizde kal, KKM\'nin sana koruması gerekmez).',
-      },
-      {
-        heading: 'Altın Mevduat — Ne Zaman Mantıklı?',
-        body: 'Altın mevduatı, kayıt bazında gram altın tutmandır. Bankaya gramla yatırırsın (fiziki teslim yok, hesabında rakam olarak durur) ve gramla çekersin. **Faiz oranı çok düşük (%0.5-2/yıl)** çünkü altının kendisi zaten değer saklama aracıdır. Asıl getirin **fiyat değişimi**dir — 1 yıl önce gram 3.000 TL, bugün 4.500 TL ise %50 getirin var, buna küçük bir faiz eklenir. **Faize gelen kısma %25 stopaj** uygulanır (fiyat artışına stopaj yok — sermaye kazancı). **Avantajları:** (1) Enflasyona karşı doğal koruma, (2) Fiziki altın gibi çalınma-kaybolma riski yok, (3) İstediğin an vade bozma olsa da faiz kaybı yaşarsın ama gram korunur. **Dezavantajları:** (1) Faiz nakit kadar çekici değil, (2) Altın düşerse kaybedersin (nadiren ama olur), (3) Alış-satış marjı fiziki altına göre daha dar ama sıfır değil (banka spread\'i uygular). Portföyünün %10-20 kadarını altın mevduatta tutmak uzun vadeli **çeşitlendirme kuralı**dır.',
+        heading: 'Hangi Vade Seçilmeli?',
+        body: '**32 gün:** En yüksek faiz genelde burada — TCMB politika faizine en yakın. Otomatik yenileme ile bileşik etki elde edersin. Likiditeye ihtiyacın olabilir diye düşünüyorsan ideal. **91 gün:** Denge — biraz daha düşük faiz ama yeniden yatırım riskini azaltır. **182 gün:** TCMB faiz indirimi bekliyorsan mantıklı, faizi 6 ay lock\'larsın. **365 gün:** Uzun lock ama TCMB faiz artışı senaryosunda dezavantaj. **Strateji:** Faiz düşüş beklentisinde uzun vade lock\'la; faiz artış beklentisinde kısa vade + yenileme. Kesin bilinmediğinde 32/91 gün en dengeli seçim. Ayrıca bankalar arası faiz farkını da kaçırma — 1-2 puan fark yıllık bazda ciddi tutar demek.',
       },
       {
         heading: 'TMSF Garantisi ve Banka Riski',
-        body: '**Tasarruf Mevduatı Sigorta Fonu (TMSF)**, Türkiye\'de banka batması durumunda mevduatları garanti eden devlet kurumudur. **Güncel tavan (Şubat 2024\'ten beri): 950.000 TL.** Bu tutar bir kişi için tek bankada geçerlidir — 3 farklı bankada tek başına 950.000 TL\'lik mevduat tutabilirsin ve hepsi ayrı ayrı sigortalıdır. Döviz mevduat da TL karşılığı ile bu tavana dahildir. **Pratik strateji:** 2-3 milyon TL üstü birikimin varsa farklı bankalara böl. Alternatif olarak Hazine tahvili (T-Bond) al — bunlar zaten devlet garantili. **Batma senaryosu nadir** (Türkiye\'de son 20 yılda ciddi bir banka batışı olmadı) ama Argentina, Yunanistan gibi ülkelerdeki tecrübeler bu tavanın önemini hatırlatır. **Katılım bankaları (İslami bankacılık) da TMSF kapsamına dahildir.**',
+        body: '**Tasarruf Mevduatı Sigorta Fonu (TMSF)**, Türkiye\'de banka batması durumunda mevduatları garanti eden devlet kurumudur. **Güncel tavan (Şubat 2024\'ten beri): 950.000 TL.** Bu tutar bir kişi için tek bankada geçerlidir — 3 farklı bankada tek başına 950.000 TL\'lik mevduat tutabilirsin ve hepsi ayrı ayrı sigortalıdır. **Pratik strateji:** 2-3 milyon TL üstü birikimin varsa farklı bankalara böl. Alternatif olarak Hazine tahvili (T-Bond) al — bunlar zaten devlet garantili, TMSF tavanına takılmaz. **Batma senaryosu nadir** (Türkiye\'de son 20 yılda ciddi bir banka batışı olmadı) ama Argentina, Yunanistan gibi ülkelerdeki tecrübeler bu tavanın önemini hatırlatır. **Katılım bankaları (İslami bankacılık) da TMSF kapsamına dahildir.**',
       },
     ],
   },

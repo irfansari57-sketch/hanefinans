@@ -5,11 +5,11 @@ import { cn } from '@/lib/utils';
 /**
  * Finansman (Kredi) Hesaplayıcı — Konut / Taşıt / İhtiyaç
  *
- * Bankacılık kuralları (2026 TR):
+ * Bankacılık kuralları (2026 TR — güncel oranlar):
  *  - Konut kredisi:     KKDF %0, BSMV %0 (istisna kapsamında)
  *                       Max vade 240 ay, faiz %2.5-4/ay aralığı
- *  - Taşıt kredisi:     KKDF %15, BSMV %5, Max vade 48 ay, faiz %3.5-5/ay
- *  - İhtiyaç kredisi:   KKDF %15, BSMV %5, Max vade 36 ay, faiz %4-6/ay
+ *  - Taşıt kredisi:     KKDF %15, BSMV %15, Max vade 48 ay, faiz %3.5-5/ay
+ *  - İhtiyaç kredisi:   KKDF %15, BSMV %15, Max vade 36 ay, faiz %4-6/ay
  *
  * Formül (eşit taksitli - annuity):
  *   Efektif aylık faiz: r_ef = r_base * (1 + KKDF + BSMV)
@@ -57,8 +57,8 @@ const LOANS: Record<LoanKind, LoanConfig> = {
     defaultRate: 4.29,
     maxTerm: 48,
     kkdf: 0.15,
-    bsmv: 0.05,
-    note: 'KKDF %15 + BSMV %5 = toplam %20 vergi yükü faize eklenir. Kasko zorunlu, dosya masrafı ayrı.',
+    bsmv: 0.15,
+    note: 'KKDF %15 + BSMV %15 = toplam %30 vergi yükü faize eklenir. Kasko zorunlu, dosya masrafı ayrı.',
   },
   ihtiyac: {
     label: 'İhtiyaç Kredisi',
@@ -69,8 +69,8 @@ const LOANS: Record<LoanKind, LoanConfig> = {
     defaultRate: 4.99,
     maxTerm: 36,
     kkdf: 0.15,
-    bsmv: 0.05,
-    note: 'KKDF %15 + BSMV %5. Vade en fazla 36 ay. Erken kapama tazminatı vade ve tutara göre %2 civarındadır.',
+    bsmv: 0.15,
+    note: 'KKDF %15 + BSMV %15 = toplam %30 vergi yükü. Vade en fazla 36 ay. Erken kapama tazminatı vade ve tutara göre %2 civarındadır.',
   },
 };
 

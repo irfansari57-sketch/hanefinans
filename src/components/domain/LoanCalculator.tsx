@@ -215,7 +215,7 @@ export function LoanCalculator() {
           hint={`Max ${cfg.maxTerm} ay`}
         />
         <Field
-          label="Aylık Faiz"
+          label="Aylık Vade Farkı"
           suffix="%"
           value={rate}
           onChange={setRate}

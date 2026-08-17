@@ -1,6 +1,44 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
-> Son guncelleme: 18 Temmuz 2026 — seans DNS setup ortasinda kesildi
+> Son guncelleme: 17 Agustos 2026 — Finansman + Mevduat hesaplayicilari deploy edildi
+
+---
+
+## 🎯 SONRAKI SEANS ONCELIKLI — 4 GOREV (2026-08-17 kullanici brief)
+
+### 1. Fon/Hisse detay: "Getiri Karsilastir" bar chart'inda TL bazli hesap
+- FundDetail + StockDetail sayfalarindaki "Fon Getiri Karsilastir" bar grubunun
+  ustunde/yaninda yatirim tutari input (default 1.000.000 TL, presetler 100K/1M/10M)
+- Her bar'in ustunde yuzde ile birlikte "1M TL -> 1.830.000 TL (+830K)" seklinde
+  TL degerlendirme gostersin (haftalik/aylik/3A/6A/YBI/1Y)
+- Ornek: TTE fonu 1Y +%83.03 -> 1.830.300 TL kazanildi
+- Ilgili dosya: src/features/fund/FundDetailPage.tsx (fon karsilastir barlari)
+
+### 2. Ucretli uyelik gecici olarak kaldir — herkes PRO
+- Site genelinde tum PRO/Elite paywall'i devre disi birak
+- Feature flag ile geri acilabilir olsun (`FEATURES_PAYWALL_ENABLED = false`)
+- Etkilenecek: PremiumCard, Agent cards (Panel), MultiTimeframeCard,
+  FundDetail AI analiz, Strong Buy preview, Heat Map, ABD/Global piyasalar,
+  alarm quota (5 -> unlimited), fon havuzu paywall
+- tier check fonksiyonlarini override et — kolay geri acilabilecek sekilde
+
+### 3. AI sorgulama devre disi — sadece admin (Hane) elite kalir
+- Screener /sorgu (SmartSearchPage) + Deep-Dive + Portfolio Health AI comment
+  + Portfolio Analiz — tum AI destekli endpoint'leri normal kullanicilar icin kapat
+- Admin email whitelist: `haneassistance@gmail.com` (env: ADMIN_EMAILS)
+- Diger user'lar "AI sorgulama su an bakim modunda" banner'i gorsun
+- Anthropic quota koruma amacli
+- **PRO acik ama AI kapali** — 2 ayri flag
+
+### 4. Portfoy + user data browser'dan DB'ye tasi
+- Dexie (IndexedDB) yerine tum portfolio/watchlist/settings/risk profile
+  verilerini D1'de tut (kalici, cihaz bagimsiz)
+- Migration 011 portfolio + portfolioSync.ts zaten hazir — tam devreye al
+- Login sonrasi ilk acilis: DB -> local sync (offline okuma icin)
+- Change -> optimistic UI + arka planda DB write
+- Anon (misafir) user icin IndexedDB fallback kalabilir
+- Amac: cihaz degistiginde veri kaybi olmasin + tarayici cache temizlenirse
+  portfoy silinmesin
 
 ---
 

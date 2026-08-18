@@ -558,7 +558,16 @@ export function FinancialLiteracyPage() {
             </div>
           </section>
 
-          {/* Video — YouTube embed bloke ediyor, direkt YouTube linkleri sunuyoruz */}
+          {/* BES için özel hesaplayıcı — konunun başında, görsel olarak yüksek değer */}
+          {current.slug === 'bes-bireysel-emeklilik' && <BESCalculator />}
+
+          {/* Finansman (Kredi) hesaplayıcı — Konut/Taşıt/İhtiyaç sekmeleri */}
+          {current.slug === 'finansman-hesapla' && <LoanCalculator />}
+
+          {/* Mevduat hesaplayıcı — TL/Döviz/KKM/Altın sekmeleri */}
+          {current.slug === 'mevduat-hesapla' && <DepositCalculator />}
+
+          {/* Video — hesaplayıcının hemen altında, Detaylı Anlatım'ın üstünde */}
           <section className="glass-card p-5">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-300">
               <GraduationCap size={14} /> Video Eğitim
@@ -606,15 +615,6 @@ export function FinancialLiteracyPage() {
               ℹ️ Üçüncü taraf siteler YouTube'u embed etmeye izin vermediği için doğrudan YouTube'a yönlendiriyoruz — videolar orada sorunsuz oynar.
             </p>
           </section>
-
-          {/* BES için özel hesaplayıcı — konunun başında, görsel olarak yüksek değer */}
-          {current.slug === 'bes-bireysel-emeklilik' && <BESCalculator />}
-
-          {/* Finansman (Kredi) hesaplayıcı — Konut/Taşıt/İhtiyaç sekmeleri */}
-          {current.slug === 'finansman-hesapla' && <LoanCalculator />}
-
-          {/* Mevduat hesaplayıcı — TL/Döviz/KKM/Altın sekmeleri */}
-          {current.slug === 'mevduat-hesapla' && <DepositCalculator />}
 
           {/* Geniş kapsamlı anlatım */}
           {current.sections && current.sections.length > 0 && (

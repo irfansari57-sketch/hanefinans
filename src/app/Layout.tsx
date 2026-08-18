@@ -83,6 +83,7 @@ const navGroups: NavGroup[] = [
     items: [
       // Yeni sıra: Fonlar → Hisseler → Emtialar → Döviz Kurları → Takip Listem → Portföyüm → Ekonomik Takvim → Gelişmeler
       { to: '/funds', label: 'Fonlar', icon: PiggyBank },
+      { to: '/karsilastir', label: 'Fon Karşılaştır', icon: PiggyBank },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/doviz', label: 'Döviz Kurları', icon: Coins },

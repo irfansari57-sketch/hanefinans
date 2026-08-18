@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, Search, Star, RefreshCw, ArrowUpDown } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { loadStocks } from '@/data/services';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
@@ -450,6 +451,9 @@ export function StocksPage() {
             />
           </div>
 
+          {loading && stocks.length === 0 ? (
+            <TableSkeleton rows={12} cols={9} />
+          ) : (
           <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
             <table className="w-full min-w-[820px] text-sm">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
@@ -484,6 +488,7 @@ export function StocksPage() {
               </tbody>
             </table>
           </div>
+          )}
 
           <div className="mt-3">
             <Pagination

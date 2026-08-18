@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { Bell, Trash2, RotateCcw, ChevronRight, Pause, Play, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { PremiumCard } from '@/components/ui/PremiumCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useAuth } from '@/store/auth';
 import {
   listAlerts,
@@ -133,16 +134,19 @@ export function AlertsPage() {
           Yükleniyor…
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-border bg-bg-soft p-6 text-center">
-          <Bell size={32} className="mx-auto text-slate-500" />
-          <h3 className="mt-2 text-base font-semibold text-slate-100">Henüz alarm yok</h3>
-          <p className="mt-1 text-sm text-slate-400">
-            Hisse veya fon detay sayfasındaki <strong className="text-accent">"Alarm"</strong> butonuyla alarm kurabilirsin.
-          </p>
-          <p className="mt-2 text-[11px] text-slate-500">
-            Tetiklendiğinde tarayıcın kapalı olsa bile push bildirim alırsın.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Bell size={32} />}
+          title="Henüz alarm yok"
+          description="Hisse veya fon detay sayfasındaki 'Alarm' butonuyla fiyat alarmı kurabilirsin. Tetiklendiğinde tarayıcın kapalı olsa bile push bildirim alırsın."
+          action={
+            <Link
+              to="/stocks"
+              className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-bg transition hover:bg-accent/90"
+            >
+              Hisselere göz at
+            </Link>
+          }
+        />
       ) : (
         <>
           {/* Aktif alarmlar */}

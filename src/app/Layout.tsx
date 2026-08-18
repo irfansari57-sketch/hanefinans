@@ -594,7 +594,8 @@ export function Layout() {
       {/* Mobil fiks alt bar — Panel/Gelişmeler/Takip/Portföy + Daha */}
       <MobileBottomNav onMoreClick={() => setMobileOpen(true)} />
 
-      {/* Onboarding tour kullanici talebiyle kaldirildi */}
+      {/* Onboarding tour — sadece ilk kez giren yeni kullanıcıya (STORAGE_KEY guard içinde). */}
+      <OnboardingTour />
       <PwaInstallBanner />
       <AlertWatcher />
       <NewsWatcher />

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Newspaper, Star, Wallet, Menu } from 'lucide-react';
+import { LayoutDashboard, Flame, Star, Wallet, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileBottomNavProps {
@@ -8,7 +8,7 @@ interface MobileBottomNavProps {
 
 const TABS = [
   { to: '/panel', label: 'Panel', icon: LayoutDashboard },
-  { to: '/news', label: 'Gelişmeler', icon: Newspaper },
+  { to: '/recommendations', label: 'Öneriler', icon: Flame },
   { to: '/watchlist', label: 'Takip', icon: Star },
   { to: '/portfoy', label: 'Portföy', icon: Wallet },
 ] as const;
@@ -16,6 +16,7 @@ const TABS = [
 /**
  * Mobil fiks alt bar — hamburger drawer yerine 4 ana hedef + "Daha" butonu.
  * Sadece md altında görünür; üstte 5. ikon "Daha" tıklanınca mevcut drawer açılır.
+ * Gelişmeler ve diğer sayfalar "Daha" drawer'ında.
  */
 export function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
   return (

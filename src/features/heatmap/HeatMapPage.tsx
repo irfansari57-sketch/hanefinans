@@ -11,6 +11,7 @@ import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { IndexHeatGrid } from '@/components/domain/IndexHeatGrid';
+import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 
 const AUTO_REFRESH_MS = 60_000;
 
@@ -60,16 +61,15 @@ export function HeatMapPage() {
   useEffect(() => {
     if (!proUser) return;
     const memoAge = heatMapMemo ? Date.now() - heatMapMemo.fetchedAt : Infinity;
-    if (memoAge < HEATMAP_MEMO_TTL_MS) {
-      setLoading(false);
-      const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
-      return () => clearInterval(id);
-    }
-    refresh(true);
-    const id = setInterval(() => refresh(true), AUTO_REFRESH_MS);
-    return () => clearInterval(id);
+    if (memoAge >= HEATMAP_MEMO_TTL_MS) refresh(true);
+    else setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proUser]);
+
+  // Visibility-aware polling — tab arka planda API+CPU israfını durdur
+  useVisibleInterval(() => {
+    if (proUser) void refresh(true);
+  }, AUTO_REFRESH_MS);
 
   // Sektörlere göre grupla
   const sectorGroups = useMemo(() => {

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { PiggyBank, Search, Star, AlertCircle, ArrowUpDown, Check, X } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -332,7 +333,9 @@ export function FundsPage() {
         );
       })()}
 
-      {sorted.length === 0 ? (
+      {loading && sorted.length === 0 ? (
+        <TableSkeleton rows={12} cols={8} />
+      ) : sorted.length === 0 ? (
         <EmptyState
           icon={<PiggyBank size={28} />}
           title={!feedConfigured ? 'Veri bekleniyor' : tab === 'watched' ? 'Takipte fon yok' : 'Eşleşme yok'}

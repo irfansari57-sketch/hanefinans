@@ -5,6 +5,7 @@ import { Plus, Star, X, Search, RefreshCw, PiggyBank, TrendingUp, ExternalLink }
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { MOCK_STOCKS } from '@/data/mock';
@@ -337,7 +338,9 @@ export function WatchlistPage() {
         </div>
       )}
 
-      {watched.length === 0 ? (
+      {loading && watched.length === 0 ? (
+        <TableSkeleton rows={8} cols={7} />
+      ) : watched.length === 0 ? (
         <EmptyState
           icon={<Star size={28} />}
           title="Takip listen boş"

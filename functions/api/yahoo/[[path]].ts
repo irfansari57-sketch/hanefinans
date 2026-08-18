@@ -35,13 +35,31 @@ function formatTsForIsYatirim(d: Date): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
+/** Yahoo range parametresini gün cinsine çevirir. */
+function rangeToDays(range: string): number {
+  switch (range) {
+    case '1d': return 5; // MA hesabı için minimum
+    case '5d': return 10;
+    case '1mo': return 30;
+    case '3mo': return 90;
+    case '6mo': return 180;
+    case 'ytd': return 365;
+    case '1y': return 365;
+    case '2y': return 730;
+    case '5y': return 1825;
+    default: return 30;
+  }
+}
+
 async function fetchIsYatirimSeries(
   symbol: string,
+  range: string = '1mo',
 ): Promise<Array<[number, number]> | null> {
   const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
+  const days = rangeToDays(range);
   const now = new Date();
   const start = new Date(now);
-  start.setDate(start.getDate() - 30); // 30 gun: 1mo range'i destekler
+  start.setDate(start.getDate() - days);
   start.setHours(0, 0, 0, 0);
   const end = new Date(now);
   end.setHours(23, 59, 59, 0);
@@ -218,7 +236,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   // bug'ı bu seviyede yokediliyor. Edge + D1 cache bypass — her zaman taze veri.
   if (chartReq && BIST_INDEX_NAMES[chartReq.symbol.toUpperCase()]) {
     const sym = chartReq.symbol.toUpperCase();
-    const rows = await fetchIsYatirimSeries(sym);
+    const rows = await fetchIsYatirimSeries(sym, chartReq.range);
     if (rows && rows.length >= 2) {
       const body = buildYahooChartFromIsYatirim(sym, rows);
       return new Response(body, {

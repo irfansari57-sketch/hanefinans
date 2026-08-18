@@ -89,7 +89,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku-latest',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 800,
         system: SYSTEM_PROMPT,
         messages: [
@@ -154,7 +154,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return new Response(JSON.stringify({
       ok: true,
       spec,
-      model: 'claude-3-5-haiku-latest',
+      model: 'claude-haiku-4-5-20251001',
     }), {
       status: 200,
       headers: {

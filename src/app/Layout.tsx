@@ -67,6 +67,7 @@ const navGroups: NavGroup[] = [
     title: 'Genel',
     items: [
       { to: '/panel', label: 'Panel', icon: LayoutDashboard },
+      { to: '/egitim', label: 'Finansal Okuryazarlık', icon: GraduationCap },
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
       // Akilli Sorgu: FEATURES.smartQuery kapaliyken menude gozukmez.
@@ -92,12 +93,6 @@ const navGroups: NavGroup[] = [
       { to: '/abd', label: 'ABD Borsaları', icon: Flag, pro: true },
       { to: '/global', label: 'Global Piyasalar', icon: Globe, pro: true },
       { to: '/heatmap', label: 'Heat Map', icon: Grid3x3, pro: true },
-    ],
-  },
-  {
-    title: 'Eğitim',
-    items: [
-      { to: '/egitim', label: 'Finansal Okuryazarlık', icon: GraduationCap },
     ],
   },
   {

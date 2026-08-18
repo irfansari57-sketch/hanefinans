@@ -128,7 +128,7 @@ export function DepositCalculator() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Anapara" suffix="₺" value={amount} onChange={setAmount} min={1000} max={100_000_000} step={1000} />
         <Field label="Vade" suffix="gün" value={term} onChange={setTerm} min={7} max={1825} step={1} />
-        <Field label="Yıllık Faiz" suffix="%" value={rate} onChange={setRate} min={0} max={100} step={0.1} decimals={2} />
+        <Field label="Yıllık Vade Farkı" suffix="%" value={rate} onChange={setRate} min={0} max={100} step={0.1} decimals={2} />
       </div>
 
       {/* Stopaj + Bileşik faiz kontrol satırı */}
@@ -177,7 +177,7 @@ export function DepositCalculator() {
       <div className="mt-4 grid gap-3 sm:grid-cols-4">
         <ResultCard
           icon={<TrendingUp size={14} />}
-          label="Brüt Faiz"
+          label="Brüt Vade Farkı"
           value={formatMoney(result.brutFaiz)}
           suffix="₺"
           color="bg-slate-500/10 text-slate-300 border-slate-500/20"

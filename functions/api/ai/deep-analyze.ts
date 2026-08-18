@@ -10,6 +10,7 @@
  */
 
 import { getAuthedUser, type Env as AuthEnv } from '../auth/_utils';
+import { checkAiGate } from './_gate';
 
 interface Env extends AuthEnv {
   ANTHROPIC_API_KEY?: string;
@@ -171,18 +172,30 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   // --- Auth check ---
   const auth = await getAuthedUser(request, env).catch(() => null);
+
+  // --- AI gate: sadece admin (aiForAllUsers kapalı) ---
+  const gate = checkAiGate(auth);
+  if (!gate.allowed) {
+    return new Response(JSON.stringify({ ok: false, ...gate.errorBody }), {
+      status: 403, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (!auth?.user) {
     return new Response(JSON.stringify({
       ok: false, error: 'auth_required',
-      message: 'Bu analiz icin giris yapmaniz gerekiyor. Pro veya Elite uyelik gerekli.',
+      message: 'Bu analiz icin giris yapmaniz gerekiyor.',
     }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   }
 
   const user = auth.user as UserRow & { id: number };
   const tier = user.tier;
 
-  // --- AI Derin Analiz sadece ELITE uyelere acik (Free + Pro paywall) ---
-  if (tier !== 'elite') {
+  // --- AI Derin Analiz sadece ELITE uyelere acik (paywall açıkken uygulanır) ---
+  // Not: paywall kapalıyken checkAiGate zaten admin-only kısıtı uyguluyor.
+  // Aşağıdaki tier gate paywall açıldığında devreye girer.
+  const PAYWALL_ENABLED = false; // FEATURES.paywallEnabled ile senkron
+  if (PAYWALL_ENABLED && tier !== 'elite') {
     return new Response(JSON.stringify({
       ok: false, error: 'tier_required',
       message: 'AI Derin Analiz sadece Elite uyelere ozeldir (limitsiz analiz).',

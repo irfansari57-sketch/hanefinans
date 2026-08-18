@@ -1,9 +1,20 @@
-import { lazy, Suspense, type ComponentType } from 'react';
+import { lazy, Suspense, type ComponentType, type ReactElement } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { PageSkeleton } from '@/components/ui/Skeleton';
 import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary';
 import { FEATURES } from '@/lib/featureFlags';
+import { useAuth, isAdmin } from '@/store/auth';
+
+/**
+ * AdminGate — sadece admin (server-side isAdmin=true) çocukları görsün.
+ * Diğerleri /panel'e yönlendirilir.
+ */
+function AdminGate({ children }: { children: ReactElement }): ReactElement {
+  const user = useAuth((s) => s.user);
+  if (!isAdmin(user)) return <Navigate to="/panel" replace />;
+  return children;
+}
 
 /**
  * Cloudflare Pages'e yeni build deploy edilince eski tarayıcı index.html'i
@@ -142,8 +153,8 @@ export const router = createBrowserRouter([
       { path: 'fund/:code', element: withSuspense(<FundDetailPage />) },
       { path: 'history', element: withSuspense(<HistoryPage />) },
       { path: 'smart-search', element: withSuspense(<SmartSearchPage />) },
-      // Akilli Sorgu: FEATURES.smartQuery ile korunur. Kapaliyken /panel'e redirect.
-      { path: 'sorgu', element: FEATURES.smartQuery ? withSuspense(<ScreenerPage />) : <Navigate to="/panel" replace /> },
+      // Akilli Sorgu: aiForAllUsers kapali iken sadece admin. Acilirken FEATURES.smartQuery ile herkese.
+      { path: 'sorgu', element: FEATURES.smartQuery ? withSuspense(<ScreenerPage />) : <AdminGate>{withSuspense(<ScreenerPage />)}</AdminGate> },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
       { path: 'preview/ad-banner', element: withSuspense(<AdBannerPreviewPage />) },
       { path: 'auth/login', element: withSuspense(<LoginPage />) },

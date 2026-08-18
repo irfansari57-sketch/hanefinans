@@ -17,6 +17,7 @@
  */
 
 import { getAuthedUser, type Env as AuthEnv } from '../auth/_utils';
+import { checkAiGate } from './_gate';
 
 interface Env extends AuthEnv {
   DB?: D1Database;
@@ -335,6 +336,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return jsonResp({ ok: false, error: 'Servis kullanılamıyor' }, 503);
   const user = await getAuthedUser(request, env);
   if (!user) return jsonResp({ ok: false, error: 'Giriş gerekli' }, 401);
+
+  // AI gate — Anthropic'i sadece admin çağırabilir (aiForAllUsers kapalı iken).
+  const gate = checkAiGate(user as unknown as Parameters<typeof checkAiGate>[0]);
+  if (!gate.allowed) return jsonResp({ ok: false, ...gate.errorBody }, 403);
 
   let body: CalcInput;
   try {

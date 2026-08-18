@@ -39,17 +39,25 @@ interface AlertRow {
 /**
  * Tier-based alarm kotası — kullanıcı tier'ına göre aktif alarm sayısı sınırı.
  *
- *   free  → 5 aktif alarm (engagement hook — Pro'ya yönlendirir)
- *   pro   → 30 aktif alarm (orta yatırımcı için yeterli)
- *   elite → 100 aktif alarm (profesyonel tarayıcı kullanım)
+ *   free  → 100 aktif alarm (PAYWALL_ENABLED=false — herkes elite kotası)
+ *   pro   → 100 aktif alarm
+ *   elite → 100 aktif alarm
  *
+ * PAYWALL_ENABLED=true olduğunda gerçek tier kotaları (5/30/100) devreye girer.
  * Anon (auth yok) zaten 401 dönüyor → endpoint'e ulaşamıyor.
  */
-const TIER_LIMITS = {
+const PAYWALL_ENABLED = false; // frontend FEATURES.paywallEnabled ile senkron
+const TIER_LIMITS_ACTIVE = {
   free: 5,
   pro: 30,
   elite: 100,
 } as const;
+const TIER_LIMITS_DISABLED = {
+  free: 100,
+  pro: 100,
+  elite: 100,
+} as const;
+const TIER_LIMITS = PAYWALL_ENABLED ? TIER_LIMITS_ACTIVE : TIER_LIMITS_DISABLED;
 
 const VALID_ASSET_TYPES = ['stock', 'fund', 'crypto', 'fx'] as const;
 const VALID_DIRECTIONS = ['above', 'below'] as const;

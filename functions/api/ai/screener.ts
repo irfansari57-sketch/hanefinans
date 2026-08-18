@@ -7,7 +7,10 @@
  * Ã–zellikler sonraki commit'lerde tek tek geri eklenecek.
  */
 
-interface Env {
+import { getAuthedUser, type Env as AuthEnv } from '../auth/_utils';
+import { checkAiGate } from './_gate';
+
+interface Env extends AuthEnv {
   ANTHROPIC_API_KEY?: string;
 }
 
@@ -44,6 +47,15 @@ CIKTI: SADECE gecerli JSON, baska metin yok. Ornek:
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
+    // AI gate — sadece admin (feature flag ile aiForAllUsers açılırsa herkese)
+    const auth = await getAuthedUser(request, env).catch(() => null);
+    const gate = checkAiGate(auth);
+    if (!gate.allowed) {
+      return new Response(JSON.stringify({ ok: false, ...gate.errorBody }), {
+        status: 403, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!env.ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ ok: false, error: 'ANTHROPIC_API_KEY not set' }), {
         status: 503, headers: { 'Content-Type': 'application/json' },

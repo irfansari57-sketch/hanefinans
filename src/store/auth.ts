@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { UserTier } from '@/data/db';
+import { FEATURES } from '@/lib/featureFlags';
 
 /**
  * Cloud auth — Cloudflare D1 + Pages Functions + JWT HttpOnly cookie.
@@ -158,6 +159,8 @@ export const useAuth = create<AuthState>()(
 // Kolay yardımcılar
 export const isPro = (user: SessionUser | null): boolean => {
   if (!user) return false;
+  // Paywall kapaliyken: giris yapmis TUM kullanicilar PRO sayilir (feature flag).
+  if (!FEATURES.paywallEnabled) return true;
   if (user.tier === 'free') return false;
   if (user.tierExpiresAt && user.tierExpiresAt < Date.now()) return false;
   return true;
@@ -165,6 +168,8 @@ export const isPro = (user: SessionUser | null): boolean => {
 
 export const isElite = (user: SessionUser | null): boolean => {
   if (!user) return false;
+  // Paywall kapaliyken: giris yapmis TUM kullanicilar Elite sayilir (feature flag).
+  if (!FEATURES.paywallEnabled) return true;
   if (user.tier !== 'elite') return false;
   if (user.tierExpiresAt && user.tierExpiresAt < Date.now()) return false;
   return true;

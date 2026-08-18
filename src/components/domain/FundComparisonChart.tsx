@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Info } from 'lucide-react';
+import { BarChart3, Info, Wallet } from 'lucide-react';
 import { fetchHistoricalYahoo, computePeriodReturns } from '@/data/api/yahoo';
 import {
   TUFE_BENCHMARK, MEVDUAT_BENCHMARK, YAHOO_BENCHMARKS,
@@ -68,13 +68,63 @@ interface BarData {
   isFund?: boolean;
 }
 
+const INVESTMENT_PRESETS = [
+  { label: '100K', value: 100_000 },
+  { label: '500K', value: 500_000 },
+  { label: '1M', value: 1_000_000 },
+  { label: '10M', value: 10_000_000 },
+];
+
+const INVESTMENT_LS_KEY = 'iq.fundCompare.investment';
+const DEFAULT_INVESTMENT = 1_000_000;
+
+function readSavedInvestment(): number {
+  try {
+    const raw = localStorage.getItem(INVESTMENT_LS_KEY);
+    if (!raw) return DEFAULT_INVESTMENT;
+    const v = parseInt(raw, 10);
+    return Number.isFinite(v) && v > 0 ? v : DEFAULT_INVESTMENT;
+  } catch {
+    return DEFAULT_INVESTMENT;
+  }
+}
+
+function formatMoneyTR(v: number): string {
+  return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(v);
+}
+
+/** Kompakt para formatı: 1.500.000 → 1.5M, 830.300 → 830K, 50.000 → 50K */
+function formatCompactTR(v: number): string {
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1_000_000) {
+    const m = abs / 1_000_000;
+    return sign + (m >= 10 ? m.toFixed(0) : m.toFixed(1).replace(/\.0$/, '')) + 'M';
+  }
+  if (abs >= 1_000) {
+    const k = abs / 1_000;
+    return sign + (k >= 10 ? k.toFixed(0) : k.toFixed(1).replace(/\.0$/, '')) + 'K';
+  }
+  return sign + Math.round(abs).toString();
+}
+
 export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) {
   const [period, setPeriod] = useState<PeriodKey>('1y');
+  const [investment, setInvestment] = useState<number>(() => readSavedInvestment());
   // Yahoo enstrümanlarının period'a göre getirileri
   // { period: { yahooSymbol: returnPct } }
   const [yahooReturns, setYahooReturns] = useState<Record<string, Partial<Record<PeriodKey, number | null>>>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Kullanıcı seçtiği yatırım tutarını localStorage'a kaydet
+  useEffect(() => {
+    try {
+      localStorage.setItem(INVESTMENT_LS_KEY, String(investment));
+    } catch {
+      /* ignore */
+    }
+  }, [investment]);
 
   // Period değiştiğinde Yahoo verisini çek (eğer bu period için henüz çekilmediyse)
   useEffect(() => {
@@ -214,6 +264,49 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
         </div>
       </div>
 
+      {/* Yatırım tutarı seçici — barların üstünde TL kazanç göstermek için */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-slate-700/40 bg-slate-900/30 p-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+          <Wallet size={12} className="text-accent" />
+          <span>Yatırım tutarı:</span>
+        </div>
+        <div className="inline-flex rounded-md border border-slate-700/50 bg-bg-card p-0.5">
+          {INVESTMENT_PRESETS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => setInvestment(p.value)}
+              className={cn(
+                'rounded-sm px-2 py-0.5 text-[10px] font-medium transition',
+                investment === p.value
+                  ? 'bg-accent/20 text-accent'
+                  : 'text-slate-400 hover:text-slate-200',
+              )}
+            >
+              {p.label} ₺
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 text-[11px]">
+          <span className="text-slate-500">veya</span>
+          <input
+            type="number"
+            value={investment}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (Number.isFinite(v) && v > 0) setInvestment(Math.min(1_000_000_000, v));
+            }}
+            step={10000}
+            min={1000}
+            className="w-28 rounded border border-slate-700/50 bg-bg-card px-1.5 py-0.5 text-center tabular-nums text-slate-200 focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <span className="text-slate-500">₺</span>
+        </div>
+        <div className="ml-auto text-[10px] text-slate-500">
+          Bugün yatırıp seçili dönem sonu değerlendirildiğinde
+        </div>
+      </div>
+
       {/* Bar chart */}
       <div className="relative">
         {loading && (
@@ -225,6 +318,8 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
           {bars.map((b) => {
             const v = b.value;
             const isPositive = v != null && v >= 0;
+            // TL kazanç: yatırım × (getiri%/100)
+            const tlKazanc = v != null ? (investment * v) / 100 : null;
             // Yüzde yüksekliğini range'e göre hesapla
             // Negatif değerler için zero-line aşağıdan
             const zeroPct = (-minValue / range) * 100; // 0%'in altta nerede olduğu (0..100)
@@ -240,18 +335,40 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
               <div
                 key={b.key}
                 className="group relative flex h-full flex-1 flex-col items-center justify-end"
-                title={`${b.label} — ${b.description}\n${v != null ? v.toFixed(2) + '%' : 'veri yok'}`}
+                title={
+                  `${b.label} — ${b.description}\n` +
+                  `${v != null ? v.toFixed(2) + '%' : 'veri yok'}` +
+                  (tlKazanc != null
+                    ? `\n${formatMoneyTR(investment)} ₺ yatırım → ${formatMoneyTR(investment + tlKazanc)} ₺ (${tlKazanc >= 0 ? '+' : ''}${formatMoneyTR(tlKazanc)} ₺)`
+                    : '')
+                }
               >
-                {/* Value label */}
+                {/* Value label — % üstte, TL kazanç altında */}
                 <div
                   className={cn(
-                    'absolute left-1/2 -translate-x-1/2 text-[10px] font-bold tabular-nums whitespace-nowrap',
-                    v == null ? 'text-slate-600' :
-                    isPositive ? 'text-success' : 'text-danger',
+                    'absolute left-1/2 -translate-x-1/2 flex flex-col items-center whitespace-nowrap',
                   )}
                   style={{ bottom: `calc(${bottomPct + heightPct}% + 4px)` }}
                 >
-                  {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—'}
+                  <span
+                    className={cn(
+                      'text-[10px] font-bold tabular-nums leading-tight',
+                      v == null ? 'text-slate-600' :
+                      isPositive ? 'text-success' : 'text-danger',
+                    )}
+                  >
+                    {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—'}
+                  </span>
+                  {tlKazanc != null && (
+                    <span
+                      className={cn(
+                        'text-[9px] tabular-nums leading-tight',
+                        tlKazanc >= 0 ? 'text-success/70' : 'text-danger/70',
+                      )}
+                    >
+                      {tlKazanc >= 0 ? '+' : ''}{formatCompactTR(tlKazanc)} ₺
+                    </span>
+                  )}
                 </div>
                 {/* Bar */}
                 {v != null && (
@@ -297,19 +414,32 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend + TL vade sonu değerleri */}
       <div className="mt-3 grid gap-1.5 text-[11px] sm:grid-cols-2">
-        {bars.map((b) => (
-          <div key={b.key} className="flex items-center gap-2">
-            <span
-              className="inline-block h-3 w-3 rounded-sm shrink-0"
-              style={{ backgroundColor: b.color }}
-            />
-            <span className={cn('truncate', b.isFund ? 'font-semibold text-slate-100' : 'text-slate-400')}>
-              {b.isFund ? `${b.label} — ${b.description}` : b.label}
-            </span>
-          </div>
-        ))}
+        {bars.map((b) => {
+          const v = b.value;
+          const tlKazanc = v != null ? (investment * v) / 100 : null;
+          const vadeSonu = tlKazanc != null ? investment + tlKazanc : null;
+          return (
+            <div key={b.key} className="flex items-center gap-2">
+              <span
+                className="inline-block h-3 w-3 rounded-sm shrink-0"
+                style={{ backgroundColor: b.color }}
+              />
+              <span className={cn('truncate flex-1', b.isFund ? 'font-semibold text-slate-100' : 'text-slate-400')}>
+                {b.isFund ? `${b.label} — ${b.description}` : b.label}
+              </span>
+              {vadeSonu != null && (
+                <span className={cn(
+                  'text-[10px] font-medium tabular-nums shrink-0',
+                  tlKazanc! >= 0 ? 'text-emerald-400' : 'text-red-400',
+                )}>
+                  {formatCompactTR(vadeSonu)} ₺
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {error && (

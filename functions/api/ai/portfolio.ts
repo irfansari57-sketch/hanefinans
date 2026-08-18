@@ -7,7 +7,10 @@
  * Claude Haiku 4.5 ile risk profili + öneri üretir.
  */
 
-interface Env {
+import { getAuthedUser, type Env as AuthEnv } from '../auth/_utils';
+import { checkAiGate } from './_gate';
+
+interface Env extends AuthEnv {
   ANTHROPIC_API_KEY?: string;
 }
 
@@ -37,6 +40,15 @@ interface AnthropicResponse {
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  // AI gate — sadece admin (aiForAllUsers kapalı iken)
+  const auth = await getAuthedUser(request, env).catch(() => null);
+  const gate = checkAiGate(auth);
+  if (!gate.allowed) {
+    return new Response(JSON.stringify({ ok: false, ...gate.errorBody }), {
+      status: 403, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (!env.ANTHROPIC_API_KEY) {
     return new Response(JSON.stringify({ ok: false, error: 'ANTHROPIC_API_KEY env not set' }), {
       status: 503,

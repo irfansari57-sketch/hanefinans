@@ -55,4 +55,35 @@ export const FEATURES = {
    * NEXT_SESSION.md'de tam kurulum adimlari var.
    */
   oauthSocialLogin: false,
+
+  /**
+   * Paywall (PRO/Elite tier gating).
+   *
+   * KAPALI iken:
+   * - isPro() ve isElite() giris yapmis TUM kullanicilar icin true doner
+   * - PremiumCard/AgentCards/MultiTimeframeCard/Heat Map/ABD/Global vb.
+   *   paywall ekranlari gosterilmez, tum ozellikler acilir
+   * - Kullanici tier'i DB'de degismez, sadece runtime override
+   *
+   * ACMAK ICIN:
+   * 1. Odeme altyapisi hazir (Iyzico/Stripe entegrasyonu tamam)
+   * 2. Bu flag'i true yap + redeploy
+   * 3. Kullanicilar tier'larina gore erisim goreecek
+   */
+  paywallEnabled: false,
+
+  /**
+   * AI destekli sorgulama (Akilli Sorgu + Deep-Dive + Portfolio Health AI comment
+   * + Portfolio Analiz) — normal kullanicilar icin.
+   *
+   * KAPALI iken:
+   * - Sadece admin (server-side isAdmin === true) AI endpoint'leri kullanabilir
+   * - Normal kullanicilar UI'da "AI su an bakim modunda" banner'i gorur
+   * - Backend endpoint'leri admin dogrulamasi yapar, quota tuketimi yok
+   *
+   * ACMAK ICIN:
+   * 1. Anthropic quota yeterli + odeme mimarisi hazir
+   * 2. Bu flag'i true yap + redeploy
+   */
+  aiForAllUsers: false,
 } as const;

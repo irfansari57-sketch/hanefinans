@@ -70,8 +70,10 @@ const navGroups: NavGroup[] = [
       { to: '/egitim', label: 'Finansal Okuryazarlık', icon: GraduationCap },
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
-      // Akilli Sorgu: FEATURES.smartQuery kapaliyken menude gozukmez.
-      ...(FEATURES.smartQuery ? [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles }] : []),
+      // Akilli Sorgu: aiForAllUsers=false iken sadece admin gorur. flag acilinca herkese acilir.
+      ...(FEATURES.smartQuery
+        ? [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles }]
+        : [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles, adminOnly: true }]),
       { to: '/risk-profili', label: 'Risk Profilim', icon: Shield },
       { to: '/tahmin', label: 'Oyunlarım', icon: Sparkles },
     ],

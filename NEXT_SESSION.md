@@ -1,6 +1,31 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
-> Son guncelleme: 17 Agustos 2026 — Finansman + Mevduat hesaplayicilari deploy edildi
+> Son guncelleme: 18 Agustos 2026 — QW paketi + Fon Karsilastirici + AI model fix
+
+---
+
+## 🔴 SONRAKI SEANS ONCELIKLI — Akilli Sorgu HTTP 400
+
+Anthropic API 400 invalid_request_error donuyor. Yapilan denemeler:
+- claude-haiku-4-5-20251001 → 400
+- claude-3-5-haiku-20241022 → 400 (hala)
+
+Detail 800 char'a genisletildi (functions/api/ai/screener.ts). Sonraki seansta:
+
+1. **CF Pages env var kontrol:** Cloudflare Dashboard → hanefinans project →
+   Settings → Environment variables. `ANTHROPIC_API_KEY` var mi? Degeri
+   `sk-ant-` ile basliyor mu? Production + Preview her ikisi icin?
+2. **Anthropic API dashboard:** console.anthropic.com → key'in aktif mi?
+   Quota bitmis mi? Rate limit var mi?
+3. **Full error detail:** Sitede sorgula → error mesajinin tamamini gor.
+   Muhtemel mesajlar:
+   - "model: not found" → model adi yanlis
+   - "credit balance low" → Anthropic bakiye
+   - "authentication_error" → key gecersiz
+   - "rate_limit" → quota bitmis
+4. **Test:** `curl` ile direkt Anthropic'e istek at, key'i dogrula.
+
+Kod tarafinda fix hazir (model + detail genisletme), sadece root cause bulunmali.
 
 ---
 

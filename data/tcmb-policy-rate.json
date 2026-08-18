@@ -1,0 +1,6 @@
+{
+  "rate": 37,
+  "lastUpdate": "2026-08-17",
+  "source": "TCMB Para Politikası Kurulu Kararı",
+  "note": "Aylık cron ile otomatik güncellenir (scripts/scrape_tcmb_policy_rate.py). Manuel güncelleme gerekirse: rate + lastUpdate alanlarını değiştir."
+}

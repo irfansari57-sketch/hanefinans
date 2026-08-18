@@ -1,0 +1,59 @@
+name: TCMB Policy Rate Fetch
+# TCMB'nin Para Politikası Kurulu (PPK) kararlarından güncel politika faizini çeker.
+# PPK ayda ~1 kez toplandığı için aylık cron yeterli. Değişiklik varsa
+# data/tcmb-policy-rate.json güncellenir + commit atılır.
+
+on:
+  schedule:
+    # Her ayın 1'i ve 15'i, 06:00 UTC (09:00 TR) — PPK kararı çıkarsa yakalar
+    - cron: '0 6 1,15 * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/scrape_tcmb_policy_rate.py'
+      - '.github/workflows/tcmb-policy-rate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run TCMB policy rate scraper
+        id: scrape
+        continue-on-error: true
+        run: python -u scripts/scrape_tcmb_policy_rate.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/tcmb-policy-rate.json 2>/dev/null || true
+          if [ -f data/tcmb-policy-rate-debug.html ]; then
+            # Debug artifact — repo'ya yükleme, sadece artifact olarak yükle
+            rm -f data/tcmb-policy-rate-debug.html
+          fi
+          if git diff --staged --quiet; then
+            echo "TCMB politika faizinde değişiklik yok, commit atlanıyor"
+          else
+            git commit -m "data: TCMB politika faizi güncellendi $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+            echo "✅ data/tcmb-policy-rate.json commit'lendi"
+          fi
+
+      - name: Upload debug HTML if scraper failed
+        if: steps.scrape.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcmb-policy-rate-debug-html
+          path: data/tcmb-policy-rate-debug.html
+          retention-days: 7
+          if-no-files-found: ignore

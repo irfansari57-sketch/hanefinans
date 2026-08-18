@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Landmark, Info, TrendingUp, Wallet, Calculator, Calendar, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import tcmbPolicyRate from '../../../data/tcmb-policy-rate.json';
 
 /**
  * TL Mevduat Hesaplayıcı
@@ -19,6 +20,17 @@ import { cn } from '@/lib/utils';
  */
 
 const DEFAULT_STOPAJ_PCT = 17.5;
+
+/**
+ * Default değerler — TCMB politika faizi ile senkron.
+ *
+ * data/tcmb-policy-rate.json GitHub Actions cron ile ayda 2 kez otomatik
+ * güncellenir (ayın 1'i ve 15'i, TCMB PPK kararı yayınlandıysa). Fallback
+ * olarak 37 (2026-08 güncel oran).
+ */
+const DEFAULT_AMOUNT = 1_000_000;
+const DEFAULT_ANNUAL_RATE = typeof tcmbPolicyRate.rate === 'number' ? tcmbPolicyRate.rate : 37;
+const DEFAULT_TERM_DAYS = 32;
 
 function formatMoney(v: number, decimals = 0): string {
   return new Intl.NumberFormat('tr-TR', {
@@ -70,9 +82,9 @@ const VADE_PRESETS = [
 ];
 
 export function DepositCalculator() {
-  const [amount, setAmount] = useState(100_000);
-  const [term, setTerm] = useState(32);
-  const [rate, setRate] = useState(47);
+  const [amount, setAmount] = useState(DEFAULT_AMOUNT);
+  const [term, setTerm] = useState(DEFAULT_TERM_DAYS);
+  const [rate, setRate] = useState(DEFAULT_ANNUAL_RATE);
   const [stopajPct, setStopajPct] = useState(DEFAULT_STOPAJ_PCT);
   const [compound, setCompound] = useState(false);
 
@@ -100,8 +112,10 @@ export function DepositCalculator() {
           <Info size={11} className="mt-0.5 shrink-0 text-slate-500" />
           <span>
             TL vadeli mevduatta güncel stopaj oranı <strong className="text-slate-200">%{DEFAULT_STOPAJ_PCT}</strong>{' '}
-            (2024 sonrası tek oran). Bu oran mevzuat güncellenirse aşağıdaki alandan değiştirilebilir.
-            Klasik vade seçenekleri: 32, 45, 91, 182 ve 365 gün.
+            (2024 sonrası tek oran). Default faiz oranı TCMB politika faizi{' '}
+            <strong className="text-slate-200">%{DEFAULT_ANNUAL_RATE}</strong>{' '}
+            <span className="text-slate-600">(son güncelleme: {tcmbPolicyRate.lastUpdate})</span>. Bankaların
+            teklif ettiği faiz bundan yüksek/düşük olabilir — güncel değeri girin.
           </span>
         </div>
       </div>

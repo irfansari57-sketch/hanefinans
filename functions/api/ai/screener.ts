@@ -89,7 +89,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-3-5-haiku-20241022',
         max_tokens: 800,
         system: SYSTEM_PROMPT,
         messages: [
@@ -100,10 +100,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!anthropicResp.ok) {
       const errText = await anthropicResp.text().catch(() => '');
+      // Full error text — teşhis için 800 char (max_tokens sığması için)
       return new Response(JSON.stringify({
         ok: false,
         error: `Anthropic ${anthropicResp.status}`,
-        detail: errText.slice(0, 300),
+        detail: errText.slice(0, 800),
       }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
@@ -154,7 +155,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return new Response(JSON.stringify({
       ok: true,
       spec,
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-3-5-haiku-20241022',
     }), {
       status: 200,
       headers: {

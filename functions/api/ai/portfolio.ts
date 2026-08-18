@@ -131,7 +131,7 @@ Akıcı Türkçe, yatırım tavsiyesi değil bilgi amaçlı uyarısı sonda. Mad
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-3-5-haiku-20241022',
         max_tokens: 700,
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -151,7 +151,7 @@ Akıcı Türkçe, yatırım tavsiyesi değil bilgi amaçlı uyarısı sonda. Mad
     return new Response(JSON.stringify({
       ok: true,
       analysis: text,
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-3-5-haiku-20241022',
       generatedAt: new Date().toISOString(),
     }), {
       headers: {

@@ -76,6 +76,7 @@ const navGroups: NavGroup[] = [
         : [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles, adminOnly: true }]),
       { to: '/risk-profili', label: 'Risk Profilim', icon: Shield },
       { to: '/tahmin', label: 'Oyunlarım', icon: Sparkles },
+      { to: '/hakkinda', label: 'Hakkında', icon: BadgeCheck },
     ],
   },
   {
@@ -102,7 +103,6 @@ const navGroups: NavGroup[] = [
     title: 'Hesap',
     items: [
       { to: '/uyelik', label: 'Üyelik', icon: BadgeCheck },
-      { to: '/hakkinda', label: 'Hakkında', icon: BadgeCheck },
       { to: '/history', label: 'Geçmiş', icon: History, adminOnly: true },
       { to: '/settings', label: 'Ayarlar', icon: Settings, adminOnly: true },
     ],

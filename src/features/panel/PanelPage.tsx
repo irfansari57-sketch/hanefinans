@@ -18,6 +18,7 @@ import { MacroAgentCard } from '@/components/domain/MacroAgentCard';
 import { IndicatorAgentCard } from '@/components/domain/IndicatorAgentCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
+import { DividendCalendarWidget } from '@/components/domain/DividendCalendarWidget';
 import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
 import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight, Briefcase } from 'lucide-react';
 import { readRiskProfile } from '@/lib/riskProfile';
@@ -370,6 +371,12 @@ export function PanelPage() {
         )}
       </PinnableAccordion>
 
+      {/* Ekonomik Takvim + Temettü Takvimi — yan yana (mobilde alt alta) */}
+      <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <EconomicCalendarWidget compact maxItems={6} daysAhead={30} collapsible={false} />
+        <DividendCalendarWidget compact maxItems={6} daysAhead={90} />
+      </div>
+
       {/* Top movers — hisseler (pin'lenebilir, her ekranda aç/kapa) */}
       <details
         className={cn(
@@ -512,10 +519,7 @@ export function PanelPage() {
         </>
       )}
 
-      {/* Ekonomik Takvim — sadece mobilde göster (desktop sağ rail'de var) */}
-      <div className="mb-5 lg:hidden">
-        <EconomicCalendarWidget compact maxItems={5} daysAhead={14} collapsible />
-      </div>
+      {/* Ekonomik + Temettü Takvimi artık Piyasa Özeti altında (mobil dahil). */}
     </>
   );
 }

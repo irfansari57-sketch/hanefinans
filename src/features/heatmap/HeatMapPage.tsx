@@ -135,7 +135,7 @@ export function HeatMapPage() {
               to="/uyelik"
               className="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg transition hover:brightness-110 shadow-lg shadow-accent/30"
             >
-              <Sparkles size={14} /> PRO'ya Yükselt
+              <Sparkles size={14} /> Ücretsiz Üye Ol
             </Link>
             <p className="mt-3 text-[11px] text-slate-500">
               PRO ile ek olarak: 4H + Günlük trend analizi, AI hisse analizi, AI portföy raporu, reklamsız deneyim.

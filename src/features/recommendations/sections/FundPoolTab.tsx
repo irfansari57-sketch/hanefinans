@@ -391,7 +391,7 @@ function PaywallRow({ isAnon, shown, hiddenCount }: { isAnon: boolean; shown: nu
             to="/uyelik"
             className="inline-flex items-center gap-1 rounded-md bg-warning px-3 py-1.5 text-[11px] font-bold text-bg shadow hover:bg-warning/90"
           >
-            PRO'ya Yükselt →
+            Ücretsiz Üye Ol →
           </Link>
         </div>
       </td>

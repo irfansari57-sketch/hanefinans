@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/date';
 import { SymbolBadge } from './SymbolBadge';
 import { AdVideo } from './AdVideo';
-import { EconomicCalendarWidget } from './EconomicCalendarWidget';
 
 const REFRESH_MS = 90_000;
 const SCROLL_SPEED_SECONDS = 180;
@@ -88,10 +87,8 @@ export function RightNewsTicker() {
         <AdVideo />
       </div>
 
-      {/* Ekonomik takvim kompakt strip — sıradaki 5 önemli olay */}
-      <div className="border-b border-border p-2">
-        <EconomicCalendarWidget compact maxItems={5} daysAhead={14} collapsible />
-      </div>
+      {/* Ekonomik Takvim right rail'den kaldırıldı — Panel'de Piyasa Özeti altına taşındı.
+          Gündem & Haberler bu sayede en üste yükseldi. */}
 
       {/* Header — collapse + direction toggle */}
       <div className="flex w-full items-center border-b border-border transition hover:bg-bg-card/50">

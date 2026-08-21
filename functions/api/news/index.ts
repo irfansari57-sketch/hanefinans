@@ -79,6 +79,26 @@ function isTurkishText(text: string): boolean {
     /\b(ve|veya|için|ile|bir|bu|yatırım|borsa|hisse|fon|piyasa|banka|ekonomi|şirket|fiyat|açıklama|enflasyon|faiz)\b/i.test(text);
 }
 
+// Piyasa dışı içerik (şans oyunu, magazin, spor, astroloji vs.) — haber akışında yer almamalı.
+// Kullanıcı geri bildirimi: "on numara sayısal vb şans oyunları verilerinin gelmesine gerek yok.
+// daha can alıcı ana piyasaları ekonomik ve siyasi durumları etkileyecek haber akışı gelmeli"
+const OFFTOPIC_PATTERNS: RegExp[] = [
+  // Şans oyunları
+  /\b(on\s?numara|sayısal\s?loto|sayisal\s?loto|süper\s?loto|super\s?loto|çılgın\s?sayısal|cilgin\s?sayisal|şans\s?topu|sans\s?topu|piyango|milli\s?piyango|iddaa|spor\s?toto|çeyrek\s?altın\s?çekiliş|çekiliş|cekilis|kazanan\s?numaralar|kazanan\s?rakam|talih\s?kuşu|talih\s?kusu|misli|tuttur|bilyoner)\b/i,
+  // Magazin/dizi/reyting
+  /\b(magazin|dizi\s?reyting|reyting|kısmetse\s?olur|survivor|yarışma|dedikodu|paparazzi|sevgili|nişan|nisan\s?töreni|boşanma|bosanma|düğün|dugun|kırmızı\s?halı|kirmizi\s?hali|sansasyon)\b/i,
+  // Spor (futbol maçı, transfer vs.) — ekonomik değil
+  /\b(gol\s?dakikaları|maç\s?sonucu|derbi|transfer\s?bombası|fikstür|puan\s?durumu|kupa\s?maçı|penaltı\s?atıcı|penalti|liglerde\s?bugün|milli\s?takım\s?maçı)\b/i,
+  // Astroloji/burç
+  /\b(burç\s?yorum|burc\s?yorum|astroloji|yıldıznamesi|yildiznamesi|günlük\s?burç|gunluk\s?burc|haftalık\s?burç|haftalik\s?burc|aylık\s?burç|aylik\s?burc)\b/i,
+  // Diğer OFF-topic (yemek tarifi, sağlık öneri, çocuk isim vs.)
+  /\b(yemek\s?tarifi|bebek\s?ismi|çocuk\s?ismi|cocuk\s?ismi|zayıflama\s?diyet|zayiflama\s?diyet|cilt\s?bakımı|cilt\s?bakimi|makyaj\s?ipucu|saç\s?bakımı|sac\s?bakimi)\b/i,
+];
+function isOfftopicNews(text: string): boolean {
+  if (!text) return false;
+  return OFFTOPIC_PATTERNS.some((p) => p.test(text));
+}
+
 // Basit BIST sembol algılayıcı
 const BIST_SYMBOLS = [
   'AKBNK','GARAN','ISCTR','YKBNK','HALKB','VAKBN','KCHOL','SAHOL','TKFEN','DOHOL','ALARK',
@@ -313,6 +333,8 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
     // Kisa basliklarda heuristic yetersiz olabilir — bu yuzden sadece
     // baslik 30+ karakter ve TR-isareti yoksa ele
     if (blob.length > 30 && !isTurkishText(blob)) return false;
+    // Piyasa dısı içerik (şans oyunu, magazin, spor, astroloji, life-style) — ele
+    if (isOfftopicNews(blob)) return false;
     return true;
   });
 

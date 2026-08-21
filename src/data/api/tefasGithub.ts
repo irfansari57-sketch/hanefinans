@@ -384,6 +384,71 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       finalOpen = computeTefasOpenClient(f.category, f.name);
     }
 
+    // 3m, 6m, ytd, 1y — feed null gelirse once history'den, sonra aylık CAGR ile tahmin.
+    // Formul: r_n = (1 + month/100)^(n/30) - 1 (aylik getiri sabit varsayimi)
+    const estimateFromMonthly = (nDays: number): number | null => {
+      if (month == null || !Number.isFinite(month) || month === 0) return null;
+      const monthDec = month / 100;
+      const dec = Math.pow(1 + monthDec, nDays / 30) - 1;
+      return dec * 100;
+    };
+
+    let threeMonth = f.returns['3m'];
+    if (threeMonth == null || threeMonth === 0) {
+      const fromHist = computeChangeFromHistoryNDays(hist, 90);
+      if (fromHist != null) threeMonth = fromHist;
+      else {
+        const est = estimateFromMonthly(90);
+        if (est != null) threeMonth = est;
+      }
+    }
+
+    let sixMonth = f.returns['6m'];
+    if (sixMonth == null || sixMonth === 0) {
+      const fromHist = computeChangeFromHistoryNDays(hist, 180);
+      if (fromHist != null) sixMonth = fromHist;
+      else {
+        const est = estimateFromMonthly(180);
+        if (est != null) sixMonth = est;
+      }
+    }
+
+    let ytdReturn = f.returns.ytd;
+    if (ytdReturn == null || ytdReturn === 0) {
+      // YTD: yilin ilk gunune gore hesapla
+      if (Array.isArray(hist) && hist.length > 0) {
+        const sorted = [...hist].sort((a, b) => a.date.localeCompare(b.date));
+        const last = sorted[sorted.length - 1];
+        if (last && last.price > 0) {
+          const year = new Date(last.date).getFullYear();
+          const yearStartStr = `${year}-01-01`;
+          const yearStart = sorted.find((h) => h.date >= yearStartStr && h.price > 0);
+          if (yearStart && yearStart.price > 0) {
+            ytdReturn = ((last.price - yearStart.price) / yearStart.price) * 100;
+          }
+        }
+      }
+      // Hala yoksa aylıkdan tahmin: yılın başından bugüne kaç gün geçti?
+      if (ytdReturn == null || ytdReturn === 0) {
+        const now = new Date();
+        const dayOfYear = Math.floor(
+          (now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (24 * 60 * 60 * 1000),
+        );
+        const est = estimateFromMonthly(dayOfYear);
+        if (est != null) ytdReturn = est;
+      }
+    }
+
+    let year = f.returns['1y'];
+    if (year == null || year === 0) {
+      const fromHist = computeChangeFromHistoryNDays(hist, 365);
+      if (fromHist != null) year = fromHist;
+      else {
+        const est = estimateFromMonthly(365);
+        if (est != null) year = est;
+      }
+    }
+
     return {
       code: f.code,
       name: f.name,
@@ -395,10 +460,10 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       day: day == null ? NaN : day,
       week: week == null ? NaN : week,
       month: month == null ? NaN : month,
-      threeMonth: f.returns['3m'] ?? NaN,
-      sixMonth: f.returns['6m'] ?? NaN,
-      ytd: f.returns.ytd ?? NaN,
-      year: f.returns['1y'] ?? NaN,
+      threeMonth: threeMonth == null ? NaN : threeMonth,
+      sixMonth: sixMonth == null ? NaN : sixMonth,
+      ytd: ytdReturn == null ? NaN : ytdReturn,
+      year: year == null ? NaN : year,
     };
   });
 }

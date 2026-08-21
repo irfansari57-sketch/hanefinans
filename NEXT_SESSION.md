@@ -1,6 +1,62 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
-> Son guncelleme: 18 Agustos 2026 — QW paketi + Fon Karsilastirici + AI model fix
+> Son guncelleme: 18 Agustos 2026 (aksam) — Ticker fix + Field UX + 3D karsilastir + paywall gizleme
+
+---
+
+## 🔴 SONRAKI SEANS ONCELIKLI
+
+### 1. Akilli Sorgu HTTP 400 (Task #334) — HALA COZULMEDI
+- Model `claude-3-5-haiku-20241022` denendi, hala 400.
+- Detail 800 char'a genisletildi (screener.ts).
+- **Yapilacak:** Deploy sonrasi sitede sorgula → tam error mesajini gor.
+- **Kontrol:** CF Pages env vars → ANTHROPIC_API_KEY var mi + `sk-ant-` ile mi basliyor?
+- **Alt kontrol:** console.anthropic.com → key aktif mi? quota bitmis mi?
+
+### 2. Portfoy PDF Export (Task #331)
+- jsPDF client-side. Portfoy sayfasina "PDF Indir" butonu.
+- Icerik: positions tablosu + toplam deger + gunluk P/L + tarih + user email.
+
+### 3. Portfoy History (Task #332)
+- D1 migration portfolio_snapshots (user_id, as_of, total_value, positions_json).
+- Cron gunde 1 snapshot.
+- Panel karti: "1 ay once vs bugun" + line chart trend.
+
+### 4. Dividend Takvimi (Task #333)
+- KAP verilerinden BIST temettu tarihleri. Data source seed + cron.
+- Ekonomik Takvim'e "Temettu" tab. Portfoy'deki hisseler icin 3 gun once alarm.
+
+### 5. Paywall Anon Deneyimi Tamamla (Task #339 devam)
+- Simdilik: PRO badge'leri gizlendi, FundPool anon limit 10 fon.
+- **Yapilacak:** Ana Fonlar/Hisseler sayfalarina anon-gate:
+  - Anon: ilk 10 fon/hisse gorulur + altta "Uye ol - tumunu ac" CTA banner
+  - Uye: her sey acik
+- FEATURES.paywallEnabled=false olarak kalabilir (login=herkes pro).
+
+### 6. Watchlist + Settings D1 (Task #323)
+- Dexie yerine D1. Migration + sync API + frontend layer.
+- Portfoy zaten D1'de (2 gorev tamamlandi), watchlist ve settings kaldi.
+
+### 7. Metals Phase 2 (Task #312)
+- Backend /api/metals-spot + D1 + MetalPriceAPI fallback (GoldAPI quota bitmis).
+
+### 8. OAuth Google/Apple redirect URL (Task #287 — KULLANICI ISI)
+- Google Cloud Console + Apple Developer'da redirect URI'lari investliq.com'a guncelle.
+
+---
+
+## 📦 ONCEKI SEANSTA YAPILANLAR OZETI
+
+- 5 Quick Win: MobileNav Oneriler + Skeleton'lar + HeatMap polling + EmptyState + OnboardingTour
+- Fon Karsilastirici sayfasi (`/karsilastir`) — 4 fon sec, 3D dikey sutun chart (v2: kalin + belirgin), detay tablo
+- Video Egitim yer degistirdi (hesaplayicidan sonra, detayli anlatimdan once)
+- Mevduat default: 1M TL + TCMB %37 + scripts/scrape_tcmb_policy_rate.py + aylik cron workflow
+- BIST yahoo proxy range parametresini destekliyor (1y = 365 gun)
+- AI model: claude-3-5-haiku-20241022 (screener + analyze + portfolio + portfolio-health)
+- Ticker outlier filter: `|changePct| > 25` filtrelendi (BIST daily limit)
+- Field UX (Loan + Deposit): focus'ta selectAll + TR bin ayracli display + editable draft
+- "Bilesik faiz" → "Bilesik getiri"
+- Paywall gizleme: sidebar PRO badge'leri kaldirildi, FundPool anon 10 fon
 
 ---
 

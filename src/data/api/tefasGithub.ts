@@ -338,18 +338,27 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       if (fromHistory != null) day = fromHistory;
     }
 
-    // 1w (haftalik) — 7 takvim gunu
-    let week = f.returns['1w'];
-    if (week == null || week === 0) {
-      const fromHistory = computeChangeFromHistoryNDays(hist, 7);
-      if (fromHistory != null) week = fromHistory;
-    }
-
-    // 1m (aylik) — 30 takvim gunu
+    // 1m (aylik) — 30 takvim gunu (once hesapla ki week fallback icin kullanilabilsin)
     let month = f.returns['1m'];
     if (month == null || month === 0) {
       const fromHistory = computeChangeFromHistoryNDays(hist, 30);
       if (fromHistory != null) month = fromHistory;
+    }
+
+    // 1w (haftalik) — 7 takvim gunu
+    let week = f.returns['1w'];
+    if (week == null || week === 0) {
+      const fromHistory = computeChangeFromHistoryNDays(hist, 7);
+      if (fromHistory != null) {
+        week = fromHistory;
+      } else if (month != null && Number.isFinite(month) && month !== 0) {
+        // Son fallback: aylik getiriden CAGR ile haftalik tahmin.
+        // Formul: week = (1 + month/100)^(7/30) - 1
+        // Yaklasik ama "hic veri yok" den iyidir.
+        const monthDec = month / 100;
+        const weeklyDec = Math.pow(1 + monthDec, 7 / 30) - 1;
+        week = weeklyDec * 100;
+      }
     }
 
     // Feed'de bazi fonlar icin 1d/1w `null` ve `history: []` doner — scraper bu

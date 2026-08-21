@@ -343,18 +343,18 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
                     : '')
                 }
               >
-                {/* Value label — % üstte, TL kazanç altında */}
+                {/* Value label — daha büyük, tam opasite, okunakli */}
                 <div
                   className={cn(
                     'absolute left-1/2 -translate-x-1/2 flex flex-col items-center whitespace-nowrap',
                   )}
-                  style={{ bottom: `calc(${bottomPct + heightPct}% + 4px)` }}
+                  style={{ bottom: `calc(${bottomPct + heightPct}% + 6px)` }}
                 >
                   <span
                     className={cn(
-                      'text-[10px] font-bold tabular-nums leading-tight',
-                      v == null ? 'text-slate-600' :
-                      isPositive ? 'text-success' : 'text-danger',
+                      'text-xs font-bold tabular-nums leading-tight',
+                      v == null ? 'text-slate-500' :
+                      isPositive ? 'text-emerald-400' : 'text-red-400',
                     )}
                   >
                     {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—'}
@@ -362,8 +362,8 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
                   {tlKazanc != null && (
                     <span
                       className={cn(
-                        'text-[9px] tabular-nums leading-tight',
-                        tlKazanc >= 0 ? 'text-success/70' : 'text-danger/70',
+                        'text-[11px] font-semibold tabular-nums leading-tight mt-0.5',
+                        tlKazanc >= 0 ? 'text-emerald-300' : 'text-red-300',
                       )}
                     >
                       {tlKazanc >= 0 ? '+' : ''}{formatCompactTR(tlKazanc)} ₺
@@ -396,14 +396,14 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
             );
           })}
         </div>
-        {/* X-axis labels */}
-        <div className="flex gap-1.5 sm:gap-2 pt-2">
+        {/* X-axis labels — belirgin ve okunakli */}
+        <div className="flex gap-1.5 sm:gap-2 pt-3">
           {bars.map((b) => (
             <div key={b.key} className="flex-1 text-center">
               <div
                 className={cn(
-                  'truncate text-[10px] font-medium',
-                  b.isFund ? 'text-warning' : 'text-slate-400',
+                  'truncate text-xs font-semibold',
+                  b.isFund ? 'text-amber-400' : 'text-slate-300',
                 )}
                 title={b.label}
               >
@@ -414,8 +414,8 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
         </div>
       </div>
 
-      {/* Legend + TL vade sonu değerleri */}
-      <div className="mt-3 grid gap-1.5 text-[11px] sm:grid-cols-2">
+      {/* Legend + TL vade sonu değerleri — buyuk font, tam kontrast */}
+      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
         {bars.map((b) => {
           const v = b.value;
           const tlKazanc = v != null ? (investment * v) / 100 : null;
@@ -423,15 +423,18 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
           return (
             <div key={b.key} className="flex items-center gap-2">
               <span
-                className="inline-block h-3 w-3 rounded-sm shrink-0"
+                className="inline-block h-4 w-4 rounded shrink-0"
                 style={{ backgroundColor: b.color }}
               />
-              <span className={cn('truncate flex-1', b.isFund ? 'font-semibold text-slate-100' : 'text-slate-400')}>
+              <span className={cn(
+                'truncate flex-1',
+                b.isFund ? 'font-bold text-slate-100' : 'font-medium text-slate-200',
+              )}>
                 {b.isFund ? `${b.label} — ${b.description}` : b.label}
               </span>
               {vadeSonu != null && (
                 <span className={cn(
-                  'text-[10px] font-medium tabular-nums shrink-0',
+                  'text-sm font-bold tabular-nums shrink-0',
                   tlKazanc! >= 0 ? 'text-emerald-400' : 'text-red-400',
                 )}>
                   {formatCompactTR(vadeSonu)} ₺

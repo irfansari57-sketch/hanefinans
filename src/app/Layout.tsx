@@ -33,7 +33,7 @@ import { FEATURES } from '@/lib/featureFlags';
 import { useAgents } from '@/store/agents';
 import { useAuth, isAdmin, isPro } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
-import { BIST_UNIQUE } from '@/data/bistAll';
+import { searchGlobal, setFundIndex, kindBadge } from '@/lib/globalSearchIndex';
 import { activityRepo } from '@/data/repositories';
 import { RightNewsTicker } from '@/components/domain/RightNewsTicker';
 import { AuthButton } from '@/components/auth/AuthButton';
@@ -166,13 +166,27 @@ export function Layout() {
 
   const closeMobile = () => setMobileOpen(false);
 
-  const suggestions = query.trim()
-    ? BIST_UNIQUE.filter(
-        (s) =>
-          s.symbol.toLowerCase().includes(query.toLowerCase()) ||
-          s.name.toLowerCase().includes(query.toLowerCase()),
-      ).slice(0, 8)
-    : [];
+  // Global arama — hisse + fon + emtia + döviz + kripto + endeks
+  // BIST_UNIQUE (hisse) statik indekse dahil; fonlar TEFAS'tan async yüklenir
+  // (aşağıdaki useEffect ile setFundIndex çağrılır).
+  const suggestions = query.trim() ? searchGlobal(query, 12) : [];
+
+  // Fonları TEFAS feed'inden yükle — Layout mount olduğunda 1 kez
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { loadFundsAsPerformance } = await import('@/data/api/tefasGithub');
+        const result = await loadFundsAsPerformance();
+        if (alive && result?.funds) {
+          setFundIndex(result.funds.map((f) => ({ code: f.code, name: f.name, category: f.category })));
+        }
+      } catch {
+        // sessizce geç — fonlar arama sonuçlarında görünmez, diğerleri çalışır
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     setSearchOpen(query.trim().length > 0);
@@ -376,7 +390,7 @@ export function Layout() {
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               className="input pl-9 hidden md:block"
-              placeholder="Hisse ara (örn: THYAO)…"
+              placeholder="Hisse, fon, emtia, döviz veya kripto ara…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => query && setSearchOpen(true)}
@@ -384,36 +398,50 @@ export function Layout() {
             />
             <input
               className="input pl-9 md:hidden"
-              placeholder="Hisse ara…"
+              placeholder="Ara…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => query && setSearchOpen(true)}
               onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
             />
             {searchOpen && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-lg border border-border bg-bg-card shadow-xl">
-                {suggestions.map((s) => (
-                  <button
-                    key={s.symbol}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setQuery('');
-                      setSearchOpen(false);
-                      // Direkt detay sayfasına git — canlı fiyat orada çekilir
-                      navigate(`/stock/${encodeURIComponent(s.symbol)}`);
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-bg-soft"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs text-accent">{s.symbol}</span>
-                      <span className="text-slate-300">{s.name}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500">
-                      {s.sector}
-                    </span>
-                  </button>
-                ))}
+              <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-bg-card shadow-xl">
+                {suggestions.map((s) => {
+                  const badge = kindBadge(s.kind);
+                  return (
+                    <button
+                      key={`${s.kind}-${s.symbol}`}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setQuery('');
+                        setSearchOpen(false);
+                        // Kind'a göre doğru detay route'una git
+                        navigate(s.route);
+                      }}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-bg-soft border-b border-border/50 last:border-0"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span
+                          className={cn(
+                            'rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0',
+                            badge.className,
+                          )}
+                        >
+                          {badge.label}
+                        </span>
+                        {s.flag && <span className="text-sm">{s.flag}</span>}
+                        <span className="font-mono text-xs text-accent shrink-0">{s.label}</span>
+                        <span className="text-slate-300 truncate">{s.name}</span>
+                      </div>
+                      {s.sector && (
+                        <span className="text-[10px] text-slate-500 shrink-0 hidden sm:inline">
+                          {s.sector}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

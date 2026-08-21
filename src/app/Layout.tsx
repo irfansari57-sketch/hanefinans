@@ -309,20 +309,7 @@ export function Layout() {
             <LegalLinksBlock />
           </div>
 
-          {/* Hane Mod Studio görseli + 3D parlama başlık + © — sidebar branding (YouTube'un ÜSTÜNDE) */}
-          <div className="pt-3">
-            <BrandingBlock />
-          </div>
-
-          {/* YouTube banner (PRO'da gizli) — branding bloğunun altında */}
-          {!isPro(user) && (
-            <div className="pt-4">
-              <div className="mb-1.5 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-                Resmi YouTube
-              </div>
-              <HaneModAdBanner variant="compact" />
-            </div>
-          )}
+          {/* BrandingBlock + HaneModAdBanner sağ panele (RightNewsTicker) taşındı — burada tekrarlanmıyor. */}
 
           {/* YTD + KVKK Disclaimer — default açık, herkese görünür */}
           <details className="group mt-3 rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-2" open>

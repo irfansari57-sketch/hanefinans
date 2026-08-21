@@ -1,9 +1,9 @@
 /**
  * Hakkında — InvestLiq marka koruma + SEO sayfası.
  *
- * Amaç: Google aramalarında "investing.com mu demek istediniz?" yönlendirmesini
- * kırmak için güçlü marka içeriği. H1 + meta description'a "InvestLiq" tam
- * eşleşme + differentiation.
+ * Amaç: Google aramalarında "InvestLiq" markasının tam eşleşme sinyalini
+ * güçlendirmek. H1, meta description, JSON-LD ve FAQ ile marka otoritesi
+ * kurulması. Rakip isim anmadan pozitif pozisyonlama.
  */
 
 import { Link } from 'react-router-dom';
@@ -19,7 +19,7 @@ export function AboutPage() {
     <>
       <SeoHead
         title="InvestLiq Nedir? — Türkiye'nin Akıllı Yatırım Veri Platformu"
-        description="InvestLiq, Türkiye yatırımcıları için BIST hisseleri, TEFAS fonları, döviz, emtia ve kripto verilerini tek panelde sunan bağımsız bir finansal veri platformudur. Investing.com'dan farklıdır — yerli, Türkçe ve BIST odaklıdır."
+        description="InvestLiq, Türkiye yatırımcıları için BIST hisseleri, TEFAS fonları, döviz, emtia ve kripto verilerini tek panelde sunan yerli finansal veri platformudur. BIST 100/30 endeks entegrasyonu, TEFAS bağlantısı ve Türkçe finansal okuryazarlık içeriğiyle Türkiye piyasasına odaklıdır."
         path="/hakkinda"
       />
 
@@ -36,17 +36,18 @@ export function AboutPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-2">
-              InvestLiq — Türkiye'nin Bağımsız Finansal Veri Platformu
+              InvestLiq — Türkiye'nin Akıllı Finansal Veri Platformu
             </h1>
             <p className="text-sm text-slate-300 leading-relaxed">
               <strong className="text-accent">InvestLiq</strong>, BIST hisseleri, TEFAS
               yatırım fonları, döviz kurları, kıymetli madenler ve kripto para verilerini
-              tek arayüzde birleştiren, Türkiye yatırımcıları için tasarlanmış bağımsız
-              bir finansal veri platformudur.
+              tek arayüzde birleştiren, Türkiye yatırımcıları için tasarlanmış yerli bir
+              finansal veri platformudur.
             </p>
-            <p className="mt-2 text-xs text-slate-500 italic">
-              Not: InvestLiq, uluslararası <em>Investing.com</em> platformundan tamamen
-              bağımsız yerli bir hizmettir. BIST odaklı yerli çözümler sunar.
+            <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+              BIST 100/30 endeks feed'i, TEFAS resmi açık fon listesi, TCMB politika
+              faizi ve TÜİK enflasyon verisi gibi Türkiye piyasasına özel kaynakları
+              tek panelde sunar.
             </p>
           </div>
         </div>
@@ -113,8 +114,8 @@ export function AboutPage() {
             a="InvestLiq, Türkiye yatırımcıları için tasarlanmış akıllı finansal veri platformudur. BIST hisseleri, TEFAS fonları, döviz, emtia, kripto ve BIST endeksleri hakkında canlı veri, analiz, portföy takibi ve risk profili yönetimi sunar."
           />
           <Faq
-            q="InvestLiq investing.com ile aynı mı?"
-            a="Hayır. InvestLiq, investing.com'dan tamamen bağımsız, yerli ve Türkiye piyasasına odaklı bir platformdur. TEFAS entegrasyonu, BIST 100/30 endeks feed'i ve Türkçe finansal okuryazarlık içeriği gibi yerli özelliklerle differ eder."
+            q="InvestLiq'i benzer platformlardan ayıran nedir?"
+            a="InvestLiq yerli bir platform olup Türkiye piyasasına özel entegrasyonlar sunar: BIST 100/30 endeks feed'i, TEFAS resmi açık fon listesi, TCMB politika faizi, TÜİK enflasyon takvimi, KAP haberleri, Türkçe finansal okuryazarlık içerikleri ve BES hesaplayıcı gibi Türkiye'ye özgü araçlar."
           />
           <Faq
             q="InvestLiq ücretli mi?"

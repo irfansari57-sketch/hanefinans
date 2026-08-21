@@ -1,6 +1,6 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
-> Son guncelleme: 18 Agustos 2026 (aksam) — Ticker fix + Field UX + 3D karsilastir + paywall gizleme
+> Son guncelleme: 19 Agustos 2026 — Global arama + SEO paketi + Chart refactor + Haftalik fallback
 
 ---
 
@@ -13,50 +13,89 @@
 - **Kontrol:** CF Pages env vars → ANTHROPIC_API_KEY var mi + `sk-ant-` ile mi basliyor?
 - **Alt kontrol:** console.anthropic.com → key aktif mi? quota bitmis mi?
 
-### 2. Portfoy PDF Export (Task #331)
+### 2. SEO — Kullanici Yapmasi Gerekenler
+Yeni /hakkinda sayfasi, sitemap, FAQPage JSON-LD deployed. Manuel adimlar:
+- **Google Search Console:** search.google.com/search-console → investliq.com ekle →
+  verification meta code al → index.html satir 66'daki placeholder acip yapistir →
+  redeploy → verify → sitemap.xml gonder.
+- **Google My Business:** business.google.com → InvestLiq ekle (Financial Services).
+- **Backlink baslangic paketi:** Twitter @investliq_tr, LinkedIn sirket sayfasi,
+  Eksi Sozluk basligi, Medium yazi.
+- **Yandex Webmaster:** webmaster.yandex.com.tr → verify + sitemap.
+
+### 3. Portfoy PDF Export (Task #331)
 - jsPDF client-side. Portfoy sayfasina "PDF Indir" butonu.
 - Icerik: positions tablosu + toplam deger + gunluk P/L + tarih + user email.
 
-### 3. Portfoy History (Task #332)
+### 4. Portfoy History (Task #332)
 - D1 migration portfolio_snapshots (user_id, as_of, total_value, positions_json).
 - Cron gunde 1 snapshot.
 - Panel karti: "1 ay once vs bugun" + line chart trend.
 
-### 4. Dividend Takvimi (Task #333)
+### 5. Dividend Takvimi (Task #333)
 - KAP verilerinden BIST temettu tarihleri. Data source seed + cron.
 - Ekonomik Takvim'e "Temettu" tab. Portfoy'deki hisseler icin 3 gun once alarm.
 
-### 5. Paywall Anon Deneyimi Tamamla (Task #339 devam)
+### 6. Paywall Anon Deneyimi Tamamla (Task #339 devam)
 - Simdilik: PRO badge'leri gizlendi, FundPool anon limit 10 fon.
 - **Yapilacak:** Ana Fonlar/Hisseler sayfalarina anon-gate:
   - Anon: ilk 10 fon/hisse gorulur + altta "Uye ol - tumunu ac" CTA banner
   - Uye: her sey acik
 - FEATURES.paywallEnabled=false olarak kalabilir (login=herkes pro).
 
-### 6. Watchlist + Settings D1 (Task #323)
+### 7. Watchlist + Settings D1 (Task #323)
 - Dexie yerine D1. Migration + sync API + frontend layer.
 - Portfoy zaten D1'de (2 gorev tamamlandi), watchlist ve settings kaldi.
 
-### 7. Metals Phase 2 (Task #312)
+### 8. Metals Phase 2 (Task #312)
 - Backend /api/metals-spot + D1 + MetalPriceAPI fallback (GoldAPI quota bitmis).
 
-### 8. OAuth Google/Apple redirect URL (Task #287 — KULLANICI ISI)
+### 9. OAuth Google/Apple redirect URL (Task #287 — KULLANICI ISI)
 - Google Cloud Console + Apple Developer'da redirect URI'lari investliq.com'a guncelle.
 
 ---
 
-## 📦 ONCEKI SEANSTA YAPILANLAR OZETI
+## 📦 SON SEANSTA YAPILANLAR OZETI (2026-08-19)
+
+### Yeni ozellikler
+- **Global arama** (Layout header): hisse + fon + emtia + doviz + kripto + endeks
+  - src/lib/globalSearchIndex.ts (yeni), kind badge'leri, doviz bayrak emoji
+  - Fonlar TEFAS'tan async yuklenip index'e eklenir
+- **/hakkinda sayfasi** (src/features/about/AboutPage.tsx): SEO marka koruma
+  - Hero + 6 ozellik + 6 "Neden InvestLiq?" + SSS + iletisim
+  - Rakip ismi ANMADAN (savunma pozisyonu yerine pozitif differentiation)
+- **Fon Karsilastir 3D Chart v3 → v4** (FundComparePage.tsx):
+  - Div/CSS layout sorun cikardi → SVG tabanli refactor
+  - Sabit koordinat hesaplama, kesin render garantili
+- **FundComparisonChart** (fon detay sayfasi):
+  - Font boyutlari xs → sm, tam opasite, kontrastli renkler
+- **Haftalik veri fallback** (tefasGithub.ts):
+  - 3 kademeli: backend feed → history (±3 gun tolerance) → aylik CAGR tahmini
+  - `week = (1 + month/100)^(7/30) - 1`
+- **Ticker outlier filter** siki: %25 → **%11** (BIST gunluk fiyat marji)
+
+### SEO paketi
+- index.html: FAQPage JSON-LD + Google/Yandex verification meta placeholder
+- sitemap.xml: /hakkinda eklendi (priority 0.95)
+- Rakip isim referanslari tamamen kaldirildi (kod comment'i dahil)
+
+### Bug fixleri
+- Ana bant ucuk getiriler (+22.47% gibi) filtrelendi
+- Haftalik veri bos gelmesi cozuldu (aylik tabanli fallback)
+
+---
+
+## 📦 ONCEKI SEANS OZETI (2026-08-18)
 
 - 5 Quick Win: MobileNav Oneriler + Skeleton'lar + HeatMap polling + EmptyState + OnboardingTour
-- Fon Karsilastirici sayfasi (`/karsilastir`) — 4 fon sec, 3D dikey sutun chart (v2: kalin + belirgin), detay tablo
-- Video Egitim yer degistirdi (hesaplayicidan sonra, detayli anlatimdan once)
-- Mevduat default: 1M TL + TCMB %37 + scripts/scrape_tcmb_policy_rate.py + aylik cron workflow
-- BIST yahoo proxy range parametresini destekliyor (1y = 365 gun)
-- AI model: claude-3-5-haiku-20241022 (screener + analyze + portfolio + portfolio-health)
-- Ticker outlier filter: `|changePct| > 25` filtrelendi (BIST daily limit)
-- Field UX (Loan + Deposit): focus'ta selectAll + TR bin ayracli display + editable draft
+- Fon Karsilastirici sayfasi (`/karsilastir`) ilk versiyon
+- Video Egitim yer degistirdi (hesaplayicidan sonra)
+- Mevduat default: 1M TL + TCMB %37 + aylik cron
+- BIST yahoo proxy range parametresi
+- AI model: claude-3-5-haiku-20241022
+- Field UX (Loan + Deposit): focus'ta selectAll + TR bin ayracli display
 - "Bilesik faiz" → "Bilesik getiri"
-- Paywall gizleme: sidebar PRO badge'leri kaldirildi, FundPool anon 10 fon
+- Paywall gizleme: sidebar PRO badge'leri kaldirildi
 
 ---
 

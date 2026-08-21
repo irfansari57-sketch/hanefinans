@@ -1,6 +1,30 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
-> Son guncelleme: 19 Agustos 2026 — Global arama + SEO paketi + Chart refactor + Haftalik fallback
+> Son guncelleme: 21 Agustos 2026 — Panel takvim yeniden dizilim + Temettu widget + TopMovers outlier + Haber filtresi
+
+## SON SEANSTA YAPILANLAR (2026-08-21)
+
+1. **Panel layout yeniden dizilim** — Piyasa Ozeti altina yan yana Ekonomik Takvim + Temettu Takvimi widget'i.
+2. **Yeni Temettu Takvimi** — `src/data/dividendCalendar.ts` (15 BIST temettu event) + `DividendCalendarWidget.tsx`. Compact kart, ex-date/net/verim.
+3. **Sag panel (RightNewsTicker) yeniden diziliyor:**
+   - Ekonomik Takvim widget'i kaldirildi (Panel'de gosteriliyor)
+   - BrandingBlock (Hane Mod Studio + Copyright) + HaneModAdBanner (Resmi YouTube) sag panele tasindi → tum kullanicilar (auth + anon) gorur
+   - Gundem & Haberler yukari yukseldi
+4. **Sol sidebar temizligi** — BrandingBlock + HaneModAdBanner desktop sol sidebar'dan kaldirildi (sag panele tasindigi icin). Mobil'de altta kaldi.
+5. **Hakkinda nav yeri** — Oyunlarim altina tasindi (Genel bolumu).
+6. **PRO paywall butonlari** — "PRO'ya Yukselt" → "Ucretsiz Uye Ol" (HeatMap/ABD/Global/PositionSizer/FundPool).
+7. **Fonlar 3ay/6ay/YTD/1Y sutun fallback** — 3 kademeli tahmin (feed → history → aylik CAGR). tefasGithub.ts.
+8. **Ekonomik Takvim genisletme** — 30+ yeni ABD event: NFP (Ag/Ey/Ek), TUFE, PCE, ISM PMI, JOLTS, ADP, tuketici guveni, 10Y/30Y tahvil ihaleleri, FOMC Ey/Ek, Jackson Hole, BoJ, TCMB Ey/Ek, TR cari denge.
+9. **Haber filtresi** — Piyango/loto/spor toto/magazin/dizi/spor macina/astroloji/lifestyle icerigi backend'de reg-ex ile filtrele.
+10. **TopMovers %11 outlier filter** — Panel Gunluk/Haftalik/Aylik Hareketler'de bolunmeler/sermaye artirim kaynakli %10+ artislar listelenmiyor. Gunluk cap ±%11, hafta/ay ±%40.
+
+## Cari SONRAKI SEANS PRIORITE
+
+> Cikis odaklarim: (i) Akilli Sorgu HTTP 400 (Task #334), (ii) Portfoy PDF Export (Task #331), (iii) Portfoy History (Task #332), (iv) Temettu Takvimi backend cron + KAP scraper (Task #333 fazi 2).
+
+---
+
+
 
 ---
 

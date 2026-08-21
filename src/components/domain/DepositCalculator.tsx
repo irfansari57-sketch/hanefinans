@@ -145,7 +145,7 @@ export function DepositCalculator() {
         <Field label="Yıllık Vade Farkı" suffix="%" value={rate} onChange={setRate} min={0} max={100} step={0.1} decimals={2} />
       </div>
 
-      {/* Stopaj + Bileşik faiz kontrol satırı */}
+      {/* Stopaj + Bileşik getiri kontrol satırı */}
       <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px]">
         <label className="flex items-center gap-1.5 text-slate-400">
           <input
@@ -154,7 +154,7 @@ export function DepositCalculator() {
             onChange={(e) => setCompound(e.target.checked)}
             className="rounded border-slate-600 bg-bg-card text-accent focus:ring-accent"
           />
-          <span>Bileşik faiz</span>
+          <span>Bileşik getiri</span>
           <span className="text-slate-600">(vade içi kartopu)</span>
         </label>
 
@@ -241,6 +241,22 @@ export function DepositCalculator() {
 
 // ---- helpers ----
 
+/** TR formatı (1.234,56) — bin ayracı nokta, ondalık virgül. */
+function formatDisplayTR(value: number, decimals: number): string {
+  if (!Number.isFinite(value)) return '';
+  return value.toLocaleString('tr-TR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function parseTRNumber(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+  const v = parseFloat(cleaned);
+  return Number.isFinite(v) ? v : null;
+}
+
 function Field({
   label,
   suffix,
@@ -260,6 +276,10 @@ function Field({
   step: number;
   decimals?: number;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>('');
+  const displayValue = editing ? draft : formatDisplayTR(value, decimals);
+
   return (
     <div>
       <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-slate-500">{label}</label>
@@ -270,15 +290,24 @@ function Field({
           className="border-r border-slate-700/50 px-2 text-slate-400 hover:bg-slate-800/50"
         >−</button>
         <input
-          type="number"
-          value={decimals > 0 ? value.toFixed(decimals) : value}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            if (Number.isFinite(v)) onChange(Math.max(min, Math.min(max, v)));
+          type="text"
+          inputMode="decimal"
+          value={displayValue}
+          onFocus={(e) => {
+            setEditing(true);
+            setDraft(value.toString().replace('.', ','));
+            requestAnimationFrame(() => e.target.select());
           }}
-          step={step}
-          min={min}
-          max={max}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            const parsed = parseTRNumber(raw);
+            if (parsed != null) onChange(Math.max(min, Math.min(max, parsed)));
+          }}
+          onBlur={() => {
+            setEditing(false);
+            setDraft('');
+          }}
           className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-center text-sm tabular-nums text-slate-100 focus:outline-none"
         />
         <span className="border-l border-slate-700/50 bg-slate-900/50 px-2 py-1.5 text-[11px] text-slate-500">{suffix}</span>

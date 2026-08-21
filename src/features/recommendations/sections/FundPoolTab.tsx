@@ -49,7 +49,8 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
   const user = useAuth((s) => s.user);
   const proUser = isPro(user);
   const isAnon = !user;
-  const tierLimit = proUser ? Infinity : isAnon ? 5 : 10;
+  // Paywall kapalı: anon (misafir) 10 fon görsün, giriş yapan tümünü görsün
+  const tierLimit = proUser ? Infinity : 10;
 
   // SINGLE-SELECT — varsayılan Katılım
   const [selectedCategory, setSelectedCategory] = useState<string>('Katılım');

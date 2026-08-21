@@ -322,6 +322,26 @@ export function LoanCalculator() {
 
 // ---- helpers ----
 
+/**
+ * Ondalıklı ve bin ayracı ile format — TR yerel (1.234.567,89).
+ * decimals > 0 ise ondalık göster.
+ */
+function formatDisplayTR(value: number, decimals: number): string {
+  if (!Number.isFinite(value)) return '';
+  return value.toLocaleString('tr-TR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+/** TR formatı → number: nokta bin ayracı, virgül ondalık ayracı. */
+function parseTRNumber(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+  const v = parseFloat(cleaned);
+  return Number.isFinite(v) ? v : null;
+}
+
 function Field({
   label,
   suffix,
@@ -343,6 +363,10 @@ function Field({
   decimals?: number;
   hint?: string;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>('');
+  const displayValue = editing ? draft : formatDisplayTR(value, decimals);
+
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between">
@@ -356,15 +380,25 @@ function Field({
           className="border-r border-slate-700/50 px-2 text-slate-400 hover:bg-slate-800/50"
         >−</button>
         <input
-          type="number"
-          value={decimals > 0 ? value.toFixed(decimals) : value}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            if (Number.isFinite(v)) onChange(Math.max(min, Math.min(max, v)));
+          type="text"
+          inputMode="decimal"
+          value={displayValue}
+          onFocus={(e) => {
+            setEditing(true);
+            setDraft(value.toString().replace('.', ','));
+            // Focus'ta tüm içeriği seç — kullanıcı hemen yazsın
+            requestAnimationFrame(() => e.target.select());
           }}
-          step={step}
-          min={min}
-          max={max}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            const parsed = parseTRNumber(raw);
+            if (parsed != null) onChange(Math.max(min, Math.min(max, parsed)));
+          }}
+          onBlur={() => {
+            setEditing(false);
+            setDraft('');
+          }}
           className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-center text-sm tabular-nums text-slate-100 focus:outline-none"
         />
         <span className="border-l border-slate-700/50 bg-slate-900/50 px-2 py-1.5 text-[11px] text-slate-500">{suffix}</span>

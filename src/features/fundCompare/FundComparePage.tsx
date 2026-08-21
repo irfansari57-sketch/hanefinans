@@ -223,53 +223,113 @@ export function FundComparePage() {
         />
       ) : (
         <>
-          {/* Bar chart — her period için tüm fonların bar'ları */}
+          {/* 3D Dikey Sütun Chart — her period grubu, içinde her fon için ayrı 3D sütun */}
           <section className="glass-card mb-4 p-4">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-2">
               <BarChart3 size={16} className="text-accent" />
               <h3 className="text-sm font-semibold text-slate-100">Dönemsel Getiri Karşılaştırması</h3>
             </div>
-            <div className="space-y-4">
-              {chartData.map(({ period, label, values, max }) => (
-                <div key={period}>
-                  <div className="mb-1.5 flex items-center justify-between text-[11px]">
-                    <span className="font-medium text-slate-400">{label}</span>
-                  </div>
-                  <div className="space-y-1">
-                    {selectedFunds.map((f, i) => {
-                      const v = values[i];
-                      const color = CHIP_COLORS[i];
-                      const pct = v != null ? (Math.abs(v) / max) * 100 : 0;
-                      const isPositive = v != null && v >= 0;
-                      return (
-                        <div key={f.code} className="flex items-center gap-2 text-[11px]">
-                          <span className="w-12 shrink-0 font-bold" style={{ color }}>
-                            {f.code}
-                          </span>
-                          <div className="relative flex-1 rounded overflow-hidden bg-slate-800/40" style={{ height: 18 }}>
+
+            <div className="overflow-x-auto pb-2">
+              <div className="flex items-end justify-around gap-4 min-w-[720px] px-4"
+                   style={{ height: 260 }}>
+                {chartData.map(({ period, label, values, max }) => (
+                  <div key={period} className="flex flex-col items-center gap-2" style={{ minWidth: 80 }}>
+                    {/* Sütun grubu — her fon için 3D column */}
+                    <div className="flex items-end gap-1.5 h-full">
+                      {selectedFunds.map((f, i) => {
+                        const v = values[i];
+                        const color = CHIP_COLORS[i];
+                        // Yükseklik: max ile normalize. Min 3px görünürlük için.
+                        const heightPct = v != null && max > 0 ? Math.max(3, (Math.abs(v) / max) * 100) : 0;
+                        const isPositive = v != null && v >= 0;
+                        return (
+                          <div
+                            key={f.code}
+                            className="relative flex flex-col items-center justify-end"
+                            style={{ height: '100%', width: 26 }}
+                            title={`${f.code}: ${v != null ? v.toFixed(2) + '%' : '—'}`}
+                          >
+                            {/* Değer etiketi */}
+                            {v != null && (
+                              <span
+                                className={cn(
+                                  'absolute text-[9px] font-bold whitespace-nowrap tabular-nums',
+                                  isPositive ? 'text-emerald-400' : 'text-red-400',
+                                )}
+                                style={{ bottom: `calc(${heightPct}% + 4px)` }}
+                              >
+                                {v >= 0 ? '+' : ''}{v.toFixed(1)}%
+                              </span>
+                            )}
+                            {/* 3D sütun — gradient + shadow + right/top face */}
                             {v != null && (
                               <div
-                                className="absolute inset-y-0 left-0 rounded"
+                                className="relative rounded-t-md"
                                 style={{
-                                  width: `${pct}%`,
-                                  backgroundColor: color,
-                                  opacity: isPositive ? 0.8 : 0.4,
+                                  width: '100%',
+                                  height: `${heightPct}%`,
+                                  background: `linear-gradient(180deg, ${color}dd 0%, ${color} 60%, ${color}88 100%)`,
+                                  boxShadow: `
+                                    inset -3px 0 6px -2px rgba(0,0,0,0.35),
+                                    inset 2px 0 4px -1px rgba(255,255,255,0.15),
+                                    0 2px 8px -2px ${color}55
+                                  `,
+                                  transition: 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                                 }}
-                              />
+                              >
+                                {/* Sağ yüzey (3D efekti) */}
+                                <div
+                                  className="absolute top-0 right-0 rounded-tr-md"
+                                  style={{
+                                    width: 4,
+                                    height: '100%',
+                                    background: `linear-gradient(180deg, ${color}66, ${color}22)`,
+                                    transform: 'skewY(-45deg)',
+                                    transformOrigin: 'top right',
+                                    marginRight: -3,
+                                    opacity: 0.7,
+                                  }}
+                                />
+                                {/* Üst yüzey (3D top) */}
+                                <div
+                                  className="absolute top-0 left-0 right-0"
+                                  style={{
+                                    height: 4,
+                                    background: `linear-gradient(90deg, ${color}, ${color}dd)`,
+                                    transform: 'skewX(-45deg) translateX(2px)',
+                                    transformOrigin: 'top left',
+                                    marginTop: -2,
+                                    borderRadius: '4px 4px 0 0',
+                                  }}
+                                />
+                              </div>
                             )}
                           </div>
-                          <span
-                            className={cn(
-                              'w-14 shrink-0 text-right font-semibold tabular-nums',
-                              v == null ? 'text-slate-600' : isPositive ? 'text-emerald-400' : 'text-red-400',
-                            )}
-                          >
-                            {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—'}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                    {/* Period label */}
+                    <div className="text-[11px] font-semibold text-slate-400 border-t border-slate-700/50 pt-1 w-full text-center">
+                      {label}
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-[11px]">
+              {selectedFunds.map((f, i) => (
+                <div key={f.code} className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-3 w-3 rounded shadow"
+                    style={{
+                      background: `linear-gradient(135deg, ${CHIP_COLORS[i]}, ${CHIP_COLORS[i]}88)`,
+                      boxShadow: `0 1px 3px ${CHIP_COLORS[i]}55`,
+                    }}
+                  />
+                  <span className="font-bold" style={{ color: CHIP_COLORS[i] }}>{f.code}</span>
                 </div>
               ))}
             </div>

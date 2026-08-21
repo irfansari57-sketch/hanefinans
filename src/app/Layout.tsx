@@ -93,9 +93,9 @@ const navGroups: NavGroup[] = [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
       { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
       { to: '/kripto', label: 'Kripto', icon: Bitcoin },
-      { to: '/abd', label: 'ABD Borsaları', icon: Flag, pro: true },
-      { to: '/global', label: 'Global Piyasalar', icon: Globe, pro: true },
-      { to: '/heatmap', label: 'Heat Map', icon: Grid3x3, pro: true },
+      { to: '/abd', label: 'ABD Borsaları', icon: Flag, pro: false },
+      { to: '/global', label: 'Global Piyasalar', icon: Globe, pro: false },
+      { to: '/heatmap', label: 'Heat Map', icon: Grid3x3, pro: false },
     ],
   },
   {

@@ -224,88 +224,121 @@ export function FundComparePage() {
         />
       ) : (
         <>
-          {/* Flat + Modern Dikey Sütun Chart — sade, temiz, okunakli */}
+          {/* Sade Dikey Sütun Chart — SVG tabanlı, kesin render garantili */}
           <section className="glass-card mb-4 p-5">
-            <div className="mb-5 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-2">
               <BarChart3 size={16} className="text-accent" />
               <h3 className="text-sm font-semibold text-slate-100">Dönemsel Getiri Karşılaştırması</h3>
             </div>
 
-            <div className="overflow-x-auto">
-              <div className="flex items-end justify-around gap-1 min-w-[720px] pt-10 pb-2 border-b border-slate-700/40"
-                   style={{ height: 260 }}>
-                {chartData.map(({ period, label, values, max }) => {
-                  const periodMax = max > 0 ? max : 1;
-                  return (
-                    <div
-                      key={period}
-                      className="flex flex-1 flex-col items-center gap-1"
-                      style={{ minWidth: 78 }}
-                    >
-                      {/* Sütun grubu — sade flat design */}
-                      <div className="flex items-end justify-center gap-1 w-full h-full">
-                        {selectedFunds.map((f, i) => {
-                          const v = values[i];
-                          const color = CHIP_COLORS[i];
-                          const rawPct = v != null ? (Math.abs(v) / periodMax) * 100 : 0;
-                          const heightPct = v != null ? Math.max(6, Math.min(88, rawPct)) : 0;
-                          const isPositive = v != null && v >= 0;
-                          const isNegative = v != null && v < 0;
-                          return (
-                            <div
-                              key={f.code}
-                              className="relative flex flex-col items-center h-full"
-                              style={{ width: 36 }}
-                              title={`${f.code}: ${v != null ? v.toFixed(2) + '%' : '—'}`}
-                            >
-                              {/* Değer etiketi */}
-                              {v != null && (
-                                <div
-                                  className={cn(
-                                    'absolute text-[10px] font-semibold whitespace-nowrap tabular-nums',
-                                    isPositive ? 'text-emerald-400' : 'text-red-400',
-                                  )}
-                                  style={{ bottom: `calc(${heightPct}% + 3px)` }}
+            {(() => {
+              // SVG chart geometry — sabit koordinatlar
+              const CHART_H = 260;
+              const CHART_TOP_PAD = 30;  // etiketler için üstte boşluk
+              const CHART_BOTTOM_PAD = 40; // period label için altta
+              const BAR_AREA_H = CHART_H - CHART_TOP_PAD - CHART_BOTTOM_PAD;
+              const PERIOD_W = 100;
+              const BAR_W = 22;
+              const BAR_GAP = 4;
+              const funds = selectedFunds;
+              const groupW = funds.length * BAR_W + (funds.length - 1) * BAR_GAP;
+              const totalW = chartData.length * PERIOD_W;
+
+              return (
+                <div className="overflow-x-auto">
+                  <svg width={totalW} height={CHART_H} className="block">
+                    {/* Zero line */}
+                    <line
+                      x1={0}
+                      y1={CHART_TOP_PAD + BAR_AREA_H}
+                      x2={totalW}
+                      y2={CHART_TOP_PAD + BAR_AREA_H}
+                      stroke="rgb(51, 65, 85)"
+                      strokeWidth="1"
+                    />
+
+                    {chartData.map(({ period, label, values, max }, pIdx) => {
+                      const periodMax = max > 0 ? max : 1;
+                      const periodX = pIdx * PERIOD_W;
+                      const groupStartX = periodX + (PERIOD_W - groupW) / 2;
+
+                      return (
+                        <g key={period}>
+                          {/* Period label — altta */}
+                          <text
+                            x={periodX + PERIOD_W / 2}
+                            y={CHART_H - 12}
+                            textAnchor="middle"
+                            fill="rgb(148, 163, 184)"
+                            fontSize="11"
+                            fontWeight="600"
+                            style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                          >
+                            {label}
+                          </text>
+
+                          {funds.map((f, i) => {
+                            const v = values[i];
+                            const color = CHIP_COLORS[i];
+                            const barX = groupStartX + i * (BAR_W + BAR_GAP);
+
+                            if (v == null || !Number.isFinite(v)) {
+                              return (
+                                <text
+                                  key={f.code}
+                                  x={barX + BAR_W / 2}
+                                  y={CHART_TOP_PAD + BAR_AREA_H - 8}
+                                  textAnchor="middle"
+                                  fill="rgb(71, 85, 105)"
+                                  fontSize="11"
+                                >
+                                  —
+                                </text>
+                              );
+                            }
+
+                            const rawPct = (Math.abs(v) / periodMax);
+                            const barH = Math.max(4, rawPct * (BAR_AREA_H - 15));
+                            const barY = CHART_TOP_PAD + BAR_AREA_H - barH;
+                            const isPositive = v >= 0;
+
+                            return (
+                              <g key={f.code}>
+                                {/* Değer etiketi — sütun tepesi */}
+                                <text
+                                  x={barX + BAR_W / 2}
+                                  y={barY - 6}
+                                  textAnchor="middle"
+                                  fill={isPositive ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)'}
+                                  fontSize="10"
+                                  fontWeight="700"
                                 >
                                   {v >= 0 ? '+' : ''}{v.toFixed(1)}%
-                                </div>
-                              )}
-                              {/* Sade flat sütun */}
-                              {v != null && (
-                                <div
-                                  className="absolute bottom-0 left-0.5 right-0.5 rounded-t-sm"
-                                  style={{
-                                    height: `${heightPct}%`,
-                                    backgroundColor: isNegative ? `${color}80` : color,
-                                    transition: 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                                  }}
-                                />
-                              )}
-                              {v == null && (
-                                <div className="absolute bottom-0 text-[10px] text-slate-600">—</div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                                </text>
+                                {/* Sütun */}
+                                <rect
+                                  x={barX}
+                                  y={barY}
+                                  width={BAR_W}
+                                  height={barH}
+                                  fill={color}
+                                  opacity={isPositive ? 0.95 : 0.6}
+                                  rx={2}
+                                >
+                                  <title>{`${f.code}: ${v.toFixed(2)}%`}</title>
+                                </rect>
+                              </g>
+                            );
+                          })}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              );
+            })()}
 
-              {/* X-axis period labels — chart altında düz */}
-              <div className="flex justify-around gap-1 pt-2 min-w-[720px]">
-                {chartData.map(({ period, label }) => (
-                  <div key={period} className="flex-1 text-center" style={{ minWidth: 78 }}>
-                    <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                      {label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Legend — sade */}
+            {/* Legend */}
             <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs pt-3 border-t border-slate-700/40">
               {selectedFunds.map((f, i) => (
                 <div key={f.code} className="flex items-center gap-2">

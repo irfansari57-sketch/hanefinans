@@ -288,7 +288,11 @@ function computeDayChangeFromHistory(history: Array<{ date: string; price: numbe
 
 /**
  * History array'inden N takvim gunu onceki fiyatla yuzde fark.
- * Hafta = 7 gun, Ay = 30, vb. Yakin gunu bulamazsa null doner.
+ * Hafta = 7 gun, Ay = 30, vb.
+ *
+ * Toleranslı arama: hedef tarih (last - N gun) etrafinda ±%40 window'da
+ * (min 2 gun) en yakin gunu secer. TEFAS hafta sonu/tatil yayin yapmaz,
+ * bu nedenle "tam N gun" yerine yakin tarihi almak daha saglikli.
  */
 function computeChangeFromHistoryNDays(
   history: Array<{ date: string; price: number }>,
@@ -298,16 +302,27 @@ function computeChangeFromHistoryNDays(
   const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
   const last = sorted[sorted.length - 1];
   if (!last || !(last.price > 0)) return null;
-  // Target date = last.date - daysAgo gun
-  const lastDate = new Date(last.date);
-  const targetMs = lastDate.getTime() - daysAgo * 24 * 60 * 60 * 1000;
-  // Sorted icinde en yakin (target'a >= olan) ilk eleman
+  const lastMs = new Date(last.date).getTime();
+  const targetMs = lastMs - daysAgo * 24 * 60 * 60 * 1000;
+  const dayMs = 24 * 60 * 60 * 1000;
+  // Tolerans: ±%40 (min 2 gun, max 10 gun). Ornek: 7 gun → ±3 gun, 30 gun → ±10 gun.
+  const tolerance = Math.max(2 * dayMs, Math.min(10 * dayMs, daysAgo * 0.4 * dayMs));
+
+  // Target'a en yakin (ama last'tan onceki) tarihi bul
+  let bestDist = Infinity;
   let best: typeof sorted[number] | null = null;
   for (const h of sorted) {
-    if (new Date(h.date).getTime() <= targetMs) best = h;
-    else break;
+    if (h === last) continue;
+    if (!(h.price > 0)) continue;
+    const ms = new Date(h.date).getTime();
+    if (ms >= lastMs) continue; // son gunden yeni olamaz
+    const dist = Math.abs(ms - targetMs);
+    if (dist < bestDist && dist <= tolerance) {
+      bestDist = dist;
+      best = h;
+    }
   }
-  if (!best || !(best.price > 0)) return null;
+  if (!best) return null;
   return ((last.price - best.price) / best.price) * 100;
 }
 

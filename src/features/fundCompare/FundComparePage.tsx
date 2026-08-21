@@ -23,7 +23,8 @@ import { cn } from '@/lib/utils';
 
 const LS_KEY = 'iq.fundCompare.selection';
 const MAX_SELECT = 4;
-const CHIP_COLORS = ['#f87171', '#60a5fa', '#34d399', '#fbbf24'];
+// Sade + rahat renk paleti — modern finans uygulamalarındaki gibi
+const CHIP_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7'];
 
 type PeriodKey = 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear';
 
@@ -223,96 +224,62 @@ export function FundComparePage() {
         />
       ) : (
         <>
-          {/* 3D Dikey Sütun Chart — belirgin, kalın sütunlar, per-period normalize */}
-          <section className="glass-card mb-4 p-4">
-            <div className="mb-4 flex items-center gap-2">
+          {/* Flat + Modern Dikey Sütun Chart — sade, temiz, okunakli */}
+          <section className="glass-card mb-4 p-5">
+            <div className="mb-5 flex items-center gap-2">
               <BarChart3 size={16} className="text-accent" />
               <h3 className="text-sm font-semibold text-slate-100">Dönemsel Getiri Karşılaştırması</h3>
             </div>
 
             <div className="overflow-x-auto">
-              <div className="flex items-stretch justify-around gap-3 min-w-[760px] pt-8 pb-2"
-                   style={{ height: 320 }}>
+              <div className="flex items-end justify-around gap-1 min-w-[720px] pt-10 pb-2 border-b border-slate-700/40"
+                   style={{ height: 260 }}>
                 {chartData.map(({ period, label, values, max }) => {
-                  // Bu dönemdeki tüm fonların absolute max değeri (min 1 böl-sıfır'a karşı)
                   const periodMax = max > 0 ? max : 1;
                   return (
                     <div
                       key={period}
-                      className="flex flex-1 flex-col items-center rounded-lg bg-slate-900/25 border border-slate-800/50 px-2 pt-2 pb-1"
-                      style={{ minWidth: 92 }}
+                      className="flex flex-1 flex-col items-center gap-1"
+                      style={{ minWidth: 78 }}
                     >
-                      {/* Sütun grubu — height 240px sabit, bars zemine hizalanır */}
-                      <div className="relative flex items-end justify-center gap-2 w-full"
-                           style={{ height: 240 }}>
+                      {/* Sütun grubu — sade flat design */}
+                      <div className="flex items-end justify-center gap-1 w-full h-full">
                         {selectedFunds.map((f, i) => {
                           const v = values[i];
                           const color = CHIP_COLORS[i];
-                          // Min %8 görünür yükseklik (etiketle çakışmasın diye), max %92
                           const rawPct = v != null ? (Math.abs(v) / periodMax) * 100 : 0;
-                          const heightPct = v != null ? Math.max(8, Math.min(92, rawPct)) : 0;
+                          const heightPct = v != null ? Math.max(6, Math.min(88, rawPct)) : 0;
                           const isPositive = v != null && v >= 0;
+                          const isNegative = v != null && v < 0;
                           return (
                             <div
                               key={f.code}
                               className="relative flex flex-col items-center h-full"
-                              style={{ width: 42 }}
+                              style={{ width: 36 }}
                               title={`${f.code}: ${v != null ? v.toFixed(2) + '%' : '—'}`}
                             >
-                              {/* Değer etiketi — sütun tepesinde */}
+                              {/* Değer etiketi */}
                               {v != null && (
                                 <div
                                   className={cn(
-                                    'absolute z-10 text-[10px] font-bold whitespace-nowrap tabular-nums px-1 rounded',
-                                    isPositive
-                                      ? 'text-emerald-400 bg-emerald-500/10'
-                                      : 'text-red-400 bg-red-500/10',
+                                    'absolute text-[10px] font-semibold whitespace-nowrap tabular-nums',
+                                    isPositive ? 'text-emerald-400' : 'text-red-400',
                                   )}
-                                  style={{ bottom: `calc(${heightPct}% + 6px)` }}
+                                  style={{ bottom: `calc(${heightPct}% + 3px)` }}
                                 >
-                                  {v >= 0 ? '+' : ''}{v.toFixed(2)}%
+                                  {v >= 0 ? '+' : ''}{v.toFixed(1)}%
                                 </div>
                               )}
-                              {/* 3D sütun */}
+                              {/* Sade flat sütun */}
                               {v != null && (
                                 <div
-                                  className="absolute bottom-0 left-0 right-0 rounded-t-md overflow-visible"
+                                  className="absolute bottom-0 left-0.5 right-0.5 rounded-t-sm"
                                   style={{
                                     height: `${heightPct}%`,
-                                    background: `linear-gradient(180deg,
-                                      ${color} 0%,
-                                      ${color} 50%,
-                                      ${color}bb 100%)`,
-                                    boxShadow: `
-                                      inset -4px 0 8px -3px rgba(0,0,0,0.45),
-                                      inset 2px 2px 6px -1px rgba(255,255,255,0.2),
-                                      0 4px 12px -3px ${color}66
-                                    `,
-                                    transition: 'height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                    backgroundColor: isNegative ? `${color}80` : color,
+                                    transition: 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                                   }}
-                                >
-                                  {/* Üst yüzey (3D depth) */}
-                                  <div
-                                    className="absolute -top-1.5 left-0 right-1.5 h-3"
-                                    style={{
-                                      background: `linear-gradient(135deg, ${color}, ${color}dd 60%, ${color}88)`,
-                                      transform: 'perspective(30px) rotateX(55deg)',
-                                      transformOrigin: 'bottom',
-                                      borderRadius: '4px 4px 0 0',
-                                      boxShadow: `inset 0 1px 2px rgba(255,255,255,0.3)`,
-                                    }}
-                                  />
-                                  {/* Sağ yüzey */}
-                                  <div
-                                    className="absolute top-0 -right-1.5 bottom-0 w-1.5"
-                                    style={{
-                                      background: `linear-gradient(180deg, ${color}aa, ${color}66)`,
-                                      transform: 'perspective(30px) rotateY(-55deg)',
-                                      transformOrigin: 'left',
-                                      borderRadius: '0 3px 0 0',
-                                    }}
-                                  />
-                                </div>
+                                />
                               )}
                               {v == null && (
                                 <div className="absolute bottom-0 text-[10px] text-slate-600">—</div>
@@ -321,30 +288,32 @@ export function FundComparePage() {
                           );
                         })}
                       </div>
-                      {/* Period label */}
-                      <div className="mt-2 w-full text-center">
-                        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-                          {label}
-                        </div>
-                      </div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* X-axis period labels — chart altında düz */}
+              <div className="flex justify-around gap-1 pt-2 min-w-[720px]">
+                {chartData.map(({ period, label }) => (
+                  <div key={period} className="flex-1 text-center" style={{ minWidth: 78 }}>
+                    <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Legend */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs">
+            {/* Legend — sade */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs pt-3 border-t border-slate-700/40">
               {selectedFunds.map((f, i) => (
-                <div key={f.code} className="flex items-center gap-1.5">
+                <div key={f.code} className="flex items-center gap-2">
                   <span
-                    className="inline-block h-4 w-4 rounded"
-                    style={{
-                      background: `linear-gradient(135deg, ${CHIP_COLORS[i]}, ${CHIP_COLORS[i]}99)`,
-                      boxShadow: `0 2px 6px ${CHIP_COLORS[i]}55, inset 1px 1px 2px rgba(255,255,255,0.2)`,
-                    }}
+                    className="inline-block h-3 w-3 rounded-sm"
+                    style={{ backgroundColor: CHIP_COLORS[i] }}
                   />
-                  <span className="font-bold" style={{ color: CHIP_COLORS[i] }}>{f.code}</span>
+                  <span className="font-semibold text-slate-200">{f.code}</span>
                 </div>
               ))}
             </div>

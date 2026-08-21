@@ -245,10 +245,11 @@ export function PanelPage() {
 
   // Ticker için: değişimi olan ve fiyatı 0'dan büyük olanlar
   const tickerStocks = useMemo(
-    // BIST günlük limit ~%20 (küçük şirketler dahil). %25+ outlier'ları filtrele —
-    // veri hatası (yanlış previousClose vs currentPrice) olma ihtimali yüksek.
+    // BIST günlük fiyat marjı ana pazar için ±%10. %11'i aşan değişimler
+    // veri hatası (yanlış previousClose / bölünme / temettü ayarlaması) olma
+    // ihtimali çok yüksek — outlier'ları filtrele.
     () => stocks
-      .filter((s) => s.price > 0 && Math.abs(s.changePct) <= 25)
+      .filter((s) => s.price > 0 && Math.abs(s.changePct) <= 11)
       .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
       .slice(0, 24),
     [stocks],

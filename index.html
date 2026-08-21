@@ -62,6 +62,12 @@
     <!-- Hint to AT: this is a financial info app -->
     <meta name="application-name" content="InvestLiq" />
 
+    <!-- Google Search Console verification (kullanici Search Console'dan alacagi meta'yi buraya yapistiracak) -->
+    <!-- <meta name="google-site-verification" content="BURAYA_SEARCH_CONSOLE_KODUNU_YAPISTIR" /> -->
+
+    <!-- Yandex Webmaster verification (opsiyonel) -->
+    <!-- <meta name="yandex-verification" content="BURAYA_YANDEX_KODUNU_YAPISTIR" /> -->
+
     <!-- Schema.org JSON-LD: FinancialService + Organization + WebSite -->
     <!-- Google'a "bu site finansal hizmet sunan organizasyon" diyerek rich result + knowledge graph kazandırır -->
     <script type="application/ld+json">
@@ -111,6 +117,56 @@
             "@type": "SearchAction",
             "target": "https://investliq.com/sorgu?q={search_term_string}",
             "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- FAQPage Schema — "InvestLiq nedir?" gibi sorularin Google rich snippet olarak cikmasi icin -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "InvestLiq nedir?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "InvestLiq, Türkiye yatırımcıları için tasarlanmış akıllı finansal veri platformudur. BIST hisseleri, TEFAS fonları, döviz, emtia, kripto ve BIST endeksleri hakkında canlı veri, analiz, portföy takibi ve risk profili yönetimi sunar."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "InvestLiq investing.com ile aynı mı?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Hayır. InvestLiq, investing.com'dan tamamen bağımsız, yerli ve Türkiye piyasasına odaklı bir platformdur. TEFAS entegrasyonu, BIST 100/30 endeks feed'i ve Türkçe finansal okuryazarlık içeriği gibi yerli özelliklerle differ eder."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "InvestLiq ücretli mi?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Hayır, InvestLiq ücretsizdir. Kayıt olarak tüm özelliklere sınırsız erişim sağlarsınız. Anonim ziyaretçiler kısıtlı içerik görebilir."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "InvestLiq güvenli mi?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Evet. InvestLiq KVKK uyumlu veri saklama, HTTPS, Turnstile bot koruması ve JWT tabanlı oturum yönetimi kullanır. Kişisel veriler yalnızca kullanıcının kendi kullanımı için tutulur, üçüncü taraflarla paylaşılmaz."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "InvestLiq yatırım tavsiyesi veriyor mu?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Hayır. InvestLiq, SPK mevzuatına uygun olarak yatırım tavsiyesi vermez. Sunulan tüm veri, analiz ve öneriler bilgilendirme amaçlıdır."
           }
         }
       ]

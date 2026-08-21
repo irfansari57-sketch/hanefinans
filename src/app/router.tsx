@@ -71,6 +71,7 @@ const NewsPage              = lazyWithRetry(() => import('@/features/news/NewsPa
 const WatchlistPage         = lazyWithRetry(() => import('@/features/watchlist/WatchlistPage').then((m) => ({ default: m.WatchlistPage })));
 const FundsPage             = lazyWithRetry(() => import('@/features/funds/FundsPage').then((m) => ({ default: m.FundsPage })));
 const FundComparePage       = lazyWithRetry(() => import('@/features/fundCompare/FundComparePage').then((m) => ({ default: m.FundComparePage })));
+const AboutPage             = lazyWithRetry(() => import('@/features/about/AboutPage').then((m) => ({ default: m.AboutPage })));
 const StocksPage            = lazyWithRetry(() => import('@/features/stocks/StocksPage').then((m) => ({ default: m.StocksPage })));
 const CommoditiesPage       = lazyWithRetry(() => import('@/features/commodities/CommoditiesPage').then((m) => ({ default: m.CommoditiesPage })));
 const CryptoPage            = lazyWithRetry(() => import('@/features/crypto/CryptoPage').then((m) => ({ default: m.CryptoPage })));
@@ -134,6 +135,7 @@ export const router = createBrowserRouter([
       { path: 'takvim', element: withSuspense(<EconomicCalendarPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },
       { path: 'karsilastir', element: withSuspense(<FundComparePage />) },
+      { path: 'hakkinda', element: withSuspense(<AboutPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },
       { path: 'emtia', element: withSuspense(<CommoditiesPage />) },
       { path: 'emtia/:symbol', element: withSuspense(<CommodityDetailPage />) },

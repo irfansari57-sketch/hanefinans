@@ -3,9 +3,17 @@
   <!-- Ana sayfa -->
   <url>
     <loc>https://investliq.com/</loc>
-    <lastmod>2026-06-07</lastmod>
+    <lastmod>2026-08-18</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+  </url>
+
+  <!-- Hakkında — Marka koruma sayfası, SEO için kritik (yüksek öncelik) -->
+  <url>
+    <loc>https://investliq.com/hakkinda</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.95</priority>
   </url>
 
   <!-- Genel — Yüksek öncelik -->

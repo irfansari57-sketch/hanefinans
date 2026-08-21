@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/date';
 import { SymbolBadge } from './SymbolBadge';
 import { AdVideo } from './AdVideo';
+import { BrandingBlock } from './BrandingBlock';
+import { HaneModAdBanner } from './HaneModAdBanner';
 
 const REFRESH_MS = 90_000;
 const SCROLL_SPEED_SECONDS = 180;
@@ -87,8 +89,17 @@ export function RightNewsTicker() {
         <AdVideo />
       </div>
 
-      {/* Ekonomik Takvim right rail'den kaldırıldı — Panel'de Piyasa Özeti altına taşındı.
-          Gündem & Haberler bu sayede en üste yükseldi. */}
+      {/* Hane Mod Studio branding + Copyright + Resmi YouTube — Gundem & Haberler'in ustunde.
+          Tum kullanicilara gorunur (kayitli + kayitsiz). Sol sidebar'da da ayrica var. */}
+      <div className="border-b border-border bg-bg-soft/40 px-2 py-3">
+        <BrandingBlock />
+        <div className="mt-3">
+          <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+            Resmi YouTube
+          </div>
+          <HaneModAdBanner variant="compact" />
+        </div>
+      </div>
 
       {/* Header — collapse + direction toggle */}
       <div className="flex w-full items-center border-b border-border transition hover:bg-bg-card/50">

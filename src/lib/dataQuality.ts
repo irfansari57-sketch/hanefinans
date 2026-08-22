@@ -125,62 +125,94 @@ export function validateStockQuote(input: StockQuoteInput, isUS: boolean = false
     confidence -= 40;
   }
 
-  // ÖNEMLİ: Historical bars stale ise (son bar 20 saatten eski) snapshot doğrudur.
-  // Bu duruma hafta sonu ve TR piyasa saati sonrası (17:00-08:00) sıklıkla düşülür.
-  // Historical stale kontrolü YAPMASAK snapshot'ı yanlış "corrected" ile ezmiş oluruz.
-  const HISTORICAL_STALE_MS = 20 * 60 * 60 * 1000;
-  const snapshotAge = input.updatedAt ? Date.now() - input.updatedAt : 0;
-  const histAge = input.histLastDate ? Date.now() - input.histLastDate : Infinity;
-  // Historical'ın snapshot'tan çok eski olması (>20h fark) → historical stale.
-  const histIsStale =
+  // MIMARI: Snapshot D1 cache'den (cron warmer), Historical Yahoo'dan direkt gelir.
+  // Her ikisi de stale olabilir — hangisi daha taze ise ona güven:
+  //   - Historical stale (>20h eski) + Snapshot fresh → Snapshot doğru (mevcut BIMAS DEĞİL)
+  //   - Snapshot stale (>20h eski) + Historical fresh → Historical doğru (BIMAS Aug 22 senaryo)
+  //   - Her ikisi fresh → cross-check yap
+  //   - Her ikisi stale → ikisini de göster + uyar
+  const STALE_MS = 20 * 60 * 60 * 1000;
+  const now = Date.now();
+  const snapshotAge = input.updatedAt ? now - input.updatedAt : 0;
+  const histAge = input.histLastDate ? now - input.histLastDate : Infinity;
+  const snapshotIsStale = input.updatedAt != null && snapshotAge > STALE_MS;
+  const historicalIsStale = input.histLastDate != null && histAge > STALE_MS;
+  // Snapshot historical'dan çok daha eski ise snapshot stale (bizim D1 cache miss senaryosu)
+  const snapshotMuchOlder =
+    input.updatedAt != null &&
     input.histLastDate != null &&
-    histAge - snapshotAge > HISTORICAL_STALE_MS;
+    snapshotAge - histAge > STALE_MS;
+  // Historical snapshot'tan çok daha eski ise historical stale (hafta sonu senaryosu)
+  const historicalMuchOlder =
+    input.updatedAt != null &&
+    input.histLastDate != null &&
+    histAge - snapshotAge > STALE_MS;
 
-  // 4. Cross-check snapshot vs period 1G (en güvenilir mekanizma)
-  // Sadece historical fresh ise cross-check yap. Stale ise snapshot doğrudur.
-  if (
-    !histIsStale &&
-    input.period1G != null &&
-    Number.isFinite(input.period1G) &&
-    Number.isFinite(input.changePct)
-  ) {
-    const snapDeviation = Math.abs(input.changePct - input.period1G);
-    if (snapDeviation > SNAPSHOT_DEVIATION_THRESHOLD_PCT) {
-      warnings.push(
-        `Snapshot günlük (${input.changePct.toFixed(2)}%) ile period 1G (${input.period1G.toFixed(2)}%) arasında ` +
-          `${snapDeviation.toFixed(1)}% sapma — snapshot muhtemelen bozuk.`,
-      );
-      confidence -= 35;
-      corrected = {
-        changePct: input.period1G,
-        source: 'period-1g-historical',
-      };
-    }
+  // KARAR: Snapshot stale ise historical'ı tercih et → BIMAS 410.75 → 416.50 fix
+  if (snapshotMuchOlder && input.histLastClose != null && input.histLastClose > 0) {
+    const staleHours = Math.floor(snapshotAge / (60 * 60 * 1000));
+    warnings.push(
+      `Snapshot verisi ${staleHours} saat eski — historical (Yahoo canlı) daha güncel, ona güvenildi.`,
+    );
+    confidence -= 30;
+    corrected = {
+      price: input.histLastClose,
+      changePct:
+        input.period1G != null && Number.isFinite(input.period1G)
+          ? input.period1G
+          : undefined,
+      source: 'historical-fresher-than-snapshot',
+    };
   }
-
-  // 5. Cross-check snapshot price vs historical last close (sadece historical fresh ise)
-  if (!histIsStale && input.histLastClose != null && input.histLastClose > 0) {
-    const priceDev = (Math.abs(input.price - input.histLastClose) / input.histLastClose) * 100;
-    if (priceDev > PRICE_DEVIATION_THRESHOLD_PCT) {
-      warnings.push(
-        `Snapshot fiyatı (${input.price.toFixed(2)}) historical son close (${input.histLastClose.toFixed(2)}) ` +
-          `ile ${priceDev.toFixed(1)}% sapıyor — snapshot muhtemelen bozuk.`,
-      );
-      confidence -= 25;
-      corrected = {
-        ...(corrected ?? {}),
-        price: input.histLastClose,
-        source: 'historical-last-close',
-      };
-    }
-  }
-
-  // 5b. Historical stale bilgisi — yalnız info amaçlı uyarı (confidence düşürme)
-  if (histIsStale) {
+  // KARAR: Historical stale, snapshot fresh (hafta sonu Cuma kapanış senaryosu)
+  else if (historicalMuchOlder) {
     const days = Math.floor(histAge / (24 * 60 * 60 * 1000));
     if (days >= 1) {
       warnings.push(`Historical bars ${days} gün eski — snapshot canlı fiyata güvenildi.`);
     }
+    // corrected uygulanmaz — snapshot değeri kullanılır (default davranış)
+  }
+  // KARAR: Her ikisi de fresh — normal cross-check
+  else if (!snapshotIsStale && !historicalIsStale) {
+    if (
+      input.period1G != null &&
+      Number.isFinite(input.period1G) &&
+      Number.isFinite(input.changePct)
+    ) {
+      const snapDeviation = Math.abs(input.changePct - input.period1G);
+      if (snapDeviation > SNAPSHOT_DEVIATION_THRESHOLD_PCT) {
+        warnings.push(
+          `Snapshot günlük (${input.changePct.toFixed(2)}%) ile period 1G (${input.period1G.toFixed(2)}%) arasında ` +
+            `${snapDeviation.toFixed(1)}% sapma — snapshot muhtemelen bozuk.`,
+        );
+        confidence -= 35;
+        corrected = {
+          changePct: input.period1G,
+          source: 'period-1g-historical',
+        };
+      }
+    }
+    if (input.histLastClose != null && input.histLastClose > 0) {
+      const priceDev = (Math.abs(input.price - input.histLastClose) / input.histLastClose) * 100;
+      if (priceDev > PRICE_DEVIATION_THRESHOLD_PCT) {
+        warnings.push(
+          `Snapshot fiyatı (${input.price.toFixed(2)}) historical son close (${input.histLastClose.toFixed(2)}) ` +
+            `ile ${priceDev.toFixed(1)}% sapıyor — snapshot muhtemelen bozuk.`,
+        );
+        confidence -= 25;
+        corrected = {
+          ...(corrected ?? {}),
+          price: input.histLastClose,
+          source: 'historical-last-close',
+        };
+      }
+    }
+  }
+  // KARAR: Her ikisi de stale — uyar ama düzeltme yok (elde başka referans yok)
+  else if (snapshotIsStale && historicalIsStale) {
+    const snapHours = Math.floor(snapshotAge / (60 * 60 * 1000));
+    warnings.push(`Hem snapshot (${snapHours}h) hem historical eski — piyasa uzun süre kapalı.`);
+    confidence -= 15;
   }
 
   // 6. Staleness — son 24 saat guncellenmediyse uyar

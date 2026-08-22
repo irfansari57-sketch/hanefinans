@@ -51,6 +51,8 @@ export interface StockQuoteInput {
   updatedAt?: number;
   /** Historical bars son close'u — snapshot cross-check icin. */
   histLastClose?: number;
+  /** Historical bars son bar tarihi (ms). Snapshot'tan >20 saat eski ise historical stale. */
+  histLastDate?: number;
   /** Period returns 1G — snapshot cross-check icin. */
   period1G?: number;
 }
@@ -123,8 +125,21 @@ export function validateStockQuote(input: StockQuoteInput, isUS: boolean = false
     confidence -= 40;
   }
 
+  // ÖNEMLİ: Historical bars stale ise (son bar 20 saatten eski) snapshot doğrudur.
+  // Bu duruma hafta sonu ve TR piyasa saati sonrası (17:00-08:00) sıklıkla düşülür.
+  // Historical stale kontrolü YAPMASAK snapshot'ı yanlış "corrected" ile ezmiş oluruz.
+  const HISTORICAL_STALE_MS = 20 * 60 * 60 * 1000;
+  const snapshotAge = input.updatedAt ? Date.now() - input.updatedAt : 0;
+  const histAge = input.histLastDate ? Date.now() - input.histLastDate : Infinity;
+  // Historical'ın snapshot'tan çok eski olması (>20h fark) → historical stale.
+  const histIsStale =
+    input.histLastDate != null &&
+    histAge - snapshotAge > HISTORICAL_STALE_MS;
+
   // 4. Cross-check snapshot vs period 1G (en güvenilir mekanizma)
+  // Sadece historical fresh ise cross-check yap. Stale ise snapshot doğrudur.
   if (
+    !histIsStale &&
     input.period1G != null &&
     Number.isFinite(input.period1G) &&
     Number.isFinite(input.changePct)
@@ -143,8 +158,8 @@ export function validateStockQuote(input: StockQuoteInput, isUS: boolean = false
     }
   }
 
-  // 5. Cross-check snapshot price vs historical last close
-  if (input.histLastClose != null && input.histLastClose > 0) {
+  // 5. Cross-check snapshot price vs historical last close (sadece historical fresh ise)
+  if (!histIsStale && input.histLastClose != null && input.histLastClose > 0) {
     const priceDev = (Math.abs(input.price - input.histLastClose) / input.histLastClose) * 100;
     if (priceDev > PRICE_DEVIATION_THRESHOLD_PCT) {
       warnings.push(
@@ -157,6 +172,14 @@ export function validateStockQuote(input: StockQuoteInput, isUS: boolean = false
         price: input.histLastClose,
         source: 'historical-last-close',
       };
+    }
+  }
+
+  // 5b. Historical stale bilgisi — yalnız info amaçlı uyarı (confidence düşürme)
+  if (histIsStale) {
+    const days = Math.floor(histAge / (24 * 60 * 60 * 1000));
+    if (days >= 1) {
+      warnings.push(`Historical bars ${days} gün eski — snapshot canlı fiyata güvenildi.`);
     }
   }
 

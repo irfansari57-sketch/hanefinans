@@ -238,7 +238,12 @@ export function StockDetailPage() {
   const sparklineData = historical ? historical.closes.slice(-30).map((c) => c.close) : [];
 
   // GUVENILIRLIK: merkezi data quality lib'i kullan — snapshot cross-check + auto-correct.
-  const histLast = historical?.bars.at(-1)?.close;
+  // Historical bars'ın son bar tarihini de gonder ki lib "stale historical" durumunu tespit etsin.
+  // Ornek: Hafta sonu snapshot Cuma verisi doğru, historical Perşembeye kadar → stale.
+  const lastBar = historical?.bars.at(-1);
+  const histLast = lastBar?.close;
+  // OhlcvBar.time seconds cinsinden (Yahoo standardı) → ms'e cevir.
+  const histLastDate = lastBar?.time ? lastBar.time * 1000 : undefined;
   const period1g = returns['1g'];
   const dq = validateStockQuote({
     symbol: stock.symbol,
@@ -246,6 +251,7 @@ export function StockDetailPage() {
     changePct: stock.changePct,
     updatedAt: stock.updatedAt ? +new Date(stock.updatedAt) : undefined,
     histLastClose: histLast,
+    histLastDate: histLastDate,
     period1G: period1g,
   }, isUs);
   // Telemetriye kaydet (sadece uyari/duzeltme varsa yazilir)

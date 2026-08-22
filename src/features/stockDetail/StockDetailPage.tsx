@@ -234,8 +234,27 @@ export function StockDetailPage() {
   }
 
   const sparklineData = historical ? historical.closes.slice(-30).map((c) => c.close) : [];
-  const tone = stock.changePct >= 0 ? 'text-success' : 'text-danger';
-  const sign = stock.changePct >= 0 ? '+' : '';
+
+  // GUVENILIRLIK: snapshot Yahoo quote intraday'de yanlis prev close/adjusted-close verebilir
+  // (sermaye artirim, kupon kesintisi, split sonrasi). Historical bars.close ise adjusted &
+  // temiz. Historical varsa fiyat ve gunluk % icin historical + period 1G'yi kullan.
+  //
+  // Not: |snapshot - period1G| > 5% ise snapshot bozuk demektir (BIST tavan %10 zaten).
+  const histLast = historical?.bars.at(-1)?.close;
+  const period1g = returns['1g'];
+  let displayPrice = stock.price;
+  let displayChangePct = stock.changePct;
+  if (histLast != null && histLast > 0 && Number.isFinite(period1g)) {
+    const snapDeviation = Math.abs(stock.changePct - (period1g as number));
+    const priceDeviation = stock.price > 0 ? Math.abs((stock.price - histLast) / histLast) * 100 : 0;
+    if (snapDeviation > 5 || priceDeviation > 3) {
+      // Snapshot gerçekten sapıyor — historical'i tercih et
+      displayPrice = histLast;
+      displayChangePct = period1g as number;
+    }
+  }
+  const tone = displayChangePct >= 0 ? 'text-success' : 'text-danger';
+  const sign = displayChangePct >= 0 ? '+' : '';
 
   const generateAiAnalysis = async () => {
     if (!stock) return;
@@ -318,21 +337,21 @@ export function StockDetailPage() {
             <div className="flex items-baseline justify-end gap-3">
               <span className="text-4xl font-bold tabular-nums text-slate-100">
                 {isUs
-                  ? `$${stock.price.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
-                  : formatMoney(stock.price)}
+                  ? `$${displayPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+                  : formatMoney(displayPrice)}
               </span>
               {sparklineData.length > 1 && (
                 <Sparkline
                   data={sparklineData}
                   width={120}
                   height={36}
-                  positive={stock.changePct >= 0}
+                  positive={displayChangePct >= 0}
                 />
               )}
             </div>
             <div className={cn('mt-1 text-lg font-semibold tabular-nums', tone)}>
               {sign}
-              {stock.changePct.toFixed(2)}%
+              {displayChangePct.toFixed(2)}%
             </div>
             <div className="mt-0.5 text-[11px] text-slate-500">
               <Calendar size={10} className="mr-1 inline" />

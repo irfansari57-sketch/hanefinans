@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Calculator, Shield, Target, Lock, Sparkles } from 'lucide-react';
 import { useAuth, isPro } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { NumberField } from '@/components/ui/NumberField';
 
 interface PositionSizerProps {
   symbol: string;
@@ -111,42 +112,35 @@ export function PositionSizer({ symbol: _symbol, currentPrice, support, resistan
       </h3>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-slate-500">Sermaye (₺)</label>
-          <input
-            type="number"
-            className="input mt-1"
-            value={capital}
-            onChange={(e) => setCapital(parseFloat(e.target.value) || 0)}
-            min={0}
-            step={1000}
-          />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-slate-500">Risk %</label>
-          <input
-            type="number"
-            className="input mt-1"
-            value={riskPct}
-            onChange={(e) => setRiskPct(parseFloat(e.target.value) || 0)}
-            min={0.1}
-            max={10}
-            step={0.5}
-          />
-        </div>
-        <div>
-          <label className="text-[10px] uppercase tracking-wider text-slate-500">
-            Stop Fiyatı (₺) {support && <span className="text-success">— Destek: {support.toFixed(2)}</span>}
-          </label>
-          <input
-            type="number"
-            className="input mt-1"
-            value={stopPrice.toFixed(2)}
-            onChange={(e) => setStopPrice(parseFloat(e.target.value) || 0)}
-            min={0}
-            step={0.1}
-          />
-        </div>
+        <NumberField
+          label="Sermaye"
+          suffix="₺"
+          value={capital}
+          onChange={setCapital}
+          min={0}
+          max={1_000_000_000}
+          step={1000}
+        />
+        <NumberField
+          label="Risk"
+          suffix="%"
+          value={riskPct}
+          onChange={setRiskPct}
+          min={0.1}
+          max={10}
+          step={0.5}
+          decimals={2}
+        />
+        <NumberField
+          label={`Stop Fiyatı${support ? ` — Destek: ${support.toFixed(2)}` : ''}`}
+          suffix="₺"
+          value={stopPrice}
+          onChange={setStopPrice}
+          min={0}
+          max={1_000_000}
+          step={0.1}
+          decimals={2}
+        />
       </div>
 
       {!calc ? (

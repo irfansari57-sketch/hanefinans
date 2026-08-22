@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { TRTextNumberInput } from '@/components/ui/NumberField';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { toast } from '@/components/ui/Toast';
 import { db, type PortfolioPosition } from '@/data/db';
@@ -752,24 +753,18 @@ function EditPositionForm({ position, currentPrice, name, onClose }: {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Lot Adedi">
-          <input
+          <TRTextNumberInput
             className="input"
-            type="number"
             value={lot}
-            onChange={(e) => setLot(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setLot}
             autoFocus
           />
         </Field>
         <Field label="Ortalama Maliyet (₺)">
-          <input
+          <TRTextNumberInput
             className="input"
-            type="number"
             value={avgPrice}
-            onChange={(e) => setAvgPrice(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setAvgPrice}
           />
         </Field>
       </div>
@@ -942,25 +937,19 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Lot Adedi">
-          <input
+          <TRTextNumberInput
             className="input"
-            type="number"
-            placeholder="100"
             value={lot}
-            onChange={(e) => setLot(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setLot}
+            placeholder="100"
           />
         </Field>
         <Field label="Ortalama Maliyet (₺)">
-          <input
+          <TRTextNumberInput
             className="input"
-            type="number"
-            placeholder="285.50"
             value={avgPrice}
-            onChange={(e) => setAvgPrice(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setAvgPrice}
+            placeholder="285,50"
           />
         </Field>
       </div>

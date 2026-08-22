@@ -45,6 +45,7 @@ async function syncFundsFromCloud(): Promise<void> {
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { TRTextNumberInput } from '@/components/ui/NumberField';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from '@/components/ui/Toast';
@@ -539,24 +540,18 @@ function EditFundForm({ position, currentNav, fundName, onClose }: {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Pay Adedi">
-          <input
+          <TRTextNumberInput
             className="input"
-            type="number"
             value={lot}
-            onChange={(e) => setLot(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setLot}
             autoFocus
           />
         </Field>
         <Field label="Ortalama NAV (₺/pay)">
-          <input
+          <TRTextNumberInput
             className="input"
-            type="number"
             value={avgPrice}
-            onChange={(e) => setAvgPrice(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setAvgPrice}
           />
         </Field>
       </div>
@@ -757,29 +752,23 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Pay Adedi" hint="Fraksiyonel kabul edilir (ör. 1234.56)">
-          <input
+        <Field label="Pay Adedi" hint="Fraksiyonel kabul edilir (ör. 1.234,56)">
+          <TRTextNumberInput
             className="input"
-            type="number"
-            placeholder="1000"
             value={lot}
-            onChange={(e) => setLot(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setLot}
+            placeholder="1.000"
           />
         </Field>
         <Field
           label="Ortalama NAV (₺/pay)"
           hint={selectedFund?.nav ? `Bugunki NAV: ${selectedFund.nav.toFixed(4)}₺ (otomatik dolduruldu)` : undefined}
         >
-          <input
+          <TRTextNumberInput
             className="input"
-            type="number"
-            placeholder={selectedFund?.nav ? selectedFund.nav.toFixed(4) : '2.85'}
             value={avgPrice}
-            onChange={(e) => setAvgPrice(e.target.value)}
-            min="0"
-            step="any"
+            onChange={setAvgPrice}
+            placeholder={selectedFund?.nav ? selectedFund.nav.toFixed(4) : '2,85'}
           />
         </Field>
       </div>

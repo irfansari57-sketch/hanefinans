@@ -3,6 +3,7 @@ import { Bell, Crown, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Modal } from '@/components/ui/Modal';
 import { Field } from '@/components/ui/Field';
+import { TRTextNumberInput } from '@/components/ui/NumberField';
 import { createAlert } from '@/data/api/alertsClient';
 import { useAuth } from '@/store/auth';
 import { toast } from '@/components/ui/Toast';
@@ -129,14 +130,12 @@ export function AlertButton({ stock, fund, asset, size = 13, variant = 'inline' 
             </div>
           </Field>
           <Field label={`Eşik (${unitLabel})`}>
-            <input
-              type="number"
-              inputMode="decimal"
-              step={priceDecimals === 4 ? '0.0001' : '0.01'}
+            <TRTextNumberInput
               className="input"
               value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
+              onChange={setThreshold}
               autoFocus
+              decimals={priceDecimals === 4 ? 4 : 2}
             />
           </Field>
           <Field label="Not (opsiyonel)">

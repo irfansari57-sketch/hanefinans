@@ -287,15 +287,10 @@ export function BESCalculator() {
                   <label className="block text-[10px] uppercase tracking-wider text-slate-500">
                     {s.label} (reel % / yıl)
                   </label>
-                  <input
-                    type="number"
+                  <ScenarioRateInput
                     value={editRates ? rates[s.key as keyof typeof rates] : s.rate * 100}
                     disabled={!editRates}
-                    min={-5} max={20} step={0.5}
-                    onChange={(e) =>
-                      setRates((r) => ({ ...r, [s.key]: parseFloat(e.target.value) || 0 }))
-                    }
-                    className="input mt-1 text-sm py-1 px-2 disabled:opacity-60"
+                    onChange={(v) => setRates((r) => ({ ...r, [s.key]: v }))}
                   />
                 </div>
               ))}
@@ -374,36 +369,103 @@ export function BESCalculator() {
   );
 }
 
+/** Senaryo oran girişi — TR formatlı, focus'ta select-all. */
+function ScenarioRateInput({
+  value, disabled, onChange,
+}: { value: number; disabled?: boolean; onChange: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>('');
+  const displayValue = editing ? draft : value.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={displayValue}
+      disabled={disabled}
+      onFocus={(e) => {
+        if (disabled) return;
+        setEditing(true);
+        setDraft(value.toString().replace('.', ','));
+        requestAnimationFrame(() => e.target.select());
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setDraft(raw);
+        const cleaned = raw.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+        const v = parseFloat(cleaned);
+        if (Number.isFinite(v)) onChange(Math.max(-5, Math.min(20, v)));
+      }}
+      onBlur={() => {
+        setEditing(false);
+        setDraft('');
+      }}
+      className="input mt-1 text-sm py-1 px-2 disabled:opacity-60 tabular-nums"
+    />
+  );
+}
+
+/** TR yerel format helper'lar — kredi/mevduat hesaplayicilariyla ayni davranis. */
+function formatDisplayTR(value: number, decimals: number = 0): string {
+  if (!Number.isFinite(value)) return '';
+  return value.toLocaleString('tr-TR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+function parseTRNumber(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+  const v = parseFloat(cleaned);
+  return Number.isFinite(v) ? v : null;
+}
+
 function NumberField({
-  label, value, min, max, step, suffix, onChange,
+  label, value, min, max, step, suffix, onChange, decimals = 0,
 }: {
   label: string; value: number; min?: number; max?: number; step?: number;
-  suffix?: string; onChange: (v: number) => void;
+  suffix?: string; onChange: (v: number) => void; decimals?: number;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>('');
+  const displayValue = editing ? draft : formatDisplayTR(value, decimals);
+  const clamp = (v: number) => Math.max(min ?? -Infinity, Math.min(max ?? Infinity, v));
+
   return (
     <div>
       <label className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500">
         {label}
-        {suffix && <span className="font-mono text-accent">{value.toLocaleString('tr-TR')} {suffix}</span>}
+        {suffix && <span className="font-mono text-accent">{formatDisplayTR(value, decimals)} {suffix}</span>}
       </label>
       <div className="mt-1 flex items-center gap-1">
         <button
           type="button"
-          onClick={() => onChange(Math.max(min ?? 0, value - (step ?? 1)))}
+          onClick={() => onChange(clamp(value - (step ?? 1)))}
           className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-bg-card text-slate-300 hover:border-accent/40 hover:text-accent"
         >−</button>
         <input
-          type="number"
-          value={value}
-          min={min}
-          max={max}
-          step={step}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="input text-sm py-1 px-2 text-center"
+          type="text"
+          inputMode="decimal"
+          value={displayValue}
+          onFocus={(e) => {
+            setEditing(true);
+            setDraft(value.toString().replace('.', ','));
+            requestAnimationFrame(() => e.target.select());
+          }}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            const parsed = parseTRNumber(raw);
+            if (parsed != null) onChange(clamp(parsed));
+          }}
+          onBlur={() => {
+            setEditing(false);
+            setDraft('');
+          }}
+          className="input text-sm py-1 px-2 text-center tabular-nums"
         />
         <button
           type="button"
-          onClick={() => onChange(max != null ? Math.min(max, value + (step ?? 1)) : value + (step ?? 1))}
+          onClick={() => onChange(clamp(value + (step ?? 1)))}
           className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-bg-card text-slate-300 hover:border-accent/40 hover:text-accent"
         >+</button>
       </div>
@@ -417,11 +479,15 @@ function PercentField({
   label: string; value: number; min: number; max: number; step: number;
   hint?: string; onChange: (v: number) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>('');
+  const clamp = (v: number) => Math.max(min, Math.min(max, v));
+  const displayValue = editing ? draft : formatDisplayTR(value, 2);
   return (
     <div>
       <label className="flex items-center justify-between text-[11px] font-medium text-slate-300">
         {label}
-        <span className="font-mono text-accent">%{value.toFixed(2)}</span>
+        <span className="font-mono text-accent">%{formatDisplayTR(value, 2)}</span>
       </label>
       <input
         type="range"
@@ -433,11 +499,25 @@ function PercentField({
       <div className="flex items-center justify-between text-[10px] text-slate-500">
         <span>%{min}</span>
         <input
-          type="number"
-          value={value}
-          min={min} max={max} step={step}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="input text-xs w-20 text-right py-1 px-2"
+          type="text"
+          inputMode="decimal"
+          value={displayValue}
+          onFocus={(e) => {
+            setEditing(true);
+            setDraft(value.toString().replace('.', ','));
+            requestAnimationFrame(() => e.target.select());
+          }}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            const parsed = parseTRNumber(raw);
+            if (parsed != null) onChange(clamp(parsed));
+          }}
+          onBlur={() => {
+            setEditing(false);
+            setDraft('');
+          }}
+          className="input text-xs w-20 text-right py-1 px-2 tabular-nums"
         />
         <span>%{max}</span>
       </div>

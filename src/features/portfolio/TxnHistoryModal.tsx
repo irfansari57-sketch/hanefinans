@@ -7,6 +7,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Trash2, Calendar, History, Pencil, Check, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { TRTextNumberInput } from '@/components/ui/NumberField';
 import { toast } from '@/components/ui/Toast';
 import { db, type PortfolioPosition, type PortfolioTxn } from '@/data/db';
 import { formatMoney } from '@/lib/format';
@@ -215,22 +216,17 @@ export function TxnHistoryModal({ position, onClose }: Props) {
                             />
                           </td>
                           <td className="px-2 py-1.5">
-                            <input
-                              type="number"
+                            <TRTextNumberInput
                               className="input text-[11px] py-1 px-2 text-right tabular-nums"
                               value={editLot}
-                              onChange={(e) => setEditLot(e.target.value)}
-                              step="any"
+                              onChange={setEditLot}
                             />
                           </td>
                           <td className="px-2 py-1.5">
-                            <input
-                              type="number"
+                            <TRTextNumberInput
                               className="input text-[11px] py-1 px-2 text-right tabular-nums"
                               value={editPrice}
-                              onChange={(e) => setEditPrice(e.target.value)}
-                              step="any"
-                              min="0"
+                              onChange={setEditPrice}
                             />
                           </td>
                           <td className="px-3 py-1.5 text-right tabular-nums text-slate-300 text-[11px]">

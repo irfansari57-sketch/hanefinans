@@ -103,6 +103,7 @@ const navGroups: NavGroup[] = [
     title: 'Hesap',
     items: [
       { to: '/uyelik', label: 'Üyelik', icon: BadgeCheck },
+      { to: '/admin/data-quality', label: 'Data Quality', icon: Shield, adminOnly: true },
       { to: '/history', label: 'Geçmiş', icon: History, adminOnly: true },
       { to: '/settings', label: 'Ayarlar', icon: Settings, adminOnly: true },
     ],

@@ -103,6 +103,7 @@ const ScreenerPage          = lazyWithRetry(() => import('@/features/screener/Sc
 const FinancialLiteracyPage = lazyWithRetry(() => import('@/features/literacy/FinancialLiteracyPage').then((m) => ({ default: m.FinancialLiteracyPage })));
 const MembershipPage        = lazyWithRetry(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
 const SettingsPage          = lazyWithRetry(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const DataQualityPage       = lazyWithRetry(() => import('@/features/admin/DataQualityPage').then((m) => ({ default: m.DataQualityPage })));
 const AlertsPage            = lazyWithRetry(() => import('@/features/alerts/AlertsPage').then((m) => ({ default: m.AlertsPage })));
 const PredictionsPage       = lazyWithRetry(() => import('@/features/predictions/PredictionsPage').then((m) => ({ default: m.PredictionsPage })));
 const AdBannerPreviewPage   = lazyWithRetry(() => import('@/features/preview/AdBannerPreviewPage').then((m) => ({ default: m.AdBannerPreviewPage })));
@@ -160,6 +161,7 @@ export const router = createBrowserRouter([
       // Akilli Sorgu: aiForAllUsers kapali iken sadece admin. Acilirken FEATURES.smartQuery ile herkese.
       { path: 'sorgu', element: FEATURES.smartQuery ? withSuspense(<ScreenerPage />) : <AdminGate>{withSuspense(<ScreenerPage />)}</AdminGate> },
       { path: 'settings', element: withSuspense(<SettingsPage />) },
+      { path: 'admin/data-quality', element: <AdminGate>{withSuspense(<DataQualityPage />)}</AdminGate> },
       { path: 'preview/ad-banner', element: withSuspense(<AdBannerPreviewPage />) },
       { path: 'auth/login', element: withSuspense(<LoginPage />) },
       { path: 'auth/signup', element: withSuspense(<SignupPage />) },

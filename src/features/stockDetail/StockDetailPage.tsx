@@ -34,6 +34,8 @@ import { MOCK_STOCKS } from '@/data/mock';
 import { findUsStock } from '@/data/usStocks';
 import { findBistStock } from '@/data/bistAll';
 import { formatMoney, formatNumber, formatCompact } from '@/lib/format';
+import { validateStockQuote, dqLog } from '@/lib/dataQuality';
+import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { formatRelative, formatDateTR } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { kapDetailUrl } from '@/data/kapSlugs';
@@ -235,24 +237,22 @@ export function StockDetailPage() {
 
   const sparklineData = historical ? historical.closes.slice(-30).map((c) => c.close) : [];
 
-  // GUVENILIRLIK: snapshot Yahoo quote intraday'de yanlis prev close/adjusted-close verebilir
-  // (sermaye artirim, kupon kesintisi, split sonrasi). Historical bars.close ise adjusted &
-  // temiz. Historical varsa fiyat ve gunluk % icin historical + period 1G'yi kullan.
-  //
-  // Not: |snapshot - period1G| > 5% ise snapshot bozuk demektir (BIST tavan %10 zaten).
+  // GUVENILIRLIK: merkezi data quality lib'i kullan — snapshot cross-check + auto-correct.
   const histLast = historical?.bars.at(-1)?.close;
   const period1g = returns['1g'];
-  let displayPrice = stock.price;
-  let displayChangePct = stock.changePct;
-  if (histLast != null && histLast > 0 && Number.isFinite(period1g)) {
-    const snapDeviation = Math.abs(stock.changePct - (period1g as number));
-    const priceDeviation = stock.price > 0 ? Math.abs((stock.price - histLast) / histLast) * 100 : 0;
-    if (snapDeviation > 5 || priceDeviation > 3) {
-      // Snapshot gerçekten sapıyor — historical'i tercih et
-      displayPrice = histLast;
-      displayChangePct = period1g as number;
-    }
-  }
+  const dq = validateStockQuote({
+    symbol: stock.symbol,
+    price: stock.price,
+    changePct: stock.changePct,
+    updatedAt: stock.updatedAt ? +new Date(stock.updatedAt) : undefined,
+    histLastClose: histLast,
+    period1G: period1g,
+  }, isUs);
+  // Telemetriye kaydet (sadece uyari/duzeltme varsa yazilir)
+  dqLog('stock-quote', stock.symbol, dq);
+
+  const displayPrice = dq.corrected?.price ?? stock.price;
+  const displayChangePct = dq.corrected?.changePct ?? stock.changePct;
   const tone = displayChangePct >= 0 ? 'text-success' : 'text-danger';
   const sign = displayChangePct >= 0 ? '+' : '';
 
@@ -349,9 +349,9 @@ export function StockDetailPage() {
                 />
               )}
             </div>
-            <div className={cn('mt-1 text-lg font-semibold tabular-nums', tone)}>
-              {sign}
-              {displayChangePct.toFixed(2)}%
+            <div className={cn('mt-1 flex items-center justify-end gap-2 text-lg font-semibold tabular-nums', tone)}>
+              <span>{sign}{displayChangePct.toFixed(2)}%</span>
+              <ConfidenceBadge dq={dq} compact />
             </div>
             <div className="mt-0.5 text-[11px] text-slate-500">
               <Calendar size={10} className="mr-1 inline" />

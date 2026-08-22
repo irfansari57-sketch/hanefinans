@@ -1,6 +1,66 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
-> Son guncelleme: 21 Agustos 2026 — Panel takvim yeniden dizilim + Temettu widget + TopMovers outlier + Haber filtresi
+> Son guncelleme: 22 Agustos 2026 — Data Quality sistemi (4 katman) + snapshot stale detection + weekday-aware filter
+
+## SON SEANSTA YAPILANLAR (2026-08-22)
+
+### 4 Katmanli Data Quality Sistemi
+1. **`src/lib/dataQuality.ts`** — merkezi validator: `validateStockQuote`, `validateFundData`, `computeConfidence`, `dqLog` (24h telemetri).
+2. **`src/components/ui/ConfidenceBadge.tsx`** — renkli dot + hover tooltip; StockDetailPage'e entegre.
+3. **Admin Dashboard `/admin/data-quality`** — backend feed sağlığı + 24h client telemetri + sorunlu semboller + son 50 event.
+4. **Backend health `/api/health/data-quality`** + GitHub Actions cron (09:30/12:30/15:30 TR, Pzt-Cum) + fail'de GitHub Issue.
+
+### Snapshot Stale Detection (BIMAS bug fix)
+- **Sorun**: Yahoo canlı 416.50 (+1.34%), bizim snapshot 410.75 (+9.61%) çünkü D1 warmer BIMAS için stale.
+- **Fix 1 (`lib/dataQuality.ts`)**: snapshot ve historical yaşını karşılaştır. Snapshot 20h+ daha eski ise historical'a güven; historical eski ise (hafta sonu) snapshot'a güven.
+- **Fix 2 (`data/services.ts` loadStocks)**: weekday-aware staleness (Pzt 72h / Sal-Cum 20h / Cts 30h / Pzr 54h). Stale/outlier snapshot atlanır, Yahoo direct fallback devreye girer.
+- **Fix 3 (`warm-historical.yml`)**: Cuma 20:15 yedek + Pazartesi 08:30 pre-market yedek eklendi. Hafta sonu cron yok (piyasa kapalı).
+
+### TR Sayı Formatı Yaygınlaştırma
+- `src/components/ui/NumberField.tsx` — `NumberField` + `TRTextNumberInput` reusable component.
+- Uygulanan sayfalar: BESCalculator (yaş/emeklilik/aylık katkı/başlangıç + oranlar + senaryolar), PositionSizer, PortfolioPage (2 yerde), FundsPanel (2 yerde), TxnHistoryModal, AlertButton, PriceField.
+- Format: focus'ta select-all + raw düzenleme, blur'da TR format (1.234.567,89).
+
+### Sag Panel Yeniden Dizilim
+- BrandingBlock + HaneModAdBanner (Resmi YouTube) → sağ panelin en üstüne, Gündem & Haberler'in üzerine.
+- Sol sidebar'dan aynı bloklar kaldırıldı (mobil'de kaldı).
+
+### Ekonomik + Temettu Takvimi Panel Layout
+- Panel'de Piyasa Özeti altına yan yana widget (Ekonomik Takvim + yeni Temettu Takvimi).
+- Ekonomik Takvim sağ panelden kaldırıldı.
+- Ekonomik Takvim'e 30+ yeni ABD event (NFP, TÜFE, PCE, ISM PMI, JOLTS, FOMC, Jackson Hole, tahvil ihaleleri).
+- `src/data/dividendCalendar.ts` (15 BIST temettu) + `DividendCalendarWidget.tsx`.
+
+### Diğer İyileştirmeler
+- Hakkında navı Oyunlarım altına
+- "PRO'ya Yükselt" → "Ücretsiz Üye Ol" (5 sayfa)
+- Fonlar 3ay/6ay/YTD/1Y CAGR fallback (tefasGithub.ts)
+- Haber akışı filter: piyango/loto/spor toto/magazin/spor maçı/astroloji/lifestyle içerik reg-ex ile filtrele
+- TopMovers %11 outlier filter (BIST tavan)
+- StockDetailPage snapshot cross-check fix (ZGYO -10.38% → -%2.45)
+
+---
+
+## SONRAKI SEANS PRIORITE
+
+### 🔴 KRITIK: Yahoo Warmer Debug
+- **BIMAS Aug 21 için warmer neden fail etti?** Cloudflare Worker logs incele (dashboard > workers > hane-finans-yahoo-warmer > logs).
+- Yahoo rate limit? Symbol format hatası? D1 write hatası?
+- Kesin çözüm için warmer'ın her sembolü ayrı ayrı doğrulaması gerekiyor (batch success rate).
+
+### Diğer Öncelikler
+- Akıllı Sorgu HTTP 400 (Task #334) — hâlâ çözülmedi
+- Portfoy PDF Export (Task #331)
+- Portfoy History (Task #332)
+- Temettu Takvimi backend cron + KAP scraper (Task #333 fazı 2)
+- Panel Ticker + Watchlist için de ConfidenceBadge entegrasyonu
+
+### Kullanıcı Yapmalı
+- Google Search Console, GMB, Yandex Webmaster
+- OAuth Google/Apple redirect URL (Task #287)
+
+---
+
 
 ## SON SEANSTA YAPILANLAR (2026-08-21)
 

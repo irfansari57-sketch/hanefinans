@@ -139,19 +139,49 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
   // 1. Snapshot endpoint — tek HTTP isteyle D1 cache'den toplu quote
   const snap = await fetchSnapshot();
   if (snap) {
+    const now = Date.now();
+    // BIST tavan asilmasi ve stale detection için sabitler
+    const BIST_OUTLIER_CAP = 11; // %10 tavan + %1 tolerans
+    // Staleness: gün cinsinden hafta gününe göre kabul edilebilir maksimum yaş.
+    // - Pazartesi (1): 3 gün (Cuma kapanış geçerli)
+    // - Salı-Cuma (2-5): 20 saat (bir önceki iş günü kapanış = ~14-24h aralığında)
+    // - Cumartesi (6): 30 saat (Cuma 18:10 kapanışı, Cts sabah ~14h+ eski)
+    // - Pazar (0): 54 saat (Cuma 18:10 kapanışı, Pzr sabah ~40h+ eski)
+    const dow = new Date().getDay();
+    const staleHours =
+      dow === 1 ? 72 :     // Pazartesi — Cuma kapanışı geçerli 3 gün
+      dow === 0 ? 54 :     // Pazar — Cuma kapanışı ~42h önce
+      dow === 6 ? 30 :     // Cumartesi — Cuma kapanışı ~16h önce
+      20;                  // Sal-Cum — dünkü kapanış max 20h önce olmalı
+    const STALE_MS = staleHours * 60 * 60 * 1000;
+
     for (const sym of want) {
       const ySym = sym.includes('.') || sym.includes('=') || sym.includes('-') ? sym : `${sym}.IS`;
       const q = snap.quotes[ySym];
-      // STALE FILTER: changePct === 0 && price > 0 -> Yahoo fetchOne fallback'e yonlendir
-      if (q && !(q.changePct === 0 && q.price > 0)) {
-        liveMap.set(sym, {
-          symbol: sym,
-          name: q.name ?? sym,
-          price: q.price,
-          changePct: q.changePct,
-          updatedAt: new Date(q.updatedAt).toISOString(),
-        });
+      if (!q) continue;
+
+      // Filter 1: mock (changePct=0 & price>0)
+      const isMockLike = q.changePct === 0 && q.price > 0;
+      // Filter 2: BIST tavan asilmasi -> bölünme/sermaye artırım yanılgısı
+      const isBistSymbol = ySym.endsWith('.IS');
+      const isOutlier = isBistSymbol && Math.abs(q.changePct) > BIST_OUTLIER_CAP;
+      // Filter 3: staleness — updatedAt > 3 gün eski (hafta sonu tolerans dahil)
+      const age = now - q.updatedAt;
+      const isStale = age > STALE_MS;
+
+      if (isMockLike || isOutlier || isStale) {
+        // Snapshot verisi güvenilir değil — Yahoo direct fetch fallback devrede olsun
+        // (aşağıdaki "missing" listesine düşer)
+        continue;
       }
+
+      liveMap.set(sym, {
+        symbol: sym,
+        name: q.name ?? sym,
+        price: q.price,
+        changePct: q.changePct,
+        updatedAt: new Date(q.updatedAt).toISOString(),
+      });
     }
   }
 

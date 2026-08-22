@@ -9,7 +9,11 @@ name: Warm Historical Cache
 
 on:
   schedule:
-    - cron: '35 15 * * 1-5' # 18:35 TR, worker cron'un 5dk sonrası (yedek)
+    # Hafta içi Pzt-Cum: BIST açık, veri güncel tutulmalı.
+    - cron: '35 15 * * 1-5' # 18:35 TR — kapanış sonrası (worker'ın 5dk yedegi)
+    - cron: '15 17 * * 5'   # 20:15 TR — Cuma özel yedek (Cuma kapanışı garantile)
+    - cron: '30 5 * * 1'    # 08:30 TR — Pazartesi piyasa öncesi yedek
+    # Hafta sonu (Cts/Pzr): BIST kapalı, cron çalıştırmıyoruz — Cuma verisi geçerli.
   workflow_dispatch: # Manuel tetikleme (Actions sekmesi > Run workflow)
 
 jobs:

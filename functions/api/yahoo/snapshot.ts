@@ -232,7 +232,11 @@ function parseYahooBody(body: string, symbolHint?: string): { price: number; cha
     }
 
     const updatedAt = meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now();
-    return { price, changePct, prev, updatedAt, name: meta.shortName ?? meta.longName };
+    // asOf: Yahoo'nun verdigi verinin GERCEK tarihi (regularMarketTime'dan gunun tarihini cikar).
+    // Frontend loadStocks filter buna bakip stale karar verir (updatedAt cron writes'a
+    // eslenebilir → guvenilmez; asOf ise Yahoo'nun claim'i).
+    const asOf = new Date(updatedAt).toISOString().slice(0, 10);
+    return { price, changePct, prev, updatedAt, asOf, name: meta.shortName ?? meta.longName };
   } catch {
     return null;
   }

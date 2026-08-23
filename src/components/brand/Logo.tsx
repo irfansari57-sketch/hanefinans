@@ -119,86 +119,84 @@ function LogoIcon({ size = 40, className }: { size?: number; className?: string 
         </filter>
       </defs>
 
-      {/* Ambient emerald hale */}
-      <circle cx="55" cy="55" r="60" fill="url(#iq-ambient)" />
+      {/* Ambient emerald hale — çerçevede ortalanmış */}
+      <circle cx="60" cy="60" r="55" fill="url(#iq-ambient)" />
 
-      {/* Sparkle yıldızları */}
+      {/* Sparkle yıldızları — köşelerde denk simetri */}
       <g filter="url(#iq-sparkle)">
-        <circle cx="16" cy="24" r="2.2" fill="#4ade80" opacity="0.85" />
-        <circle cx="102" cy="18" r="1.8" fill="#86efac" opacity="0.75" />
-        <circle cx="12" cy="82" r="1.9" fill="#4ade80" opacity="0.7" />
-        <circle cx="106" cy="98" r="2.4" fill="#86efac" opacity="0.8" />
-        <circle cx="94" cy="12" r="1.3" fill="#ffffff" opacity="0.75" />
-        <circle cx="24" cy="104" r="1.4" fill="#ffffff" opacity="0.7" />
-        <circle cx="6" cy="52" r="1.3" fill="#22c55e" opacity="0.65" />
-        <circle cx="114" cy="60" r="1.5" fill="#22c55e" opacity="0.7" />
+        <circle cx="16" cy="20" r="2.0" fill="#4ade80" opacity="0.85" />
+        <circle cx="104" cy="20" r="1.8" fill="#86efac" opacity="0.75" />
+        <circle cx="16" cy="100" r="1.9" fill="#4ade80" opacity="0.7" />
+        <circle cx="104" cy="100" r="2.0" fill="#86efac" opacity="0.8" />
+        <circle cx="60" cy="10" r="1.3" fill="#ffffff" opacity="0.7" />
+        <circle cx="60" cy="112" r="1.3" fill="#ffffff" opacity="0.7" />
+        <circle cx="8" cy="60" r="1.3" fill="#22c55e" opacity="0.65" />
+        <circle cx="112" cy="60" r="1.3" fill="#22c55e" opacity="0.7" />
       </g>
       <g fill="#ffffff" opacity="0.7">
-        <path d="M22 22 L23 18 L24 22 L28 23 L24 24 L23 28 L22 24 L18 23 Z" />
-        <path d="M100 100 L101 96 L102 100 L106 101 L102 102 L101 106 L100 102 L96 101 Z" />
+        <path d="M25 22 L26 18 L27 22 L31 23 L27 24 L26 28 L25 24 L21 23 Z" />
+        <path d="M93 98 L94 94 L95 98 L99 99 L95 100 L94 104 L93 100 L89 99 Z" />
       </g>
 
-      {/* Q halkası — chrome 3D */}
+      {/* Q halkası — chrome 3D, merkez 60,60 */}
       <g filter="url(#iq-outer-glow)">
         <circle
-          cx="55"
-          cy="55"
-          r="34"
+          cx="60"
+          cy="60"
+          r="32"
           fill="none"
           stroke="url(#iq-ring-3d)"
-          strokeWidth="12"
+          strokeWidth="11"
         />
         <circle
-          cx="55"
-          cy="55"
-          r="34"
+          cx="60"
+          cy="60"
+          r="32"
           fill="none"
           stroke="url(#iq-ring-shine)"
-          strokeWidth="12"
+          strokeWidth="11"
         />
         <circle
-          cx="55"
-          cy="55"
-          r="34"
+          cx="60"
+          cy="60"
+          r="32"
           fill="none"
           stroke="url(#iq-ring-inner)"
-          strokeWidth="12"
-          transform="rotate(180 55 55)"
+          strokeWidth="11"
+          transform="rotate(180 60 60)"
         />
       </g>
 
-      {/* Q kuyruğu — sağ alta */}
+      {/* Q kuyruğu — sağ alta simetrik uzunluk */}
       <g filter="url(#iq-outer-glow)">
         <line
-          x1="77"
-          y1="77"
+          x1="80"
+          y1="80"
           x2="102"
           y2="102"
           stroke="url(#iq-ring-3d)"
-          strokeWidth="12"
+          strokeWidth="11"
           strokeLinecap="round"
         />
         <line
-          x1="77"
-          y1="77"
+          x1="80"
+          y1="80"
           x2="102"
           y2="102"
           stroke="url(#iq-ring-shine)"
-          strokeWidth="12"
+          strokeWidth="11"
           strokeLinecap="round"
         />
       </g>
 
-      {/* i noktası glow — arka aura */}
-      <circle cx="55" cy="55" r="14" fill="url(#iq-dot-glow)" />
+      {/* Merkez glow aura */}
+      <circle cx="60" cy="60" r="14" fill="url(#iq-dot-glow)" />
 
-      {/* i noktası — merkez 3D sphere */}
+      {/* Merkez 3D sphere — dot */}
       <g filter="url(#iq-dot-shadow)">
-        <circle cx="55" cy="55" r="8.5" fill="url(#iq-dot-3d)" stroke="#86efac" strokeWidth="0.6" />
-        {/* Highlight — sol üstte beyaz shine */}
-        <ellipse cx="52.5" cy="52" rx="3.5" ry="2.2" fill="#ffffff" opacity="0.75" transform="rotate(-35 52.5 52)" />
-        {/* Tiny bright dot */}
-        <circle cx="54" cy="53" r="0.8" fill="#ffffff" opacity="0.95" />
+        <circle cx="60" cy="60" r="8.5" fill="url(#iq-dot-3d)" stroke="#86efac" strokeWidth="0.6" />
+        <ellipse cx="57.5" cy="57" rx="3.5" ry="2.2" fill="#ffffff" opacity="0.75" transform="rotate(-35 57.5 57)" />
+        <circle cx="59" cy="58" r="0.8" fill="#ffffff" opacity="0.95" />
       </g>
     </svg>
   );

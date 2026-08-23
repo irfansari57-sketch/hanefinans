@@ -260,7 +260,22 @@ export function StocksPage() {
 
   const rows: StockRow[] = useMemo(() => {
     const base = tab === 'watched' ? stocks.filter((s) => watchedSymbols.has(s.symbol)) : stocks;
-    return base.map((s) => ({ ...s, returns: returnsMap[s.symbol] }));
+    return base.map((s) => {
+      const ret = returnsMap[s.symbol];
+      // GUVENILIRLIK: Snapshot changePct (Yahoo quote endpoint prev bug) ile
+      // period 1G (Yahoo historical adjusted closes) uyuşmuyorsa period'u tercih et.
+      // BIMAS gibi hisselerde snapshot yanlış prev close alıp +9% gibi sahte
+      // günlük hareket üretiyor; period 1G daima closes[-1] vs closes[-2] hesabı.
+      let displayChangePct = s.changePct;
+      const p1g = ret?.['1g'];
+      if (p1g != null && Number.isFinite(p1g) && Number.isFinite(s.changePct)) {
+        const dev = Math.abs(s.changePct - p1g);
+        if (dev > 3) {
+          displayChangePct = p1g;
+        }
+      }
+      return { ...s, changePct: displayChangePct, returns: ret };
+    });
   }, [stocks, returnsMap, tab, watchedSymbols]);
 
   const filtered = useMemo(() => {

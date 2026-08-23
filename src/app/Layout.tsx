@@ -367,12 +367,15 @@ export function Layout() {
           <Link to="/panel" className="md:hidden inline-flex items-center gap-2">
             <img
               src="/web-app-manifest-192x192.png?v=2"
-              alt="InvestLiq"
+              alt="InvestliQ"
               width={36}
               height={36}
               className="h-9 w-9 rounded-lg shadow-md"
             />
-            <span className="font-bold text-sm tracking-tight">InvestLiq</span>
+            <span className="font-black text-sm tracking-tight">
+              <span className="text-slate-900 dark:text-slate-100">Investli</span>
+              <span className="text-emerald-500 dark:text-emerald-400">Q</span>
+            </span>
           </Link>
 
           <div className="relative flex-1 max-w-xl">

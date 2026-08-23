@@ -20,7 +20,7 @@ import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { DividendCalendarWidget } from '@/components/domain/DividendCalendarWidget';
 import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
-import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight, Briefcase } from 'lucide-react';
+import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight, Briefcase, CalendarClock } from 'lucide-react';
 import { readRiskProfile } from '@/lib/riskProfile';
 import { PortfolioPanelSummary } from './PortfolioPanelSummary';
 import { PortfolioHealthPanel } from './PortfolioHealthPanel';
@@ -299,10 +299,8 @@ export function PanelPage() {
     <>
       <SeoHead title="Panel" description="BIST endeksleri, takip listeniz, fonlar, kripto ve makro göstergelerin canlı özet panosu." path="/panel" />
 
-      {/* Live ticker — sayfanın en üstünde */}
-      <div className="mb-3">
-        <Ticker stocks={tickerStocks} speed={65} />
-      </div>
+      {/* Live ticker geçici olarak kaldırıldı — snapshot cache tutarsızlığından
+          dolayı yanlış getiri gösteriyordu. Yerine daha güvenilir Son Dakika bandı öne alındı. */}
 
       {/* Son Dakika haber bandı — önem >= 5 ve son 48 saatteki haberler.
           Filtreyi gevşek tutuyoruz ki band her zaman görünür olsun;
@@ -371,11 +369,18 @@ export function PanelPage() {
         )}
       </PinnableAccordion>
 
-      {/* Ekonomik Takvim + Temettü Takvimi — yan yana (mobilde alt alta) */}
-      <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <EconomicCalendarWidget compact maxItems={6} daysAhead={30} collapsible={false} />
-        <DividendCalendarWidget compact maxItems={6} daysAhead={90} />
-      </div>
+      {/* Ekonomik + Temettü Takvimi — akordiyon, default kapalı (kompakt) */}
+      <PinnableAccordion
+        id="panel-calendars"
+        title="Ekonomik & Temettü Takvimi"
+        icon={<CalendarClock size={16} />}
+        iconColorClass="bg-accent/15 text-accent"
+      >
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <EconomicCalendarWidget compact maxItems={6} daysAhead={30} collapsible={false} />
+          <DividendCalendarWidget compact maxItems={6} daysAhead={90} />
+        </div>
+      </PinnableAccordion>
 
       {/* Top movers — hisseler (pin'lenebilir, her ekranda aç/kapa) */}
       <details

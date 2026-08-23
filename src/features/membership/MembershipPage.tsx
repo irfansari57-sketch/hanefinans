@@ -10,6 +10,7 @@ import { useAuth, isPro, isAdmin } from '@/store/auth';
 import { usePricing } from '@/store/pricing';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { FEATURES } from '@/lib/featureFlags';
 
 interface Plan {
   tier: 'free' | 'pro' | 'elite';
@@ -191,6 +192,32 @@ export function MembershipPage() {
     setConfirmCancel(false);
     setTimeout(() => setMessage(null), 4000);
   };
+
+  // Paywall kapalıysa — sadece basit "tüm özellikler açık" mesajı göster.
+  // Plan grid, fiyatlandırma, upgrade akışı — hepsi gizli.
+  if (!FEATURES.paywallEnabled) {
+    return (
+      <>
+        <SeoHead title="Üyelik" description="InvestLiq'te tüm özellikler tüm üyelere açık." path="/uyelik" />
+        <PageHeader
+          title="Üyelik"
+          subtitle="InvestLiq'te tüm özellikler tüm üyelere açık — planlama, öneriler, portföy, alarmlar."
+        />
+        <div className="glass-card p-8 text-center">
+          <Sparkles size={32} className="mx-auto text-accent" />
+          <h2 className="mt-3 text-xl font-semibold text-slate-100">Tüm özellikler açık</h2>
+          <p className="mt-2 text-sm text-slate-400 max-w-lg mx-auto">
+            Ücretli üyelik tarifelerimiz henüz devrede değil. Tüm platform özelliklerinden
+            (fon havuzu, hisse önerileri, portföy takibi, alarmlar, ekonomik takvim, risk profili,
+            tüm liste sayfaları) sınırsız yararlanabilirsin.
+          </p>
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-success/15 px-3 py-1 text-xs font-medium text-success">
+            <Check size={12} /> Hesabın aktif — teşekkürler
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

@@ -31,20 +31,19 @@ export function PwaInstallBanner() {
     } catch { /* localStorage yoksa */ }
   }, [location.pathname]);
 
+  // Otomatik banner KAPALI — kullanıcı geri bildirimi: "site açan yeni kullanıcılara
+  // default gelmesin. Kullanıcı yüklemek isterse manuel ekleyebilsin."
+  // Manuel tetikleme: Ayarlar > "Uygulama Olarak Yükle" veya window.dispatchEvent(new Event('investliq:show-pwa-banner')).
   useEffect(() => {
-    if (!thresholdMet) return;
-    if (pwaState.isStandalone) return;
-    const dismissedAt = Number(localStorage.getItem(DISMISSED_KEY) ?? 0);
-    if (Date.now() - dismissedAt < DISMISS_TTL_MS) return;
-
-    if (pwaState.isIos) {
-      const t = setTimeout(() => setVisible(true), 4000);
-      return () => clearTimeout(t);
-    }
-    if (pwaState.canInstallNative) {
+    const handler = () => {
+      if (pwaState.isStandalone) return;
       setVisible(true);
-    }
-  }, [thresholdMet, pwaState]);
+    };
+    window.addEventListener('investliq:show-pwa-banner', handler);
+    return () => window.removeEventListener('investliq:show-pwa-banner', handler);
+  }, [pwaState.isStandalone]);
+  // thresholdMet & MIN_VISITS artik kullanilmiyor ama gelecekte opt-in banner icin tutuluyor.
+  void thresholdMet;
 
   const dismiss = () => {
     localStorage.setItem(DISMISSED_KEY, String(Date.now()));

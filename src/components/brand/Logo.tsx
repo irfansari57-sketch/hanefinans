@@ -16,16 +16,18 @@ interface LogoProps {
  */
 export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
   if (variant === 'full') {
+    // Wordmark: "Investli" + büyük yeşil "Q" (logo ikonuyla eşleşen).
+    // Tagline büyük harfle, cyan/turkuaz vurgu.
     return (
-      <div className={cn('inline-flex flex-col items-center gap-1', className)}>
+      <div className={cn('inline-flex flex-col items-center gap-1.5', className)}>
         <LogoIcon size={size} />
         <div className="flex flex-col items-center leading-tight">
-          <span className="text-base font-extrabold tracking-tight">
-            <span className="text-slate-900 dark:text-slate-100">Invest</span>
-            <span className="text-emerald-600 dark:text-emerald-400">Liq</span>
+          <span className="text-lg font-black tracking-tight flex items-baseline">
+            <span className="text-slate-900 dark:text-slate-100">Investli</span>
+            <span className="text-emerald-500 dark:text-emerald-400 text-xl">Q</span>
           </span>
-          <span className="mt-0.5 text-[10px] tracking-[0.14em] font-semibold uppercase text-slate-600 dark:text-accent/85">
-            Yatırımcılar İçin Akıllı Veri Platformu
+          <span className="mt-1 text-[9px] tracking-[0.18em] font-bold uppercase text-cyan-600 dark:text-cyan-400 text-center leading-relaxed">
+            Yatırımcılar İçin<br />Akıllı Veri Platformu
           </span>
         </div>
       </div>

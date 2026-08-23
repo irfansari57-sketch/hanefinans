@@ -210,7 +210,7 @@ export function GlobalPage() {
             <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
               <Lock size={28} />
             </span>
-            <h2 className="mt-4 text-xl font-bold text-slate-100">Global Piyasalar PRO Üyelere Özel</h2>
+            <h2 className="mt-4 text-xl font-bold text-slate-100">Global Piyasalar Üyelere Özel</h2>
             <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
               ABD/Avrupa/Asya endeksleri, Brent, WTI, Altın, Gümüş, VIX, DXY, ABD 10Y faiz ve Türkiye 5Y CDS — global piyasayı tek bakışta izle.
             </p>
@@ -221,7 +221,7 @@ export function GlobalPage() {
               <Sparkles size={14} /> Ücretsiz Üye Ol
             </Link>
             <p className="mt-3 text-[11px] text-slate-500">
-              PRO ile ek: ABD Borsaları, Heat Map, AI hisse/portföy analizi, reklamsız panel.
+              Ücretsiz üyelikle ek: ABD Borsaları, Heat Map, AI hisse/portföy analizi, reklamsız panel.
             </p>
           </div>
         </div>

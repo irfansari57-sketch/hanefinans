@@ -213,7 +213,7 @@ export function UsMarketsPage() {
             <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
               <Lock size={28} />
             </span>
-            <h2 className="mt-4 text-xl font-bold text-slate-100">ABD Borsaları PRO Üyelere Özel</h2>
+            <h2 className="mt-4 text-xl font-bold text-slate-100">ABD Borsaları Üyelere Özel</h2>
             <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
               S&P 500, Dow, NASDAQ endeksleri + 20 gelecek vaad eden ABD hissesi (NVDA, AAPL, MSFT, TSLA, AMD…) — multi-timeframe trend analiziyle birlikte.
             </p>
@@ -224,7 +224,7 @@ export function UsMarketsPage() {
               <Sparkles size={14} /> Ücretsiz Üye Ol
             </Link>
             <p className="mt-3 text-[11px] text-slate-500">
-              PRO ile ek: Global Piyasalar, Heat Map, AI hisse/portföy analizi, reklamsız panel.
+              Ücretsiz üyelikle ek: Global Piyasalar, Heat Map, AI hisse/portföy analizi, reklamsız panel.
             </p>
           </div>
         </div>

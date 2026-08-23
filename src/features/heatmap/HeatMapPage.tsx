@@ -127,7 +127,7 @@ export function HeatMapPage() {
             <span className="inline-flex items-center justify-center rounded-full bg-warning/15 p-4 text-warning">
               <Lock size={28} />
             </span>
-            <h2 className="mt-4 text-xl font-bold text-slate-100">Heat Map PRO Üyelere Özel</h2>
+            <h2 className="mt-4 text-xl font-bold text-slate-100">Heat Map Üyelere Özel</h2>
             <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
               BIST 50+ hisseyi sektör bazlı, canlı renkli sıcaklık haritasıyla tek bakışta gör. Piyasanın nabzını saniyeler içinde anla.
             </p>
@@ -138,7 +138,7 @@ export function HeatMapPage() {
               <Sparkles size={14} /> Ücretsiz Üye Ol
             </Link>
             <p className="mt-3 text-[11px] text-slate-500">
-              PRO ile ek olarak: 4H + Günlük trend analizi, AI hisse analizi, AI portföy raporu, reklamsız deneyim.
+              Ücretsiz üyelikle ek: 4H + Günlük trend analizi, AI hisse analizi, AI portföy raporu, reklamsız deneyim.
             </p>
           </div>
         </div>

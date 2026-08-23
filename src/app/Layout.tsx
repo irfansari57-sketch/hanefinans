@@ -365,9 +365,14 @@ export function Layout() {
           </button>
 
           <Link to="/panel" className="md:hidden inline-flex items-center">
-            <span className="font-black text-base tracking-tight">
+            <span className="font-black text-base tracking-tight flex items-baseline">
               <span className="text-slate-900 dark:text-slate-100">Investli</span>
-              <span className="text-emerald-400">Q</span>
+              <span
+                className="bg-gradient-to-br from-cyan-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent"
+                style={{ WebkitTextFillColor: 'transparent' }}
+              >
+                Q
+              </span>
             </span>
           </Link>
 

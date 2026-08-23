@@ -232,17 +232,28 @@ export function FundComparePage() {
             </div>
 
             {(() => {
-              // SVG chart geometry — sabit koordinatlar
-              const CHART_H = 260;
-              const CHART_TOP_PAD = 30;  // etiketler için üstte boşluk
-              const CHART_BOTTOM_PAD = 40; // period label için altta
-              const BAR_AREA_H = CHART_H - CHART_TOP_PAD - CHART_BOTTOM_PAD;
-              const PERIOD_W = 100;
-              const BAR_W = 22;
-              const BAR_GAP = 4;
+              // SVG chart geometry — bar sayisina gore dinamik.
+              // 3+ fon: PERIOD_W ve BAR_W arttir + label stagger uygula ki
+              // "+70.4%" ile "+69.8%" gibi yakin degerler ust uste binmesin.
               const funds = selectedFunds;
-              const groupW = funds.length * BAR_W + (funds.length - 1) * BAR_GAP;
+              const nFunds = funds.length;
+              const CHART_H = 260;
+              // Top padding staggered label icin fazladan yer ac (3 fon: +30, 4 fon: +45)
+              const CHART_TOP_PAD = 30 + Math.max(0, nFunds - 2) * 15;
+              const CHART_BOTTOM_PAD = 40;
+              const BAR_AREA_H = CHART_H - CHART_TOP_PAD - CHART_BOTTOM_PAD;
+              const BAR_W = nFunds <= 2 ? 22 : nFunds === 3 ? 28 : 24;
+              const BAR_GAP = 4;
+              const groupW = nFunds * BAR_W + (nFunds - 1) * BAR_GAP;
+              // Grup toplam genisligine + 30px padding — label'lar cakismasin
+              const PERIOD_W = Math.max(100, groupW + 40);
               const totalW = chartData.length * PERIOD_W;
+              // Label font — daha kucuk fon icin
+              const labelFontSize = nFunds <= 2 ? 10 : nFunds === 3 ? 9 : 8;
+              // Label ondalik — 4+ fon icin tam sayi
+              const labelDecimals = nFunds <= 2 ? 1 : nFunds === 3 ? 1 : 0;
+              // Stagger — her fon icin dikey offset (px). Ust uste binmeyi engeller.
+              const staggerStep = nFunds >= 3 ? 14 : 0;
 
               return (
                 <div className="overflow-x-auto">
@@ -302,19 +313,37 @@ export function FundComparePage() {
                             const barY = CHART_TOP_PAD + BAR_AREA_H - barH;
                             const isPositive = v >= 0;
 
+                            // Dikey stagger: 3+ fonda etiketler yatayda cakisir.
+                            // Her fonu farkli seviyede goster (i * staggerStep).
+                            const labelY = barY - 6 - i * staggerStep;
+
                             return (
                               <g key={f.code}>
-                                {/* Değer etiketi — sütun tepesi */}
+                                {/* Değer etiketi — sütun tepesi (stagger uygulanmis) */}
                                 <text
                                   x={barX + BAR_W / 2}
-                                  y={barY - 6}
+                                  y={labelY}
                                   textAnchor="middle"
                                   fill={isPositive ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)'}
-                                  fontSize="10"
+                                  fontSize={labelFontSize}
                                   fontWeight="700"
                                 >
-                                  {v >= 0 ? '+' : ''}{v.toFixed(1)}%
+                                  {v >= 0 ? '+' : ''}{v.toFixed(labelDecimals)}%
                                 </text>
+                                {/* Bar'i etikete baglayan ince cizgi — hangi bar hangi
+                                    etikete ait okunakli olsun */}
+                                {staggerStep > 0 && (
+                                  <line
+                                    x1={barX + BAR_W / 2}
+                                    y1={labelY + 3}
+                                    x2={barX + BAR_W / 2}
+                                    y2={barY - 2}
+                                    stroke={color}
+                                    strokeWidth="1"
+                                    opacity="0.4"
+                                    strokeDasharray="2,2"
+                                  />
+                                )}
                                 {/* Sütun */}
                                 <rect
                                   x={barX}

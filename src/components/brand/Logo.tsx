@@ -16,23 +16,23 @@ interface LogoProps {
  */
 export function Logo({ size = 40, className, variant = 'icon' }: LogoProps) {
   if (variant === 'full') {
-    // Wordmark: "Investli" + büyük yeşil "Q" (logo ikonuyla eşleşen).
-    // Tagline büyük harfle, cyan/turkuaz vurgu.
+    // Varyant C (kullanici tercihi): logo kucultuldu (~38px), wordmark ortalanip
+    // buyutuldu (text-2xl). Tum elementler dikey merkezde, slogan 2 satir.
     return (
-      <div className={cn('inline-flex flex-col items-center gap-1.5', className)}>
-        <LogoIcon size={size} />
+      <div className={cn('inline-flex flex-col items-center gap-2', className)}>
+        <LogoIcon size={38} />
         <div className="flex flex-col items-center leading-tight">
-          <span className="text-lg font-black tracking-tight flex items-baseline">
+          <span className="text-2xl font-black tracking-tight flex items-baseline">
             <span className="text-slate-900 dark:text-slate-100">Investli</span>
             {/* Q — her iki modda canlı turkuaz-yeşil gradient (cyan → emerald) */}
             <span
-              className="text-xl bg-gradient-to-br from-cyan-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent"
+              className="text-[28px] bg-gradient-to-br from-cyan-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent"
               style={{ WebkitTextFillColor: 'transparent' }}
             >
               Q
             </span>
           </span>
-          <span className="mt-1 text-[9px] tracking-[0.18em] font-bold uppercase text-cyan-600 dark:text-cyan-400 text-center leading-relaxed">
+          <span className="mt-1.5 text-[9px] tracking-[0.18em] font-bold uppercase text-cyan-600 dark:text-cyan-400 text-center leading-relaxed">
             Yatırımcılar İçin<br />Akıllı Veri Platformu
           </span>
         </div>

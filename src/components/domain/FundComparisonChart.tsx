@@ -314,8 +314,11 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
             yükleniyor…
           </div>
         )}
+        {/* Etiket yazı boyutu — bar sayısına göre dinamik. 3+ fon karşılaştırıldığında
+            sütunlar dar; label'lar birbirine girmesin diye font küçültülür. */}
+        {(() => null)()}
         <div className="flex h-64 items-end gap-1.5 sm:gap-2 border-b border-border pb-1 pt-6">
-          {bars.map((b) => {
+          {bars.map((b, barIdx) => {
             const v = b.value;
             const isPositive = v != null && v >= 0;
             // TL kazanç: yatırım × (getiri%/100)
@@ -331,6 +334,15 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
               if (!isPositive) bottomPct = zeroPct - valPct;
             }
 
+            // Dinamik font: 2 bar → xs, 3 bar → [10px], 4 bar → [9px]
+            const nBars = bars.length;
+            const pctSize = nBars <= 2 ? 'text-xs' : nBars === 3 ? 'text-[10px]' : 'text-[9px]';
+            const tlSize = nBars <= 2 ? 'text-[11px]' : nBars === 3 ? 'text-[9px]' : 'text-[8px]';
+            // 3+ fon icin TL kazanc gizle (sikisik) — sadece yuzdeyi goster
+            const showTL = nBars <= 2;
+            // Ust uste binmeyi onlemek icin barlar arasi kucuk vertical stagger
+            const staggerPx = nBars >= 3 ? barIdx * 12 : 0;
+
             return (
               <div
                 key={b.key}
@@ -343,26 +355,28 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
                     : '')
                 }
               >
-                {/* Value label — daha büyük, tam opasite, okunakli */}
+                {/* Value label — bar sayısına göre boyut + stagger (3+ fon overlap fix) */}
                 <div
                   className={cn(
                     'absolute left-1/2 -translate-x-1/2 flex flex-col items-center whitespace-nowrap',
                   )}
-                  style={{ bottom: `calc(${bottomPct + heightPct}% + 6px)` }}
+                  style={{ bottom: `calc(${bottomPct + heightPct}% + ${6 + staggerPx}px)` }}
                 >
                   <span
                     className={cn(
-                      'text-xs font-bold tabular-nums leading-tight',
+                      pctSize,
+                      'font-bold tabular-nums leading-tight',
                       v == null ? 'text-slate-500' :
                       isPositive ? 'text-emerald-400' : 'text-red-400',
                     )}
                   >
-                    {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—'}
+                    {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(nBars >= 4 ? 1 : 2)}%` : '—'}
                   </span>
-                  {tlKazanc != null && (
+                  {tlKazanc != null && showTL && (
                     <span
                       className={cn(
-                        'text-[11px] font-semibold tabular-nums leading-tight mt-0.5',
+                        tlSize,
+                        'font-semibold tabular-nums leading-tight mt-0.5',
                         tlKazanc >= 0 ? 'text-emerald-300' : 'text-red-300',
                       )}
                     >

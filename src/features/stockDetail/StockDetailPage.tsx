@@ -258,7 +258,20 @@ export function StockDetailPage() {
   dqLog('stock-quote', stock.symbol, dq);
 
   const displayPrice = dq.corrected?.price ?? stock.price;
-  const displayChangePct = dq.corrected?.changePct ?? stock.changePct;
+  // Snapshot changePct (Yahoo prev close bug) ile period 1G (adjusted closes) uyusmuyorsa
+  // period'u tercih et. BIMAS gibi hisselerde snapshot yanlış prev close alıp +9% gibi
+  // sahte günlük hareket üretiyor; period 1G daima closes[-1] vs closes[-2] hesabıdır.
+  let displayChangePct = dq.corrected?.changePct ?? stock.changePct;
+  if (
+    dq.corrected?.changePct == null &&
+    Number.isFinite(period1g) &&
+    Number.isFinite(stock.changePct)
+  ) {
+    const dev = Math.abs(stock.changePct - (period1g as number));
+    if (dev > 3) {
+      displayChangePct = period1g as number;
+    }
+  }
   const tone = displayChangePct >= 0 ? 'text-success' : 'text-danger';
   const sign = displayChangePct >= 0 ? '+' : '';
 

@@ -1,8 +1,82 @@
 # NEXT SESSION — InvestLiq (eski Hane Finans)
 
-> Son guncelleme: 22 Agustos 2026 — Data Quality sistemi (4 katman) + snapshot stale detection + weekday-aware filter
+> Son guncelleme: 23 Agustos 2026 — TR sayi input duzeltmesi + Fon Karsilastir grafik overlap + Panel skeleton kaldirildi + Sidebar logo varyant C + Yorumlar sadelestirildi
 
-## SON SEANSTA YAPILANLAR (2026-08-22)
+## SON SEANSTA YAPILANLAR (2026-08-23)
+
+### 1) TR Sayi Input Bug Fix (KRITIK)
+- **Sorun**: `2.5105` (fon NAV auto-fill) TRTextNumberInput'ta `25105` olarak parse ediliyordu. `2,51890` gibi girisler kayboluyor / bozuluyordu.
+- **Root cause**: `parseTRNumber` her `.` karakterini bin ayraci saniyordu; `onChange` ise parent'a `String(number)` (English decimal) gonderiyordu — display re-parse'inda tekrar bozuluyordu.
+- **Fix 1 (`components/ui/NumberField.tsx`)**: `parseTRNumber` smart parse — virgul varsa TR (nokta bin), yoksa English decimal.
+- **Fix 2 (aynı dosya)**: `TRTextNumberInput.onChange` artik parent'a TR-formatli string (`2,5189`) gonderiyor.
+- **Fix 3**: Fon/hisse autocomplete NAV auto-fill'de `f.nav.toString()` yerine `toLocaleString('tr-TR', {min/max FractionDigits: 4})` kullanildi.
+
+### 2) Toplam Maliyet Karti (UX)
+- Fon Ekle + Hisse Ekle formlarina "Toplam maliyet: X ₺" dogrulama karti eklendi (turkuaz border, accent tint).
+- Kullanici adet × NAV/fiyat carpimini bir bakista goruyor — yanlis giris (250K yerine 2.510.482) an fark ediliyor.
+
+### 3) Fon Karsilastir Grafik Overlap (SVG)
+- `src/features/fundCompare/FundComparePage.tsx`: 3+ fon karsilastirmasinda "+70.4%" / "+69.8%" gibi etiketler ust uste biniyordu.
+- Fix: `BAR_W` 3 fonda 28px, `PERIOD_W` grup genisligine gore dinamik (min 100 → groupW+40), `CHART_TOP_PAD` her fon icin +15px, label'lar dikey stagger'la (nFunds \* 14px) farkli seviyede, kesikli cizgi bar↔etiket baglantisi.
+- Label ondalik: 2 fon → 1, 3 fon → 1, 4+ fon → 0.
+
+### 4) Panel PortfolioHealthCard Skeleton
+- **Sorun**: Login sonrasi "HAFTALIK EN IYI & EN KOTU FONLAR" altinda buyuk bir loading skeleton yer kapiyordu.
+- **Fix (`components/domain/PortfolioHealthCard.tsx`)**: loading state'te artik `null` doner — data gelince fade-in ile gorunur. Placeholder tamamen kaldirildi.
+
+### 5) Sidebar Logo Varyant C
+- Kullanici A/B/C/D mockup'lari uzerinden **C**'yi secti.
+- `src/components/brand/Logo.tsx` `variant="full"`: logo 40 → **38px** (kucultuldu), wordmark `text-lg` → **text-2xl** (buyutuldu), Q `text-xl` → **text-[28px]**, slogan gap 1 → 1.5.
+- Sonuc: sidebar ustundeki isim block'u marka odakli, logo destekleyici rol.
+
+### 6) Yorum Dili Sadelestirmesi (multiTimeframe.ts)
+- **Kaldirildi**: "Sadece bir zaman diliminde LONG sinyali, diğerleri nötr — trend henüz teyit edilmedi." + tum "GÜÇLÜ LONG / SHORT SİNYALİ" tarzi buyuk harfli sert vurgular.
+- **Cevrildi**: Teknik jargon ("EMA 5 > EMA 8 > EMA 13 ÜÇLÜ AL SİNYALİ") → gunluk dile ("Kısa periyot ortalamalar yukarı dizildi, momentum tazelendi").
+- **Yumusatildi**: "BOĞA PİYASASI" / "YÜKSELİŞ TRENDİ" → "Uzun vadeli görüntü olumlu / kısa-orta vadede yukarı eğilim".
+- **Aksiyon önerileri**: "Long pozisyon, trailing stop, kâr al hedefleri" → "Genel değerlendirme: piyasa görüntüsü olumlu/zayıf" (yatirim tavsiyesi dilinden uzak).
+- Zaman baglami satirlari da sadelesti ("Piyasa kapalı (hafta sonu)" → "Piyasa hafta sonu kapalı, Cuma kapanış verileri üzerinden değerlendirme").
+
+### 7) Screener (Akilli Sorgu) Hata Mesaji Detayi
+- `src/features/screener/ScreenerPage.tsx`: friendly mesajin altina `[Teknik detay]` bölümü eklendi (whitespace-pre-wrap + break-words).
+- Anthropic kredi bakiyesi mesaji güncellendi: "Ödeme yapıldıysa Anthropic Console → Billing → Usage Limit'i kontrol edin" (kredi eklenince Usage Limit otomatik acilmiyor).
+
+---
+
+## SONRAKI SEANS — ONCELIKLER
+
+### 1) Akilli Sorgu (Screener) Anthropic Detay Kontrol
+- Kullanici kredi yukledi ama site hala "kredi bakiyesi tükendi" gosteriyor. Yeni `[Teknik detay]` alani deploy edilince ozgun Anthropic error text'ini gorecegiz.
+- Beklenen yaygin nedenler:
+  - **Usage Limit acik degil** — Anthropic Console → Settings → Limits'te aylik cap manuel yukseltilmeli.
+  - **Kredi yanlis workspace'te** — API key baska workspace'e ait olabilir.
+  - **Aktivasyon gecikmesi** — 5-15 dk surebilir.
+
+### 2) OAuth Redirect URL (KULLANICI)
+- Google + Apple developer console'da redirect URL'leri `investliq.com` olarak guncelle (hanefinans → investliq gecisi tamamlansin).
+
+### 3) Metal Fiyatlari Faz 2
+- Backend `/api/metals-spot` + D1 cache + MetalPriceAPI entegrasyonu (hafta sonu / stale fallback icin).
+
+### 4) Uzun Vade (Long-Term Roadmap)
+- **L2** Portföy PDF Export
+- **L3** Portföy History (aylık snapshot)
+- **L4** Dividend (Temettü) Takvimi
+
+### 5) Data Persist (D1 Migration)
+- Watchlist + Settings D1'e taşı (halen localStorage — cihazlar arası kaybediliyor).
+
+### 6) Ilk Deploy Sonrasi Test Listesi
+- [ ] Fon Ekle: `THF` sec, adet 50, NAV auto-fill `2,5105` gorunmeli, toplam maliyet 125,53 ₺ cikmali.
+- [ ] Hisse Ekle: `THYAO` sec, otomatik fiyat TR formatinda gelmeli.
+- [ ] Fon Karsilastir: 3+ fon secince label overlap olmamali, dikey stagger uygulanmali.
+- [ ] Panel login sonrasi: skeleton placeholder olmamali.
+- [ ] Sidebar: InvestliQ marka adi buyuk, logo altta kompakt.
+- [ ] Multi-timeframe yorumlari: kisa, sade, yatirim tavsiyesi tonu yok.
+- [ ] Akilli Sorgu: Anthropic hatasinda "[Teknik detay]" alani goruntulenmeli.
+
+---
+
+## ONCEKI SEANS (2026-08-22)
 
 ### 4 Katmanli Data Quality Sistemi
 1. **`src/lib/dataQuality.ts`** — merkezi validator: `validateStockQuote`, `validateFundData`, `computeConfidence`, `dqLog` (24h telemetri).

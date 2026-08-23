@@ -142,18 +142,10 @@ export function PortfolioHealthCard({ positions, bist30d, riskProfileTolerance, 
     }
   };
 
+  // Loading state: yer kaplama, sessizce bekle. Data gelince fade-in gösterilir.
+  // (Onceki skeleton buyuk bir bos alan yaratiyordu — kullanici sikayet etti.)
   if (loading) {
-    return (
-      <div className={cn('glass-card p-4 sm:p-5', className)}>
-        <div className="flex items-center gap-3">
-          <div className="h-14 w-14 animate-pulse rounded-full bg-bg-card" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 w-32 animate-pulse rounded bg-bg-card" />
-            <div className="h-3 w-48 animate-pulse rounded bg-bg-card" />
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (!data?.ok || data.score == null) {

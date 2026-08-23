@@ -334,14 +334,16 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
               if (!isPositive) bottomPct = zeroPct - valPct;
             }
 
-            // Dinamik font: 2 bar → xs, 3 bar → [10px], 4 bar → [9px]
+            // Dinamik format — 3+ fonda sutunlar dar, etiketler tasar.
+            // Cozum: font kucult + ondalik kaldir + stagger daha agresif.
             const nBars = bars.length;
-            const pctSize = nBars <= 2 ? 'text-xs' : nBars === 3 ? 'text-[10px]' : 'text-[9px]';
+            const pctSize = nBars <= 2 ? 'text-xs' : nBars === 3 ? 'text-[9px]' : 'text-[8px]';
             const tlSize = nBars <= 2 ? 'text-[11px]' : nBars === 3 ? 'text-[9px]' : 'text-[8px]';
-            // 3+ fon icin TL kazanc gizle (sikisik) — sadece yuzdeyi goster
             const showTL = nBars <= 2;
-            // Ust uste binmeyi onlemek icin barlar arasi kucuk vertical stagger
-            const staggerPx = nBars >= 3 ? barIdx * 12 : 0;
+            // 3 fon: 0, 20, 40 px stagger. 4 fon: 0, 15, 30, 45 px stagger.
+            const staggerPx = nBars >= 3 ? barIdx * (nBars === 3 ? 20 : 15) : 0;
+            // Ondalik: 2 fon → 2 basamak, 3 fon → 1 basamak, 4+ fon → tam sayi
+            const decimals = nBars <= 2 ? 2 : nBars === 3 ? 1 : 0;
 
             return (
               <div
@@ -370,7 +372,7 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
                       isPositive ? 'text-emerald-400' : 'text-red-400',
                     )}
                   >
-                    {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(nBars >= 4 ? 1 : 2)}%` : '—'}
+                    {v != null ? `${v >= 0 ? '+' : ''}${v.toFixed(decimals)}%` : '—'}
                   </span>
                   {tlKazanc != null && showTL && (
                     <span

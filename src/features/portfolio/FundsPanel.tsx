@@ -602,11 +602,19 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
       || computeTefasOpenClient(selectedFund.category ?? '', selectedFund.name ?? '') === false
     : false;
 
-  // Fon secildiginde avgPrice'i mevcut NAV ile default doldur (kullanici degistirebilir)
+  // Fon secildiginde avgPrice'i mevcut NAV ile default doldur (kullanici degistirebilir).
+  // NOT: TRTextNumberInput onFocus'ta value'yu parseTRNumber ile okur — nokta bin
+  // ayraci sanip strip eder. Bu nedenle "2.5105" gibi English decimal gonderilirse
+  // 25105 olarak yorumlanir. TR formatta ("2,5105") gonder ki dogru okusun.
   const pickFund = (f: FundPerformance) => {
     setCode(f.code);
     if (f.nav && !avgPrice) {
-      setAvgPrice(f.nav.toString());
+      // TR yerel: 2,5105 (virgul ondalik). Bin ayraci gerekmez (NAV genelde <1000).
+      const trFormatted = f.nav.toLocaleString('tr-TR', {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      });
+      setAvgPrice(trFormatted);
     }
   };
 
@@ -772,6 +780,29 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
           />
         </Field>
       </div>
+      {(() => {
+        // Toplam maliyet ozeti: lot x avgPrice. Kullanici yaptigi girisin TL
+        // karsiligini bir bakista dogrulayabilsin — yanlislikla 25.105 girmesin.
+        const l = parseFloat(lot.replace(/\./g, '').replace(',', '.'));
+        const p = parseFloat(avgPrice.replace(/\./g, '').replace(',', '.'));
+        if (!Number.isFinite(l) || l <= 0 || !Number.isFinite(p) || p <= 0) return null;
+        const total = l * p;
+        const totalFmt = total.toLocaleString('tr-TR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        return (
+          <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-[12px]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400">Toplam maliyet</span>
+              <span className="font-bold tabular-nums text-accent">{totalFmt} ₺</span>
+            </div>
+            <div className="mt-0.5 text-[10px] text-slate-500 tabular-nums">
+              {l.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} pay × {p.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}₺
+            </div>
+          </div>
+        );
+      })()}
       <Field label="Islem Tarihi" hint="Bugunden geriye donuk tarih girebilirsin">
         <input
           className="input"

@@ -903,8 +903,9 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
 
   const save = async () => {
     const sym = symbol.trim().toUpperCase();
-    const lotNum = parseFloat(lot);
-    const priceNum = parseFloat(avgPrice);
+    // TR virgul ondalik + nokta bin ayraci destegi.
+    const lotNum = parseFloat(lot.replace(/\./g, '').replace(',', '.'));
+    const priceNum = parseFloat(avgPrice.replace(/\./g, '').replace(',', '.'));
     if (!sym || !Number.isFinite(lotNum) || lotNum <= 0 || !Number.isFinite(priceNum) || priceNum <= 0) {
       toast.error('Geçersiz giriş', 'Sembol, lot ve ortalama fiyat zorunlu');
       return;
@@ -1002,7 +1003,14 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setSymbol(s.symbol);
-                    if (s.price > 0 && !avgPrice) setAvgPrice(s.price.toString());
+                    if (s.price > 0 && !avgPrice) {
+                      // TR format: "285,50" (virgul ondalik). English decimal
+                      // TRTextNumberInput'ta parseTRNumber ile yanlis okunur.
+                      setAvgPrice(s.price.toLocaleString('tr-TR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }));
+                    }
                   }}
                   className="flex w-full items-start justify-between gap-2 px-3 py-2 text-xs hover:bg-bg-soft"
                 >
@@ -1045,6 +1053,29 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
           />
         </Field>
       </div>
+      {(() => {
+        // Toplam maliyet ozeti: lot x avgPrice. Kullanici yaptigi girisin TL
+        // karsiligini bir bakista dogrulasin.
+        const l = parseFloat(lot.replace(/\./g, '').replace(',', '.'));
+        const p = parseFloat(avgPrice.replace(/\./g, '').replace(',', '.'));
+        if (!Number.isFinite(l) || l <= 0 || !Number.isFinite(p) || p <= 0) return null;
+        const total = l * p;
+        const totalFmt = total.toLocaleString('tr-TR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        return (
+          <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-[12px]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400">Toplam maliyet</span>
+              <span className="font-bold tabular-nums text-accent">{totalFmt} ₺</span>
+            </div>
+            <div className="mt-0.5 text-[10px] text-slate-500 tabular-nums">
+              {l.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} lot × {p.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}₺
+            </div>
+          </div>
+        );
+      })()}
       <Field label="İşlem Tarihi" hint="Bugünden geriye dönük tarih girebilirsin">
         <input
           className="input"

@@ -45,10 +45,13 @@ export function TRTextNumberInput({
       onChange={(e) => {
         const raw = e.target.value;
         setDraft(raw);
-        // Kullaniciya "yaziyor" hissi ver — parent'a raw'i gonder
+        // Parent'a TR-formatli string yolla (nokta yerine virgul).
+        // BUG FIX: Onceden String(p) gonderiliyordu ("2.5189") ve display
+        // re-parse'inda parseTRNumber noktayi bin ayraci saniyordu ("25189").
+        // Simdi "2,5189" gonderiyoruz — parseTRNumber dogru okur.
         const p = parseTRNumber(raw);
         if (p != null) {
-          onChange(String(p));
+          onChange(p.toString().replace('.', ','));
         } else if (raw === '') {
           onChange('');
         }
@@ -84,10 +87,31 @@ export function formatDisplayTR(value: number, decimals: number = 0): string {
   });
 }
 
-/** TR format string → number: nokta bin ayracı, virgül ondalık ayracı. */
+/**
+ * Smart sayı parser — hem TR (12.345,67) hem English (12345.67) formatı tanır.
+ *
+ * KURAL:
+ *  - `,` varsa TR ondalık kabul et: noktalar bin ayracı, virgül ondalık ayracı.
+ *  - Sadece `.` varsa English decimal (parseFloat direkt).
+ *  - Sadece rakam ise int.
+ *
+ * BUG FIX: Onceden HER `.` bin ayraci saniliyordu ve "2.5189" (English)
+ * yanlislikla 25189 olarak parse ediliyordu.
+ */
 export function parseTRNumber(raw: string): number | null {
   if (!raw) return null;
-  const cleaned = raw.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+  const trimmed = String(raw).trim();
+  if (!trimmed) return null;
+  const hasComma = trimmed.includes(',');
+  let cleaned: string;
+  if (hasComma) {
+    // TR: nokta bin, virgul ondalik
+    cleaned = trimmed.replace(/\./g, '').replace(',', '.');
+  } else {
+    // Sadece nokta (varsa) → English decimal
+    cleaned = trimmed;
+  }
+  cleaned = cleaned.replace(/[^\d.-]/g, '');
   const v = parseFloat(cleaned);
   return Number.isFinite(v) ? v : null;
 }

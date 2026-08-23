@@ -513,7 +513,9 @@ export function FinancialLiteracyPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <nav className="space-y-1">
+            {/* Mobilde grid 3 sütun (chip stili — kompakt, kaydırma az).
+                Desktop'ta lg breakpoint'ten sonra tek sütun dikey liste. */}
+            <nav className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:flex lg:flex-col lg:space-y-1 lg:gap-0">
               {filtered.map((t) => {
                 const TIcon = t.icon;
                 const isActive = t.slug === active;
@@ -522,22 +524,30 @@ export function FinancialLiteracyPage() {
                     key={t.slug}
                     onClick={() => setActive(t.slug)}
                     className={cn(
-                      'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition',
+                      // Mobil: küçük chip (ikon üstte, başlık altta)
+                      'flex flex-col items-center gap-1 rounded-lg p-1.5 text-center text-[10px] leading-tight transition',
+                      // Desktop: yatay liste (mevcut düzen)
+                      'lg:flex-row lg:items-center lg:gap-2.5 lg:px-2.5 lg:py-2 lg:text-left lg:text-xs',
                       isActive
                         ? 'bg-gradient-to-r from-accent/15 to-accent/5 text-accent ring-1 ring-accent/20'
-                        : 'text-slate-300 hover:bg-bg-card hover:translate-x-0.5',
+                        : 'text-slate-300 hover:bg-bg-card lg:hover:translate-x-0.5',
                     )}
                   >
-                    <span className={cn('grid h-6 w-6 shrink-0 place-items-center rounded-md', toneClasses[t.tone])}>
+                    <span
+                      className={cn(
+                        'grid h-6 w-6 shrink-0 place-items-center rounded-md',
+                        toneClasses[t.tone],
+                      )}
+                    >
                       <TIcon size={12} />
                     </span>
-                    <span className="font-medium truncate">{t.title}</span>
-                    {isActive && <ChevronRight size={12} className="ml-auto shrink-0" />}
+                    <span className="font-medium line-clamp-2 lg:truncate">{t.title}</span>
+                    {isActive && <ChevronRight size={12} className="hidden lg:inline ml-auto shrink-0" />}
                   </button>
                 );
               })}
               {filtered.length === 0 && (
-                <p className="px-2 py-4 text-center text-[11px] text-slate-500">Arama eşleşmiyor.</p>
+                <p className="col-span-full px-2 py-4 text-center text-[11px] text-slate-500">Arama eşleşmiyor.</p>
               )}
             </nav>
           </div>

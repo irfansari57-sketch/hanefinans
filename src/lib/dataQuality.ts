@@ -98,8 +98,27 @@ export function validateStockQuote(input: StockQuoteInput, isUS: boolean = false
   let confidence = 100;
   let corrected: DataQualityResult['corrected'] | undefined;
 
-  // 1. Base sanity — fiyat pozitif olmalı
+  // 1. Base sanity — fiyat pozitif olmalı.
+  // Fiyat 0 ise historical last close'a düş (varsa) — emtia sembollerinde
+  // (XAGUSD=X, XAUUSD=X) snapshot bazen price=0 doner ama historical dolu.
   if (!(input.price > 0)) {
+    if (input.histLastClose != null && input.histLastClose > 0) {
+      return {
+        valid: true,
+        confidence: 60,
+        level: 'medium',
+        warnings: ['Snapshot fiyatı boş, historical son kapanış kullanıldı.'],
+        corrected: {
+          price: input.histLastClose,
+          changePct:
+            input.period1G != null && Number.isFinite(input.period1G)
+              ? input.period1G
+              : 0,
+          source: 'historical-price-zero-fallback',
+        },
+        key: input.symbol,
+      };
+    }
     return {
       valid: false,
       confidence: 0,

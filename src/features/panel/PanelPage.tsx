@@ -505,12 +505,12 @@ export function PanelPage() {
         </details>
       )}
 
-      {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti */}
+      {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti.
+          PortfolioHealthPanel kendi içinde mb-5 uyguluyor (boş portfolyoda null dönüyor,
+          boşuna beyaz satır oluşmaması için wrapper margin kaldırıldı). */}
       {user && (
         <>
-          <div className="mb-5">
-            <PortfolioHealthPanel />
-          </div>
+          <PortfolioHealthPanel />
           <PinnableAccordion
             id="panel-portfolio"
             title="Portföyüm"

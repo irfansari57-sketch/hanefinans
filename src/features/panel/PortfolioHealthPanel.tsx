@@ -78,9 +78,11 @@ export function PortfolioHealthPanel() {
   });
 
   return (
-    <PortfolioHealthCard
-      positions={mappedPositions}
-      riskProfileTolerance={riskProfileTolerance}
-    />
+    <div className="mb-5">
+      <PortfolioHealthCard
+        positions={mappedPositions}
+        riskProfileTolerance={riskProfileTolerance}
+      />
+    </div>
   );
 }

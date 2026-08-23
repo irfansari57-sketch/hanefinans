@@ -122,7 +122,14 @@ export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | nul
 export async function fetchIndexYahoo(
   yahooSymbol: string,
 ): Promise<{ value: number; changePct: number } | null> {
-  const r = await fetchOne(yahooSymbol);
+  // Global endeksler (^GDAXI, ^FTSE, ^N225, 000001.SS vs.) icin retry + nocache.
+  // Yahoo bu semboller icin bazen 429/500 doner, ilk deneme fail olabilir.
+  let r = await fetchOne(yahooSymbol);
+  if (!r) {
+    // 500ms sonra fresh Yahoo fetch (cache bypass)
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    r = await fetchOne(yahooSymbol, { noCache: true });
+  }
   if (!r) return null;
   return { value: r.price, changePct: r.changePct };
 }

@@ -182,7 +182,23 @@ export function ScreenerPage() {
       const r = await fetchScreenerSpec(userQ);
       if (r?.quota) setQuota(r.quota);
       if (!r || !r.ok || !r.spec) {
-        setError(r?.error ?? 'AI sorgu çözümlemedi.');
+        // Kullanıcı dostu Türkçe hata mesajlarına dönüştür.
+        const rawErr = String(r?.error ?? '');
+        const rawMsg = String((r as unknown as Record<string, unknown>)?.message ?? '');
+        const combined = `${rawErr} ${rawMsg}`.toLowerCase();
+        let friendly = r?.error ?? 'AI sorgu çözümlemedi.';
+        if (combined.includes('credit balance') || combined.includes('credit_balance')) {
+          friendly =
+            'AI servisi geçici olarak kullanılamıyor (kredi bakiyesi tükendi). ' +
+            'Yönetici en kısa sürede yeniden yükleyecek. Şimdilik "Öneriler" ve "Hisseler" sayfalarındaki hazır filtreleri kullanabilirsin.';
+        } else if (combined.includes('authentication') || combined.includes('invalid api key')) {
+          friendly = 'AI servisi yetkilendirme hatası — yönetici ile iletişime geçin.';
+        } else if (combined.includes('rate_limit') || combined.includes('rate limit')) {
+          friendly = 'AI servisi çok yoğun, birkaç dakika sonra tekrar dene.';
+        } else if (combined.includes('not_found') && combined.includes('model')) {
+          friendly = 'AI modeli erişilemez — yönetici model yapılandırmasını güncellemeli.';
+        }
+        setError(friendly);
         if (r?.code === 'QUOTA_EXCEEDED') {
           setQuotaExceeded(true);
           track('screener.quota_blocked', { tier: r.quota?.tier ?? 'unknown', limit: r.quota?.limit ?? 0 });

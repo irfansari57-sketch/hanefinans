@@ -10,14 +10,15 @@ export function macroKeyToRoute(key: string): string | null {
   if (key === 'EUR/TRY') return '/doviz/EURTRY';
 
   // Emtia — CommodityDetailPage. Gram TL kartlari `?u=gram` query ile gider.
-  // Kiymetli madenler spot sembollerine (=X) yonlendirilir, panel ile ayni veri.
+  // Kiymetli madenler icin Yahoo FUTURES sembolleri (=F) daha guvenilir fiyat verir;
+  // spot sembolleri (XAUUSD=X) bazen $0 doner.
   if (key === 'Brent') return `/emtia/${encodeURIComponent('BZ=F')}`;
-  if (key === 'Gram Altın') return `/emtia/${encodeURIComponent('XAUUSD=X')}?u=gram`;
-  if (key === 'Ons Altın') return `/emtia/${encodeURIComponent('XAUUSD=X')}`;
-  if (key === 'Gram Gümüş') return `/emtia/${encodeURIComponent('XAGUSD=X')}?u=gram`;
-  if (key === 'Ons Gümüş') return `/emtia/${encodeURIComponent('XAGUSD=X')}`;
-  if (key === 'Gram Platin') return `/emtia/${encodeURIComponent('XPTUSD=X')}?u=gram`;
-  if (key === 'Ons Platin') return `/emtia/${encodeURIComponent('XPTUSD=X')}`;
+  if (key === 'Gram Altın') return `/emtia/${encodeURIComponent('GC=F')}?u=gram`;
+  if (key === 'Ons Altın') return `/emtia/${encodeURIComponent('GC=F')}`;
+  if (key === 'Gram Gümüş') return `/emtia/${encodeURIComponent('SI=F')}?u=gram`;
+  if (key === 'Ons Gümüş') return `/emtia/${encodeURIComponent('SI=F')}`;
+  if (key === 'Gram Platin') return `/emtia/${encodeURIComponent('PL=F')}?u=gram`;
+  if (key === 'Ons Platin') return `/emtia/${encodeURIComponent('PL=F')}`;
 
   if (key === 'VIX') return '/global';
 
@@ -33,9 +34,9 @@ export function yahooSymbolToRoute(yahooSym: string): string {
   if (yahooSym === 'XU100.IS') return '/stock/XU100';
   if (yahooSym === 'XU030.IS') return '/stock/XU030';
   if (yahooSym === 'BZ=F') return `/emtia/${encodeURIComponent('BZ=F')}`;
-  if (yahooSym === 'GC=F' || yahooSym === 'XAUUSD=X') return `/emtia/${encodeURIComponent('XAUUSD=X')}`;
-  if (yahooSym === 'SI=F' || yahooSym === 'XAGUSD=X') return `/emtia/${encodeURIComponent('XAGUSD=X')}`;
-  if (yahooSym === 'PL=F' || yahooSym === 'XPTUSD=X') return `/emtia/${encodeURIComponent('XPTUSD=X')}`;
+  if (yahooSym === 'GC=F' || yahooSym === 'XAUUSD=X') return `/emtia/${encodeURIComponent('GC=F')}`;
+  if (yahooSym === 'SI=F' || yahooSym === 'XAGUSD=X') return `/emtia/${encodeURIComponent('SI=F')}`;
+  if (yahooSym === 'PL=F' || yahooSym === 'XPTUSD=X') return `/emtia/${encodeURIComponent('PL=F')}`;
   if (yahooSym === 'USDTRY=X') return '/doviz/USDTRY';
   if (yahooSym === 'EURTRY=X') return '/doviz/EURTRY';
   if (yahooSym.endsWith('-USD')) {

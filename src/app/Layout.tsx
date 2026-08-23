@@ -364,17 +364,10 @@ export function Layout() {
             <Menu size={20} />
           </button>
 
-          <Link to="/panel" className="md:hidden inline-flex items-center gap-2">
-            <img
-              src="/web-app-manifest-192x192.png?v=2"
-              alt="InvestliQ"
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-lg shadow-md"
-            />
-            <span className="font-black text-sm tracking-tight">
+          <Link to="/panel" className="md:hidden inline-flex items-center">
+            <span className="font-black text-base tracking-tight">
               <span className="text-slate-900 dark:text-slate-100">Investli</span>
-              <span className="text-emerald-500 dark:text-emerald-400">Q</span>
+              <span className="text-emerald-400">Q</span>
             </span>
           </Link>
 

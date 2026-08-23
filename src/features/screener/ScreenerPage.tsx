@@ -185,20 +185,24 @@ export function ScreenerPage() {
         // Kullanıcı dostu Türkçe hata mesajlarına dönüştür.
         const rawErr = String(r?.error ?? '');
         const rawMsg = String((r as unknown as Record<string, unknown>)?.message ?? '');
-        const combined = `${rawErr} ${rawMsg}`.toLowerCase();
+        const rawDetail = String((r as unknown as Record<string, unknown>)?.detail ?? '');
+        const combined = `${rawErr} ${rawMsg} ${rawDetail}`.toLowerCase();
         let friendly = r?.error ?? 'AI sorgu çözümlemedi.';
         if (combined.includes('credit balance') || combined.includes('credit_balance')) {
           friendly =
-            'AI servisi geçici olarak kullanılamıyor (kredi bakiyesi tükendi). ' +
-            'Yönetici en kısa sürede yeniden yükleyecek. Şimdilik "Öneriler" ve "Hisseler" sayfalarındaki hazır filtreleri kullanabilirsin.';
+            'AI servisi geçici olarak kullanılamıyor (kredi bakiyesi tükendi veya limite ulaşıldı). ' +
+            'Ödeme yapıldıysa Anthropic Console → Billing → Usage Limit\'i kontrol edin (limit kredi bakiyesinden bağımsız). ' +
+            'Detay için aşağıdaki teknik mesaja bakın.';
         } else if (combined.includes('authentication') || combined.includes('invalid api key')) {
-          friendly = 'AI servisi yetkilendirme hatası — yönetici ile iletişime geçin.';
+          friendly = 'AI servisi yetkilendirme hatası — API key hatalı veya süresi doldu.';
         } else if (combined.includes('rate_limit') || combined.includes('rate limit')) {
           friendly = 'AI servisi çok yoğun, birkaç dakika sonra tekrar dene.';
         } else if (combined.includes('not_found') && combined.includes('model')) {
           friendly = 'AI modeli erişilemez — yönetici model yapılandırmasını güncellemeli.';
         }
-        setError(friendly);
+        // Teknik detay + friendly'i birlikte state'e yaz (detay UI'da collapsible gösterilecek)
+        const technical = [rawErr, rawMsg, rawDetail].filter((s) => s && s !== 'undefined').join(' · ');
+        setError(technical ? `${friendly}\n\n[Teknik detay] ${technical}` : friendly);
         if (r?.code === 'QUOTA_EXCEEDED') {
           setQuotaExceeded(true);
           track('screener.quota_blocked', { tier: r.quota?.tier ?? 'unknown', limit: r.quota?.limit ?? 0 });
@@ -286,7 +290,7 @@ export function ScreenerPage() {
         error && (
           <div className="mb-3 flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs">
             <AlertCircle size={14} className="mt-0.5 shrink-0 text-danger" />
-            <span className="text-slate-300">{error}</span>
+            <span className="text-slate-300 whitespace-pre-wrap break-words">{error}</span>
           </div>
         )
       )}

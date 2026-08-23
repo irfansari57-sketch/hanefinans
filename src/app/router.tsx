@@ -92,6 +92,7 @@ const FundDetailPage        = lazyWithRetry(() => import('@/features/fundDetail/
 const CryptoDetailPage      = lazyWithRetry(() => import('@/features/cryptoDetail/CryptoDetailPage').then((m) => ({ default: m.CryptoDetailPage })));
 const MacroDetailPage       = lazyWithRetry(() => import('@/features/macroDetail/MacroDetailPage').then((m) => ({ default: m.MacroDetailPage })));
 const HistoryPage           = lazyWithRetry(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })));
+const PortfolioHistoryPage  = lazyWithRetry(() => import('@/features/portfolio/PortfolioHistoryPage').then((m) => ({ default: m.PortfolioHistoryPage })));
 const MorningReportPage     = lazyWithRetry(() => import('@/features/morning/MorningReportPage').then((m) => ({ default: m.MorningReportPage })));
 const RecommendationsPage   = lazyWithRetry(() => import('@/features/recommendations/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
 const LoginPage             = lazyWithRetry(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.LoginPage })));
@@ -144,6 +145,7 @@ export const router = createBrowserRouter([
       { path: 'crypto/:symbol', element: withSuspense(<CryptoDetailPage />) },
       { path: 'kripto/:symbol', element: withSuspense(<CryptoDetailPage />) },
       { path: 'portfoy', element: withSuspense(<PortfolioPage />) },
+      { path: 'portfoy/gecmis', element: withSuspense(<PortfolioHistoryPage />) },
       { path: 'abd', element: withSuspense(<UsMarketsPage />) },
       { path: 'global', element: withSuspense(<GlobalPage />) },
       { path: 'doviz', element: withSuspense(<ForexPage />) },

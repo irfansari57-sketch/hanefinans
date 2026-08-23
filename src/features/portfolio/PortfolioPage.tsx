@@ -56,6 +56,7 @@ import type { Stock } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { downloadPortfolioPdf } from '@/lib/portfolioPdfExport';
 
 interface PositionRow extends PortfolioPosition {
   currentPrice?: number;
@@ -176,6 +177,60 @@ export function PortfolioPage() {
     }
   };
 
+  // Auto-snapshot: auth'lu, valid pozisyon var + son 24h icinde snapshot yazilmamis
+  // → sessizce POST /api/portfolio/snapshots (localStorage guard ile spam engel)
+  useEffect(() => {
+    if (!user) return;
+    if (positions.length === 0) return;
+    if (rows.length === 0) return;
+
+    const guardKey = `fa.portfolio.snapshot.lastAt.${user.id}`;
+    const lastAt = Number(localStorage.getItem(guardKey) ?? '0');
+    const now = Date.now();
+    if (now - lastAt < 6 * 60 * 60 * 1000) return; // 6h guard (dedupe)
+
+    // rows'da yeterli veri yok ise (henuz canli fiyat gelmemis) atla
+    const valid = rows.filter((r) => r.marketValue != null && r.marketValue > 0);
+    if (valid.length === 0) return;
+
+    let totalValue = 0;
+    let totalCost = 0;
+    for (const r of valid) {
+      totalValue += r.marketValue ?? 0;
+      totalCost += r.cost ?? r.lot * r.avgPrice;
+    }
+    const totalPnl = totalValue - totalCost;
+    const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
+    const positions_light = valid.map((r) => ({
+      symbol: r.symbol,
+      lot: r.lot,
+      avgPrice: r.avgPrice,
+      currentPrice: r.currentPrice,
+      marketValue: r.marketValue,
+    }));
+
+    fetch('/api/portfolio/snapshots', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        totalValue,
+        totalCost,
+        totalPnl,
+        totalPnlPct,
+        positionCount: valid.length,
+        positions: positions_light,
+      }),
+    })
+      .then((r) => {
+        if (r.ok) {
+          localStorage.setItem(guardKey, String(now));
+        }
+      })
+      .catch(() => { /* sessizce */ });
+  }, [user, positions.length, rows]);
+
   const totals = useMemo(() => {
     let totalCost = 0;
     let totalValue = 0;
@@ -212,6 +267,43 @@ export function PortfolioPage() {
               <LiveBadge updatedAt={updatedAt} refreshing={loading} />
               <button className="btn-secondary" onClick={refresh} disabled={loading || positions.length === 0}>
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
+              </button>
+              <Link className="btn-secondary" to="/portfoy/gecmis" title="Portföy Geçmişi">
+                <History size={14} /> Geçmiş
+              </Link>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  if (positions.length === 0) {
+                    toast.info('Önce pozisyon ekle');
+                    return;
+                  }
+                  try {
+                    downloadPortfolioPdf({
+                      tabLabel: 'Hisseler',
+                      userEmail: user?.email,
+                      rows: rows.map((r) => ({
+                        symbol: r.symbol,
+                        name: r.name,
+                        lot: r.lot,
+                        avgPrice: r.avgPrice,
+                        currentPrice: r.currentPrice,
+                        marketValue: r.marketValue,
+                        cost: r.cost ?? r.lot * r.avgPrice,
+                        pnl: r.pnl,
+                        pnlPct: r.pnlPct,
+                      })),
+                      totals,
+                    });
+                    toast.success('PDF indirildi');
+                  } catch (e) {
+                    toast.error('PDF hatası', String((e as Error).message ?? e));
+                  }
+                }}
+                disabled={positions.length === 0}
+                title="Portföyü PDF olarak indir"
+              >
+                <FileText size={14} /> PDF İndir
               </button>
               <button className="btn-secondary" onClick={() => setImportOpen(true)}>
                 <Upload size={14} /> CSV İçe Aktar

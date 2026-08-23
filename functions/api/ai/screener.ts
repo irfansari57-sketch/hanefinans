@@ -56,10 +56,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       });
     }
 
-    if (!env.ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ ok: false, error: 'ANTHROPIC_API_KEY not set' }), {
-        status: 503, headers: { 'Content-Type': 'application/json' },
-      });
+    // API key varlık + format kontrol (sk-ant- ile başlamalı)
+    const apiKey = (env.ANTHROPIC_API_KEY ?? '').trim();
+    if (!apiKey) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: 'ANTHROPIC_API_KEY tanımlı değil',
+        detail: 'Cloudflare Pages > Settings > Environment variables (Production) > ANTHROPIC_API_KEY ekleyin.',
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!apiKey.startsWith('sk-ant-')) {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: 'ANTHROPIC_API_KEY formatı hatalı',
+        detail: `Key "sk-ant-" ile başlamalı. Şu an: "${apiKey.slice(0, 8)}..." (${apiKey.length} karakter).`,
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } });
     }
 
     let body: { query?: string; dataset?: 'stocks' | 'funds' };
@@ -81,30 +92,73 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const safeQuery = userQuery.slice(0, 500);
     const datasetHint = body.dataset ? `\n\n(Kullanici ipucu: dataset='${body.dataset}'.)` : '';
 
-    const anthropicResp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-haiku-20241022',
-        max_tokens: 800,
-        system: SYSTEM_PROMPT,
-        messages: [
-          { role: 'user', content: `Sorgu: "${safeQuery}"${datasetHint}\n\nJSON dondur:` },
-        ],
-      }),
-    });
+    // Model fallback chain — biri fail olursa diğerini dene.
+    // 3.5 haiku (2024-10-22) resmi olarak stabil, ilk deneme bu olsun.
+    // Fail durumunda daha yeni haiku, sonra sonnet 3.5.
+    const MODEL_CHAIN = [
+      'claude-3-5-haiku-20241022',
+      'claude-3-5-sonnet-20241022',
+      'claude-3-haiku-20240307', // eski ama garantili fallback
+    ];
 
-    if (!anthropicResp.ok) {
-      const errText = await anthropicResp.text().catch(() => '');
-      // Full error text — teşhis için 800 char (max_tokens sığması için)
+    let anthropicResp: Response | null = null;
+    let usedModel = MODEL_CHAIN[0];
+    let lastErrorBody = '';
+    let lastErrorType = '';
+    let lastErrorMessage = '';
+    for (const model of MODEL_CHAIN) {
+      try {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 800,
+            system: SYSTEM_PROMPT,
+            messages: [
+              { role: 'user', content: `Sorgu: "${safeQuery}"${datasetHint}\n\nJSON dondur:` },
+            ],
+          }),
+        });
+        if (r.ok) {
+          anthropicResp = r;
+          usedModel = model;
+          break;
+        }
+        // Hata detayını topla — sonraki modelde dene
+        const errText = await r.text().catch(() => '');
+        lastErrorBody = errText;
+        try {
+          const errJson = JSON.parse(errText);
+          lastErrorType = errJson?.error?.type ?? '';
+          lastErrorMessage = errJson?.error?.message ?? '';
+        } catch { /* ignore */ }
+
+        // Authentication ve permission hatalari fallback ile cozulmez → dur
+        if (lastErrorType === 'authentication_error' || lastErrorType === 'permission_error') {
+          anthropicResp = r;
+          break;
+        }
+        // 4xx (rate_limit, invalid_request) → sonraki model
+        // 5xx → sonraki model
+      } catch (fetchErr) {
+        lastErrorBody = (fetchErr as Error).message ?? 'network error';
+        // Network hatası, sonraki modelde dene
+      }
+    }
+
+    if (!anthropicResp || !anthropicResp.ok) {
+      const status = anthropicResp?.status ?? 502;
       return new Response(JSON.stringify({
         ok: false,
-        error: `Anthropic ${anthropicResp.status}`,
-        detail: errText.slice(0, 800),
+        error: `Anthropic ${status} (${lastErrorType || 'unknown_error'})`,
+        message: lastErrorMessage || 'AI servisi cevap vermedi',
+        triedModels: MODEL_CHAIN,
+        detail: lastErrorBody.slice(0, 600),
       }), {
         status: 400, headers: { 'Content-Type': 'application/json' },
       });
@@ -155,7 +209,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return new Response(JSON.stringify({
       ok: true,
       spec,
-      model: 'claude-3-5-haiku-20241022',
+      model: usedModel,
     }), {
       status: 200,
       headers: {

@@ -253,26 +253,33 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // İş Yatırım başarısız → normal Yahoo akışına düş (fallback)
   }
 
+  // === NOCACHE BYPASS ===
+  // Client `?nocache=1` param'i ile edge + D1 cache'i tamamen atlayabilir.
+  // Kullanim: loadStocks stale filter tetikleyip fresh Yahoo verisi istediğinde.
+  const noCache = url.searchParams.get('nocache') === '1';
+
   // === EDGE CACHE ===
   const cache = caches.default;
   const edgeKey = new Request(target, { method: 'GET' });
-  const edgeHit = await cache.match(edgeKey);
-  if (edgeHit) {
-    return new Response(edgeHit.body, {
-      status: edgeHit.status,
-      headers: {
-        'Content-Type': edgeHit.headers.get('Content-Type') ?? 'application/json',
-        'Cache-Control': 'public, max-age=300',
-        'Access-Control-Allow-Origin': '*',
-        'X-Source': 'EDGE',
-      },
-    });
+  if (!noCache) {
+    const edgeHit = await cache.match(edgeKey);
+    if (edgeHit) {
+      return new Response(edgeHit.body, {
+        status: edgeHit.status,
+        headers: {
+          'Content-Type': edgeHit.headers.get('Content-Type') ?? 'application/json',
+          'Cache-Control': 'public, max-age=300',
+          'Access-Control-Allow-Origin': '*',
+          'X-Source': 'EDGE',
+        },
+      });
+    }
   }
 
   // === D1 CACHE ===
   const cacheKey = chartReq ? `${chartReq.symbol}:${chartReq.range}:${chartReq.interval}` : null;
 
-  if (chartReq && env.DB && cacheKey) {
+  if (!noCache && chartReq && env.DB && cacheKey) {
     const cached = await readCache(env.DB, cacheKey);
     if (cached) {
       const age = Date.now() - cached.updated_at;

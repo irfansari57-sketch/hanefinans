@@ -31,11 +31,17 @@ function toBISTSymbol(s: string): string {
   return `${s}.IS`;
 }
 
-async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct: number; name?: string; updatedAt: string } | null> {
+async function fetchOne(
+  yahooSymbol: string,
+  opts?: { noCache?: boolean },
+): Promise<{ price: number; changePct: number; name?: string; updatedAt: string } | null> {
   try {
     // range=10d → hafta sonu + tatil + uzun bayram sonrasi son 2 islem gununu garanti
     // (BIST'te 5d bazen 3-4 trading day veriyor; bayram sonrasi 1-2'ye düşebilir)
-    const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=10d`;
+    // noCache=true → D1 + Edge cache tamamen bypass, Yahoo'ya direkt fetch (loadStocks
+    // stale fallback path'inden gelir).
+    const noCacheParam = opts?.noCache ? '&nocache=1' : '';
+    const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=10d${noCacheParam}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as YahooChartResult;
@@ -93,7 +99,9 @@ async function fetchOne(yahooSymbol: string): Promise<{ price: number; changePct
 
 export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | null> {
   if (symbols.length === 0) return null;
-  const results = await Promise.all(symbols.map((s) => fetchOne(toBISTSymbol(s))));
+  // Bu fonksiyon loadStocks'ta snapshot filter'a takılan (stale/outlier) sembolleri
+  // fallback olarak çeker. Cache stale olabileceği için `nocache=1` ile bypass yapıyoruz.
+  const results = await Promise.all(symbols.map((s) => fetchOne(toBISTSymbol(s), { noCache: true })));
   const stocks: Stock[] = [];
   symbols.forEach((s, i) => {
     const r = results[i];

@@ -364,11 +364,12 @@ export function Layout() {
             <Menu size={20} />
           </button>
 
+          {/* Mobil header — D varyanti (logosuz, wordmark odakli). */}
           <Link to="/panel" className="md:hidden inline-flex items-center">
-            <span className="font-black text-base tracking-tight flex items-baseline">
+            <span className="font-black text-lg tracking-tight flex items-baseline">
               <span className="text-slate-900 dark:text-slate-100">Investli</span>
               <span
-                className="bg-gradient-to-br from-cyan-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent"
+                className="text-xl bg-gradient-to-br from-cyan-400 via-emerald-400 to-emerald-500 bg-clip-text text-transparent"
                 style={{ WebkitTextFillColor: 'transparent' }}
               >
                 Q

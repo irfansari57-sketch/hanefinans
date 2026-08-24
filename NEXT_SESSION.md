@@ -1,5 +1,102 @@
 # NEXT SESSION — InvestliQ (eski Hane Finans)
 
+> Son guncelleme: 24 Agustos 2026 — Fon Karsilastir SVG overlap + Marka InvestliQ normalize (114 occ) + Favicon/PWA G1 Aurora + PNG regenerate + Mobil drawer wordmark + HaneMod akordiyon + Risk CTA kaldir + Anthropic screener detay
+
+## SON SEANSTA YAPILANLAR (2026-08-24)
+
+### 1) Fon Karsilastir SVG Chart Overlap (KRITIK)
+- Dosya: `src/features/fundCompare/FundComparePage.tsx` (dogru bilesen — onceki seansta yanlislikla FundComparisonChart.tsx duzeltilmisti).
+- `BAR_W` 3 fonda 28px, `PERIOD_W = max(100, groupW + 40)`, `CHART_TOP_PAD` bar sayisi ile artar, label'lar `i * 14px` dikey stagger, kesikli cizgi bar-etiket baglantisi.
+
+### 2) TR Sayi Input Bug Fix
+- `parseTRNumber` smart parse (virgul varsa TR, yoksa English decimal).
+- `TRTextNumberInput.onChange` TR-formatli string yolluyor.
+- Fon/hisse autocomplete auto-fill'de TR format.
+
+### 3) Toplam Maliyet Karti
+- Fon Ekle + Hisse Ekle formlarina "Toplam maliyet: X ₺" turkuaz border kart.
+
+### 4) Panel PortfolioHealthCard Skeleton
+- Loading state'te `null` doner — buyuk placeholder kaldirildi.
+
+### 5) Sidebar Logo Varyant C
+- Logo 40 → 38px, wordmark text-lg → text-2xl, Q text-xl → text-[28px].
+
+### 6) Multi-Timeframe Yorumlar Sadelestirmesi
+- "Sadece bir zaman diliminde LONG sinyali..." kaldirildi.
+- Teknik jargon → gunluk piyasa dili.
+- Yatirim tavsiyesi tonu notrlestirildi.
+
+### 7) Screener Anthropic Error Detay
+- `[Teknik detay]` alani — Anthropic'in ham cevabini gosterir.
+- Test: `credit_balance_too_low` → sonra `not_found_error` → muhtemel Model Access kapali (Console → Settings → Model Access → Haiku 3.5 enable).
+
+### 8) Mobil Drawer Marka Blogu
+- Yesil PNG logo kaldirildi. Buyuk "InvestliQ" wordmark + turkuaz underline + "AKILLI VERI PLATFORMU" slogan.
+- Light + dark mode adaptif.
+
+### 9) Panel Risk Profili CTA Kaldirildi
+- Web + mobil tamamen kaldirildi. Sol menudeki "Risk Profilim" tek erisim noktasi.
+
+### 10) HaneMod Sponsor Akordiyon + Play/Pause
+- Ust baslik: "Sponsor · Hane Mod Studio" + toggle. Video uzerinde sol-alt play/pause butonu.
+- Akordiyon kapaninca video otomatik pause + collapsed state localStorage.
+
+### 11) Marka Adi Normalize (33 dosya)
+- `InvestLiq` / `Investliq` / `InvestLIQ` → **InvestliQ** (114 occurrence).
+- Domain `investliq.com` ve email `destek@investliq.com` etkilenmedi.
+
+### 12) Favicon/Icon v8 - G1 Aurora Glass
+- `public/favicon.svg` + `icon.svg`: koyu emerald zemin + cyan/emerald aurora blur + cam-parlak gradient Q.
+- PNG regenerate (sharp SVG density 400):
+  - favicon-96x96.png (13KB)
+  - web-app-manifest-192x192.png (35KB)
+  - web-app-manifest-512x512.png (114KB)
+  - apple-touch-icon.png YENI 180x180 (31KB)
+- `manifest.json` + `index.html`: `?v=7` → `?v=8` cache-bust (7 yer).
+
+---
+
+## SONRAKI SEANS — ONCELIKLER
+
+### 1) Akilli Sorgu (Anthropic) Final Test
+- Kullanici Console → Model Access → Haiku 3.5 enable etsin.
+- Test tekrar `[Teknik detay]` mesajini kontrol et:
+  - `credit_balance_too_low` → Console → Settings → Limits + Billing
+  - `not_found_error` → Model Access enable
+  - Model deprecate → MODEL_CHAIN'e `claude-haiku-4-5` ekle
+
+### 2) OAuth Redirect URL Guncelle (KULLANICI)
+- Google + Apple developer console'da `investliq.com`.
+
+### 3) PWA Icon Cache Refresh (KULLANICI)
+- Deploy sonrasi Android ana ekranindan eski kisayolu **kaldir** → Chrome depolamayi temizle → tekrar "Yukle".
+
+### 4) Metal Fiyatlari Faz 2
+- Backend `/api/metals-spot` + D1 cache + MetalPriceAPI entegrasyonu.
+
+### 5) Uzun Vade (Long-Term)
+- L2 Portfoy PDF Export
+- L3 Portfoy History (aylik snapshot)
+- L4 Dividend (Temettu) Takvimi
+
+### 6) Data Persist
+- Watchlist + Settings D1 migration.
+
+### 7) Deploy Sonrasi Test Listesi
+- [ ] Fon Karsilastir 3+ fon: label'lar dikey stagger, cakismiyor
+- [ ] Mobil drawer: yesil PNG yok, wordmark + slogan + underline
+- [ ] Panel: Risk CTA yok (web + mobil)
+- [ ] Sag panel HaneMod: akordiyon calisir, video play/pause aktif
+- [ ] Tarayici tab ikonu G1 Aurora Glass Q
+- [ ] Mobil ana ekran kisayolu (yeniden yukle) G1 Aurora Glass Q
+- [ ] Akilli Sorgu: [Teknik detay] mesaji gorunur
+
+---
+
+## ONCEKI SEANS (2026-08-23)
+
+
 > Son guncelleme: 23 Agustos 2026 — TR sayi input duzeltmesi + Fon Karsilastir grafik overlap + Panel skeleton kaldirildi + Sidebar logo varyant C + Yorumlar sadelestirildi
 
 ## SON SEANSTA YAPILANLAR (2026-08-23)

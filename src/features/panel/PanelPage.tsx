@@ -330,11 +330,13 @@ export function PanelPage() {
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
-      {/* Risk Profili CTA — sadece auth'lu kullanici icin, profili kayitli degilse */}
+      {/* Risk Profili CTA — sadece DESKTOP'ta gorunur.
+          Mobil'de sol menu Risk Profilim linki zaten var, CTA ekran alanindan
+          tasarruf icin gizli tutuluyor. */}
       {user && !hasRiskProfile && (
         <Link
           to="/risk-profili"
-          className="mb-5 flex items-center gap-3 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-4 transition hover:border-accent/60 hover:bg-accent/10"
+          className="mb-5 hidden md:flex items-center gap-3 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-4 transition hover:border-accent/60 hover:bg-accent/10"
         >
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/20 text-accent">
             <Shield size={18} />

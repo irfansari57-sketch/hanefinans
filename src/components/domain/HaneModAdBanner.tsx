@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Youtube, ExternalLink, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Youtube, ExternalLink, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const COLLAPSED_LS_KEY = 'iq.hanemod.collapsed';
 
 /**
  * Hane Mod Studio YouTube reklam banner'ı.
@@ -79,9 +81,40 @@ function loadYouTubeApi(): Promise<void> {
 export function HaneModAdBanner({ variant = 'compact', className }: Props) {
   const [idx, setIdx] = useState(0);
   const [muted, setMuted] = useState(true);
+  const [paused, setPaused] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(COLLAPSED_LS_KEY) === '1'; } catch { return false; }
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const idxRef = useRef(0);
+
+  // Collapsed durum persist
+  useEffect(() => {
+    try { localStorage.setItem(COLLAPSED_LS_KEY, collapsed ? '1' : '0'); } catch { /* ignore */ }
+    // Akordiyon kapaninca video da otomatik pause
+    if (collapsed) {
+      try { playerRef.current?.pauseVideo?.(); } catch { /* ignore */ }
+      setPaused(true);
+    } else {
+      try { playerRef.current?.playVideo?.(); } catch { /* ignore */ }
+      setPaused(false);
+    }
+  }, [collapsed]);
+
+  // Play/Pause toggle
+  const togglePause = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setPaused((p) => {
+      const next = !p;
+      try {
+        if (next) playerRef.current?.pauseVideo?.();
+        else playerRef.current?.playVideo?.();
+      } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   const hasVideos = FEATURED_VIDEOS.length > 0;
   const video = hasVideos ? FEATURED_VIDEOS[idx] : null;
@@ -184,7 +217,22 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           className,
         )}
       >
-        {hasVideos && (
+        {/* Akordiyon header — her zaman gorunur, video icerik toggle edilebilir. */}
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="flex w-full items-center justify-between border-b border-red-800/50 bg-red-950/70 px-2.5 py-1.5 text-left transition hover:bg-red-900/70"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Sponsor videoyu aç' : 'Sponsor videoyu kapat'}
+        >
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-100">
+            <Youtube size={10} className="text-red-400" />
+            Sponsor · {CHANNEL_NAME}
+          </span>
+          {collapsed ? <ChevronDown size={12} className="text-red-300" /> : <ChevronUp size={12} className="text-red-300" />}
+        </button>
+
+        {!collapsed && hasVideos && (
           <div className="relative aspect-video w-full overflow-hidden bg-black">
             {/* YT player buraya iframe enjekte eder */}
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
@@ -196,12 +244,18 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
               className="absolute inset-0 z-10"
               style={{ pointerEvents: 'auto' }}
             />
-            <span className="pointer-events-none absolute left-1.5 top-1.5 z-20 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-md">
-              <Youtube size={9} /> YouTube
-            </span>
             <span className="pointer-events-none absolute right-1.5 top-1.5 z-20 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
               Sponsor
             </span>
+            {/* Play/Pause butonu — kullanici video donmesini durdurabilsin */}
+            <button
+              type="button"
+              onClick={togglePause}
+              aria-label={paused ? 'Videoyu başlat' : 'Videoyu duraklat'}
+              className="absolute bottom-1.5 left-1.5 z-20 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white/90 backdrop-blur-sm transition hover:bg-black/90 hover:text-white"
+            >
+              {paused ? <Play size={11} /> : <Pause size={11} />}
+            </button>
             <button
               type="button"
               onClick={toggleMute}
@@ -233,6 +287,7 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
           </div>
         )}
 
+        {!collapsed && (
         <a
           href={targetUrl}
           target="_blank"
@@ -260,8 +315,9 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
             <Youtube size={10} /> Abone Ol
           </div>
         </a>
+        )}
 
-        {FEATURED_VIDEOS.length > 1 && (
+        {!collapsed && FEATURED_VIDEOS.length > 1 && (
           <div className="flex justify-center gap-1.5 pb-2">
             {FEATURED_VIDEOS.map((v, i) => (
               <button

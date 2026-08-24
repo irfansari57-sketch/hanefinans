@@ -466,29 +466,31 @@ export function Layout() {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-3 flex shrink-0 items-center justify-between px-4">
-                <div className="inline-flex flex-col items-center gap-1">
-                  <img
-                    src="/web-app-manifest-192x192.png?v=7"
-                    alt="InvestLiq"
-                    width={56}
-                    height={56}
-                    className="h-14 w-14 rounded-xl shadow-md"
-                  />
-                  <div className="flex flex-col items-center leading-tight">
-                    <span className="text-sm font-extrabold tracking-tight">
-                      <span className="text-slate-900 dark:text-slate-100">Invest</span>
-                      <span className="text-emerald-600 dark:text-emerald-400">Liq</span>
+              <div className="mb-4 flex shrink-0 items-start justify-between px-4 pt-2">
+                {/* Mobil drawer marka bloğu — logosuz wordmark (varyant D):
+                    "Investli" + gradient "Q" + turkuaz underline + slogan.
+                    Hem light hem dark modda ayni yapida — sadece text/underline
+                    renkleri adapte olur. */}
+                <div className="inline-flex flex-1 flex-col items-center gap-2">
+                  <span className="text-3xl font-black tracking-tight flex items-baseline">
+                    <span className="text-slate-900 dark:text-slate-100">Investli</span>
+                    <span
+                      className="text-[34px] bg-gradient-to-br from-cyan-500 via-emerald-500 to-emerald-600 dark:from-cyan-400 dark:via-emerald-400 dark:to-emerald-500 bg-clip-text text-transparent"
+                      style={{ WebkitTextFillColor: 'transparent' }}
+                    >
+                      Q
                     </span>
-                    <span className="mt-0.5 text-[9px] tracking-[0.14em] font-semibold uppercase text-emerald-700 dark:text-accent">
-                      Yatırımcılar İçin Akıllı Veri Platformu
-                    </span>
-                  </div>
+                  </span>
+                  {/* Ince turkuaz underline — 2. resimdeki ayirici */}
+                  <div className="h-0.5 w-16 rounded-full bg-gradient-to-r from-transparent via-cyan-500 dark:via-cyan-400 to-transparent" />
+                  <span className="text-[10px] tracking-[0.22em] font-semibold uppercase text-slate-500 dark:text-slate-400 text-center">
+                    Akıllı Veri Platformu
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={closeMobile}
-                  className="rounded p-1 text-slate-400 hover:bg-bg-card"
+                  className="shrink-0 rounded p-1 text-slate-400 hover:bg-bg-card"
                   aria-label="Kapat"
                 >
                   <X size={18} />

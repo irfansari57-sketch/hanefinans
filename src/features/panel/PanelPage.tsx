@@ -20,7 +20,7 @@ import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { DividendCalendarWidget } from '@/components/domain/DividendCalendarWidget';
 import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
-import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Shield, ChevronRight, Briefcase, CalendarClock } from 'lucide-react';
+import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Briefcase, CalendarClock } from 'lucide-react';
 import { readRiskProfile } from '@/lib/riskProfile';
 import { PortfolioPanelSummary } from './PortfolioPanelSummary';
 import { PortfolioHealthPanel } from './PortfolioHealthPanel';
@@ -330,27 +330,9 @@ export function PanelPage() {
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}
 
-      {/* Risk Profili CTA — sadece DESKTOP'ta gorunur.
-          Mobil'de sol menu Risk Profilim linki zaten var, CTA ekran alanindan
-          tasarruf icin gizli tutuluyor. */}
-      {user && !hasRiskProfile && (
-        <Link
-          to="/risk-profili"
-          className="mb-5 hidden md:flex items-center gap-3 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-4 transition hover:border-accent/60 hover:bg-accent/10"
-        >
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/20 text-accent">
-            <Shield size={18} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold text-slate-100">Risk profilinizi 2 dakikada belirleyin</div>
-            <div className="text-[11px] text-slate-400 leading-tight">
-              7 soruluk anket — yaş, vade, risk toleransı, hedef + SPK nitelikli yatırımcı kontrolü.
-              Sonunda kişiselleştirilmiş TEFAS fon paketi.
-            </div>
-          </div>
-          <ChevronRight size={18} className="shrink-0 text-accent" />
-        </Link>
-      )}
+      {/* Risk Profili CTA — Panel ana ekranda gosterilmiyor.
+          Sol menudeki "Risk Profilim" linki zaten cagriyi karsiliyor;
+          Panel'in ust yerini bu banner tutmasin. Ihtiyaç halinde geri acilabilir. */}
 
       {/* Piyasa Özeti — premium 3 sütun (Endeks+Döviz / Metal / Kripto), satır clickable */}
       <PinnableAccordion

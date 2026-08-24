@@ -11,7 +11,7 @@ import { Helmet } from 'react-helmet-async';
  * bazlı override yapar.
  */
 interface SeoHeadProps {
-  /** Sayfa başlığı — sonuna "| InvestLiq" otomatik eklenir. */
+  /** Sayfa başlığı — sonuna "| InvestliQ" otomatik eklenir. */
   title: string;
   /** Meta description (~150 karakter ideal). */
   description?: string;
@@ -23,7 +23,7 @@ interface SeoHeadProps {
   noindex?: boolean;
 }
 
-const SITE_NAME = 'InvestLiq';
+const SITE_NAME = 'InvestliQ';
 const SITE_URL = 'https://investliq.com';
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`;
 

@@ -1,6 +1,6 @@
 {
-  "name": "InvestLiq — Yatırımcılar İçin Akıllı Veri Platformu",
-  "short_name": "InvestLiq",
+  "name": "InvestliQ — Yatırımcılar İçin Akıllı Veri Platformu",
+  "short_name": "InvestliQ",
   "description": "BIST hisseleri, TEFAS fonları, kripto, döviz ve makro göstergeler için canlı fiyat, günlük analiz ve teknik sinyaller.",
   "start_url": "/",
   "scope": "/",

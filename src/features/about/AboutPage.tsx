@@ -1,7 +1,7 @@
 /**
- * Hakkında — InvestLiq marka koruma + SEO sayfası.
+ * Hakkında — InvestliQ marka koruma + SEO sayfası.
  *
- * Amaç: Google aramalarında "InvestLiq" markasının tam eşleşme sinyalini
+ * Amaç: Google aramalarında "InvestliQ" markasının tam eşleşme sinyalini
  * güçlendirmek. H1, meta description, JSON-LD ve FAQ ile marka otoritesi
  * kurulması. Rakip isim anmadan pozitif pozisyonlama.
  */
@@ -18,13 +18,13 @@ export function AboutPage() {
   return (
     <>
       <SeoHead
-        title="InvestLiq Nedir? — Türkiye'nin Akıllı Yatırım Veri Platformu"
-        description="InvestLiq, Türkiye yatırımcıları için BIST hisseleri, TEFAS fonları, döviz, emtia ve kripto verilerini tek panelde sunan yerli finansal veri platformudur. BIST 100/30 endeks entegrasyonu, TEFAS bağlantısı ve Türkçe finansal okuryazarlık içeriğiyle Türkiye piyasasına odaklıdır."
+        title="InvestliQ Nedir? — Türkiye'nin Akıllı Yatırım Veri Platformu"
+        description="InvestliQ, Türkiye yatırımcıları için BIST hisseleri, TEFAS fonları, döviz, emtia ve kripto verilerini tek panelde sunan yerli finansal veri platformudur. BIST 100/30 endeks entegrasyonu, TEFAS bağlantısı ve Türkçe finansal okuryazarlık içeriğiyle Türkiye piyasasına odaklıdır."
         path="/hakkinda"
       />
 
       <PageHeader
-        title="InvestLiq Nedir?"
+        title="InvestliQ Nedir?"
         subtitle="Türkiye yatırımcıları için akıllı finansal veri platformu"
       />
 
@@ -36,10 +36,10 @@ export function AboutPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-2">
-              InvestLiq — Türkiye'nin Akıllı Finansal Veri Platformu
+              InvestliQ — Türkiye'nin Akıllı Finansal Veri Platformu
             </h1>
             <p className="text-sm text-slate-300 leading-relaxed">
-              <strong className="text-accent">InvestLiq</strong>, BIST hisseleri, TEFAS
+              <strong className="text-accent">InvestliQ</strong>, BIST hisseleri, TEFAS
               yatırım fonları, döviz kurları, kıymetli madenler ve kripto para verilerini
               tek arayüzde birleştiren, Türkiye yatırımcıları için tasarlanmış yerli bir
               finansal veri platformudur.
@@ -56,7 +56,7 @@ export function AboutPage() {
       {/* Ne yapar? */}
       <section className="glass-card mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-100">
-          <ChartBar size={20} className="text-accent" /> InvestLiq Ne Yapar?
+          <ChartBar size={20} className="text-accent" /> InvestliQ Ne Yapar?
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Feature
@@ -92,9 +92,9 @@ export function AboutPage() {
         </div>
       </section>
 
-      {/* Neden InvestLiq? */}
+      {/* Neden InvestliQ? */}
       <section className="glass-card mb-4 p-5">
-        <h2 className="mb-3 text-lg font-bold text-slate-100">Neden InvestLiq?</h2>
+        <h2 className="mb-3 text-lg font-bold text-slate-100">Neden InvestliQ?</h2>
         <ul className="space-y-2 text-sm text-slate-300">
           <Why text="Tamamen Türkçe — sektör, kategori, terim ve arayüz Türkiye'ye özel." />
           <Why text="BIST-öncelikli veri yapısı — BIST 100/30 endekslerinden hisse detayına kadar entegre." />
@@ -110,28 +110,28 @@ export function AboutPage() {
         <h2 className="mb-4 text-lg font-bold text-slate-100">Sık Sorulan Sorular</h2>
         <div className="space-y-4">
           <Faq
-            q="InvestLiq nedir?"
-            a="InvestLiq, Türkiye yatırımcıları için tasarlanmış akıllı finansal veri platformudur. BIST hisseleri, TEFAS fonları, döviz, emtia, kripto ve BIST endeksleri hakkında canlı veri, analiz, portföy takibi ve risk profili yönetimi sunar."
+            q="InvestliQ nedir?"
+            a="InvestliQ, Türkiye yatırımcıları için tasarlanmış akıllı finansal veri platformudur. BIST hisseleri, TEFAS fonları, döviz, emtia, kripto ve BIST endeksleri hakkında canlı veri, analiz, portföy takibi ve risk profili yönetimi sunar."
           />
           <Faq
-            q="InvestLiq'i benzer platformlardan ayıran nedir?"
-            a="InvestLiq yerli bir platform olup Türkiye piyasasına özel entegrasyonlar sunar: BIST 100/30 endeks feed'i, TEFAS resmi açık fon listesi, TCMB politika faizi, TÜİK enflasyon takvimi, KAP haberleri, Türkçe finansal okuryazarlık içerikleri ve BES hesaplayıcı gibi Türkiye'ye özgü araçlar."
+            q="InvestliQ'i benzer platformlardan ayıran nedir?"
+            a="InvestliQ yerli bir platform olup Türkiye piyasasına özel entegrasyonlar sunar: BIST 100/30 endeks feed'i, TEFAS resmi açık fon listesi, TCMB politika faizi, TÜİK enflasyon takvimi, KAP haberleri, Türkçe finansal okuryazarlık içerikleri ve BES hesaplayıcı gibi Türkiye'ye özgü araçlar."
           />
           <Faq
-            q="InvestLiq ücretli mi?"
-            a="Hayır, InvestLiq şu an ücretsiz kullanılabiliyor. Kayıt ol, tüm özelliklere sınırsız erişim sağla. Anonim ziyaretçiler kısıtlı içerik görebilir."
+            q="InvestliQ ücretli mi?"
+            a="Hayır, InvestliQ şu an ücretsiz kullanılabiliyor. Kayıt ol, tüm özelliklere sınırsız erişim sağla. Anonim ziyaretçiler kısıtlı içerik görebilir."
           />
           <Faq
-            q="InvestLiq güvenli mi?"
-            a="Evet. InvestLiq, KVKK uyumlu veri saklama, HTTPS, Turnstile bot koruması ve JWT tabanlı oturum yönetimi kullanır. Kişisel veriler sadece kullanıcının kendi kullanımı için tutulur, üçüncü taraflarla paylaşılmaz."
+            q="InvestliQ güvenli mi?"
+            a="Evet. InvestliQ, KVKK uyumlu veri saklama, HTTPS, Turnstile bot koruması ve JWT tabanlı oturum yönetimi kullanır. Kişisel veriler sadece kullanıcının kendi kullanımı için tutulur, üçüncü taraflarla paylaşılmaz."
           />
           <Faq
             q="Yatırım tavsiyesi veriyor mu?"
-            a="Hayır. InvestLiq, SPK mevzuatına uygun olarak yatırım tavsiyesi vermez. Sunulan tüm veri, analiz ve öneriler bilgilendirme amaçlıdır — yatırım kararlarınızı SPK lisanslı bir yatırım kuruluşuyla görüşerek verin."
+            a="Hayır. InvestliQ, SPK mevzuatına uygun olarak yatırım tavsiyesi vermez. Sunulan tüm veri, analiz ve öneriler bilgilendirme amaçlıdır — yatırım kararlarınızı SPK lisanslı bir yatırım kuruluşuyla görüşerek verin."
           />
           <Faq
             q="Hangi verileri kullanır?"
-            a="InvestLiq; İş Yatırım BIST endeks feed'i, Takasbank TEFAS resmi açık fon listesi, TCMB politika faizi, TÜİK enflasyon verisi, Yahoo Finance uluslararası piyasalar ve resmi haber kaynaklarını kullanır. Kaynak şeffaflığı için her veri satırında güncelleme tarihi görünür."
+            a="InvestliQ; İş Yatırım BIST endeks feed'i, Takasbank TEFAS resmi açık fon listesi, TCMB politika faizi, TÜİK enflasyon verisi, Yahoo Finance uluslararası piyasalar ve resmi haber kaynaklarını kullanır. Kaynak şeffaflığı için her veri satırında güncelleme tarihi görünür."
           />
         </div>
       </section>
@@ -157,7 +157,7 @@ export function AboutPage() {
           </Link>
         </div>
         <p className="mt-4 text-[10px] text-slate-500">
-          InvestLiq © 2026 — Türkiye yatırımcıları için akıllı finansal veri platformu.
+          InvestliQ © 2026 — Türkiye yatırımcıları için akıllı finansal veri platformu.
           KVKK ve SPK mevzuatına uygundur. Yatırım tavsiyesi vermez.
         </p>
       </section>

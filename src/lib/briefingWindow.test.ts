@@ -88,12 +88,12 @@ describe('isSessionInWindow', () => {
 });
 
 describe('injectSessionSubtitle', () => {
-  it('brifing başlığının ALTINA subtitle yerleştirir (InvestLiq önce kalır)', () => {
+  it('brifing başlığının ALTINA subtitle yerleştirir (InvestliQ önce kalır)', () => {
     const briefing =
-      '📊 *InvestLiq Brifingi*\n_22 Mayıs 2026 Cuma_\n\n🇹🇷 *TÜRKİYE*\nBIST 100: 13.808';
+      '📊 *InvestliQ Brifingi*\n_22 Mayıs 2026 Cuma_\n\n🇹🇷 *TÜRKİYE*\nBIST 100: 13.808';
     const out = injectSessionSubtitle(briefing, 'morning');
     const lines = out.split('\n');
-    expect(lines[0]).toContain('InvestLiq Brifingi');
+    expect(lines[0]).toContain('InvestliQ Brifingi');
     expect(lines[1]).toContain('22 Mayıs');
     expect(lines[2]).toContain('Sabah Raporu');
   });
@@ -104,11 +104,11 @@ describe('injectSessionSubtitle', () => {
     expect(out.startsWith('🌆')).toBe(true);
   });
 
-  it('Telegram preview için "InvestLiq Brifingi" hep ilk satır', () => {
-    const briefing = '📊 *InvestLiq Brifingi*\n_test tarih_\n\nBIST içerik';
+  it('Telegram preview için "InvestliQ Brifingi" hep ilk satır', () => {
+    const briefing = '📊 *InvestliQ Brifingi*\n_test tarih_\n\nBIST içerik';
     for (const session of ['morning', 'midday', 'evening'] as const) {
       const out = injectSessionSubtitle(briefing, session);
-      expect(out.split('\n')[0]).toContain('InvestLiq Brifingi');
+      expect(out.split('\n')[0]).toContain('InvestliQ Brifingi');
     }
   });
 });

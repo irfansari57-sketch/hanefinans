@@ -541,7 +541,7 @@ export function Layout() {
           {/* 2a. HaneFinans reklam videosu — herkese, sponsor (YouTube) ustunde */}
           <div>
             <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-              InvestLiq
+              InvestliQ
             </div>
             <AdVideo />
           </div>

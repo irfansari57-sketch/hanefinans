@@ -40,7 +40,7 @@ export function PwaInstallSection() {
   return (
     <>
       <p className="text-xs leading-relaxed text-slate-400">
-        InvestLiq'ı bilgisayar/telefon ana ekranına ekle. Tarayıcı çubuğu olmaz,
+        InvestliQ'ı bilgisayar/telefon ana ekranına ekle. Tarayıcı çubuğu olmaz,
         tam ekran çalışır, ileride push bildirim için temel altyapı kurulur.
       </p>
 

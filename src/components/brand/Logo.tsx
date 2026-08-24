@@ -3,12 +3,12 @@ import { cn } from '@/lib/utils';
 interface LogoProps {
   size?: number;
   className?: string;
-  /** icon: sadece Q logosu; full: Q + altında "InvestLiq" marka yazısı */
+  /** icon: sadece Q logosu; full: Q + altında "InvestliQ" marka yazısı */
   variant?: 'icon' | 'full';
 }
 
 /**
- * InvestLiq — Q ring + merkezde "i noktası" logo (v5).
+ * InvestliQ — Q ring + merkezde "i noktası" logo (v5).
  * - Chrome-emerald 3D dış halka + specular + contour
  * - Q kuyruğu sağ-alt (klasik Q formu)
  * - Merkezde küçük 3D emerald sphere = "i" harfinin noktası

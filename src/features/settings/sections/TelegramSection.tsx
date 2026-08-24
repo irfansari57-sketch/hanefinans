@@ -27,7 +27,7 @@ export function TelegramSection() {
     setTesting(true);
     setResult(null);
     const r = await sendTelegram(
-      `🎯 <b>InvestLiq test</b>\nBildirimler çalışıyor!\n<i>${new Date().toLocaleString('tr-TR')}</i>`,
+      `🎯 <b>InvestliQ test</b>\nBildirimler çalışıyor!\n<i>${new Date().toLocaleString('tr-TR')}</i>`,
     );
     setResult({ ok: r.ok, msg: r.ok ? "Test mesajı Telegram'a gönderildi! ✓" : (r.error ?? 'Bilinmeyen hata') });
     setTesting(false);

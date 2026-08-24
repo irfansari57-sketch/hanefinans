@@ -41,7 +41,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const payload = JSON.stringify({
-    title: (body.title ?? 'InvestLiq — Test Bildirimi').slice(0, 100),
+    title: (body.title ?? 'InvestliQ — Test Bildirimi').slice(0, 100),
     body: (body.body ?? 'Push bildirimleri çalışıyor! Alarmlar buradan gelecek.').slice(0, 200),
     url: (body.url ?? '/panel').slice(0, 200),
     tag: 'push-test',

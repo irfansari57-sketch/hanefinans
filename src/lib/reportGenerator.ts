@@ -36,7 +36,7 @@ const trDate = (d: Date) =>
 
 export function generateMarkdownReport(r: ReportInput): string {
   const lines: string[] = [];
-  lines.push(`# 🌅 InvestLiq — Piyasa Raporu`);
+  lines.push(`# 🌅 InvestliQ — Piyasa Raporu`);
   lines.push(`**${trDate(r.date)}** • ${r.date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`);
   lines.push('');
 
@@ -125,7 +125,7 @@ export function generateMarkdownReport(r: ReportInput): string {
   lines.push('');
 
   lines.push('---');
-  lines.push(`*InvestLiq tarafından otomatik üretildi • ${r.date.toISOString()}*`);
+  lines.push(`*InvestliQ tarafından otomatik üretildi • ${r.date.toISOString()}*`);
 
   return lines.join('\n');
 }
@@ -134,7 +134,7 @@ export function generateTelegramText(r: ReportInput): string {
   // Telegram için sade Markdown (Telegram Bot API limit: 4096 karakter)
   const lines: string[] = [];
   const dateStr = trDate(r.date);
-  lines.push(`🌅 *InvestLiq — Piyasa Raporu*`);
+  lines.push(`🌅 *InvestliQ — Piyasa Raporu*`);
   lines.push(`_${dateStr}_`);
   lines.push('');
 

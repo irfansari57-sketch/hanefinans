@@ -1,4 +1,4 @@
-# NEXT SESSION — InvestLiq (eski Hane Finans)
+# NEXT SESSION — InvestliQ (eski Hane Finans)
 
 > Son guncelleme: 23 Agustos 2026 — TR sayi input duzeltmesi + Fon Karsilastir grafik overlap + Panel skeleton kaldirildi + Sidebar logo varyant C + Yorumlar sadelestirildi
 
@@ -176,7 +176,7 @@ Yeni /hakkinda sayfasi, sitemap, FAQPage JSON-LD deployed. Manuel adimlar:
 - **Google Search Console:** search.google.com/search-console → investliq.com ekle →
   verification meta code al → index.html satir 66'daki placeholder acip yapistir →
   redeploy → verify → sitemap.xml gonder.
-- **Google My Business:** business.google.com → InvestLiq ekle (Financial Services).
+- **Google My Business:** business.google.com → InvestliQ ekle (Financial Services).
 - **Backlink baslangic paketi:** Twitter @investliq_tr, LinkedIn sirket sayfasi,
   Eksi Sozluk basligi, Medium yazi.
 - **Yandex Webmaster:** webmaster.yandex.com.tr → verify + sitemap.
@@ -220,7 +220,7 @@ Yeni /hakkinda sayfasi, sitemap, FAQPage JSON-LD deployed. Manuel adimlar:
   - src/lib/globalSearchIndex.ts (yeni), kind badge'leri, doviz bayrak emoji
   - Fonlar TEFAS'tan async yuklenip index'e eklenir
 - **/hakkinda sayfasi** (src/features/about/AboutPage.tsx): SEO marka koruma
-  - Hero + 6 ozellik + 6 "Neden InvestLiq?" + SSS + iletisim
+  - Hero + 6 ozellik + 6 "Neden InvestliQ?" + SSS + iletisim
   - Rakip ismi ANMADAN (savunma pozisyonu yerine pozitif differentiation)
 - **Fon Karsilastir 3D Chart v3 → v4** (FundComparePage.tsx):
   - Div/CSS layout sorun cikardi → SVG tabanli refactor
@@ -360,7 +360,7 @@ Godaddy'de nameserver degisimi kaldi (kullanici sifre reset yapamadi).
 3. **Set up a custom domain** -> `investliq.com`
 4. CF otomatik DNS record'u ekler (nameserver zaten CF'de)
 5. SSL certificate ~5 dk icinde aktif
-6. Test: https://investliq.com -> InvestLiq sitesi acilmali
+6. Test: https://investliq.com -> InvestliQ sitesi acilmali
 
 **Adim 5 — hanefinans.net -> investliq.com 301 redirect**
 1. Dashboard -> hanefinans.net zone (mevcut CF zone)
@@ -392,13 +392,13 @@ Godaddy'de nameserver degisimi kaldi (kullanici sifre reset yapamadi).
 
 ## 🚀 INVESTLIQ REBRAND OPERASYONU — DEVAM EDEN
 
-**Yeni marka:** InvestLiq  
+**Yeni marka:** InvestliQ  
 **Domain:** investliq.com (GoDaddy'de alındı, DNS henüz CF'ye yönlendirilmedi)  
 **Slogan:** Yatırımcılar İçin Akıllı Veri Platformu  
 **Logo:** Beyaz Q çember + yeşil elmas + magnifier sap
 
 ### ✅ Bu seansda bitti (kod)
-- **Marka batch:** 29 dosyada "Hane Finans" → "InvestLiq"
+- **Marka batch:** 29 dosyada "Hane Finans" → "InvestliQ"
 - **Domain batch:** 16 dosyada hanefinans.net/pages.dev → investliq.com/pages.dev
 - **Slogan:** Tüm SEO/JSON-LD/meta'da güncellendi
 - **Logo.tsx:** Yeni SVG (Q + elmas + magnifier)
@@ -438,8 +438,8 @@ console.cloud.google.com → APIs & Services → Credentials → OAuth Client ID
 
 - **HaneModAdBanner.tsx** component'i → **InvestLiqAdBanner.tsx** rename (import path'ler etkilenir)
 - **`hf-` CSS class prefix'leri** varsa `iq-` ile değiştir (Logo defs'te kalmış olabilir)
-- **Legal metinlerinde** InvestLiq marka koruma ibaresi ekle
-- **404 sayfası** InvestLiq brand
+- **Legal metinlerinde** InvestliQ marka koruma ibaresi ekle
+- **404 sayfası** InvestliQ brand
 - **PWA manifest** icon değişiklikleri
 - **og-image.svg** yeni logo ile
 - **Sitemap.xml** investliq.com URL'leri

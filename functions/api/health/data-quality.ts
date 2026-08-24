@@ -34,7 +34,7 @@ async function checkYahoo(env: any): Promise<HealthResult> {
     // XU100 quote check
     const url = new URL('https://query1.finance.yahoo.com/v7/finance/quote?symbols=XU100.IS');
     const r = await fetch(url.toString(), {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; InvestLiq-Health/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; InvestliQ-Health/1.0)' },
       cf: { cacheTtl: 0 },
     });
     const latency = Date.now() - start;

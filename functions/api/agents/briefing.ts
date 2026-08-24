@@ -147,7 +147,7 @@ function buildBriefingText(parts: {
 }): string {
   const date = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', weekday: 'long' });
   const lines: string[] = [];
-  lines.push(`📊 *InvestLiq Brifingi*`);
+  lines.push(`📊 *InvestliQ Brifingi*`);
   lines.push(`_${date}_`);
   lines.push('');
 

@@ -3,7 +3,7 @@
  *
  * PortfolioPage'de "PDF İndir" butonuna bağlanır.
  * Rapor içeriği:
- *   - Başlık + InvestLiq brand + tarih + kullanıcı email
+ *   - Başlık + InvestliQ brand + tarih + kullanıcı email
  *   - Toplam değer / maliyet / kâr-zarar / günlük değişim özet kartı
  *   - Pozisyon tablosu (sembol/lot/maliyet/fiyat/değer/P&L/P&L%)
  *   - Alt bilgi: SPK yatırım tavsiyesi değildir uyarısı
@@ -63,7 +63,7 @@ export function generatePortfolioPdf(opts: PortfolioPdfOptions): jsPDF {
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
-  doc.text('InvestLiq', margin, y);
+  doc.text('InvestliQ', margin, y);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(120, 120, 120);

@@ -142,7 +142,7 @@ const TOPICS: Topic[] = [
       },
       {
         heading: 'EMA pozisyonları ile trend okuma',
-        body: 'EMA (Exponential Moving Average), yeni fiyatlara daha fazla ağırlık veren hareketli ortalama türüdür. InvestLiq BIST analizinde EMA 5, 8, 13, 21, 55 ve 200 kullanılır. **EMA 5-13:** Çok kısa vadeli trend (scalping). **EMA 21-55:** Kısa-orta vadeli trend (1-3 hafta). **EMA 200:** Uzun vadeli trend (yıllık). Fiyat EMA 200\'ün üstündeyse hisse "uzun vadeli boğa modunda" — düşüşler alım fırsatı. Altındaysa "uzun vadeli ayı" — yükselişler satış fırsatı olabilir. EMA 5 ve EMA 13\'ün kesişimi (golden cross / death cross) kısa vadeli trend dönüşü sinyalidir. MA8 fiyatı ise günlük (1D) 8 periyodluk basit ortalamadır — kısa vadeli swing trade için referans seviye.',
+        body: 'EMA (Exponential Moving Average), yeni fiyatlara daha fazla ağırlık veren hareketli ortalama türüdür. InvestliQ BIST analizinde EMA 5, 8, 13, 21, 55 ve 200 kullanılır. **EMA 5-13:** Çok kısa vadeli trend (scalping). **EMA 21-55:** Kısa-orta vadeli trend (1-3 hafta). **EMA 200:** Uzun vadeli trend (yıllık). Fiyat EMA 200\'ün üstündeyse hisse "uzun vadeli boğa modunda" — düşüşler alım fırsatı. Altındaysa "uzun vadeli ayı" — yükselişler satış fırsatı olabilir. EMA 5 ve EMA 13\'ün kesişimi (golden cross / death cross) kısa vadeli trend dönüşü sinyalidir. MA8 fiyatı ise günlük (1D) 8 periyodluk basit ortalamadır — kısa vadeli swing trade için referans seviye.',
       },
       {
         heading: 'Destek-direnç ve hacim',

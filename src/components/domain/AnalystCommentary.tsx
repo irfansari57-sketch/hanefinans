@@ -29,7 +29,7 @@ export function AnalystCommentary() {
 
       <p className="mt-3 text-[10px] leading-relaxed text-slate-500">
         ℹ️ Linkler ilgili aracı kurumun resmi web sayfasına yönlendirir.{' '}
-        InvestLiq'ın bu kurumlarla resmi bir bağı yoktur. Yatırım tavsiyesi değildir.
+        InvestliQ'ın bu kurumlarla resmi bir bağı yoktur. Yatırım tavsiyesi değildir.
       </p>
     </section>
   );

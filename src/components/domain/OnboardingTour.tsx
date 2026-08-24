@@ -15,7 +15,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     icon: Sparkles,
-    title: 'InvestLiq\'a hoş geldin!',
+    title: 'InvestliQ\'a hoş geldin!',
     description:
       'BIST hisseleri, fonlar, kripto, emtia ve döviz için canlı veriler tek panelde. Bu kısa tur sana ana özellikleri gösterecek (30 saniye).',
   },

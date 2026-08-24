@@ -48,7 +48,7 @@ export function DisclaimerModal() {
           <div className="flex-1 min-w-0">
             <h2 id="disclaimer-title" className="text-lg font-bold text-warning">{DISCLAIMER_TITLE}</h2>
             <p className="mt-0.5 text-xs text-slate-400">
-              InvestLiq'a hoş geldin. Devam etmeden önce lütfen aşağıdaki uyarıyı oku.
+              InvestliQ'a hoş geldin. Devam etmeden önce lütfen aşağıdaki uyarıyı oku.
             </p>
           </div>
         </div>

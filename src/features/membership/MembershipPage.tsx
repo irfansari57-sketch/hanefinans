@@ -123,7 +123,7 @@ export function MembershipPage() {
   if (!user) {
     return (
       <>
-      <SeoHead title="Üyelik Planları" description="InvestLiq Free, Pro ve Elite üyelik planları. AI agent erişimi, push bildirimleri, gelişmiş öneriler." path="/uyelik" />
+      <SeoHead title="Üyelik Planları" description="InvestliQ Free, Pro ve Elite üyelik planları. AI agent erişimi, push bildirimleri, gelişmiş öneriler." path="/uyelik" />
 
         <PageHeader title="Üyelik" subtitle="Plan seçmek için önce hesabına gir veya ücretsiz hesap aç." />
         <div className="glass-card p-8 text-center">
@@ -198,10 +198,10 @@ export function MembershipPage() {
   if (!FEATURES.paywallEnabled) {
     return (
       <>
-        <SeoHead title="Üyelik" description="InvestLiq'te tüm özellikler tüm üyelere açık." path="/uyelik" />
+        <SeoHead title="Üyelik" description="InvestliQ'te tüm özellikler tüm üyelere açık." path="/uyelik" />
         <PageHeader
           title="Üyelik"
-          subtitle="InvestLiq'te tüm özellikler tüm üyelere açık — planlama, öneriler, portföy, alarmlar."
+          subtitle="InvestliQ'te tüm özellikler tüm üyelere açık — planlama, öneriler, portföy, alarmlar."
         />
         <div className="glass-card p-8 text-center">
           <Sparkles size={32} className="mx-auto text-accent" />

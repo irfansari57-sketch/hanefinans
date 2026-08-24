@@ -85,9 +85,9 @@ export const onRequestPost: PagesFunction<Env & {
   const origin = new URL(request.url).origin;
   const resetUrl = `${origin}/auth/reset-password?token=${encodeURIComponent(token)}`;
 
-  const fromEmail = env.RESEND_FROM_EMAIL ?? 'InvestLiq <onboarding@resend.dev>';
+  const fromEmail = env.RESEND_FROM_EMAIL ?? 'InvestliQ <onboarding@resend.dev>';
   const html = buildEmailHtml(email, resetUrl);
-  const text = `InvestLiq şifre sıfırlama\n\n${email} hesabın için şifre sıfırlama isteği aldık.\n\nBağlantı (30 dk geçerli):\n${resetUrl}\n\nSen istemediysen bu maili görmezden gel — şifren değişmeyecek.`;
+  const text = `InvestliQ şifre sıfırlama\n\n${email} hesabın için şifre sıfırlama isteği aldık.\n\nBağlantı (30 dk geçerli):\n${resetUrl}\n\nSen istemediysen bu maili görmezden gel — şifren değişmeyecek.`;
 
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -99,7 +99,7 @@ export const onRequestPost: PagesFunction<Env & {
       body: JSON.stringify({
         from: fromEmail,
         to: [email],
-        subject: 'InvestLiq — Şifre sıfırlama isteğin',
+        subject: 'InvestliQ — Şifre sıfırlama isteğin',
         html,
         text,
       }),
@@ -125,7 +125,7 @@ function buildEmailHtml(email: string, resetUrl: string): string {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>InvestLiq — Şifre sıfırlama</title>
+<title>InvestliQ — Şifre sıfırlama</title>
 </head>
 <body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,Segoe UI,sans-serif;color:#cbd5e1;">
   <div style="max-width:520px;margin:0 auto;padding:32px 24px;background:#111a2e;border-radius:16px;margin-top:32px;border:1px solid #1f2a44;">
@@ -154,7 +154,7 @@ function buildEmailHtml(email: string, resetUrl: string): string {
     </p>
     <hr style="border:none;border-top:1px solid #1f2a44;margin:24px 0;" />
     <p style="font-size:11px;color:#475569;text-align:center;margin:0;">
-      InvestLiq · <a href="https://investliq.com" style="color:#4ade80;text-decoration:none;">investliq.com</a>
+      InvestliQ · <a href="https://investliq.com" style="color:#4ade80;text-decoration:none;">investliq.com</a>
     </p>
   </div>
 </body>

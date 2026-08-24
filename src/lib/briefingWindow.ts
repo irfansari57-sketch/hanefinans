@@ -46,13 +46,13 @@ export function isSessionInWindow(session: BriefingSession, d: Date = new Date()
 
 /**
  * Brifing metnine session alt başlığı yerleştir.
- * Brifing 1. satırı '📊 *InvestLiq Brifingi*', 2. satırı tarih içeriyor;
+ * Brifing 1. satırı '📊 *InvestliQ Brifingi*', 2. satırı tarih içeriyor;
  * subtitle 3. satıra konur. Format bozulmuşsa fallback olarak en üste prepend.
  */
 export function injectSessionSubtitle(text: string, session: BriefingSession): string {
   const subtitle = sessionSubtitle(session);
   const lines = text.split('\n');
-  if (lines.length >= 2 && lines[0].includes('InvestLiq Brifingi')) {
+  if (lines.length >= 2 && lines[0].includes('InvestliQ Brifingi')) {
     lines.splice(2, 0, subtitle);
   } else {
     lines.unshift(subtitle);

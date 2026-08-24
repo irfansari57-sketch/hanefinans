@@ -68,7 +68,7 @@ export function PwaInstallBanner() {
           <Smartphone size={16} />
         </span>
         <div className="flex-1">
-          <div className="text-sm font-semibold text-slate-100">InvestLiq uygulamasini yukle</div>
+          <div className="text-sm font-semibold text-slate-100">InvestliQ uygulamasini yukle</div>
           <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
             {isIos
               ? 'Safari de paylas ikonuna - Ana Ekrana Ekle ye dokun.'

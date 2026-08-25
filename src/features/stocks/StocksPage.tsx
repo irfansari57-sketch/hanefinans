@@ -48,8 +48,13 @@ function readReturnsCache(): Record<string, PeriodReturns> | null {
     if (Date.now() - parsed.fetchedAt > STOCK_RETURNS_TTL_MS) return null;
     if (!parsed.data) return null;
     const count = Object.keys(parsed.data).length;
-    // Bos veya yetersiz cache: refetch tetiklensin
     if (count < STOCK_RETURNS_MIN_ENTRIES) return null;
+    // GERCEK doluluk kontrolu: sembol sayisi yeterli olsa bile deger yoksa
+    // "—" gorunur. En az X sembolde geçerli period degeri olmali.
+    const validCount = Object.values(parsed.data).filter((r) =>
+      r && Object.values(r).some((v) => v != null && Number.isFinite(v)),
+    ).length;
+    if (validCount < STOCK_RETURNS_MIN_ENTRIES) return null;
     return parsed.data;
   } catch { return null; }
 }
@@ -246,7 +251,11 @@ export function StocksPage() {
 
   useEffect(() => {
     const memoAge = stocksMemo ? Date.now() - stocksMemo.fetchedAt : Infinity;
-    if (memoAge < STOCKS_MEMO_TTL_MS) {
+    // Cache guncel VE returns dolu ise instant render.
+    // Sadece memo taze olsa bile returnsMap yetersizse yeni fetch tetiklenmeli
+    // — aksi halde period kolonlari 7 gun boyunca "—" kalabilir.
+    const cachedReturns = readReturnsCache();
+    if (memoAge < STOCKS_MEMO_TTL_MS && cachedReturns) {
       setLoading(false);
       return;
     }
@@ -273,6 +282,18 @@ export function StocksPage() {
         if (dev > 3) {
           displayChangePct = p1g;
         }
+      }
+      // BIST GUNLUK LIMIT SANITY: BIST hisselerinde ±%10 tavan/taban vardir.
+      // Snapshot |changePct| > 11 ise Yahoo previousClose bug'i olma ihtimali
+      // yuksek (adjusted close split/dividend catisi). Period 1g yoksa outlier
+      // olarak isaretle, NaN cevir → tabloda "—" gorulsun (yanlis %10+ degerini
+      // gostermek yerine "yok" gostermek daha guvenli).
+      if (
+        Number.isFinite(displayChangePct) &&
+        Math.abs(displayChangePct as number) > 11 &&
+        (p1g == null || !Number.isFinite(p1g))
+      ) {
+        displayChangePct = NaN;
       }
       return { ...s, changePct: displayChangePct, returns: ret };
     });

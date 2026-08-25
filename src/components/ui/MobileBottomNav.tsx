@@ -8,7 +8,7 @@ interface MobileBottomNavProps {
 
 const TABS = [
   { to: '/panel', label: 'Panel', icon: LayoutDashboard },
-  { to: '/recommendations', label: 'Öneriler', icon: Flame },
+  { to: '/recommendations', label: 'Radar', icon: Flame },
   { to: '/watchlist', label: 'Takip', icon: Star },
   { to: '/portfoy', label: 'Portföy', icon: Wallet },
 ] as const;

@@ -69,7 +69,7 @@ const navGroups: NavGroup[] = [
       { to: '/panel', label: 'Panel', icon: LayoutDashboard },
       { to: '/egitim', label: 'Finansal Okuryazarlık', icon: GraduationCap },
       { to: '/morning', label: 'Günlük Analiz', icon: Sun },
-      { to: '/recommendations', label: 'Öneriler', icon: Flame, pro: false },
+      { to: '/recommendations', label: 'Piyasa Radarı', icon: Flame, pro: false },
       // Akilli Sorgu: aiForAllUsers=false iken sadece admin gorur. flag acilinca herkese acilir.
       ...(FEATURES.smartQuery
         ? [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles }]

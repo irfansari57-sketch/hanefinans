@@ -121,7 +121,7 @@ export function ScalpCard({ rec, rank, watched, onToggle }: {
         </button>
         <ChartButton symbol={stock.symbol} name={stock.name} />
         <AlertButton stock={stock} />
-        <NoteButton symbol={stock.symbol} hint={`${stock.symbol} — vur-kaç önerisi`} />
+        <NoteButton symbol={stock.symbol} hint={`${stock.symbol} — vur-kaç sinyali`} />
         <a
           href={`https://www.tradingview.com/chart/?symbol=BIST:${stock.symbol}`}
           target="_blank"

@@ -367,11 +367,11 @@ export function RecommendationsPage() {
 
   return (
     <>
-      <SeoHead title="Öneriler" description="Hisse ve fon önerileri — scalp, swing, uzun vadeli sinyaller. Çoklu zaman dilimi teknik analiz." path="/recommendations" />
+      <SeoHead title="Piyasa Radarı" description="Hisse ve fon taramaları — scalp, swing, uzun vadeli teknik sinyaller. Çoklu zaman dilimi teknik analiz. Bilgi amaçlıdır, yatırım tavsiyesi değildir." path="/recommendations" />
 
       <PageHeader
-        title="Öneriler"
-        subtitle="Aracı kurum hisse önerileri, trend fonlar ve algoritmik kısa vade sinyalleri."
+        title="Piyasa Radarı"
+        subtitle="Aracı kurum hisse listeleri, trend fonlar ve algoritmik kısa vade sinyalleri — bilgi amaçlıdır, yatırım tavsiyesi değildir."
         actions={
           <div className="flex items-center gap-2">
             {tab !== 'broker' && <LiveBadge updatedAt={updatedAt} refreshing={loading} />}
@@ -563,7 +563,7 @@ export function RecommendationsPage() {
             </div>
           )}
           <p className="mt-3 text-[11px] text-slate-500">
-            ⚠️ Vur-kaç önerileri kısa vadeli teknik sinyallerdir; yatırım tavsiyesi değildir. Sıkı stop-loss ile pozisyon yönet.
+            ⚠️ Vur-kaç sinyalleri kısa vadeli teknik tarama sonuçlarıdır; yatırım tavsiyesi değildir. Sıkı stop-loss ile pozisyon yönet.
           </p>
         </>
       </PinnableAccordion>

@@ -38,7 +38,7 @@ export function BrokerRecommendations() {
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-bold text-slate-100">
-            <Briefcase size={18} className="text-accent" /> Aracı Kurum Hisse Önerileri
+            <Briefcase size={18} className="text-accent" /> Aracı Kurum Hisse Raporları
             {feedUpdatedAt && feedUpdatedAt !== '1970-01-01T00:00:00Z' && (
               <span className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
                 <Sparkles size={10} /> Claude AI · canlı

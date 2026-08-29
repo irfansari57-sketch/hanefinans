@@ -59,8 +59,12 @@ html.light {
   body {
     @apply bg-bg antialiased;
     color: rgb(var(--c-text-1));
-    /* FT Salmon tema: Inter sans + Georgia serif (finansal degerler icin). */
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* FT SALMON EDITORIAL HYBRID:
+       Body & paragraf → Source Serif 4 (klasik gazete body serif, ekran icin optimize).
+       Basliklar → Playfair Display (index.css'te h1-h4 override).
+       UI kompakt (chip/nav/label/button) → Inter (asagida explicit override).
+       Sayilar → Playfair Display (.tabular-nums utility). */
+    font-family: 'Source Serif 4', 'Source Serif Pro', 'Georgia', 'Times New Roman', serif;
     /* cv02/03/04: Inter alternatif harf formları, cv11: alt-form 1 (kuyruksuz),
        ss01: stilistik set, tnum: TABULAR NUMS — sayı kolonu hizalama. */
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'tnum';
@@ -70,6 +74,26 @@ html.light {
   }
   html.light body {
     color: rgb(var(--c-text-1));
+  }
+
+  /* FT EDITORIAL HIYERARSI — 3 seviyeli tipografi:
+     1) h1-h4 basliklari → Playfair Display serif (dramatik gazete)
+     2) body/paragraf → Source Serif 4 (yukarida body font-family)
+     3) UI kompakt (nav/chip/button/label) → Inter sans (asagida override) */
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', 'Georgia', serif;
+    letter-spacing: -0.015em;
+  }
+  /* Kompakt UI ogeleri sans-serif kalmali (kucuk boyutlarda serif okunmaz):
+     buton/input, tum uppercase-tracking label'lar, nav linkleri, chip/badge. */
+  button, input, select, textarea,
+  .uppercase, [class*="uppercase"],
+  aside nav a, aside nav button,
+  nav a, nav button,
+  [role="tab"], [role="button"],
+  .btn, .btn-primary, .btn-secondary,
+  .badge, .chip {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   /* FT Salmon: buyuk finansal sayilar (fiyat, degisim, endeks) serif fontta
      daha karakteristik. tabular-nums utility kullanan yerler otomatik pick eder.

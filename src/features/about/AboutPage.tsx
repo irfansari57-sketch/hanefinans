@@ -18,7 +18,7 @@ export function AboutPage() {
   return (
     <>
       <SeoHead
-        title="InvestliQ Nedir? — Türkiye'nin Akıllı Yatırım Veri Platformu"
+        title="InvestliQ Nedir? — Akıllı Finansal Veri Platformu"
         description="InvestliQ, Türkiye yatırımcıları için BIST hisseleri, TEFAS fonları, döviz, emtia ve kripto verilerini tek panelde sunan yerli finansal veri platformudur. BIST 100/30 endeks entegrasyonu, TEFAS bağlantısı ve Türkçe finansal okuryazarlık içeriğiyle Türkiye piyasasına odaklıdır."
         path="/hakkinda"
       />
@@ -36,7 +36,7 @@ export function AboutPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-2">
-              InvestliQ — Türkiye'nin Akıllı Finansal Veri Platformu
+              InvestliQ — Akıllı Finansal Veri Platformu
             </h1>
             <p className="text-sm text-slate-300 leading-relaxed">
               <strong className="text-accent">InvestliQ</strong>, BIST hisseleri, TEFAS

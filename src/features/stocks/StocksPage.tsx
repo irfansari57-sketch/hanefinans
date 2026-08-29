@@ -275,24 +275,23 @@ export function StocksPage() {
       // period 1G (Yahoo historical adjusted closes) uyuşmuyorsa period'u tercih et.
       // BIMAS gibi hisselerde snapshot yanlış prev close alıp +9% gibi sahte
       // günlük hareket üretiyor; period 1G daima closes[-1] vs closes[-2] hesabı.
+      // GUNLUK DEGISIM (Gun %) HESABI - senkron kaynak politikasi:
+      // 1) Onceki bug: snapshot changePct (Yahoo quote endpoint prev bug) ile
+      //    period 1g (adjusted closes) sapiyordu; listede yanlis %10+ degerler
+      //    ciktiyor ama detay sayfasi period'dan hesapliyor → farkli.
+      // 2) Fix: period 1g varsa HER ZAMAN onu kullan (detay sayfasi ile ayni
+      //    kaynak, tutarlilik saglanir). Sapma esigi kaldirildi.
+      // 3) Period yoksa snapshot fallback + BIST daily limit (+/-11) sanity clamp.
       let displayChangePct = s.changePct;
       const p1g = ret?.['1g'];
-      if (p1g != null && Number.isFinite(p1g) && Number.isFinite(s.changePct)) {
-        const dev = Math.abs(s.changePct - p1g);
-        if (dev > 3) {
-          displayChangePct = p1g;
-        }
-      }
-      // BIST GUNLUK LIMIT SANITY: BIST hisselerinde ±%10 tavan/taban vardir.
-      // Snapshot |changePct| > 11 ise Yahoo previousClose bug'i olma ihtimali
-      // yuksek (adjusted close split/dividend catisi). Period 1g yoksa outlier
-      // olarak isaretle, NaN cevir → tabloda "—" gorulsun (yanlis %10+ degerini
-      // gostermek yerine "yok" gostermek daha guvenli).
-      if (
+      if (p1g != null && Number.isFinite(p1g)) {
+        // Period historical daima daha guvenilir — detay sayfasi ile senkron.
+        displayChangePct = p1g;
+      } else if (
         Number.isFinite(displayChangePct) &&
-        Math.abs(displayChangePct as number) > 11 &&
-        (p1g == null || !Number.isFinite(p1g))
+        Math.abs(displayChangePct as number) > 11
       ) {
+        // Period yok + snapshot BIST limitini asiyor → outlier, gostermeyelim.
         displayChangePct = NaN;
       }
       return { ...s, changePct: displayChangePct, returns: ret };

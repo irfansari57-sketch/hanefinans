@@ -194,7 +194,7 @@ export function LoanCalculator() {
       </div>
 
       {/* Girdi formu */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
         <Field
           label="Kredi Tutarı"
           suffix="₺"
@@ -234,7 +234,7 @@ export function LoanCalculator() {
       </div>
 
       {/* Sonuçlar */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
         <ResultCard
           icon={<Calendar size={14} />}
           label="Aylık Taksit"

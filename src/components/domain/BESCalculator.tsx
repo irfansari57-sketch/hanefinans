@@ -181,7 +181,7 @@ export function BESCalculator() {
       </div>
 
       {/* Temel girdiler */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
         <NumberField label="Yaşınız" value={currentAge} min={18} max={70} step={1} suffix="yaş" onChange={setCurrentAge} />
         <NumberField label="Emeklilik Yaşı" value={retirementAge} min={Math.max(currentAge + 1, 30)} max={75} step={1} suffix="yaş" onChange={setRetirementAge} />
         <NumberField label="Aylık Katkı" value={monthly} min={0} step={500} suffix="₺" onChange={setMonthly} />
@@ -237,7 +237,7 @@ export function BESCalculator() {
 
       {advancedOpen && (
         <div className="mt-3 rounded-xl border border-border bg-bg-soft/60 p-4">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
             <PercentField
               label="Yıllık Katkı Payı Artışı"
               value={contribIncrease}

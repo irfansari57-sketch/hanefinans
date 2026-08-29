@@ -111,7 +111,7 @@ export function PositionSizer({ symbol: _symbol, currentPrice, support, resistan
         Pozisyon Hesaplayıcı + Stop/TP
       </h3>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
         <NumberField
           label="Sermaye"
           suffix="₺"

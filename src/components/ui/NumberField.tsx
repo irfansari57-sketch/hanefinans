@@ -160,7 +160,8 @@ export function NumberField({
   const clamp = (v: number) => Math.max(min, Math.min(max, v));
 
   return (
-    <div className={className}>
+    // min-w-0: grid/flex icinde overflow etmesin (buyuk sayilar mobilde tasmasin).
+    <div className={cn('min-w-0', className)}>
       {(label || hint) && (
         <div className="mb-1 flex items-baseline justify-between">
           {label && (

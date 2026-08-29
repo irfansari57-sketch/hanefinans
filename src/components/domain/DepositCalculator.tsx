@@ -139,9 +139,9 @@ export function DepositCalculator() {
       </div>
 
       {/* Girdi formu */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
         <Field label="Anapara" suffix="₺" value={amount} onChange={setAmount} min={1000} max={100_000_000} step={1000} />
-        <Field label="Vade" suffix="gün" value={term} onChange={setTerm} min={7} max={1825} step={1} />
+        <Field label="Vade" suffix="gün" value={term} onChange={setTerm} min={1} max={1825} step={1} />
         <Field label="Yıllık Vade Farkı" suffix="%" value={rate} onChange={setRate} min={0} max={100} step={0.1} decimals={2} />
       </div>
 

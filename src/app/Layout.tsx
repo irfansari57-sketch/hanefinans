@@ -265,9 +265,11 @@ export function Layout() {
 
       {/* Desktop sidebar */}
       <aside className="relative z-10 hidden border-r border-border bg-bg-soft/85 backdrop-blur-md md:flex md:w-64 md:flex-col">
-        <Link to="/panel" className="flex justify-center border-b border-border px-4 py-4 transition hover:bg-bg-card/50">
+        <Link to="/panel" className="flex justify-center border-b border-border px-4 pt-4 pb-2 transition hover:bg-bg-card/50">
           <Logo variant="full" size={52} />
         </Link>
+        {/* FT Masthead — gazete tarzi: tarih + piyasa durumu, ince ayirici. */}
+        <SidebarMasthead />
         <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
           {visibleNavGroups.map((group) => (
             <div key={group.title}>
@@ -621,6 +623,44 @@ export function Layout() {
       <PwaInstallBanner />
       <AlertWatcher />
       <NewsWatcher />
+    </div>
+  );
+}
+
+/**
+ * FT Salmon masthead — sidebar logosunun altina gazete tarzi bilgi bandi.
+ * Tarih + BIST durumu (acik/kapali) gosterir. Ince salmon hairline'la ayrilir.
+ */
+function SidebarMasthead() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const tr = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  const day = tr.getUTCDay();
+  const hour = tr.getUTCHours();
+  const min = tr.getUTCMinutes();
+  const isWeekday = day >= 1 && day <= 5;
+  const timeInMin = hour * 60 + min;
+  const isBistOpen = isWeekday && timeInMin >= 600 && timeInMin < 1080;
+  const dateStr = tr.toLocaleDateString('tr-TR', {
+    day: 'numeric', month: 'long', weekday: 'long', timeZone: 'UTC',
+  });
+  return (
+    <div className="border-b border-border/60 px-4 py-2.5">
+      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
+        <span className="font-semibold text-slate-500 dark:text-slate-400">{dateStr}</span>
+        <span className="inline-flex items-center gap-1">
+          <span className={cn(
+            'h-1.5 w-1.5 rounded-full',
+            isBistOpen ? 'bg-success animate-pulse' : 'bg-slate-500',
+          )} />
+          <span className={cn('font-semibold', isBistOpen ? 'text-success' : 'text-slate-500')}>
+            {isBistOpen ? 'BIST Açık' : 'BIST Kapalı'}
+          </span>
+        </span>
+      </div>
     </div>
   );
 }

@@ -72,10 +72,18 @@ html.light {
     color: rgb(var(--c-text-1));
   }
   /* FT Salmon: buyuk finansal sayilar (fiyat, degisim, endeks) serif fontta
-     daha karakteristik. tabular-nums utility kullanan yerler otomatik pick eder. */
+     daha karakteristik. tabular-nums utility kullanan yerler otomatik pick eder.
+     Georgia klasik gazete serif — Playfair Display fallback (custom brand). */
   .tabular-nums {
+    font-family: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
     font-feature-settings: 'tnum', 'lnum';
     font-variant-numeric: tabular-nums lining-nums;
+    letter-spacing: -0.01em;
+  }
+  /* Kompakt UI hucrelerinde (chip, badge, kucuk sayi) serif abart yapar —
+     opt-out utility: .tabular-nums.font-sans -> sans-serif geri gelir. */
+  .tabular-nums.font-sans, .tabular-nums.font-mono {
+    font-family: inherit;
   }
   /* Light modda hardcoded slate-* text'leri okunabilir koyu tonlara cevir */
   html.light .text-slate-100,
@@ -139,8 +147,48 @@ html.light {
      text-success (yesil) ve text-danger (kirmizi) toneleri eziyordu,
      karanlik modda +/- fark edilmiyordu. Renkli hucreler kendi tone'unu
      korusun; kontrast ihtiyaci varsa hucre bazinda cell class'inda ayarlan. */
+  /* FT SALMON KARAKTER PAKETI — sitenin geneline gazete-benzeri detaylar. */
+
+  /* Accent stripe: aktif nav link'in sol kenarinda 3px salmon/bordo cubuk.
+     NavLink aktif class'i "text-accent" gelirse sol border ekle. */
+  aside nav a.text-accent,
+  aside nav a[aria-current="page"] {
+    border-left: 3px solid rgb(var(--c-accent));
+    padding-left: calc(0.625rem - 3px);
+  }
+
+  /* Section basliklari (GENEL, PIYASALAR, HESAP) altina 1px salmon hairline —
+     FT gazete kolon ayirici tarzi. Sadece sidebar'da uygula. */
+  aside .text-slate-600.uppercase,
+  aside .text-slate-500.uppercase {
+    border-bottom: 1px solid rgb(var(--c-accent) / 0.2);
+    padding-bottom: 4px;
+    margin-bottom: 6px !important;
+  }
+
+  /* Kart hover'inda sol kenar accent — sadece link/tikllanabilir kartlar.
+     .glass-card:hover ve rounded-xl kartlarda subtle bir vurgu. */
+  .glass-card:hover,
+  [class*="rounded-xl"].border:hover {
+    border-left-color: rgb(var(--c-accent) / 0.5);
+  }
+
+  /* Warm skeleton: pulse animasyonu FT paletiyle uyumlu — sog uk gri yerine krem/lacivert. */
+  @keyframes pulse-warm {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .animate-pulse {
+    animation: pulse-warm 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .bg-bg-card.animate-pulse,
+  [class*="bg-bg-card"].animate-pulse,
+  [class*="bg-slate-"].animate-pulse {
+    background-color: rgb(var(--c-bg-soft)) !important;
+  }
+
   ::selection {
-    background-color: rgba(34, 211, 238, 0.25);
+    background-color: rgb(var(--c-accent) / 0.28);
   }
   html.light ::selection {
     background-color: rgba(14, 165, 233, 0.25);

@@ -353,19 +353,6 @@ export function PanelPage() {
         )}
       </PinnableAccordion>
 
-      {/* Ekonomik + Temettü Takvimi — akordiyon, default kapalı (kompakt) */}
-      <PinnableAccordion
-        id="panel-calendars"
-        title="Ekonomik & Temettü Takvimi"
-        icon={<CalendarClock size={16} />}
-        iconColorClass="bg-accent/15 text-accent"
-      >
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <EconomicCalendarWidget compact maxItems={6} daysAhead={30} collapsible={false} />
-          <DividendCalendarWidget compact maxItems={6} daysAhead={90} />
-        </div>
-      </PinnableAccordion>
-
       {/* Top movers — hisseler (pin'lenebilir, her ekranda aç/kapa) */}
       <details
         className={cn(
@@ -508,7 +495,19 @@ export function PanelPage() {
         </>
       )}
 
-      {/* Ekonomik + Temettü Takvimi artık Piyasa Özeti altında (mobil dahil). */}
+      {/* Ekonomik + Temettü Takvimi — kullanici talebi: en alta tasindi
+          (hisse/fon/portfoy listelerinden sonra). */}
+      <PinnableAccordion
+        id="panel-calendars"
+        title="Ekonomik & Temettü Takvimi"
+        icon={<CalendarClock size={16} />}
+        iconColorClass="bg-accent/15 text-accent"
+      >
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <EconomicCalendarWidget compact maxItems={6} daysAhead={30} collapsible={false} />
+          <DividendCalendarWidget compact maxItems={6} daysAhead={90} />
+        </div>
+      </PinnableAccordion>
     </>
   );
 }

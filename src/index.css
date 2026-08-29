@@ -85,11 +85,14 @@ html.light {
     letter-spacing: -0.015em;
   }
   /* Kompakt UI ogeleri sans-serif kalmali (kucuk boyutlarda serif okunmaz):
-     buton/input, tum uppercase-tracking label'lar, nav linkleri, chip/badge. */
+     buton/input, tum uppercase-tracking label'lar, nav linkleri, chip/badge.
+     NOT: aside/nav *  child span'leri de kapsar — sidebar nav item label'lari
+     (Panel, Fonlar, Hisseler) Inter'de kalir, body Source Serif'ini inherit etmez.
+     [class*="tracking-"] tum uppercase-tracking utility'leri yakalar. */
   button, input, select, textarea,
-  .uppercase, [class*="uppercase"],
-  aside nav a, aside nav button,
-  nav a, nav button,
+  .uppercase, [class*="uppercase"], [class*="tracking-"],
+  aside nav a, aside nav button, aside nav a *, aside nav button *,
+  nav a, nav button, nav a *, nav button *,
   [role="tab"], [role="button"],
   .btn, .btn-primary, .btn-secondary,
   .badge, .chip {
@@ -110,11 +113,13 @@ html.light {
     font-family: inherit;
   }
   /* FT SALMON tutarlilik: font-mono default'unu Inter sans-serif'e cevir.
-     Hisse/fon sembol kodları (THYAO, PASEU) monospace yerine bold Inter
-     kullaninca tum site tipografisi tek yapida — sadece sayilar serif. */
+     Hisse/fon sembol kodları (THYAO, PASEU, HALKB) Inter'de gorunuyor —
+     ayni format Piyasa Ozeti label'lari (BIST 100, USD/TRY), Portfoy karti
+     basliklari (HİSSE/FONLAR), sidebar nav ve masthead ile birebir uyumlu. */
   .font-mono {
-    font-family: inherit;
-    letter-spacing: -0.01em;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-feature-settings: 'tnum';
+    letter-spacing: 0;
   }
   /* Kod/log gosterimi icin gercek monospace istenirse .font-code utility'sini kullan */
   .font-code {

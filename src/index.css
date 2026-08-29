@@ -128,12 +128,10 @@ html.light {
   html:not(.light) .text-slate-600 {
     color: rgb(148 163 184); /* slate-400 */
   }
-  /* Tablo hücrelerinde tabular-num sayilar daima parlak — koyu bir metin
-     rengiyle boyanmis olsa bile veri kolonu ekstra kontrast alsin. */
-  html:not(.light) td.tabular-nums,
-  html:not(.light) .tabular-nums.text-slate-300 {
-    color: rgb(226 232 240); /* slate-200 */
-  }
+  /* NOT: td.tabular-nums'a global renk override eklemek YASAK —
+     text-success (yesil) ve text-danger (kirmizi) toneleri eziyordu,
+     karanlik modda +/- fark edilmiyordu. Renkli hucreler kendi tone'unu
+     korusun; kontrast ihtiyaci varsa hucre bazinda cell class'inda ayarlan. */
   ::selection {
     background-color: rgba(34, 211, 238, 0.25);
   }

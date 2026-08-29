@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight } from 'lucide-react';
 import type { MacroIndicator } from '@/data/types';
 import { macroKeyToRoute } from '@/lib/macroRoutes';
 import { cn } from '@/lib/utils';
@@ -48,19 +47,19 @@ function TickerCell({ m }: { m: MacroIndicator }) {
   const isDown = isFinitePct && (cp as number) < 0;
 
   const content = (
-    <div className="flex shrink-0 items-center gap-2 py-2.5 pr-4 first:pl-3 sm:first:pl-4">
-      <div className="flex flex-col leading-tight">
-        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+    <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+      <div className="min-w-0 flex flex-col leading-tight">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
           {m.label}
         </span>
-        <span className="mt-0.5 text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100">
+        <span className="mt-0.5 text-sm font-bold tabular-nums text-slate-900 dark:text-slate-100 truncate">
           {formatValue(m)}
         </span>
       </div>
       {isFinitePct && (
         <span
           className={cn(
-            'text-xs font-semibold tabular-nums font-sans',
+            'shrink-0 text-xs font-semibold tabular-nums font-sans',
             isUp && 'text-success',
             isDown && 'text-danger',
           )}
@@ -68,26 +67,18 @@ function TickerCell({ m }: { m: MacroIndicator }) {
           {(cp as number) >= 0 ? '+' : ''}{(cp as number).toFixed(2)}%
         </span>
       )}
-      {route && (
-        <ArrowUpRight
-          size={11}
-          className="shrink-0 text-accent/60 opacity-0 transition group-hover/ticker:opacity-100"
-        />
-      )}
     </div>
   );
 
   return route ? (
     <Link
       to={route}
-      className="group/ticker relative shrink-0 border-r border-accent/15 transition hover:bg-accent/5 last:border-r-0"
+      className="group/ticker block rounded-md transition hover:bg-accent/5"
     >
       {content}
     </Link>
   ) : (
-    <div className="shrink-0 border-r border-accent/15 last:border-r-0">
-      {content}
-    </div>
+    <div>{content}</div>
   );
 }
 
@@ -97,15 +88,14 @@ export function MarketSummaryPremium({ macro }: Props) {
     .filter((m): m is MacroIndicator => !!m);
 
   return (
-    <div className="row-stagger relative overflow-hidden rounded-xl border border-accent/25 bg-bg-card/50">
-      {/* Yatay scroll konteyneri — desktop'ta genelde tam sigar, mobilde kaydırılır */}
-      <div className="scrollbar-thin flex items-stretch overflow-x-auto overflow-y-hidden">
-        {items.length === 0 ? (
-          <div className="w-full py-4 text-center text-[11px] text-slate-500">Yükleniyor…</div>
-        ) : (
-          items.map((m) => <TickerCell key={m.key} m={m} />)
-        )}
-      </div>
+    <div className="row-stagger overflow-hidden rounded-xl border border-accent/25 bg-bg-card/50 p-1.5">
+      {items.length === 0 ? (
+        <div className="py-4 text-center text-[11px] text-slate-500">Yükleniyor…</div>
+      ) : (
+        <div className="grid grid-cols-2 gap-0.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 [&>*]:min-w-0 divide-x divide-accent/10">
+          {items.map((m) => <TickerCell key={m.key} m={m} />)}
+        </div>
+      )}
     </div>
   );
 }

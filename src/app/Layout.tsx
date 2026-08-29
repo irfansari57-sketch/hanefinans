@@ -647,17 +647,21 @@ function SidebarMasthead() {
   const dateStr = tr.toLocaleDateString('tr-TR', {
     day: 'numeric', month: 'long', weekday: 'long', timeZone: 'UTC',
   });
+  const timeStr = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
   return (
     <div className="border-b border-border/60 px-4 py-2.5">
       <div className="flex items-center justify-between text-[10px] uppercase tracking-wider">
         <span className="font-semibold text-slate-500 dark:text-slate-400">{dateStr}</span>
-        <span className="inline-flex items-center gap-1">
+        <span className="inline-flex items-center gap-1.5">
           <span className={cn(
             'h-1.5 w-1.5 rounded-full',
-            isBistOpen ? 'bg-success animate-pulse' : 'bg-slate-500',
+            isBistOpen ? 'bg-success animate-pulse' : 'bg-danger/70',
           )} />
-          <span className={cn('font-semibold', isBistOpen ? 'text-success' : 'text-slate-500')}>
-            {isBistOpen ? 'BIST Açık' : 'BIST Kapalı'}
+          <span className={cn(
+            'font-semibold tabular-nums font-sans',
+            isBistOpen ? 'text-success' : 'text-slate-500 dark:text-slate-400',
+          )}>
+            {timeStr}
           </span>
         </span>
       </div>

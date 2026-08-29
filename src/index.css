@@ -82,8 +82,19 @@ html.light {
   }
   /* Kompakt UI hucrelerinde (chip, badge, kucuk sayi) serif abart yapar —
      opt-out utility: .tabular-nums.font-sans -> sans-serif geri gelir. */
-  .tabular-nums.font-sans, .tabular-nums.font-mono {
+  .tabular-nums.font-sans {
     font-family: inherit;
+  }
+  /* FT SALMON tutarlilik: font-mono default'unu Inter sans-serif'e cevir.
+     Hisse/fon sembol kodları (THYAO, PASEU) monospace yerine bold Inter
+     kullaninca tum site tipografisi tek yapida — sadece sayilar serif. */
+  .font-mono {
+    font-family: inherit;
+    letter-spacing: -0.01em;
+  }
+  /* Kod/log gosterimi icin gercek monospace istenirse .font-code utility'sini kullan */
+  .font-code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Monaco, Consolas, monospace;
   }
   /* Light modda hardcoded slate-* text'leri okunabilir koyu tonlara cevir */
   html.light .text-slate-100,

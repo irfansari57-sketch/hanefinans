@@ -88,11 +88,13 @@ export function MarketSummaryPremium({ macro }: Props) {
     .filter((m): m is MacroIndicator => !!m);
 
   return (
-    <div className="row-stagger overflow-hidden rounded-xl border border-accent/25 bg-bg-card/50 p-1.5">
+    <div className="row-stagger overflow-hidden rounded-xl border border-accent/25 bg-bg-card/50">
       {items.length === 0 ? (
         <div className="py-4 text-center text-[11px] text-slate-500">Yükleniyor…</div>
       ) : (
-        <div className="grid grid-cols-2 gap-0.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 [&>*]:min-w-0 divide-x divide-accent/10">
+        /* Grid + her hucrenin sag+alt hairline'i. Overflow-hidden konteyner
+           en sag ve en alt kenarlari kirpar — gorsel olarak temiz izgara. */
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 [&>*]:min-w-0 [&>*]:border-r [&>*]:border-b [&>*]:border-accent/10">
           {items.map((m) => <TickerCell key={m.key} m={m} />)}
         </div>
       )}

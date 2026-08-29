@@ -187,7 +187,7 @@ export function FundComparisonChart({ fundCode, fundName, fundReturns }: Props) 
       key: 'FUND',
       label: fundCode,
       description: fundName,
-      color: '#f87171', // distinctive coral/red — fund highlight
+      color: '#F5B7A4', // FT salmon — fund highlight
       value: fundReturns[period] ?? null,
       isFund: true,
     });

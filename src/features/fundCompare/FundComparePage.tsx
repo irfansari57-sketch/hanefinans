@@ -24,7 +24,8 @@ import { cn } from '@/lib/utils';
 const LS_KEY = 'iq.fundCompare.selection';
 const MAX_SELECT = 4;
 // Sade + rahat renk paleti — modern finans uygulamalarındaki gibi
-const CHIP_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#a855f7'];
+/* FT Salmon paletiyle uyumlu chart renkleri — neon yerine editorial tonlar */
+const CHIP_COLORS = ['#F5B7A4', '#0D7680', '#F5C879', '#990F3D'];
 
 type PeriodKey = 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear';
 

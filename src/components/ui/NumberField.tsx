@@ -179,7 +179,7 @@ export function NumberField({
             onClick={() => onChange(clamp(value - step))}
             disabled={disabled}
             className={cn(
-              'border-r border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
+              'shrink-0 border-r border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
               small ? 'px-1.5 text-xs' : 'px-2',
             )}
             aria-label={label ? `${label} azalt` : 'azalt'}
@@ -208,9 +208,10 @@ export function NumberField({
             setDraft('');
           }}
           className={cn(
-            'min-w-0 flex-1 bg-transparent text-center tabular-nums text-slate-100 focus:outline-none',
-            small ? 'px-1.5 py-1 text-xs' : 'px-2 py-1.5 text-sm',
+            'min-w-0 w-full flex-1 bg-transparent text-center tabular-nums text-slate-100 focus:outline-none',
+            small ? 'px-1 py-1 text-xs' : 'px-1.5 py-1.5 text-sm',
           )}
+          style={{ minWidth: 0 }}
         />
         {suffix && (
           <span
@@ -228,7 +229,7 @@ export function NumberField({
             onClick={() => onChange(clamp(value + step))}
             disabled={disabled}
             className={cn(
-              'border-l border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
+              'shrink-0 border-l border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
               small ? 'px-1.5 text-xs' : 'px-2',
             )}
             aria-label={label ? `${label} arttır` : 'arttır'}

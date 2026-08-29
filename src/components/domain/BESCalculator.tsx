@@ -157,7 +157,7 @@ export function BESCalculator() {
   const yearsInvalid = years <= 0;
 
   return (
-    <section className="glass-card overflow-hidden p-5">
+    <section className="glass-card overflow-hidden p-3 sm:p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent/15 text-accent">

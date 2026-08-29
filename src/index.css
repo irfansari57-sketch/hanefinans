@@ -84,18 +84,12 @@ html.light {
     font-family: 'Playfair Display', 'Georgia', serif;
     letter-spacing: -0.015em;
   }
-  /* Kompakt UI ogeleri sans-serif kalmali (kucuk boyutlarda serif okunmaz):
-     buton/input, tum uppercase-tracking label'lar, nav linkleri, chip/badge.
-     NOT: aside/nav *  child span'leri de kapsar — sidebar nav item label'lari
-     (Panel, Fonlar, Hisseler) Inter'de kalir, body Source Serif'ini inherit etmez.
-     [class*="tracking-"] tum uppercase-tracking utility'leri yakalar. */
-  button, input, select, textarea,
-  .uppercase, [class*="uppercase"], [class*="tracking-"],
-  aside nav a, aside nav button, aside nav a *, aside nav button *,
-  nav a, nav button, nav a *, nav button *,
-  [role="tab"], [role="button"],
-  .btn, .btn-primary, .btn-secondary,
-  .badge, .chip {
+  /* Sadece form kontrolleri Inter'de kalir (girdi/buton usability icin).
+     KULLANICI TERCIHI: Sidebar nav, uppercase-tracking label'lar, chip/badge,
+     sembol kodlari — hepsi LOGONUN formatinda (Source Serif 4 body serif).
+     Boylece "Investli" wordmark ile "Panel" / "HALKB" / "BIST 100" / "FONLAR"
+     ayni tipografik dilde. tracking-tight (logo) ile catisma yok — o da inherit. */
+  button, input, select, textarea {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   /* FT Salmon: buyuk finansal sayilar (fiyat, degisim, endeks) serif fontta
@@ -112,12 +106,10 @@ html.light {
   .tabular-nums.font-sans {
     font-family: inherit;
   }
-  /* FT SALMON tutarlilik: font-mono default'unu Inter sans-serif'e cevir.
-     Hisse/fon sembol kodları (THYAO, PASEU, HALKB) Inter'de gorunuyor —
-     ayni format Piyasa Ozeti label'lari (BIST 100, USD/TRY), Portfoy karti
-     basliklari (HİSSE/FONLAR), sidebar nav ve masthead ile birebir uyumlu. */
+  /* KULLANICI TERCIHI: sembol kodlari (HALKB, THYAO, TUPRS) da logo/body
+     ile ayni Source Serif 4 formatinda — .font-mono inherit body serif. */
   .font-mono {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: inherit;
     font-feature-settings: 'tnum';
     letter-spacing: 0;
   }

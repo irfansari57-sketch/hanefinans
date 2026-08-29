@@ -210,9 +210,12 @@ export function NumberField({
             setDraft('');
           }}
           className={cn(
-            'min-w-0 w-full flex-1 bg-transparent text-center tabular-nums text-slate-100 focus:outline-none',
+            // width: 0 + flex-1 → input parent'i asla asmaz, sadece kalan alani kaplar.
+            // "w-0" kritik: browser input min-content'ini korumaya calisiyor (~20ch).
+            'w-0 min-w-0 flex-1 bg-transparent text-center tabular-nums text-slate-100 focus:outline-none',
             small ? 'px-1 py-1 text-xs' : 'px-1.5 py-1.5 text-sm',
           )}
+          size={1}
           style={{ minWidth: 0 }}
         />
         {suffix && (

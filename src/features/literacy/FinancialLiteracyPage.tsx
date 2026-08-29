@@ -241,11 +241,12 @@ const TOPICS: Topic[] = [
       'Yatırım gelirleri nasıl vergilendirilir, beyan ne zaman gerekir, indirimler nelerdir? Türkiye için 2026 kuralları.',
     videoQuery: 'borsa vergisi türkiye stopaj',
     bullets: [
-      'Hisse senedi: 2 yıldan az tuttysan kar %15 stopaj, 2+ yıl tuttysan vergi yok',
-      'Fonlar: Stopaj fon tipine göre değişir (hisse fonu %0 / diğer %10)',
-      'Kripto: 2026 itibariyle kazanç beyana tabi (mevzuat değişiyor — güncel dur)',
-      'Temettü: Stopaj %0-15 (şirket türüne göre)',
-      'Yıllık beyan: Yüksek tutarlı kazançlarda zorunlu',
+      'Hisse senedi: 2 yıldan az tutuşta kar %15 stopaj, 2+ yıl (730 gün) tutuşta vergi yok',
+      'Fonlar: TEFAS hisse yoğun fon %0 · Diğer fonlar (para piyasası, borçlanma, sepet, değişken, altın) %17.5 · TEFAS dışı serbest hisse yoğun fon %17.5 (27 Mart 2026 Cumhurbaşkanlığı kararı)',
+      'Mevduat TL (9 Temmuz 2025 sonrası): 6 aya kadar %17.5 · 6-12 ay %15 · 1 yıldan uzun %10',
+      'Yabancı para (USD/EUR) mevduat: %20-25 arası (TL\'ye geçişi caydırma politikası)',
+      'Kripto: 2026 itibariyle kazanç beyana tabi (mevzuat gelişiyor — güncel takip et)',
+      'Temettü: Stopaj %10-15 · MSİ beyan sınırı 2026 için 22.000 TL',
     ],
     keyTerms: [
       { term: 'Stopaj', def: 'Kaynağında kesilen vergi' },
@@ -263,15 +264,15 @@ const TOPICS: Topic[] = [
       },
       {
         heading: 'Yatırım fonları vergisi',
-        body: '**Hisse senedi yoğun fonlar** (portföyünün en az %75\'i hisse): Stopaj **%0** — yani kesinti yok! Bu büyük avantaj, uzun vadeli BIST yatırımı için fon kullanımı çekici kılar. **Diğer fonlar** (para piyasası, borçlanma araçları, fon sepeti, değişken, kıymetli madenler): Kazanç üzerinden **%10 stopaj** kesilir. Stopaj otomatik banka tarafından yapılır, ek beyan gerekmez (basit yatırımcı için). 2 yıldan uzun tutulmuş hisse fonlarında bile %0 stopaj devam eder — yani fonlar bireysel hisseden vergisel olarak daha avantajlıdır kısa vadede.',
+        body: '**TEFAS\'ta işlem gören hisse senedi yoğun fonlar** (portföyünün en az %75\'i BIST hissesi): Stopaj **%0** — kesinti yok, uzun vadeli BIST yatırımı için en avantajlı araç. **TEFAS dışı serbest hisse yoğun fonlar**: 27 Mart 2026 Cumhurbaşkanlığı kararıyla %0 uygulaması kaldırıldı, artık **%17.5 stopaj**. **Diğer fonlar** (para piyasası, borçlanma araçları, fon sepeti, değişken, kıymetli madenler): 9 Temmuz 2025 sonrası alımlarda kazanç üzerinden **%17.5 stopaj** (önceki %10\'dan yükseltildi). Stopaj otomatik olarak fon kurucusu / banka tarafından yapılır, basit yatırımcı için ek beyan gerekmez. TEFAS hisse yoğun fonlar 2 yıldan uzun tutulsa bile %0 stopaj devam eder — bu istisna korunuyor.',
       },
       {
         heading: 'Mevduat ve döviz vergisi',
-        body: 'TL vadeli mevduat: Stopaj %0-15 arası, vade ve banka türüne göre değişir (2026 itibariyle özel bankalarda kısa vadede %15, uzun vadede daha düşük). Döviz mevduatı: Yabancı para mevduatı (USD/EUR) üzerinden %20-25 stopaj uygulanır (daha yüksek çünkü TL\'ye geçişi caydırma politikası). Altın hesabı: Bankada tutulan kıymetli maden hesaplarında stopaj %0 — ancak bozdurma anında kur farkı oluşursa yıl sonu beyana girer. Kira gelirleri (GMSI): Yıllık 13.000₺ üstü beyana tabi (2026 limitleri).',
+        body: '**TL vadeli mevduat** (9 Temmuz 2025 sonrası açılan veya yenilenen hesaplar için güncel oranlar): 6 aya kadar vadede **%17.5** · 6-12 ay vadede **%15** · 1 yıldan uzun vadede **%10** stopaj. Kısa vadeyi caydıran, uzun vade tercihini destekleyen kademeli yapı. **Döviz mevduatı**: Yabancı para (USD/EUR) mevduatlarında **%20-25** aralığında stopaj — TL\'ye geçişi teşvik eden yüksek oran. **Kur Korumalı Mevduat (KKM)**: TL mevduat gibi vadeye göre kademeli stopaj + kur farkı vergi istisnası. **Altın hesabı**: Bankada tutulan kıymetli maden hesaplarında stopaj **%0** — bozdurma anında oluşan kur farkı yıl sonu beyana girebilir. **Kira gelirleri (GMSİ)**: 2026 yıllık istisna tutarı ~47.000₺; üstü beyana tabi.',
       },
       {
         heading: 'Beyanname ne zaman gerekir?',
-        body: 'Çoğu küçük yatırımcı için yıllık beyanname zorunlu değildir, çünkü stopaj kesintisi vergi yükümlülüğünü kapatır. Ancak şu durumlarda beyan vermen gerekir: (1) Stopajsız gelirin var ise (örn. yurtdışı borsadan kazanç, kripto kazancı 2026 sonrası), (2) Yıllık menkul sermaye iradı 2026 için 600.000₺\'yi aşıyorsa, (3) Birden fazla işverenden ücret alıyorsan ve toplamı eşiği geçtiyse, (4) Ticari faaliyet niteliği taşıyan trading yapıyorsan (gün içi yoğun işlem — vergi dairesi "ticari" sayabilir). Beyanname GİB e-Beyanname sisteminden Mart ayında verilir. Şüphedeyken mali müşavire danış — vergi cezaları yüksek.',
+        body: 'Çoğu küçük yatırımcı için yıllık beyanname zorunlu değildir, çünkü stopaj kesintisi vergi yükümlülüğünü kapatır. Ancak şu durumlarda beyan vermen gerekir: (1) **Stopajsız gelirin** var ise (örn. yurtdışı borsadan kazanç, kripto kazancı — 2026 mevzuatı gelişiyor), (2) **Menkul sermaye iradı** (tevkifat ve istisna dışı) 2026 beyan sınırı olan **22.000 TL**\'yi aşıyorsa, (3) Birden fazla işverenden ücret alıyorsan ve toplamı eşiği geçtiyse, (4) **Ticari faaliyet niteliği taşıyan trading** yapıyorsan (gün içi yoğun işlem — vergi dairesi "ticari" sayabilir). Beyanname GİB e-Beyanname sisteminden Mart ayında verilir. Cezalar yüksek olduğu için şüphedeyken mali müşavire danışmak en güvenli yol.',
       },
     ],
   },

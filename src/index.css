@@ -7,39 +7,41 @@
    Renkler 'r g b' formatinda (Tailwind alpha-value uyumlulugu icin).
    ============================================================ */
 :root {
-  /* Dark theme (default) — koyu mavi finans estetigi
-     Eski (11 18 32) cok boguk hissettiriyordu — slate-900/800 araligina cikarildi.
-     Hala dark ama gozu yormayan, premium ve nefes alan tonlar. */
-  --c-bg: 20 27 45;          /* ~slate-900 + biraz daha acik */
-  --c-bg-soft: 26 35 58;     /* yumusak yuzeyler (input/satir hover/yardimci) */
-  --c-bg-card: 30 41 65;     /* kart/glass yuzeyleri (slate-800 tonu) */
-  --c-border: 51 65 95;      /* daha kontrastlı sınır — slate-600/700 */
-  --c-accent: 34 211 238;
-  --c-accent-fg: 2 44 51;
-  --c-success: 34 197 94;
-  --c-danger: 239 68 68;
-  --c-warning: 245 158 11;
-  /* Metin renkleri — slate-100 ailesi */
-  --c-text-1: 226 232 240;   /* primary (slate-200) */
-  --c-text-2: 148 163 184;   /* secondary (slate-400) */
-  --c-text-3: 100 116 139;   /* muted (slate-500) */
+  /* THEME: Financial Times Salmon (v2)
+     130 yillik finans yayini estetigi.
+     Dark: derin lacivert zemin + somon aksan + bordo negatif + turkuaz sayi.
+     Light: klasik krem-somon (#FFF1E5) + koyu turkuaz sayi + bordo negatif. */
+
+  /* Dark (default) — derin lacivert zemin */
+  --c-bg: 26 31 46;              /* #1A1F2E — derin FT dark */
+  --c-bg-soft: 30 37 55;         /* yumusak yuzeyler */
+  --c-bg-card: 36 43 61;         /* #242B3D kart */
+  --c-border: 55 63 86;          /* subtle salmon-tinted border */
+  --c-accent: 245 183 164;       /* #F5B7A4 soft salmon — marka aksan */
+  --c-accent-fg: 26 31 46;       /* koyu lacivert on salmon */
+  --c-success: 134 239 172;      /* green-300 pozitif (yumusak) */
+  --c-danger: 249 168 212;       /* rose-300 negatif (klasik FT bordo dark) */
+  --c-warning: 251 191 36;       /* amber-400 */
+  --c-text-1: 245 238 230;       /* #F5EEE6 kirik beyaz */
+  --c-text-2: 155 147 133;       /* #9B9385 secondary */
+  --c-text-3: 122 115 105;       /* muted */
   color-scheme: dark;
 }
 
 html.light {
-  /* Light theme — logo'daki beyaz + canli mavi estetigi */
-  --c-bg: 248 250 252;       /* slate-50 */
-  --c-bg-soft: 241 245 249;  /* slate-100 */
-  --c-bg-card: 255 255 255;  /* pure white kart */
-  --c-border: 226 232 240;   /* slate-200 */
-  --c-accent: 14 165 233;    /* sky-500 - logo mavisi */
-  --c-accent-fg: 255 255 255;
-  --c-success: 22 163 74;    /* green-600 - aydinlik kontrast */
-  --c-danger: 220 38 38;     /* red-600 */
-  --c-warning: 217 119 6;    /* amber-600 */
-  --c-text-1: 15 23 42;      /* slate-900 */
-  --c-text-2: 71 85 105;     /* slate-600 */
-  --c-text-3: 100 116 139;   /* slate-500 */
+  /* Light theme — Financial Times klasik krem-somon estetigi */
+  --c-bg: 255 241 229;           /* #FFF1E5 — FT signature paper */
+  --c-bg-soft: 250 232 216;      /* biraz koyu wash */
+  --c-bg-card: 255 250 243;      /* #FFFAF3 kart yumusak krem */
+  --c-border: 240 223 203;       /* #F0DFCB warm border */
+  --c-accent: 153 15 61;         /* #990F3D FT bordo — marka aksan */
+  --c-accent-fg: 255 250 243;    /* krem on bordo */
+  --c-success: 22 101 52;        /* green-800 pozitif (klasik FT) */
+  --c-danger: 153 15 61;         /* #990F3D bordo negatif */
+  --c-warning: 180 83 9;         /* amber-800 */
+  --c-text-1: 51 48 46;          /* #33302E koyu antrasit */
+  --c-text-2: 102 96 92;         /* #66605C secondary */
+  --c-text-3: 143 137 132;       /* muted */
   color-scheme: light;
 }
 
@@ -55,10 +57,9 @@ html.light {
     max-width: 100vw;
   }
   body {
-    @apply bg-bg text-slate-100 antialiased;
-    /* Premium tipografi — Inter primary (cross-platform marka tutarlılığı +
-       tabular nums finansal tablolar için kritik); system stack fallback
-       (Inter yüklenene kadar FOIT yok, sonrasında progressive enhancement). */
+    @apply bg-bg antialiased;
+    color: rgb(var(--c-text-1));
+    /* FT Salmon tema: Inter sans + Georgia serif (finansal degerler icin). */
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     /* cv02/03/04: Inter alternatif harf formları, cv11: alt-form 1 (kuyruksuz),
        ss01: stilistik set, tnum: TABULAR NUMS — sayı kolonu hizalama. */
@@ -69,6 +70,12 @@ html.light {
   }
   html.light body {
     color: rgb(var(--c-text-1));
+  }
+  /* FT Salmon: buyuk finansal sayilar (fiyat, degisim, endeks) serif fontta
+     daha karakteristik. tabular-nums utility kullanan yerler otomatik pick eder. */
+  .tabular-nums {
+    font-feature-settings: 'tnum', 'lnum';
+    font-variant-numeric: tabular-nums lining-nums;
   }
   /* Light modda hardcoded slate-* text'leri okunabilir koyu tonlara cevir */
   html.light .text-slate-100,

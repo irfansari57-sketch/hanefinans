@@ -490,8 +490,10 @@ export function StocksPage() {
             <TableSkeleton rows={12} cols={9} />
           ) : (
           <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-            <table className="w-full min-w-[820px] text-sm">
-              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
+            {/* Font boyutu artirildi: text-sm (14px) -> text-base (16px) — okunmayi kolaylastirir.
+                Baslik text-[10px] -> text-[11px] + tracking artirildi. */}
+            <table className="w-full min-w-[820px] text-base">
+              <thead className="border-b border-border bg-bg-soft text-[11px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <SortableHeader label="Sembol" sortKey="symbol" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />

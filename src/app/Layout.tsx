@@ -265,7 +265,7 @@ export function Layout() {
 
       {/* Desktop sidebar */}
       <aside className="relative z-10 hidden border-r border-border bg-bg-soft/85 backdrop-blur-md md:flex md:w-64 md:flex-col">
-        <Link to="/panel" className="block border-b border-border px-4 py-4 transition hover:bg-bg-card/50">
+        <Link to="/panel" className="flex justify-center border-b border-border px-4 py-4 transition hover:bg-bg-card/50">
           <Logo variant="full" size={52} />
         </Link>
         <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-3">

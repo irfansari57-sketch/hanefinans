@@ -469,17 +469,17 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
           >
             <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
           </button>
-          <Link to={`/fund/${fund.code}`} className="font-mono text-[13px] font-semibold text-slate-100 hover:text-accent">
+          <Link to={`/fund/${fund.code}`} className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-accent">
             {fund.code}
           </Link>
         </div>
       </td>
-      <td className="hidden sm:table-cell px-2 py-2">
+      <td className="hidden sm:table-cell px-2 py-2.5">
         <div className="flex items-center gap-1.5">
           {fund.category && (
-            <span className="rounded border border-border bg-bg-card px-1 py-0.5 text-[9px] text-slate-400 whitespace-nowrap">{fund.category}</span>
+            <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-300 whitespace-nowrap">{fund.category}</span>
           )}
-          <span className="truncate text-[11px] text-slate-400 max-w-[200px]">{fund.name}</span>
+          <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[200px]">{fund.name}</span>
         </div>
       </td>
       <td className="px-2 py-2 text-center">
@@ -506,11 +506,11 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
 
 function PerfCell({ value }: { value: number | undefined }) {
   if (value == null || !Number.isFinite(value)) {
-    return <td className="px-2 py-2 text-right font-mono text-[12px] tabular-nums text-slate-600 whitespace-nowrap">—</td>;
+    return <td className="px-2 py-2.5 text-right font-mono text-sm tabular-nums text-slate-500 dark:text-slate-500 whitespace-nowrap">—</td>;
   }
   const tone = value >= 0 ? 'text-success' : 'text-danger';
   return (
-    <td className={cn('px-2 py-2 text-right font-mono text-[12px] tabular-nums whitespace-nowrap', tone)}>
+    <td className={cn('px-2 py-2.5 text-right font-mono text-sm font-semibold tabular-nums whitespace-nowrap', tone)}>
       {value >= 0 ? '+' : ''}{value.toFixed(2)}%
     </td>
   );

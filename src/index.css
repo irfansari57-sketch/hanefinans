@@ -118,6 +118,22 @@ html.light {
     color: rgb(15 23 42);
     font-weight: 600;
   }
+  /* DARK MODE kontrast — genel okunabilirlik pass'i.
+     text-slate-500/600 aşırı soluk kaldığı için tüm site geneli bir ton
+     yukarı taşıyoruz (slate-400 seviyesi). Placeholder/label için hafif
+     bir vurgu kaybı, veri okunaklığı için makul takas. */
+  html:not(.light) .text-slate-500 {
+    color: rgb(148 163 184); /* slate-400 */
+  }
+  html:not(.light) .text-slate-600 {
+    color: rgb(148 163 184); /* slate-400 */
+  }
+  /* Tablo hücrelerinde tabular-num sayilar daima parlak — koyu bir metin
+     rengiyle boyanmis olsa bile veri kolonu ekstra kontrast alsin. */
+  html:not(.light) td.tabular-nums,
+  html:not(.light) .tabular-nums.text-slate-300 {
+    color: rgb(226 232 240); /* slate-200 */
+  }
   ::selection {
     background-color: rgba(34, 211, 238, 0.25);
   }

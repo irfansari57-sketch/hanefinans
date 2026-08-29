@@ -179,7 +179,9 @@ export function NumberField({
             onClick={() => onChange(clamp(value - step))}
             disabled={disabled}
             className={cn(
-              'shrink-0 border-r border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
+              // Mobilde (< sm) stepper gizlenir — dar ekranda 300.000 gibi
+              // buyuk sayilar icin ekstra genislik kazanmak icin.
+              'hidden sm:block shrink-0 border-r border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
               small ? 'px-1.5 text-xs' : 'px-2',
             )}
             aria-label={label ? `${label} azalt` : 'azalt'}
@@ -229,7 +231,8 @@ export function NumberField({
             onClick={() => onChange(clamp(value + step))}
             disabled={disabled}
             className={cn(
-              'shrink-0 border-l border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
+              // Mobilde stepper gizlenir (buyuk sayilar icin genislik kazanmak icin)
+              'hidden sm:block shrink-0 border-l border-slate-700/50 text-slate-400 hover:bg-slate-800/50',
               small ? 'px-1.5 text-xs' : 'px-2',
             )}
             aria-label={label ? `${label} arttır` : 'arttır'}

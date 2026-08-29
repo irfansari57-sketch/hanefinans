@@ -389,17 +389,18 @@ a[role='button']:active {
   }
 }
 
-/* Subtle grid pattern arka plan (finansal görünüm) */
+/* FT Salmon: cok subtle grid (ambient blob'un uzerinde ince structure hissi).
+   Layout'ta opacity-15 ile uygulanir, cizgiler zar zor gorunur. */
 .bg-grid {
   background-image:
-    linear-gradient(rgba(34, 211, 238, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
+    linear-gradient(rgba(245, 183, 164, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 183, 164, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 html.light .bg-grid {
   background-image:
-    linear-gradient(rgba(14, 165, 233, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(14, 165, 233, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(153, 15, 61, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(153, 15, 61, 0.03) 1px, transparent 1px);
 }
 
 /* Finansal sahne — SVG arka plan (şehir + bokeh + neon line chart) */
@@ -408,47 +409,30 @@ html.light .bg-grid {
   50%  { background-position: 52% 48%; transform: scale(1.04); }
   100% { background-position: 50% 50%; transform: scale(1.02); }
 }
-.bg-finance-scene {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image: url('/bg-finance.svg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  opacity: 0.85;
-  animation: bg-pan 30s ease-in-out infinite;
-  transform-origin: center;
+/* Eski SVG sahne — FT Salmon temasinda kullanilmiyor, sondur */
+.bg-finance-scene,
+.bg-darken,
+.bg-candles {
+  display: none !important;
 }
 
-/* Karartma katmanı — okuma kontrastı için */
-.bg-darken {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.35) 0%, rgba(2, 6, 23, 0.55) 100%);
-}
-/* Light modda koyu sahne katmanlarini sondur — aydinlik temada gereksiz */
-html.light .bg-finance-scene,
-html.light .bg-darken,
-html.light .bg-candles,
-html.light .bg-finance-mesh {
-  display: none;
-}
-
-/* Finansal mesh — eski gradient orblar (yedek katman olarak küçük opacity) */
+/* FT SALMON AMBIENT BLOB — kose radial gradientlerle premium derinlik.
+   Dark: sol-ust salmon + sag-alt cyan; Light: sol-ust bordo + sag-alt turkuaz. */
 .bg-finance-mesh {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 0% 0%,    rgba(34, 211, 238, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 50% at 100% 0%,  rgba(99, 102, 241, 0.05) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 60% at 100% 100%,rgba(34, 197, 94, 0.04)  0%, transparent 50%);
+    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(245, 183, 164, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 88% 82%, rgba(34, 211, 238, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(245, 183, 164, 0.03) 0%, transparent 70%);
+}
+html.light .bg-finance-mesh {
+  background:
+    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(153, 15, 61, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 88% 82%, rgba(13, 118, 128, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(153, 15, 61, 0.02) 0%, transparent 70%);
 }
 
 /* Candlestick benzeri SVG pattern overlay */

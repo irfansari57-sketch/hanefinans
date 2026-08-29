@@ -313,8 +313,10 @@ export function BESCalculator() {
         ))}
       </div>
 
-      {/* Karşılaştırma tablosu */}
-      <div className="mt-4 rounded-xl border border-border bg-bg-soft overflow-hidden">
+      {/* Karşılaştırma tablosu — 8 kolonlu, mobilde ekrana sigmaz.
+          Kullanicinin talebi: mobilde gizlensin, ustunde 3 ScenarioCard zaten
+          ana ozeti veriyor. sm+ (>=640px) breakpoint'te goster. */}
+      <div className="mt-4 rounded-xl border border-border bg-bg-soft overflow-hidden hidden sm:block">
         <div className="border-b border-border bg-bg-card px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           Detaylı Karşılaştırma — {years} yıl projeksiyonu
         </div>

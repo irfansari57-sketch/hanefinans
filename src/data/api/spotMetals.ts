@@ -1,14 +1,17 @@
 /**
- * Pages Function /api/spot-metals proxy — Stooq primary + Yahoo fallback.
- * Backend D1'de 5dk cache'lendiği için panel auto-refresh kotaya çarpmaz.
- * Backend bundle 12 saatten eski ise stale say (Stooq hafta sonu freeze koruması).
+ * Pages Function /api/spot-metals proxy — Phase 2: D1 backed.
+ * Backend cron (/api/cron/metals-refresh) her 30dk Yahoo'dan XAU/XAG/XPT/XPD
+ * ceker → D1 `metals_spot` tablosuna yazar. Bu proxy o tabloyu okur.
+ *
+ * Client tarafinda 30sn cache — panel auto-refresh D1 hit'i icin edge cache
+ * ile ~1 request'e duser. Backend 12 saatten eski ise stale sayilir.
  */
 
 interface SpotMetalQuote {
   value: number;
   changePct: number;
   updatedAt: string;
-  source: 'stooq' | 'yahoo' | 'd1-cache';
+  source: 'stooq' | 'yahoo' | 'd1-cache' | string;
 }
 
 interface SpotMetalsResponse {
@@ -18,6 +21,8 @@ interface SpotMetalsResponse {
   XAU?: SpotMetalQuote;
   XAG?: SpotMetalQuote;
   XPT?: SpotMetalQuote;
+  /** Phase 2: Paladyum da ayni endpoint'ten geliyor (D1 tek noktali cache). */
+  XPD?: SpotMetalQuote;
 }
 
 let cached: { fetchedAt: number; data: SpotMetalsResponse } | null = null;

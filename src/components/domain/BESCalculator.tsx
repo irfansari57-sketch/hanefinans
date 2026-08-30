@@ -313,54 +313,9 @@ export function BESCalculator() {
         ))}
       </div>
 
-      {/* Karşılaştırma tablosu — 8 kolonlu, mobilde ekrana sigmaz.
-          Kullanicinin talebi: mobilde gizlensin, ustunde 3 ScenarioCard zaten
-          ana ozeti veriyor. sm+ (>=640px) breakpoint'te goster. */}
-      <div className="mt-4 rounded-xl border border-border bg-bg-soft overflow-hidden hidden sm:block">
-        <div className="border-b border-border bg-bg-card px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-          Detaylı Karşılaştırma — {years} yıl projeksiyonu
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-xs">
-            <thead className="text-[10px] uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-3 py-2 text-left">Senaryo</th>
-                <th className="px-3 py-2 text-right">Reel Getiri</th>
-                {initialDeposit > 0 && <th className="px-3 py-2 text-right">Başlangıç</th>}
-                <th className="px-3 py-2 text-right">Aylık Katkılar</th>
-                <th className="px-3 py-2 text-right">Yönetim Gideri</th>
-                <th className="px-3 py-2 text-right">Devlet Katkısı</th>
-                <th className="px-3 py-2 text-right">Bileşik Kazanç</th>
-                <th className="px-3 py-2 text-right">Toplam Birikim</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border text-slate-200">
-              {projections.map(({ scenario, rate, projection }) => (
-                <tr key={scenario.key}>
-                  <td className="px-3 py-2 font-semibold">
-                    <span className={cn(
-                      'inline-flex items-center gap-1.5',
-                      scenario.tone === 'success' ? 'text-success' :
-                      scenario.tone === 'danger' ? 'text-danger' : 'text-accent',
-                    )}>
-                      ● {scenario.label}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">%{(rate * 100).toFixed(1)}</td>
-                  {initialDeposit > 0 && (
-                    <td className="px-3 py-2 text-right tabular-nums text-slate-300">{formatTL(projection.initialDeposit)}</td>
-                  )}
-                  <td className="px-3 py-2 text-right tabular-nums">{formatTL(projection.totalContributed)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-danger">−{formatTL(projection.totalManagementFees)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-success">+{formatTL(projection.totalStateContribution)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-accent">+{formatTL(projection.totalEarnings)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold">{formatTL(projection.endBalance)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Detayli Karsilastirma tablosu KULLANICI TALEBIYLE KALDIRILDI —
+          ustunde 3 ScenarioCard (Kotumser/Orta/Iyimser) ana ozeti zaten veriyor,
+          8 kolonlu tablo bilgi kalabaligiydi. Sadelik icin cikarildi. */}
 
       <p className="mt-3 text-[10px] leading-relaxed text-slate-500">
         ℹ️ Tüm oranlar <strong className="text-slate-400">reel</strong> (enflasyondan arındırılmış). Sonuçlar bugünkü satın alma gücüyle.

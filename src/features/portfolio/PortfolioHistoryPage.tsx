@@ -86,8 +86,72 @@ export function PortfolioHistoryPage() {
     if (saving) return;
     setSaving(true);
     try {
-      // PortfolioPage'in canlı verisini alamayız burada; kullanıcıyı portfoy sayfasına yönlendir
-      toast.info('Snapshot almak için önce Portföyüm sayfasına gitmen gerekiyor', 'Otomatik gün sonu snapshot yakında eklenecek');
+      // Dexie'den canli pozisyonlari al, snapshot API'ye POST et.
+      // Dexie login sonrasi cloud sync ile guncel oldugundan authoritative.
+      const { db } = await import('@/data/db');
+      const { loadStocks } = await import('@/data/services');
+      const positions = await db.portfolio.toArray();
+      const stockPositions = positions.filter((p) => p.kind !== 'fund');
+      if (stockPositions.length === 0) {
+        toast.info('Portfoyde hisse pozisyonu yok', 'Once Portfoyum sayfasindan pozisyon ekle');
+        return;
+      }
+      const symbols = Array.from(new Set(stockPositions.map((p) => p.symbol)));
+      const { data: stocks } = await loadStocks(symbols);
+      const priceMap = new Map(stocks.map((s) => [s.symbol, s.price]));
+
+      let totalValue = 0;
+      let totalCost = 0;
+      const positions_light: Array<{ symbol: string; lot: number; avgPrice: number; currentPrice?: number; marketValue?: number }> = [];
+      let validCount = 0;
+      for (const p of stockPositions) {
+        const price = priceMap.get(p.symbol) ?? 0;
+        const cost = p.lot * p.avgPrice;
+        totalCost += cost;
+        if (price > 0) {
+          const marketValue = p.lot * price;
+          totalValue += marketValue;
+          validCount++;
+          positions_light.push({ symbol: p.symbol, lot: p.lot, avgPrice: p.avgPrice, currentPrice: price, marketValue });
+        } else {
+          positions_light.push({ symbol: p.symbol, lot: p.lot, avgPrice: p.avgPrice });
+        }
+      }
+
+      if (validCount === 0) {
+        toast.error('Fiyat verisi yok', 'Canli fiyatlar cekilemedi — birazdan tekrar dene');
+        return;
+      }
+
+      const totalPnl = totalValue - totalCost;
+      const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
+      const r = await fetch('/api/portfolio/snapshots', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          totalValue,
+          totalCost,
+          totalPnl,
+          totalPnlPct,
+          positionCount: validCount,
+          positions: positions_light,
+        }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: 'Bilinmeyen hata' })) as { error?: string };
+        toast.error('Snapshot yazilamadi', err.error);
+        return;
+      }
+      toast.success('Snapshot alindi', `${validCount} pozisyon · ${formatMoney(totalValue)}`);
+
+      // Listeyi tazele — GET tekrar cek
+      const fresh = await fetch(`/api/portfolio/snapshots?days=${days}`, { credentials: 'include' })
+        .then((rr) => rr.json() as Promise<{ ok: boolean; snapshots?: Snapshot[] }>);
+      if (fresh.ok && fresh.snapshots) setSnapshots(fresh.snapshots);
+    } catch (e) {
+      toast.error('Snapshot hatasi', (e as Error).message);
     } finally {
       setSaving(false);
     }

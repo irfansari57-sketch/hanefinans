@@ -200,9 +200,13 @@ export function ScreenerPage() {
         } else if (combined.includes('not_found') && combined.includes('model')) {
           friendly = 'AI modeli erişilemez — yönetici model yapılandırmasını güncellemeli.';
         }
-        // Teknik detay + friendly'i birlikte state'e yaz (detay UI'da collapsible gösterilecek)
+        // Teknik detay + friendly'i birlikte state'e yaz (detay UI'da collapsible gösterilecek).
+        // Backend'in dondurdugu `hint` alanini da goster — Anthropic hatalari icin
+        // aksiyon adimi soyluyor ("workspace kontrol et" vs.)
+        const rawHint = String((r as unknown as Record<string, unknown>)?.hint ?? '');
         const technical = [rawErr, rawMsg, rawDetail].filter((s) => s && s !== 'undefined').join(' · ');
-        setError(technical ? `${friendly}\n\n[Teknik detay] ${technical}` : friendly);
+        const hintLine = rawHint && rawHint !== 'undefined' ? `\n\n[Cozum] ${rawHint}` : '';
+        setError(technical ? `${friendly}${hintLine}\n\n[Teknik detay] ${technical}` : `${friendly}${hintLine}`);
         if (r?.code === 'QUOTA_EXCEEDED') {
           setQuotaExceeded(true);
           track('screener.quota_blocked', { tier: r.quota?.tier ?? 'unknown', limit: r.quota?.limit ?? 0 });

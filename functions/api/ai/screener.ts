@@ -96,9 +96,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     // 3.5 haiku (2024-10-22) resmi olarak stabil, ilk deneme bu olsun.
     // Fail durumunda daha yeni haiku, sonra sonnet 3.5.
     const MODEL_CHAIN = [
-      'claude-3-5-haiku-20241022',
-      'claude-3-5-sonnet-20241022',
-      'claude-3-haiku-20240307', // eski ama garantili fallback
+      'claude-haiku-4-5-20251001',
+      'claude-sonnet-4-5',
+      'claude-3-5-haiku-20241022', // son fallback (bazi account'larda hala aktif)
     ];
 
     let anthropicResp: Response | null = null;
@@ -152,15 +152,49 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }
 
     if (!anthropicResp || !anthropicResp.ok) {
-      const status = anthropicResp?.status ?? 502;
+      const upstream = anthropicResp?.status ?? 502;
+
+      // Anthropic error tiplerini kullanici-yorumlanabilir mesajlara cevir.
+      // Credit balance: en sik gorulen tuzak — user "kredi yukledi ama hala hata"
+      // diyor cunku farkli workspace/API key'e yukluyor. Mesaji explicit yap.
+      let userMessage = lastErrorMessage || 'AI servisi cevap vermedi';
+      let outStatus = 502;
+      let hint: string | undefined;
+
+      const lower = (lastErrorMessage + ' ' + lastErrorBody).toLowerCase();
+      if (lastErrorType === 'authentication_error' || upstream === 401) {
+        outStatus = 401;
+        userMessage = 'ANTHROPIC_API_KEY gecersiz veya kaldirilmis';
+        hint = 'Anthropic Console > API Keys > yeni key olustur, Cloudflare Pages env guncelle.';
+      } else if (lastErrorType === 'permission_error' || upstream === 403) {
+        outStatus = 403;
+        userMessage = 'API key bu modele erisim yetkisi yok';
+        hint = 'Console > Settings > Model Access — Claude Haiku 4.5 ve Sonnet 4.5 aktif olmali.';
+      } else if (lower.includes('credit balance') || lower.includes('credit_balance')) {
+        outStatus = 402;
+        userMessage = 'Anthropic kredi bakiyesi yetersiz';
+        hint = 'Console > Plans & Billing — kredi kartinin bagli oldugu workspace/organization ile API key\'in workspace\'i AYNI olmali. Aksi halde kredi eklesen bile bu key erisemez.';
+      } else if (lastErrorType === 'rate_limit_error' || upstream === 429) {
+        outStatus = 429;
+        userMessage = 'Anthropic rate limit — biraz bekleyip tekrar dene';
+      } else if (lastErrorType === 'not_found_error' || lower.includes('model_not_found') || lower.includes('does not exist')) {
+        outStatus = 400;
+        userMessage = 'Denenen Claude modellerinin hicbiri erisilebilir degil';
+        hint = 'MODEL_CHAIN artik guncel — Console > Model Access\'te en az bir model aktif olmali.';
+      } else if (upstream === 400 || lastErrorType === 'invalid_request_error') {
+        outStatus = 400;
+        userMessage = lastErrorMessage || 'Gecersiz istek';
+      }
+
       return new Response(JSON.stringify({
         ok: false,
-        error: `Anthropic ${status} (${lastErrorType || 'unknown_error'})`,
-        message: lastErrorMessage || 'AI servisi cevap vermedi',
+        error: `Anthropic ${upstream} (${lastErrorType || 'unknown_error'})`,
+        message: userMessage,
+        hint,
         triedModels: MODEL_CHAIN,
         detail: lastErrorBody.slice(0, 600),
       }), {
-        status: 400, headers: { 'Content-Type': 'application/json' },
+        status: outStatus, headers: { 'Content-Type': 'application/json' },
       });
     }
 

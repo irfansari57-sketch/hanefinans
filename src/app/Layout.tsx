@@ -121,6 +121,33 @@ export function Layout() {
   const admin = isAdmin(user);
   const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
+  // Watchlist cloud sync — login/logout senkronizasyonu
+  // Anonim kullanicinin localStorage listesi ilk login'de cloud'a migre olur,
+  // sonrasinda cloud authoritative. Logout'ta cloudEnabled=false → sadece local.
+  useEffect(() => {
+    if (!user) {
+      // Logout: sadece flag'i kapat, localStorage'i temizleme (offline devam icin)
+      import('@/store/watchlist').then(({ useWatchlist }) => {
+        useWatchlist.getState().disableCloud();
+      });
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const { useWatchlist } = await import('@/store/watchlist');
+        if (!alive) return;
+        // Once migrate (cloud bosdur -> local'i tasi), sonra sync (cloud snapshot ile store'u tazele)
+        await useWatchlist.getState().migrateToCloud();
+        if (!alive) return;
+        await useWatchlist.getState().syncFromCloud();
+      } catch (e) {
+        console.warn('[watchlist-sync] failed:', e);
+      }
+    })();
+    return () => { alive = false; };
+  }, [user]);
+
   // Portfoy cloud sync — login olunca Dexie ↔ D1 senkronize et
   // Anonim kullanicilarin Dexie verisi: ilk login'de Cloud'a tasinir, sonra Cloud authoritative.
   useEffect(() => {

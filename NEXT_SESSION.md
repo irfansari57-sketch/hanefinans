@@ -1,6 +1,109 @@
 # NEXT SESSION — InvestliQ (eski Hane Finans)
 
-> Son guncelleme: 24 Agustos 2026 — Fon Karsilastir SVG overlap + Marka InvestliQ normalize (114 occ) + Favicon/PWA G1 Aurora + PNG regenerate + Mobil drawer wordmark + HaneMod akordiyon + Risk CTA kaldir + Anthropic screener detay
+> Son guncelleme: 30 Agustos 2026 — 6 major task + FT Salmon tipografi finalize + BES sadeleştirme
+
+## SEANS 2026-08-30 — YAPILANLAR
+
+### 1) Tipografi Finalizasyonu (FT Salmon)
+- **Sorun:** Sidebar nav, HALKB semboller, BIST 100 ticker, FONLAR/HİSSE başlıkları farklı fontlarda görünüyordu
+- **Çözüm iterasyonlari:**
+  - İlk deneme: Inter'i her yere zorla → logonun serif format DNA'sını bozdu (`tracking-tight` selektörü fazla geniş yakaladı)
+  - Final: Sadece form kontrolleri (`button/input/select/textarea`) Inter; her şey body Source Serif 4 inherit → tek dil
+- `.font-mono` → `inherit` (HALKB serif olarak render)
+- `src/index.css` ~L89 civari button-input-only Inter rule
+- Kullanıcı onayı: "çok güzel oldu"
+
+### 2) BES Detaylı Karşılaştırma Kaldırıldı
+- `BESCalculator.tsx` — 8 kolonlu tablo tamamen çıkarıldı, üstteki 3 ScenarioCard (Kötümser/Orta/İyimser) yeterli
+- Hem masaüstü hem mobil sadeleşti
+
+### 3) Task #312 — Metals Spot Phase 2 (D1 backed)
+- `functions/migrations/014_metals_spot.sql` — XAU/XAG/XPT/XPD tablo
+- `functions/api/cron/metals-refresh.ts` — Yahoo `XAUUSD=X` vb. paralel fetch → D1 write, outlier ±%15 clamp, hafta sonu ayni-close koruma
+- `functions/api/spot-metals.ts` — STUB kaldırıldı, D1'den okuma, edge cache 60s, XPD dahil
+- `.github/workflows/metals-refresh.yml` — Hafta içi her 30dk / hafta sonu 2h
+- `src/data/api/spotMetals.ts` — XPD response type
+- **KULLANICI:** `npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote` + Actions "Run workflow" manuel tetikleme
+
+### 4) Task #323 — Watchlist D1 Sync
+- `functions/migrations/015_watchlist.sql` — `user_watchlist` tablo (user_id + symbol + kind + position UNIQUE)
+- `functions/api/watchlist/index.ts` — GET/POST/DELETE (tek sembol + bulk `?mode=replace` + `?mode=all`)
+- `src/data/watchlistSync.ts` — 4 helper (cloudFetch/Add/Remove/Replace)
+- `src/store/watchlist.ts` — `cloudEnabled` flag + `syncFromCloud()` / `migrateToCloud()` / `disableCloud()` + optimistic UI + fire-and-forget cloud POST/DELETE + `partialize` (cloudEnabled persist edilmez)
+- `src/app/Layout.tsx` — login effect: migrate → sync; logout: disableCloud
+- **KULLANICI:** `npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote`
+- **NOT:** siteSettings admin-global, D1'e taşımaya gerek yok. User prefs (tema vb.) localStorage'da makul kalıyor
+
+### 5) Task #331 — Portföy PDF Export
+- `src/lib/portfolioPdfExport.ts` — YENİ `downloadPortfolioPdf()` helper (jspdf + jspdf-autotable, zaten install)
+- FT Salmon palet (bordo header, krem bant), 4 özet kutu + 9 kolon detay tablo, K/Z hücreleri renkli, user email footer + SPK disclaimer + sayfa no
+- Dosya adı: `investliq-portfoy-hisseler-YYYYMMDD-HHMM.pdf`
+- `PortfolioPage.tsx` zaten butonu çağırıyordu (Hisseler tab); `FundsPanel.tsx`'e de PDF butonu eklendi (currentNav → currentPrice mapping)
+
+### 6) Task #332 — Portföy History Snapshot
+- `PortfolioHistoryPage.tsx` "Şimdi Snapshot" butonu artık çalışıyor: Dexie'den pozisyon çek → Yahoo canlı fiyat → totals hesapla → `POST /api/portfolio/snapshots` → listeyi tazele
+- Fon pozisyonları filtrelenir (sadece hisse snapshot), boş portföy + fiyat eksikliği için toast'lar
+- Otomatik gün sonu snapshot zaten mevcuttu (PortfolioPage 6h guard), bu manuel tetikleyici backup
+
+### 7) Task #333 — Temettü Takvimi Full Page
+- `features/calendar/EconomicCalendarPage.tsx` tab'lı yapıya dönüştü: Ekonomik / Temettü, URL `?tab=temettu` sync
+- **DividendTakvim bileseni:**
+  - Filtreler: Tümü / Bu hafta / 30 gün / 90 gün / **Portföyüm** / **Takipte**
+  - Sıralama: Tarih / Verim % / Brüt TL
+  - **Portföy geliri özet:** Kullanıcının portföyündeki hisselerin beklenen toplam brüt temettü (auto-calc, warning border)
+  - Wallet + Star rozetleri her sembolün yanında
+  - 6 kolon tablo: Ex-Tarih / Sembol+Ad / Not / Brüt / Net / Verim %
+
+### 8) Task #334 — Anthropic HTTP 400 Fix
+- `functions/api/ai/screener.ts` MODEL_CHAIN güncellendi:
+  - Eski: `claude-3-5-haiku-20241022` + `claude-3-5-sonnet-20241022` + `claude-3-haiku-20240307` (deprecated → model_not_found)
+  - Yeni: `claude-haiku-4-5-20251001` + `claude-sonnet-4-5` + eski 3.5-haiku son fallback
+- Anthropic error type → HTTP status mapping:
+  - `authentication_error` → 401
+  - `credit_balance_too_low` → **402 + workspace ipucu** ("kredi kartı bağlı workspace ile API key workspace AYNI olmalı")
+  - `rate_limit_error` → 429
+  - `not_found_error` / `model_not_found` → 400
+- Response'a `hint` alanı — frontend `ScreenerPage.tsx` `[Çözüm]` satırı olarak render
+
+---
+
+## PENDING (SONRAKI SEANS)
+
+- **#287** OAuth Google/Apple redirect URL güncelle (KULLANICI Console'dan yapacak)
+- Yeni feature önerileri açık — user isteğine göre
+
+---
+
+## KULLANICI DEPLOY ADIMLARI (sırasıyla)
+
+```powershell
+cd C:\dev\hanefinans
+git add -A
+git commit -m "seans: FT tipografi + BES sadeleştirme + 6 major task (metals D1, watchlist D1, PDF export, history snapshot, temettu page, Anthropic fix)"
+git pull --rebase origin main
+git push
+```
+
+**Post-deploy (bir defalık):**
+```powershell
+# D1 migrations
+npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote
+npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote
+
+# Metals cron ilk tetikleme (D1 doldurmak icin)
+# GitHub Actions → "Refresh Metals Spot" → Run workflow
+```
+
+**Test:**
+- `https://investliq.com/api/spot-metals` → `{ok:true, XAU:{...}, XAG, XPT, XPD}`
+- Login → Watchlist ekle → farkli cihaz login → aynı liste
+- Portfoy → "PDF İndir" butonu → indirilir
+- /takvim?tab=temettu → tab çalışır
+- /sorgu → doğal dil query → Claude 4.5 hit
+
+---
+
+## ARSIV: 24 AGUSTOS 2026 SEANSI
 
 ## SON SEANSTA YAPILANLAR (2026-08-24)
 

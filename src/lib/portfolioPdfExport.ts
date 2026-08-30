@@ -1,213 +1,259 @@
 /**
- * Portföy PDF Export — jsPDF ile client-side PDF üretir.
+ * Portföy PDF Export — jspdf + jspdf-autotable ile tek sayfa özet raporu.
  *
- * PortfolioPage'de "PDF İndir" butonuna bağlanır.
- * Rapor içeriği:
- *   - Başlık + InvestliQ brand + tarih + kullanıcı email
- *   - Toplam değer / maliyet / kâr-zarar / günlük değişim özet kartı
- *   - Pozisyon tablosu (sembol/lot/maliyet/fiyat/değer/P&L/P&L%)
- *   - Alt bilgi: SPK yatırım tavsiyesi değildir uyarısı
+ * PortfolioPage.tsx → "PDF İndir" butonu bu helper'i çağırır.
+ * Türkçe karakter destegi: jspdf'in varsayilan Helvetica fontu Latin-1
+ * genisletmesiyle Turkce karakterleri destekler. Ozel font gerekmez.
+ *
+ * Yerlesim:
+ *   - Header: InvestliQ logo satiri + baslik + tarih
+ *   - Ozet kutulari: Toplam Deger / Maliyet / K/Z / Bugun
+ *   - Detay tablo: Sembol / Lot / Ort.Maliyet / Fiyat / Deger / K/Z
+ *   - Footer: kullanici email + disclaimer + sayfa no
  */
-import jsPDF from 'jspdf';
-import autoTable, { type UserOptions } from 'jspdf-autotable';
 
-export interface PortfolioPdfRow {
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+export interface PdfRow {
   symbol: string;
   name?: string;
   lot: number;
   avgPrice: number;
   currentPrice?: number;
   marketValue?: number;
-  cost: number;
+  cost?: number;
   pnl?: number;
   pnlPct?: number;
 }
 
-export interface PortfolioPdfTotals {
+export interface PdfTotals {
   totalCost: number;
   totalValue: number;
   totalPnl: number;
   totalPnlPct: number;
   dailyChange: number;
   dailyPnlPct: number;
+  validCount: number;
 }
 
-export interface PortfolioPdfOptions {
-  title?: string;
-  tabLabel?: string;
+export interface PdfExportArgs {
+  tabLabel: string; // 'Hisseler' veya 'Fonlar'
   userEmail?: string;
-  rows: PortfolioPdfRow[];
-  totals: PortfolioPdfTotals;
+  rows: PdfRow[];
+  totals: PdfTotals;
 }
 
-const TR = (v: number, decimals = 2): string =>
-  v.toLocaleString('tr-TR', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+function fmtTL(v: number | undefined): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  return v.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' TL';
+}
 
-const MONEY = (v: number): string => `${TR(v, 2)} TL`;
-
-const PCT = (v: number): string => {
+function fmtPct(v: number | undefined): string {
+  if (v == null || !Number.isFinite(v)) return '—';
   const sign = v >= 0 ? '+' : '';
-  return `${sign}${TR(v, 2)}%`;
-};
+  return `${sign}${v.toFixed(2)}%`;
+}
 
-export function generatePortfolioPdf(opts: PortfolioPdfOptions): jsPDF {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  let y = margin;
-
-  // --- HEADER ---
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  doc.text('InvestliQ', margin, y);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(120, 120, 120);
-  doc.text('Yatirim Verisi Platformu', margin + 32, y);
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('tr-TR', {
-    day: '2-digit', month: 'long', year: 'numeric',
+function fmtDateTime(d: Date): string {
+  return d.toLocaleString('tr-TR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  doc.text(dateStr, pageWidth - margin, y, { align: 'right' });
-  y += 10;
+}
 
-  // --- TITLE ---
-  doc.setFontSize(14);
+/** FT Salmon palet — pdf ozeti icin */
+const PALETTE = {
+  bordo: [153, 15, 61] as [number, number, number],
+  cream: [255, 241, 229] as [number, number, number],
+  success: [15, 118, 110] as [number, number, number], // teal-700
+  danger: [190, 18, 60] as [number, number, number], // rose-700
+  text: [15, 23, 42] as [number, number, number], // slate-900
+  muted: [100, 116, 139] as [number, number, number], // slate-500
+  border: [226, 232, 240] as [number, number, number], // slate-200
+};
+
+export function downloadPortfolioPdf(args: PdfExportArgs): void {
+  const { tabLabel, userEmail, rows, totals } = args;
+  const now = new Date();
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 12;
+
+  // ==================== HEADER ====================
+  doc.setFillColor(...PALETTE.cream);
+  doc.rect(0, 0, pageWidth, 28, 'F');
+  doc.setFillColor(...PALETTE.bordo);
+  doc.rect(0, 26, pageWidth, 2, 'F');
+
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  const title = opts.title || `Portfoy Raporu${opts.tabLabel ? ` — ${opts.tabLabel}` : ''}`;
-  doc.text(title, margin, y);
-  y += 6;
+  doc.setFontSize(20);
+  doc.setTextColor(...PALETTE.bordo);
+  doc.text('InvestliQ', margin, 14);
 
-  if (opts.userEmail) {
-    doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...PALETTE.muted);
+  doc.text('Yatirimcilar Icin Akilli Veri Platformu', margin, 20);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...PALETTE.text);
+  const titleText = `Portfoy Raporu - ${tabLabel}`;
+  const titleWidth = doc.getTextWidth(titleText);
+  doc.text(titleText, pageWidth - margin - titleWidth, 14);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...PALETTE.muted);
+  const dateText = fmtDateTime(now);
+  const dateWidth = doc.getTextWidth(dateText);
+  doc.text(dateText, pageWidth - margin - dateWidth, 20);
+
+  // ==================== OZET KUTULARI ====================
+  const summaryY = 36;
+  const boxH = 20;
+  const boxGap = 3;
+  const boxW = (pageWidth - margin * 2 - boxGap * 3) / 4;
+
+  const summaryBoxes: Array<{ label: string; value: string; sub?: string; tone?: 'success' | 'danger' | 'accent' | 'default' }> = [
+    { label: 'Toplam Deger', value: fmtTL(totals.totalValue), tone: 'accent' },
+    { label: 'Toplam Maliyet', value: fmtTL(totals.totalCost), tone: 'default' },
+    {
+      label: 'Toplam Kar/Zarar',
+      value: (totals.totalPnl >= 0 ? '+' : '') + fmtTL(totals.totalPnl),
+      sub: fmtPct(totals.totalPnlPct),
+      tone: totals.totalPnl >= 0 ? 'success' : 'danger',
+    },
+    {
+      label: 'Bugunku Degisim',
+      value: (totals.dailyChange >= 0 ? '+' : '') + fmtTL(totals.dailyChange),
+      sub: fmtPct(totals.dailyPnlPct),
+      tone: totals.dailyChange >= 0 ? 'success' : 'danger',
+    },
+  ];
+
+  summaryBoxes.forEach((box, i) => {
+    const x = margin + i * (boxW + boxGap);
+    const toneColor =
+      box.tone === 'success' ? PALETTE.success :
+      box.tone === 'danger' ? PALETTE.danger :
+      box.tone === 'accent' ? PALETTE.bordo :
+      PALETTE.text;
+
+    doc.setDrawColor(...PALETTE.border);
+    doc.setLineWidth(0.3);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(x, summaryY, boxW, boxH, 1.5, 1.5, 'FD');
+
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Kullanici: ${opts.userEmail}`, margin, y);
-    y += 5;
-  }
+    doc.setFontSize(7);
+    doc.setTextColor(...PALETTE.muted);
+    doc.text(box.label.toUpperCase(), x + 2.5, summaryY + 5);
 
-  // --- ÖZET KART ---
-  y += 3;
-  doc.setDrawColor(200, 200, 200);
-  doc.setFillColor(245, 247, 250);
-  doc.roundedRect(margin, y, pageWidth - 2 * margin, 30, 2, 2, 'FD');
-
-  const boxY = y + 5;
-  const col1X = margin + 5;
-  const col2X = margin + (pageWidth - 2 * margin) / 4 + 5;
-  const col3X = margin + 2 * (pageWidth - 2 * margin) / 4 + 5;
-  const col4X = margin + 3 * (pageWidth - 2 * margin) / 4 + 5;
-
-  const summaryCell = (label: string, value: string, x: number, valueColor?: [number, number, number]) => {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 120);
-    doc.text(label.toUpperCase(), x, boxY);
-    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    if (valueColor) doc.setTextColor(...valueColor);
-    else doc.setTextColor(30, 30, 30);
-    doc.text(value, x, boxY + 6);
-  };
+    doc.setFontSize(11);
+    doc.setTextColor(...toneColor);
+    doc.text(box.value, x + 2.5, summaryY + 12);
 
-  const pnlColor: [number, number, number] = opts.totals.totalPnl >= 0 ? [34, 139, 34] : [200, 40, 40];
-  const dayColor: [number, number, number] = opts.totals.dailyChange >= 0 ? [34, 139, 34] : [200, 40, 40];
+    if (box.sub) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(box.sub, x + 2.5, summaryY + 17);
+    }
+  });
 
-  summaryCell('Toplam Deger', MONEY(opts.totals.totalValue), col1X);
-  summaryCell('Toplam Maliyet', MONEY(opts.totals.totalCost), col2X);
-  summaryCell(
-    'Kar / Zarar',
-    `${MONEY(opts.totals.totalPnl)}  ${PCT(opts.totals.totalPnlPct)}`,
-    col3X,
-    pnlColor,
-  );
-  summaryCell(
-    'Gunluk Degisim',
-    `${MONEY(opts.totals.dailyChange)}  ${PCT(opts.totals.dailyPnlPct)}`,
-    col4X,
-    dayColor,
-  );
+  // ==================== DETAY TABLO ====================
+  const tableY = summaryY + boxH + 6;
 
-  y += 35;
-
-  // --- POZİSYON TABLOSU ---
-  const tableBody = opts.rows.map((r) => [
+  const tableRows = rows.map((r) => [
     r.symbol,
-    r.name ?? '—',
-    TR(r.lot, r.lot % 1 !== 0 ? 4 : 0),
-    MONEY(r.avgPrice),
-    r.currentPrice != null ? MONEY(r.currentPrice) : '—',
-    MONEY(r.cost),
-    r.marketValue != null ? MONEY(r.marketValue) : '—',
-    r.pnl != null ? MONEY(r.pnl) : '—',
-    r.pnlPct != null ? PCT(r.pnlPct) : '—',
+    r.name ?? '-',
+    r.lot.toLocaleString('tr-TR', { maximumFractionDigits: 4 }),
+    r.avgPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    r.currentPrice != null ? r.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-',
+    r.cost != null ? fmtTL(r.cost) : '-',
+    r.marketValue != null ? fmtTL(r.marketValue) : '-',
+    r.pnl != null ? `${r.pnl >= 0 ? '+' : ''}${fmtTL(r.pnl)}` : '-',
+    r.pnlPct != null ? fmtPct(r.pnlPct) : '-',
   ]);
 
   autoTable(doc, {
-    startY: y,
-    head: [['Sembol', 'Ad', 'Lot', 'Ort. Maliyet', 'Guncel', 'Maliyet', 'Deger', 'K/Z', 'K/Z %']],
-    body: tableBody,
+    startY: tableY,
+    head: [['Sembol', 'Ad', 'Lot', 'Ort. Mal.', 'Fiyat', 'Maliyet', 'Deger', 'K/Z', '%']],
+    body: tableRows,
     theme: 'striped',
-    headStyles: { fillColor: [40, 100, 180], fontSize: 8, halign: 'center' },
-    bodyStyles: { fontSize: 8 },
+    headStyles: {
+      fillColor: PALETTE.bordo,
+      textColor: [255, 255, 255],
+      fontSize: 8,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: PALETTE.text,
+      cellPadding: 1.5,
+    },
+    alternateRowStyles: { fillColor: PALETTE.cream },
     columnStyles: {
-      0: { fontStyle: 'bold' },
+      0: { fontStyle: 'bold', halign: 'left', cellWidth: 18 },
+      1: { halign: 'left', cellWidth: 32 },
       2: { halign: 'right' },
       3: { halign: 'right' },
       4: { halign: 'right' },
       5: { halign: 'right' },
       6: { halign: 'right' },
-      7: { halign: 'right' },
+      7: { halign: 'right', fontStyle: 'bold' },
       8: { halign: 'right', fontStyle: 'bold' },
     },
+    margin: { left: margin, right: margin },
+    // Kar/zarar sutunlarina tone rengi ver
     didParseCell: (data) => {
-      // K/Z sütununda renk
-      if ((data.column.index === 7 || data.column.index === 8) && data.section === 'body') {
-        const raw = data.cell.text.join('');
-        if (raw.startsWith('+')) data.cell.styles.textColor = [34, 139, 34];
-        else if (raw.startsWith('-')) data.cell.styles.textColor = [200, 40, 40];
+      if (data.section !== 'body') return;
+      const row = rows[data.row.index];
+      if (!row) return;
+      if ((data.column.index === 7 || data.column.index === 8) && row.pnl != null) {
+        data.cell.styles.textColor = row.pnl >= 0 ? PALETTE.success : PALETTE.danger;
       }
     },
-    margin: { left: margin, right: margin },
-  } as UserOptions);
+  });
 
-  // --- FOOTER ---
-  const finalY = (doc as any).lastAutoTable?.finalY ?? y + 100;
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const footerY = Math.max(finalY + 15, pageHeight - 25);
+  // ==================== FOOTER ====================
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(...PALETTE.border);
+    doc.setLineWidth(0.3);
+    doc.line(margin, pageHeight - 14, pageWidth - margin, pageHeight - 14);
 
-  doc.setDrawColor(220, 220, 220);
-  doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...PALETTE.muted);
 
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(140, 140, 140);
-  const disclaimer =
-    'Bu rapor sadece bilgi amaclidir. SPK anlaminda yatirim danismanligi olarak degerlendirilemez. ' +
-    'Yatirim kararlarinizi kendi arastirmaniz sonucunda alin.';
-  const splitDisclaimer = doc.splitTextToSize(disclaimer, pageWidth - 2 * margin);
-  doc.text(splitDisclaimer, margin, footerY);
+    const leftFooter = userEmail
+      ? `${userEmail} | investliq.com`
+      : 'investliq.com';
+    doc.text(leftFooter, margin, pageHeight - 9);
 
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(80, 80, 80);
-  doc.text('investliq.com', pageWidth - margin, pageHeight - 8, { align: 'right' });
+    doc.text(
+      'Bu rapor bilgilendirme amaclidir, yatirim tavsiyesi degildir. SPK mevzuati kapsaminda hazirlanmamistir.',
+      margin,
+      pageHeight - 5,
+    );
 
-  return doc;
-}
+    const pageText = `Sayfa ${i} / ${pageCount}`;
+    const pageTextWidth = doc.getTextWidth(pageText);
+    doc.text(pageText, pageWidth - margin - pageTextWidth, pageHeight - 9);
+  }
 
-export function downloadPortfolioPdf(opts: PortfolioPdfOptions): void {
-  const doc = generatePortfolioPdf(opts);
-  const now = new Date();
-  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const suffix = opts.tabLabel ? `_${opts.tabLabel.toLowerCase()}` : '';
-  doc.save(`investliq_portfoy${suffix}_${stamp}.pdf`);
+  // ==================== KAYIT ====================
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const filename = `investliq-portfoy-${tabLabel.toLowerCase()}-${yyyy}${mm}${dd}-${hh}${mi}.pdf`;
+  doc.save(filename);
 }

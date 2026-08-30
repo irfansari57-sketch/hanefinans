@@ -9,7 +9,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil, History } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil, History, FileText } from 'lucide-react';
+import { downloadPortfolioPdf } from '@/lib/portfolioPdfExport';
+import { useAuth } from '@/store/auth';
 import { TxnHistoryModal } from './TxnHistoryModal';
 import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
 import {
@@ -211,6 +213,40 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
         <LiveBadge updatedAt={updatedAt} refreshing={loading} />
         <button className="btn-secondary" onClick={refresh} disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
+        </button>
+        <button
+          className="btn-secondary"
+          onClick={() => {
+            if (positions.length === 0) {
+              toast.info('Once fon pozisyonu ekle');
+              return;
+            }
+            try {
+              downloadPortfolioPdf({
+                tabLabel: 'Fonlar',
+                userEmail: useAuth.getState().user?.email,
+                rows: rows.map((r) => ({
+                  symbol: r.symbol,
+                  name: r.name,
+                  lot: r.lot,
+                  avgPrice: r.avgPrice,
+                  currentPrice: r.currentNav,
+                  marketValue: r.marketValue,
+                  cost: r.cost ?? r.lot * r.avgPrice,
+                  pnl: r.pnl,
+                  pnlPct: r.pnlPct,
+                })),
+                totals: { ...totals, validCount: rows.filter((r) => r.marketValue != null).length },
+              });
+              toast.success('PDF indirildi');
+            } catch (e) {
+              toast.error('PDF hatasi', String((e as Error).message ?? e));
+            }
+          }}
+          disabled={positions.length === 0}
+          title="Fon portfoyunu PDF olarak indir"
+        >
+          <FileText size={14} /> PDF Indir
         </button>
         <button className="btn-primary" onClick={() => setAddOpen(true)}>
           <Plus size={14} /> Fon Ekle

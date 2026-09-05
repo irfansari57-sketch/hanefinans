@@ -139,10 +139,10 @@ export function FundsPage() {
       const b = extractBroker(f.name);
       if (b) counts.set(b, (counts.get(b) ?? 0) + 1);
     });
-    // Sirali: en cok fonu olan aracilar önce
+    // Sirali: ALFABETIK (kullanici talebi — TERA/ATLAS aramayi kolaylastirir).
     return Array.from(counts.entries())
       .filter(([, c]) => c >= 2) // en az 2 fonu olan aracilari goster (spam engellemek icin)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .sort((a, b) => a[0].localeCompare(b[0], 'tr'))
       .map(([name, count]) => ({ name, count }));
   }, [universe]);
 

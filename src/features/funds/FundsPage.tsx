@@ -230,19 +230,6 @@ export function FundsPage() {
           {feedUpdatedAt && (
             <LiveBadge updatedAt={new Date(feedUpdatedAt).getTime()} refreshing={loading} />
           )}
-          {availableCategories.length > 0 && (
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="input h-9 cursor-pointer text-xs"
-              title="Kategori filtresi"
-            >
-              <option value="all">Tüm Kategoriler</option>
-              {availableCategories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          )}
           <div className="relative">
             <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -254,6 +241,41 @@ export function FundsPage() {
           </div>
         </div>
       </div>
+
+      {/* KATEGORI CHIP FILTRELERI — Fon Havuzu ile ayni desen.
+          Kullanici talebi: dropdown yerine gorunur chip'ler, tek tıkla filtrele. */}
+      {availableCategories.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-bg-soft/60 px-3 py-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">Kategori:</span>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('all')}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition',
+              categoryFilter === 'all'
+                ? 'border-accent bg-accent/15 text-accent'
+                : 'border-border bg-bg-card text-slate-400 hover:border-accent/40 hover:text-slate-200',
+            )}
+          >
+            Tümü
+          </button>
+          {availableCategories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategoryFilter(c)}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition',
+                categoryFilter === c
+                  ? 'border-accent bg-accent/15 text-accent'
+                  : 'border-border bg-bg-card text-slate-400 hover:border-accent/40 hover:text-slate-200',
+              )}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* TEFAS Kapalı tab uyari banner */}
       {tab === 'serbest' && (

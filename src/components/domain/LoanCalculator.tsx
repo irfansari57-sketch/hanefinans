@@ -201,7 +201,7 @@ export function LoanCalculator() {
           value={amount}
           onChange={setAmount}
           min={1000}
-          max={100_000_000}
+          max={100_000_000_000}
           step={10_000}
         />
         <Field

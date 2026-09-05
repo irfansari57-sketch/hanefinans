@@ -125,13 +125,19 @@ html.light {
     font-weight: 600;
   }
   html.light .text-slate-400 {
-    color: rgb(30 41 59); /* slate-800 */
-    font-weight: 500;
+    color: rgb(15 23 42); /* slate-900 — kontrast pass 2: max okunaklilik */
+    font-weight: 600;
   }
   html.light .text-slate-500,
   html.light .text-slate-600 {
-    color: rgb(51 65 85); /* slate-700 — daha koyu */
-    font-weight: 500;
+    color: rgb(30 41 59); /* slate-800 — cok daha koyu */
+    font-weight: 600;
+  }
+  /* KULLANICI TALEBI: text-secondary/muted CSS var'lari da guclendir.
+     PageHeader subtitle, hint text, disclaimer'lar hepsi bunu kullaniyor. */
+  html.light {
+    --text-secondary: rgb(30 41 59); /* slate-800 */
+    --text-muted: rgb(51 65 85); /* slate-700 */
   }
   /* Sidebar nav linkleri ozellikle belirgin olmali */
   html.light aside nav a,
@@ -170,10 +176,13 @@ html.light {
      yukarı taşıyoruz (slate-400 seviyesi). Placeholder/label için hafif
      bir vurgu kaybı, veri okunaklığı için makul takas. */
   html:not(.light) .text-slate-500 {
-    color: rgb(148 163 184); /* slate-400 */
+    color: rgb(203 213 225); /* slate-300 — kontrast pass 2 */
   }
   html:not(.light) .text-slate-600 {
-    color: rgb(148 163 184); /* slate-400 */
+    color: rgb(203 213 225); /* slate-300 */
+  }
+  html:not(.light) .text-slate-400 {
+    color: rgb(226 232 240); /* slate-200 */
   }
   /* NOT: td.tabular-nums'a global renk override eklemek YASAK —
      text-success (yesil) ve text-danger (kirmizi) toneleri eziyordu,

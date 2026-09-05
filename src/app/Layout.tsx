@@ -94,9 +94,9 @@ const navGroups: NavGroup[] = [
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
       { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
       { to: '/kripto', label: 'Kripto', icon: Bitcoin },
-      { to: '/abd', label: 'ABD Borsaları', icon: Flag, pro: false },
+      // KULLANICI TALEBI: ABD Borsalari + Heat Map nav'dan kaldirildi (sadelik).
+      // Route'lar hala mevcut ama sidebar'dan erisim yok — dogrudan URL ile erisilebilir.
       { to: '/global', label: 'Global Piyasalar', icon: Globe, pro: false },
-      { to: '/heatmap', label: 'Heat Map', icon: Grid3x3, pro: false },
     ],
   },
   {

@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
 import { Pagination } from '@/components/ui/Pagination';
+import { DoubleScrollTable } from '@/components/ui/DoubleScrollTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { fundsRepo } from '@/data/repositories';
@@ -375,7 +376,7 @@ export function FundsPage() {
             />
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+          <DoubleScrollTable className="rounded-xl border border-border bg-bg-soft">
             <table className="w-full min-w-[860px] text-base">
               <thead className="border-b border-border bg-bg-soft text-[11px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
@@ -404,7 +405,7 @@ export function FundsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </DoubleScrollTable>
 
           <div className="mt-3">
             <Pagination

@@ -4,6 +4,7 @@ import { TrendingUp, Search, Star, RefreshCw, ArrowUpDown } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { TableSkeleton } from '@/components/ui/Skeleton';
+import { DoubleScrollTable } from '@/components/ui/DoubleScrollTable';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { loadStocks } from '@/data/services';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
@@ -489,9 +490,10 @@ export function StocksPage() {
           {loading && stocks.length === 0 ? (
             <TableSkeleton rows={12} cols={9} />
           ) : (
-          <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
+          <DoubleScrollTable className="rounded-xl border border-border bg-bg-soft">
             {/* Font boyutu artirildi: text-sm (14px) -> text-base (16px) — okunmayi kolaylastirir.
-                Baslik text-[10px] -> text-[11px] + tracking artirildi. */}
+                Baslik text-[10px] -> text-[11px] + tracking artirildi.
+                DoubleScrollTable: ust + alt yatay scroll (kullanici talebi). */}
             <table className="w-full min-w-[820px] text-base">
               <thead className="border-b border-border bg-bg-soft text-[11px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
@@ -524,7 +526,7 @@ export function StocksPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </DoubleScrollTable>
           )}
 
           <div className="mt-3">

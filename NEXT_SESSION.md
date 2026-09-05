@@ -1,6 +1,126 @@
 # NEXT SESSION — InvestliQ (eski Hane Finans)
 
-> Son guncelleme: 30 Agustos 2026 — 6 major task + FT Salmon tipografi finalize + BES sadeleştirme
+> Son guncelleme: 5 Eylül 2026 — Piyasa Ozeti kartli + Kontrast pass 2 + Nav sadeleştirme + Fonlar aracı kurum filtresi + DoubleScroll tablolar
+
+---
+
+## 🎯 SONRAKI SEANS — YAPILABILECEKLER LISTESI
+
+Öncelik sırasına göre grup gruplanmıştır. Her başlığın altındaki alt maddeler bağımsız iş — bir seansta hepsi bitmeyebilir, seçim yapabiliriz.
+
+### A) EKSIK BUG FIX'LER (öncelik: YÜKSEK, ~30-45dk her biri)
+
+- **A1. #287 OAuth redirect URL** — Google/Apple Console'da `https://investliq.com/api/auth/oauth/callback` URL'i güncellenmeli. Sadece kullanıcı yapabilir (5dk).
+- **A2. Panel Portfolyum kartı** — Login olmayan kullanicilarda "Hisse pozisyonu yok" tarafi bomboş görünüyor. "Anonim + boş" için daha zarif bir CTA.
+- **A3. Ekonomik Takvim güncelleme** — TCMB Eylul/Ekim toplantı tarihleri + TÜFE veri günleri manuel güncelleme (2026 Q4).
+- **A4. Fon detay sayfası içeriğe scroll** — /fund/CPU açıldığında chart altındaki tablolar viewport altında kalıyor.
+- **A5. Mobil BES sayfası** — bileşik getiri hesaplama alanları hala sıkışabiliyor bazı ekranlarda (>= 400px).
+
+### B) YENI FEATURE'LAR (öncelik: ORTA-YÜKSEK)
+
+- **B1. Fon detay: Aracı kurum + benzer fonlar** — Fon detay sayfasında "TERA Portföy" tıklanınca Fonlar sayfasına o filtreyle git. + "Aynı aracının diğer fonları" bölümü.
+- **B2. Portföy raporlama** — Yıllık K/Z ozetı, vergi hesaplama (2026 stopaj oranları), Excel/CSV export.
+- **B3. Alarm türleri genişletme** — sadece fiyat değil: % değişim (bir gün ±5%), kırılım (MA55 üstü/altı), volume artışı.
+- **B4. Sektör bazlı hisse gösterimi** — Bankacılık/Enerji/Otomotiv kategorilerine göre Piyasa Radari'nda sektör chip'leri.
+- **B5. Fon karşılaştırıcıya yatırım simülasyonu** — "1 sene önce 100K TL yatırsam" hesabı (Fon Karşılaştır sayfasında zaten kısmen var, geliştir).
+
+### C) SADELESTIRME / UX ITERASYON (öncelik: ORTA)
+
+- **C1. Panel sadeleştirme** — Şu an 10+ accordion var. Kullanıcı testi: default açık olanları 3-4'e indir, gerisi kapalı.
+- **C2. Sidebar sadelestirme aşama 2** — Piyasa Radarı / Akıllı Sorgu / Risk Profilim gibi ileri seviye linkleri "Araçlar" alt-menüsüne topla. Ana nav: Panel, Fonlar, Hisseler, Portföyüm, Takvim.
+- **C3. Mobil bottom nav** — 5 icon (Panel, Fonlar, Hisseler, Portföy, Daha). Daha'ya tıklayınca drawer.
+- **C4. Kontrast pass 3** — light modda hala bazı chip metinleri (Kredi Hesaplayıcı tablosu, Fon Havuzu kategori chip'leri) düşük kontrast. Test cihazında bak, tam liste çıkar.
+- **C5. Onboarding tour güncelleme** — Yeni sayfa yapısına göre 5-6 adımlık tanıtım (Panel → Fonlar → Portföyüm → Takvim → Piyasa Radarı).
+
+### D) VERI KAYNAĞI / BACKEND (öncelik: YÜKSEK — para riski)
+
+- **D1. Metals-spot D1 dolduruldu mu?** — 2026-08-30 seansında migration + cron yazıldı ama GitHub Actions manuel tetiklendi mi? Doğrula.
+  ```powershell
+  npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote
+  # + GitHub Actions "Refresh Metals Spot" → Run workflow
+  ```
+- **D2. Watchlist D1 dolduruldu mu?** — 015 migration çalıştırılmalı.
+  ```powershell
+  npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote
+  ```
+- **D3. Anthropic Claude 4.5 test** — 2026-08-30 seansında model chain güncellendi. Live test: /sorgu → doğal dil query → 200 dönmeli. Kredi durumuna bak.
+- **D4. TEFAS scraper stabilite** — geçmiş 30 gün log kontrol: hafta içi her gün 1d/1w güncelleme yaptı mı?
+- **D5. Yahoo Warmer cron** — BIST hisseler periodic getirileri (1H/1A/3A/6A/1Y) — cache dolu mu?
+
+### E) UZUN VADELI (öncelik: DÜŞÜK-ORTA, ~1-2 saat her biri)
+
+- **E1. Dark mode toggle preference** — Kullanıcı seçimi localStorage'a kaydediliyor mu doğrula. SSR/ilk yükte flash var mı?
+- **E2. Progressive Web App (PWA) iyileştirme** — Offline fallback sayfası daha zengin, install banner testi.
+- **E3. Kişiselleştirilmiş sabah brief'i** — Kullanıcı portföyüne özel günlük özet (2026-05 kaldırılmıştı, geri kazandır — bu sefer portföy odaklı).
+- **E4. Sosyal paylaşım** — Piyasa Radarı sonuçlarını Twitter/WhatsApp'ta paylaş.
+- **E5. Bildirim tercihleri** — Push notification ayarları (hangi olay için gelmeli).
+- **E6. Analytics dashboard** — Admin için: kaç user aktif, hangi sayfalar popüler, error rate.
+
+### F) TEKNIK BORÇ
+
+- **F1. Bundle size** — Fon karşılaştırıcı sayfası büyük (recharts + tefas feed). Lazy load optimize.
+- **F2. Test coverage** — Şu an neredeyse hiç unit test yok. Kritik hesaplayıcılar (BES, Mevduat, Portföy K/Z) için birkaç Vitest.
+- **F3. Error boundary yenile** — Cache clear butonu var ama mobile chrome fail eden var mı? Log tara.
+- **F4. NEXT_SESSION.md temizle** — 500+ satır olmuş; eski seans notlarını arşive taşı.
+
+### G) KESFEDEBILECEKLER (fikir aşaması)
+
+- **G1. AI Portföy Danışmanı** — Kullanıcı portföyüne AI önerileri (haftalık analiz, dengesizlik uyarısı).
+- **G2. Hisse detayında peer comparison** — Tüpraş açınca sektör içi benzer hisseler.
+- **G3. Kripto detay sayfası** — BTC/ETH detayları (şu an sadece Panel'de fiyat var).
+- **G4. Emtia detay** — Altın/gümüş için gramaj hesaplayıcı + tarihsel grafik.
+- **G5. Community feature** — Kullanıcıların yorum/analiz paylaşması (moderasyon gerekli).
+
+---
+
+## KULLANICI DEPLOY ÖNCE YAPILACAK (KRITIK)
+
+Bu 2 D1 migration çalıştırılmadığından **watchlist cloud sync** ve **metal spot** hâlâ eksik verebilir. Yeni seansta ilk iş bu:
+
+```powershell
+cd C:\dev\hanefinans
+npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote
+npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote
+```
+
+Sonra GitHub Actions → **"Refresh Metals Spot"** → Run workflow (D1 doldurmak için).
+
+---
+
+## SEANS 2026-09-05 — YAPILANLAR
+
+### 1) Piyasa Özeti Kartlı Görünüm (Varyant A)
+- `MarketSummaryPremium.tsx` rewrite — 3 dikey sütun (Endeks & Döviz / Metal / Kripto)
+- Sol renk şeridi (yeşil/kırmızı/nötr) + arka plan tint + büyük ok+yüzde
+- Yön ilk bakışta belli, kategori mantığı korundu
+
+### 2) Mevduat + Kredi Max Limit
+- DepositCalculator + LoanCalculator max 100M → **100 Milyar TL**
+
+### 3) Sidebar Sadeleştirme
+- ABD Borsaları + Heat Map linkleri sol menüden kaldırıldı
+- Route'lar duruyor (URL ile erişim var), sadece nav'da yok
+
+### 4) Kontrast Pass 2
+- Light mode: `text-slate-400` → slate-900+bold, `text-slate-500/600` → slate-800
+- `--text-secondary` var slate-800'e çekildi (PageHeader subtitle vs.)
+- Dark mode: slate-400/500/600 → slate-200/300 aralığı
+
+### 5) Fonlar Kategori Chip Filtreleri
+- Dropdown `<select>` → görünür chip satırı (Fund Havuzu deseni)
+- "KATEGORİ: [Tümü] [Katılım] [Hisse] [Altın] ..." tek tıkla
+
+### 6) Fonlar Aracı Kurum Filtresi
+- `extractBroker()` regex helper — "TERA PORTFÖY..." → "TERA", "KUVEYT TÜRK PORTFÖY..." → "KUVEYT TÜRK"
+- Dropdown + aktif filtre chip (× ile temizle)
+- Alfabetik sıralı (TR locale)
+
+### 7) DoubleScrollTable
+- Yeni ortak component `src/components/ui/DoubleScrollTable.tsx`
+- Hisseler + Fonlar tablolarının ÜSTÜNE + altına yatay scroll bar
+- ResizeObserver + iki yönlü senkron (echo loop guard)
+
+---
 
 ## SEANS 2026-08-30 — YAPILANLAR
 

@@ -41,6 +41,7 @@ export function FundsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [brokerFilter, setBrokerFilter] = useState<string>('all');
   const PAGE_SIZE = 50;
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
@@ -114,17 +115,52 @@ export function FundsPage() {
     return Array.from(set).sort();
   }, [universe]);
 
+  /**
+   * Aracı kurum (portfoy yonetim sirketi) cikarma helper'i.
+   * Fon adi genelde "TERA PORTFÖY DÖRDÜNCÜ..." formatinda geliyor.
+   * "PORTFÖY" veya "PORTFOY" oncesindeki kelimeleri broker olarak alir.
+   * Ornekler:
+   *   "TERA PORTFÖY DÖRDÜNCÜ HISSE" → "TERA"
+   *   "AKTIF PORTFÖY FORTUNA SERBEST" → "AKTIF"
+   *   "KUVEYT TÜRK PORTFÖY KATILIM" → "KUVEYT TÜRK"
+   *   "ATLAS PORTFÖY SERBEST FON" → "ATLAS"
+   */
+  function extractBroker(name: string | undefined): string | null {
+    if (!name) return null;
+    const upper = name.toUpperCase();
+    const m = upper.match(/^([A-ZÇĞİÖŞÜ]{2,}(?:\s+[A-ZÇĞİÖŞÜ]{2,})?)\s+PORTF(?:ÖY|OY)/);
+    if (!m) return null;
+    return m[1].trim();
+  }
+
+  const availableBrokers = useMemo(() => {
+    const counts = new Map<string, number>();
+    universe.forEach((f) => {
+      const b = extractBroker(f.name);
+      if (b) counts.set(b, (counts.get(b) ?? 0) + 1);
+    });
+    // Sirali: en cok fonu olan aracilar önce
+    return Array.from(counts.entries())
+      .filter(([, c]) => c >= 2) // en az 2 fonu olan aracilari goster (spam engellemek icin)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([name, count]) => ({ name, count }));
+  }, [universe]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return universe.filter((f) => {
       if (categoryFilter !== 'all' && (f.category ?? '') !== categoryFilter) return false;
+      if (brokerFilter !== 'all') {
+        const b = extractBroker(f.name);
+        if (b !== brokerFilter) return false;
+      }
       if (q) {
         const blob = `${f.code} ${f.name ?? ''}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [universe, search, categoryFilter]);
+  }, [universe, search, categoryFilter, brokerFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -150,7 +186,7 @@ export function FundsPage() {
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, categoryFilter]);
+  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, categoryFilter, brokerFilter]);
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -275,6 +311,37 @@ export function FundsPage() {
               {c}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ARACI KURUM (Portfoy Yonetim Sirketi) FILTRESI.
+          Kullanici talebi: TERA/ATLAS/AKTIF vs. secip o araci kurumun tum fonlarini gormek.
+          30+ aracı olabilecegi icin dropdown. Yaninda aktif filtreyi
+          gosteren chip (X ile temizle) — hem gorsel geri bildirim hem kolay reset. */}
+      {availableBrokers.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg-soft/60 px-3 py-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Aracı Kurum:</span>
+          <select
+            value={brokerFilter}
+            onChange={(e) => setBrokerFilter(e.target.value)}
+            className="input h-8 cursor-pointer text-xs py-1 w-auto min-w-[200px]"
+            title="Aracı kurum / portfoy yonetim sirketi"
+          >
+            <option value="all">Tüm Aracı Kurumlar ({universe.length} fon)</option>
+            {availableBrokers.map((b) => (
+              <option key={b.name} value={b.name}>{b.name} ({b.count})</option>
+            ))}
+          </select>
+          {brokerFilter !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setBrokerFilter('all')}
+              className="inline-flex items-center gap-1 rounded-md border border-accent bg-accent/15 px-2 py-1 text-[11px] font-medium text-accent hover:bg-accent/25 transition"
+              title="Aracı kurum filtresini temizle"
+            >
+              {brokerFilter} <span className="text-sm leading-none">×</span>
+            </button>
+          )}
         </div>
       )}
 

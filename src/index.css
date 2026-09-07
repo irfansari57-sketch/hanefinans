@@ -59,15 +59,13 @@ html.light {
   body {
     @apply bg-bg antialiased;
     color: rgb(var(--c-text-1));
-    /* FT SALMON EDITORIAL HYBRID:
-       Body & paragraf → Source Serif 4 (klasik gazete body serif, ekran icin optimize).
-       Basliklar → Playfair Display (index.css'te h1-h4 override).
-       UI kompakt (chip/nav/label/button) → Inter (asagida explicit override).
-       Sayilar → Playfair Display (.tabular-nums utility). */
-    font-family: 'Source Serif 4', 'Source Serif Pro', 'Georgia', 'Times New Roman', serif;
-    /* cv02/03/04: Inter alternatif harf formları, cv11: alt-form 1 (kuyruksuz),
-       ss01: stilistik set, tnum: TABULAR NUMS — sayı kolonu hizalama. */
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'tnum';
+    /* INVESTLIQ ÖZGÜN TIPOGRAFI (2026-09-08 rewrite):
+       Body & paragraf → Onest (modern okunakli sans, Inter'e alternatif, biraz daha karakterli).
+       Basliklar → Space Grotesk (geometrik/fintech karakteri — asagida h1-h4 override).
+       Sayilar → Space Grotesk (tabular-nums utility ile).
+       Form kontrolleri → Inter (usability icin). */
+    font-family: 'Onest', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-feature-settings: 'tnum', 'ss01';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -76,38 +74,33 @@ html.light {
     color: rgb(var(--c-text-1));
   }
 
-  /* FT EDITORIAL HIYERARSI — 3 seviyeli tipografi:
-     1) h1-h4 basliklari → Playfair Display serif (dramatik gazete)
-     2) body/paragraf → Source Serif 4 (yukarida body font-family)
-     3) UI kompakt (nav/chip/button/label) → Inter sans (asagida override) */
+  /* INVESTLIQ HIYERARSI — 3 seviyeli tipografi:
+     1) h1-h4 basliklari → Space Grotesk (geometrik/fintech karakter)
+     2) body/paragraf → Onest (yukarida body font-family)
+     3) Form kontrolleri → Inter (usability) */
   h1, h2, h3, h4 {
-    font-family: 'Playfair Display', 'Georgia', serif;
-    letter-spacing: -0.015em;
+    font-family: 'Space Grotesk', 'Onest', -apple-system, sans-serif;
+    letter-spacing: -0.025em;
+    font-weight: 600;
   }
-  /* Sadece form kontrolleri Inter'de kalir (girdi/buton usability icin).
-     KULLANICI TERCIHI: Sidebar nav, uppercase-tracking label'lar, chip/badge,
-     sembol kodlari — hepsi LOGONUN formatinda (Source Serif 4 body serif).
-     Boylece "Investli" wordmark ile "Panel" / "HALKB" / "BIST 100" / "FONLAR"
-     ayni tipografik dilde. tracking-tight (logo) ile catisma yok — o da inherit. */
   button, input, select, textarea {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
-  /* FT Salmon: buyuk finansal sayilar (fiyat, degisim, endeks) serif fontta
-     daha karakteristik. tabular-nums utility kullanan yerler otomatik pick eder.
-     Georgia klasik gazete serif — Playfair Display fallback (custom brand). */
+  /* Buyuk finansal sayilar Space Grotesk'te daha belirgin karakter — tabular
+     rakamlar + tight tracking gazetenin okunakligini korurken modern hissediyor. */
   .tabular-nums {
-    font-family: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
+    font-family: 'Space Grotesk', 'Onest', -apple-system, sans-serif;
     font-feature-settings: 'tnum', 'lnum';
     font-variant-numeric: tabular-nums lining-nums;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
-  /* Kompakt UI hucrelerinde (chip, badge, kucuk sayi) serif abart yapar —
-     opt-out utility: .tabular-nums.font-sans -> sans-serif geri gelir. */
+  /* Kompakt UI hucrelerinde (chip, badge, kucuk sayi) Space Grotesk fazla ise
+     opt-out utility: .tabular-nums.font-sans -> body Onest'e geri doner. */
   .tabular-nums.font-sans {
     font-family: inherit;
   }
-  /* KULLANICI TERCIHI: sembol kodlari (HALKB, THYAO, TUPRS) da logo/body
-     ile ayni Source Serif 4 formatinda — .font-mono inherit body serif. */
+  /* Sembol kodlari (HALKB, THYAO, TUPRS) body Onest ile ayni format —
+     .font-mono inherit, monospace bagimliligi yok. */
   .font-mono {
     font-family: inherit;
     font-feature-settings: 'tnum';

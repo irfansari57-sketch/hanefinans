@@ -59,13 +59,13 @@ html.light {
   body {
     @apply bg-bg antialiased;
     color: rgb(var(--c-text-1));
-    /* INVESTLIQ ÖZGÜN TIPOGRAFI (2026-09-08 rewrite):
-       Body & paragraf → Onest (modern okunakli sans, Inter'e alternatif, biraz daha karakterli).
-       Basliklar → Space Grotesk (geometrik/fintech karakteri — asagida h1-h4 override).
-       Sayilar → Space Grotesk (tabular-nums utility ile).
-       Form kontrolleri → Inter (usability icin). */
-    font-family: 'Onest', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-feature-settings: 'tnum', 'ss01';
+    /* INVESTLIQ TEK-FONT TIPOGRAFI (2026-09-08 v2 — FVT tarzi):
+       Body & basliklar & sayilar & UI — HEPSI Inter.
+       Tek font ailesi = tutarlı görsel dil, göze hos, modern data terminal.
+       Yalnizca weight ve size ile hiyerarşi yaratılır. */
+    font-family: 'Inter', 'Onest', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'tnum';
+    font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -74,33 +74,26 @@ html.light {
     color: rgb(var(--c-text-1));
   }
 
-  /* INVESTLIQ HIYERARSI — 3 seviyeli tipografi:
-     1) h1-h4 basliklari → Space Grotesk (geometrik/fintech karakter)
-     2) body/paragraf → Onest (yukarida body font-family)
-     3) Form kontrolleri → Inter (usability) */
+  /* TEK-FONT HIYERARSI: sadece weight + size ile fark yaratilir.
+     Font ailesi degisimi yok — Inter body zaten yukarida tanimli.
+     h1-h4 tight tracking + heavy weight ile karakter kazanir. */
   h1, h2, h3, h4 {
-    font-family: 'Space Grotesk', 'Onest', -apple-system, sans-serif;
     letter-spacing: -0.025em;
-    font-weight: 600;
+    font-weight: 700;
   }
   button, input, select, textarea {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: inherit; /* Body Inter zaten */
   }
-  /* Buyuk finansal sayilar Space Grotesk'te daha belirgin karakter — tabular
-     rakamlar + tight tracking gazetenin okunakligini korurken modern hissediyor. */
+  /* Sayilar (fiyat, degisim, endeks) — Inter tabular-nums + tight tracking + bold */
   .tabular-nums {
-    font-family: 'Space Grotesk', 'Onest', -apple-system, sans-serif;
     font-feature-settings: 'tnum', 'lnum';
     font-variant-numeric: tabular-nums lining-nums;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
   }
-  /* Kompakt UI hucrelerinde (chip, badge, kucuk sayi) Space Grotesk fazla ise
-     opt-out utility: .tabular-nums.font-sans -> body Onest'e geri doner. */
   .tabular-nums.font-sans {
     font-family: inherit;
   }
-  /* Sembol kodlari (HALKB, THYAO, TUPRS) body Onest ile ayni format —
-     .font-mono inherit, monospace bagimliligi yok. */
+  /* Sembol kodlari — body Inter ile ayni */
   .font-mono {
     font-family: inherit;
     font-feature-settings: 'tnum';

@@ -63,7 +63,7 @@ const PERIOD_RANGE: Record<Period, YahooRange> = {
 
 export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   const [primarySymbol, setPrimarySymbol] = useState<string>(defaultSymbol);
-  const [period, setPeriod] = useState<Period>('1A');
+  const [period, setPeriod] = useState<Period>('YTD');
   const [series, setSeries] = useState<number[]>([]);
   const [seriesLoading, setSeriesLoading] = useState(false);
 
@@ -146,7 +146,18 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
         {seriesLoading && series.length === 0 ? (
           <div className="h-32 animate-pulse rounded bg-bg-soft/40" />
         ) : series.length >= 2 ? (
-          <MiniAreaChart values={series} positive={(primary?.changePct ?? 0) >= 0} />
+          <MiniAreaChart
+            values={series}
+            positive={(primary?.changePct ?? 0) >= 0}
+            formatValue={(v) => {
+              // Sembole gore uygun format
+              if (primarySymbol === 'BIST 100' || primarySymbol === 'BIST 30') {
+                return v.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+              }
+              if (v >= 1000) return v.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+              return v.toFixed(2);
+            }}
+          />
         ) : (
           <div className="grid h-32 place-items-center rounded bg-bg-soft/20 text-[11px] text-slate-500">
             Grafik verisi yok
@@ -199,18 +210,25 @@ function TickerPill({ m, isPrimary, onSelect }: {
 }
 
 /**
- * Kompakt SVG area chart — kapanis serisi. Zeros filter'a girmis fresh data.
- * View-fit: viewBox scale + preserveAspectRatio='none' — width %100 responsive.
+ * Kompakt SVG area chart — kapanis serisi. Y-axis label + grid + area.
+ * Sag tarafta 3 seviyeli y-axis label (max / mid / min) — FVT tarzi deger satirlari.
  */
-function MiniAreaChart({ values, positive }: { values: number[]; positive: boolean }) {
+function MiniAreaChart({ values, positive, formatValue }: {
+  values: number[];
+  positive: boolean;
+  formatValue?: (v: number) => string;
+}) {
   const W = 620;
-  const H = 120;
+  const H = 140;
   const PAD_TOP = 8;
   const PAD_BOTTOM = 8;
+  const PAD_RIGHT = 44; // y-axis label yeri
   const min = Math.min(...values);
   const max = Math.max(...values);
+  const mid = (min + max) / 2;
   const range = max - min || 1;
-  const xStep = W / Math.max(1, values.length - 1);
+  const chartW = W - PAD_RIGHT;
+  const xStep = chartW / Math.max(1, values.length - 1);
   const points = values.map((v, i) => ({
     x: i * xStep,
     y: PAD_TOP + (1 - (v - min) / range) * (H - PAD_TOP - PAD_BOTTOM),
@@ -219,17 +237,51 @@ function MiniAreaChart({ values, positive }: { values: number[]; positive: boole
   const area = `${line} L ${points[points.length - 1].x.toFixed(1)} ${H} L 0 ${H} Z`;
   const stroke = positive ? '#22c55e' : '#ef4444';
   const fillId = positive ? 'panelHeroGradPos' : 'panelHeroGradNeg';
+  const fmt = formatValue ?? ((v: number) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 }));
+
+  // 3 seviye y-axis: min, mid, max — sag tarafta yaslanmis
+  const yLevels = [
+    { v: max, y: PAD_TOP },
+    { v: mid, y: (PAD_TOP + (H - PAD_BOTTOM)) / 2 },
+    { v: min, y: H - PAD_BOTTOM },
+  ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-32 w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-36 w-full">
       <defs>
         <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={stroke} stopOpacity="0.30" />
           <stop offset="100%" stopColor={stroke} stopOpacity="0" />
         </linearGradient>
       </defs>
+      {/* Grid — 3 yatay ince cizgi (dashed) */}
+      {yLevels.map((lv) => (
+        <line
+          key={lv.y}
+          x1="0" x2={chartW}
+          y1={lv.y} y2={lv.y}
+          stroke="rgba(148,163,184,0.15)"
+          strokeWidth="1"
+          strokeDasharray="3 3"
+        />
+      ))}
       <path d={area} fill={`url(#${fillId})`} />
       <path d={line} stroke={stroke} strokeWidth="2" fill="none" />
+      {/* Y-axis label seviyeleri — sag taraf */}
+      {yLevels.map((lv) => (
+        <text
+          key={`t-${lv.y}`}
+          x={W - 4}
+          y={lv.y + 3}
+          fill="rgba(148,163,184,0.75)"
+          fontSize="10"
+          fontWeight="500"
+          textAnchor="end"
+          fontFamily="Inter, system-ui, sans-serif"
+        >
+          {fmt(lv.v)}
+        </text>
+      ))}
     </svg>
   );
 }
@@ -247,49 +299,81 @@ function AiComment({ primary, allMacro }: { primary: MacroIndicator | undefined;
         Q
       </div>
       <div className="min-w-0">
-        <div className="text-[11px] font-semibold text-slate-100">Bugünün yorumu</div>
+        <div className="text-[11px] font-semibold text-slate-100">
+          {primary ? `${primary.label} — bugünün yorumu` : 'Bugünün yorumu'}
+        </div>
         <div className="mt-0.5 text-[12px] leading-relaxed text-slate-300">{text}</div>
       </div>
     </div>
   );
 }
 
+/**
+ * Sembole ozel yorum — hangi indikator secili ise onun karakteri
+ * (endeks/doviz/metal/kripto) ile uygun tonda paragraf uret.
+ */
 function buildComment(primary: MacroIndicator | undefined, all: MacroIndicator[]): string {
-  const bist = primary ?? all.find((m) => m.key === 'BIST 100');
-  const usd = all.find((m) => m.key === 'USD/TRY');
-  const gram = all.find((m) => m.key === 'Gram Altın');
-  const btc = all.find((m) => m.key === 'BTC/USD');
+  if (!primary || primary.changePct == null || !Number.isFinite(primary.changePct)) {
+    return 'Bu göstergenin canlı veri akışı henüz yok. Kısa süre içinde güncellenecek.';
+  }
 
+  const p = primary.changePct;
+  const key = primary.key;
   const parts: string[] = [];
 
-  if (bist?.changePct != null && Number.isFinite(bist.changePct)) {
-    const p = bist.changePct;
-    if (Math.abs(p) < 0.15) parts.push('BIST 100 yatay seyir gösteriyor, hacim düşük.');
-    else if (p >= 1.5) parts.push(`BIST 100 %${p.toFixed(2)} güçlü yükselişte — alım baskısı belirgin.`);
-    else if (p >= 0.5) parts.push(`BIST 100 %${p.toFixed(2)} pozitif ivmede.`);
-    else if (p >= 0) parts.push(`BIST 100 %${p.toFixed(2)} sınırlı artışta.`);
-    else if (p >= -0.5) parts.push(`BIST 100 %${Math.abs(p).toFixed(2)} hafif geri çekilme.`);
-    else if (p >= -1.5) parts.push(`BIST 100 %${Math.abs(p).toFixed(2)} satış baskısında.`);
-    else parts.push(`BIST 100 %${Math.abs(p).toFixed(2)} sert düşüşte — risk-off gün.`);
+  // Ana sembol için kişiselleştirilmiş yorum
+  if (key === 'BIST 100' || key === 'BIST 30') {
+    if (Math.abs(p) < 0.15) parts.push(`${key} yatay seyir gösteriyor, hacim düşük — kararsız gün.`);
+    else if (p >= 1.5) parts.push(`${key} %${p.toFixed(2)} güçlü yükselişte — alım baskısı belirgin, momentum güçlü.`);
+    else if (p >= 0.5) parts.push(`${key} %${p.toFixed(2)} pozitif ivmede. Bankacılık ve holdingler öncü olabilir.`);
+    else if (p >= 0) parts.push(`${key} %${p.toFixed(2)} sınırlı artışta, seçici alım.`);
+    else if (p >= -0.5) parts.push(`${key} %${Math.abs(p).toFixed(2)} hafif geri çekilme — kar realizasyonu.`);
+    else if (p >= -1.5) parts.push(`${key} %${Math.abs(p).toFixed(2)} satış baskısında.`);
+    else parts.push(`${key} %${Math.abs(p).toFixed(2)} sert düşüşte — risk-off gün, defansif hisseler öne çıkabilir.`);
+    // Karşılaştırma: USD/TRY etkisi
+    const usd = all.find((m) => m.key === 'USD/TRY');
+    if (usd?.changePct != null && Number.isFinite(usd.changePct) && Math.abs(usd.changePct) >= 0.3) {
+      parts.push(usd.changePct > 0 ? `Dolar %${usd.changePct.toFixed(2)} yukarı, TL değer kaybı ihracatçıları destekleyebilir.` : `Dolar %${Math.abs(usd.changePct).toFixed(2)} geri çekildi.`);
+    }
+  } else if (key === 'USD/TRY' || key === 'EUR/TRY') {
+    const cur = key === 'USD/TRY' ? 'Dolar' : 'Euro';
+    if (Math.abs(p) < 0.1) parts.push(`${cur}/TRY yatay — merkez bankası tarafında beklenti dengesi.`);
+    else if (p >= 1) parts.push(`${cur} %${p.toFixed(2)} yukarı — TL üzerinde belirgin baskı, ithalat pahalaşıyor.`);
+    else if (p >= 0.2) parts.push(`${cur} %${p.toFixed(2)} yukarı yönlü.`);
+    else if (p >= -0.2) parts.push(`${cur}/TRY sınırlı hareket.`);
+    else if (p >= -1) parts.push(`${cur} %${Math.abs(p).toFixed(2)} geri çekildi, TL değer kazanıyor.`);
+    else parts.push(`${cur} %${Math.abs(p).toFixed(2)} sert düşüşte — TL güçlü performans.`);
+  } else if (key === 'Gram Altın' || key === 'Ons Altın') {
+    if (p >= 1) parts.push(`${key} %${p.toFixed(2)} artışla güvenli liman talebi belirgin.`);
+    else if (p >= 0.3) parts.push(`${key} %${p.toFixed(2)} pozitif — ılımlı yükseliş.`);
+    else if (p >= -0.3) parts.push(`${key} yatay seyir.`);
+    else parts.push(`${key} %${Math.abs(p).toFixed(2)} geri çekildi — risk iştahı arttı.`);
+    // FED / dolar bağıntısı
+    const usd = all.find((m) => m.key === 'USD/TRY');
+    if (usd?.changePct != null && Math.abs(usd.changePct) >= 0.3) {
+      parts.push(usd.changePct > 0 ? 'Dolar da güçleniyor — çift yönlü prim.' : 'Dolar zayıflarken altın güçleniyor — klasik korelasyon.');
+    }
+  } else if ((key as string).endsWith('/USD')) {
+    const coin = key.split('/')[0];
+    if (Math.abs(p) < 0.3) parts.push(`${coin} yatay seyir — düşük volatilite.`);
+    else if (p >= 3) parts.push(`${coin} %${p.toFixed(2)} güçlü ralli — risk iştahı çok yüksek.`);
+    else if (p >= 1) parts.push(`${coin} %${p.toFixed(2)} yükselişte.`);
+    else if (p >= 0) parts.push(`${coin} %${p.toFixed(2)} sınırlı pozitif.`);
+    else if (p >= -1) parts.push(`${coin} %${Math.abs(p).toFixed(2)} hafif düşüş.`);
+    else if (p >= -3) parts.push(`${coin} %${Math.abs(p).toFixed(2)} satış baskısı.`);
+    else parts.push(`${coin} %${Math.abs(p).toFixed(2)} sert düşüş — risk-off panik olabilir.`);
+    // Kripto piyasa geneli
+    const btc = all.find((m) => m.key === 'BTC/USD');
+    if (key !== 'BTC/USD' && btc?.changePct != null && Number.isFinite(btc.changePct)) {
+      parts.push(btc.changePct > 0 ? `BTC de %${btc.changePct.toFixed(2)} yukarı — piyasa geneli pozitif.` : `BTC %${Math.abs(btc.changePct).toFixed(2)} negatif — genel satış modu.`);
+    }
+  } else if (key === 'Gram Gümüş' || key === 'Ons Gümüş') {
+    if (p >= 1) parts.push(`${key} %${p.toFixed(2)} artışta — endüstriyel talep etkisi.`);
+    else if (p >= -0.5) parts.push(`${key} yatay seyir.`);
+    else parts.push(`${key} %${Math.abs(p).toFixed(2)} geri çekildi.`);
+  } else {
+    parts.push(`${primary.label} ${p >= 0 ? '+' : ''}${p.toFixed(2)}% ${p >= 0 ? 'pozitif' : 'negatif'} yönde.`);
   }
 
-  if (usd?.changePct != null && Number.isFinite(usd.changePct)) {
-    const p = usd.changePct;
-    if (p >= 0.5) parts.push(`Dolar %${p.toFixed(2)} yukarı, TL üzerinde baskı sürüyor.`);
-    else if (p <= -0.5) parts.push(`Dolar %${Math.abs(p).toFixed(2)} geri çekildi, TL nefes aldı.`);
-  }
-
-  if (gram?.changePct != null && Number.isFinite(gram.changePct) && gram.changePct >= 1) {
-    parts.push(`Gram altın %${gram.changePct.toFixed(2)} artışla güvenli liman talebini yansıtıyor.`);
-  } else if (gram?.changePct != null && Number.isFinite(gram.changePct) && gram.changePct <= -1) {
-    parts.push(`Gram altın %${Math.abs(gram.changePct).toFixed(2)} geri çekildi.`);
-  }
-
-  if (btc?.changePct != null && Number.isFinite(btc.changePct) && Math.abs(btc.changePct) >= 2) {
-    const p = btc.changePct;
-    parts.push(`Bitcoin ${p >= 0 ? '+' : ''}${p.toFixed(2)}% ile ${p >= 0 ? 'risk iştahı' : 'satış'} sinyali veriyor.`);
-  }
-
-  if (parts.length === 0) return 'Piyasa açılış öncesi veri henüz seyrekt. Güncel değerler oluşana kadar yorumu bekleyin.';
-  return parts.slice(0, 3).join(' ');
+  return parts.slice(0, 2).join(' ');
 }

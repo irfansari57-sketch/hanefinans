@@ -363,6 +363,7 @@ export function PanelPage() {
         topFunds={topFunds}
         fundsPeriod={fundsPeriod}
         setFundsPeriod={setFundsPeriod}
+        macro={macro}
       />
 
       {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti.
@@ -433,7 +434,7 @@ function SourceBadge({ source }: { source: 'live' | 'mock' | 'mixed' | 'derived'
  * Tek karti icinde: Hisseler / Fonlar sekmeler. Her sekme kendi period toggle'ini gosterir.
  * Kripto sekmesi placeholder (ileride cripto kazananlar/kaybedenler eklenebilir).
  */
-type EnleriTab = 'stocks' | 'funds';
+type EnleriTab = 'stocks' | 'funds' | 'crypto';
 function GununEnleriCard(props: {
   stocks: Stock[];
   stocksPeriod: 'day' | 'week' | 'month';
@@ -443,15 +444,23 @@ function GununEnleriCard(props: {
   topFunds: FundPerformance[];
   fundsPeriod: 'day' | 'week' | 'month';
   setFundsPeriod: (p: 'day' | 'week' | 'month') => void;
+  macro: MacroIndicator[];
 }) {
   const [tab, setTab] = useState<EnleriTab>('stocks');
   const {
     stocks, stocksPeriod, setStocksPeriod, stocksSource, stocksReturnsLoading,
-    topFunds, fundsPeriod, setFundsPeriod,
+    topFunds, fundsPeriod, setFundsPeriod, macro,
   } = props;
 
-  const activePeriod = tab === 'stocks' ? stocksPeriod : fundsPeriod;
-  const setActivePeriod = tab === 'stocks' ? setStocksPeriod : setFundsPeriod;
+  // Kripto listesi macro'dan turetilir — BTC/ETH/XRP/SOL/BNB + varsa digerleri
+  const cryptoItems = useMemo(() => {
+    return macro
+      .filter((m) => m.key.endsWith('/USD') && !['USD/TRY', 'EUR/TRY'].includes(m.key))
+      .filter((m) => m.changePct != null && Number.isFinite(m.changePct));
+  }, [macro]);
+
+  const activePeriod = tab === 'stocks' ? stocksPeriod : tab === 'funds' ? fundsPeriod : 'day';
+  const setActivePeriod = tab === 'stocks' ? setStocksPeriod : tab === 'funds' ? setFundsPeriod : () => {};
 
   return (
     <div className="mb-5 overflow-hidden rounded-xl border border-border bg-bg-soft/30">
@@ -488,9 +497,14 @@ function GununEnleriCard(props: {
           </button>
           <button
             type="button"
-            disabled
-            className="rounded-md px-2.5 py-1 text-xs font-semibold text-slate-500 cursor-not-allowed opacity-40"
-            title="Yakında"
+            onClick={() => setTab('crypto')}
+            disabled={cryptoItems.length === 0}
+            className={cn(
+              'rounded-md px-2.5 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40',
+              tab === 'crypto'
+                ? 'bg-bg-card text-accent'
+                : 'text-slate-400 hover:bg-bg-soft/50 hover:text-slate-200',
+            )}
           >
             Kripto
           </button>
@@ -522,17 +536,90 @@ function GununEnleriCard(props: {
           {tab === 'funds' && (
             <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
           )}
+          {tab === 'crypto' && (
+            <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
+          )}
         </div>
       </div>
 
-      {/* Icerik — Hisseler veya Fonlar */}
+      {/* Icerik */}
       <div className="bg-bg-card/40 p-3">
-        {tab === 'stocks' ? (
-          <TopMovers stocks={stocks} limit={5} period={stocksPeriod} />
-        ) : topFunds.length > 0 ? (
-          <TopFundMovers funds={topFunds} limit={5} period={fundsPeriod} />
-        ) : (
-          <div className="grid place-items-center py-6 text-xs text-slate-500">Fon verisi yükleniyor…</div>
+        {tab === 'stocks' && <TopMovers stocks={stocks} limit={5} period={stocksPeriod} />}
+        {tab === 'funds' && (
+          topFunds.length > 0
+            ? <TopFundMovers funds={topFunds} limit={5} period={fundsPeriod} />
+            : <div className="grid place-items-center py-6 text-xs text-slate-500">Fon verisi yükleniyor…</div>
+        )}
+        {tab === 'crypto' && <CryptoMovers items={cryptoItems} />}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * CryptoMovers — kripto kazananlari/kaybedenler (macro'dan).
+ * TopMovers ile ayni gorsel yapida ama kripto sembolleri icin.
+ */
+function CryptoMovers({ items }: { items: MacroIndicator[] }) {
+  const sorted = [...items].sort((a, b) => (b.changePct ?? 0) - (a.changePct ?? 0));
+  const winners = sorted.slice(0, 5);
+  const losers = sorted.slice(-5).reverse();
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <CryptoList title="En Çok Yükselenler" tone="success" items={winners} />
+      <CryptoList title="En Çok Düşenler" tone="danger" items={losers} />
+    </div>
+  );
+}
+
+function CryptoList({ title, tone, items }: {
+  title: string;
+  tone: 'success' | 'danger';
+  items: MacroIndicator[];
+}) {
+  const toneColor = tone === 'success' ? 'text-success' : 'text-danger';
+  const toneBg = tone === 'success' ? 'bg-success/10' : 'bg-danger/10';
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
+          <span className={cn('grid h-6 w-6 place-items-center rounded-md', toneBg, toneColor)}>
+            {tone === 'success' ? <TrendingUp size={12} /> : <TrendingUp size={12} className="rotate-180" />}
+          </span>
+          {title}
+        </h3>
+      </div>
+      <div className="divide-y divide-border">
+        {items.map((c, i) => {
+          const cp = c.changePct ?? 0;
+          const sign = cp >= 0 ? '+' : '';
+          return (
+            <Link
+              key={c.key}
+              to="/kripto"
+              className="flex items-center justify-between px-4 py-2.5 hover:bg-bg-soft"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-4 text-[11px] text-slate-500">{i + 1}</span>
+                <div className="min-w-0">
+                  <div className="font-mono text-xs text-accent">{c.key.replace('/USD', '')}</div>
+                  <div className="text-[10px] text-slate-500">{c.label}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-medium tabular-nums text-slate-100">
+                  {c.value < 10 ? c.value.toFixed(3) : c.value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                </div>
+                <div className={cn('text-xs tabular-nums', cp >= 0 ? 'text-success' : 'text-danger')}>
+                  {sign}{cp.toFixed(2)}%
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+        {items.length === 0 && (
+          <div className="px-4 py-6 text-center text-xs text-slate-500">Kripto verisi yok.</div>
         )}
       </div>
     </div>

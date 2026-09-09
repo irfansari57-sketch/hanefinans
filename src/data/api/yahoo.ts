@@ -27,7 +27,12 @@ interface YahooChartResult {
 }
 
 function toBISTSymbol(s: string): string {
-  if (s.includes('.') || s.startsWith('^') || s.includes('=')) return s;
+  // Su Yahoo sembol patternleri BIST harici → BIST ekleme:
+  //   . → BIST veya foreign ticker (XU100.IS, ARCLK.IS)
+  //   ^ → endeks (^GSPC, ^N225)
+  //   = → forex/futures (USDTRY=X, GC=F)
+  //   - → kripto (BTC-USD, ETH-USD)
+  if (s.includes('.') || s.startsWith('^') || s.includes('=') || s.includes('-')) return s;
   return `${s}.IS`;
 }
 

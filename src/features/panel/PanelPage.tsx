@@ -176,8 +176,10 @@ export function PanelPage() {
       setTopFunds(fr ? fr.funds : []);
       setUpdatedAt(Date.now());
 
-      // 2. Background: kalan BIST sembollerini 50'lik batch'lerle çek
-      // top gainers/losers tam kapsam için
+      // 2. Background: kalan BIST sembollerini 50'lik batch'lerle çek.
+      // Kritik: Batch geldikce setStocks etmiyoruz — kullanici list sıralamasının
+      // "gidip gelmesini" göruyordu. Tum batch'ler bitince tek setStocks: liste
+      // stabil kalıyor, sadece final tam kapsamlı gainers/losers gösteriliyor.
       const remaining = allSymbols.filter((sym) => !priorityStockSyms.includes(sym));
       const BATCH_SIZE = 50;
       const accumulated: Stock[] = [...s.data];
@@ -185,7 +187,10 @@ export function PanelPage() {
         const batch = remaining.slice(i, i + BATCH_SIZE);
         const batchResult = await loadStocks(batch);
         accumulated.push(...batchResult.data);
-        setStocks([...accumulated]);
+      }
+      // Tek atomik update — sıralama flicker'ı biter
+      if (accumulated.length > s.data.length) {
+        setStocks(accumulated);
       }
     } finally {
       setRefreshing(false);
@@ -539,10 +544,10 @@ function GununEnleriCard(props: {
 
       {/* Icerik */}
       <div className="bg-bg-card/40 p-3">
-        {tab === 'stocks' && <TopMovers stocks={stocks} limit={5} period={stocksPeriod} />}
+        {tab === 'stocks' && <TopMovers stocks={stocks} limit={10} period={stocksPeriod} />}
         {tab === 'funds' && (
           topFunds.length > 0
-            ? <TopFundMovers funds={topFunds} limit={5} period={fundsPeriod} />
+            ? <TopFundMovers funds={topFunds} limit={10} period={fundsPeriod} />
             : <div className="grid place-items-center py-6 text-xs text-slate-500">Fon verisi yükleniyor…</div>
         )}
         {tab === 'crypto' && <CryptoMovers items={cryptoItems} />}
@@ -557,8 +562,8 @@ function GununEnleriCard(props: {
  */
 function CryptoMovers({ items }: { items: MacroIndicator[] }) {
   const sorted = [...items].sort((a, b) => (b.changePct ?? 0) - (a.changePct ?? 0));
-  const winners = sorted.slice(0, 5);
-  const losers = sorted.slice(-5).reverse();
+  const winners = sorted.slice(0, 10);
+  const losers = sorted.slice(-10).reverse();
 
   return (
     <div className="grid gap-3 lg:grid-cols-2">

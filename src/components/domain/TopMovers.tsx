@@ -18,12 +18,12 @@ const PERIOD_LABEL: Record<Period, string> = {
   month: '1 Ay',
 };
 
-export function TopMovers({ stocks, limit = 5, period = 'day' }: TopMoversProps) {
-  // BIST günlük fiyat tavanı %10 — outlier eşik ±%11 (küçük tolerans için).
+export function TopMovers({ stocks, limit = 10, period = 'day' }: TopMoversProps) {
+  // BIST günlük fiyat tavanı ±%10 (ana pazar). Yıldız pazar / VBTS'de biraz genişleyebilir
+  // (±%20 durumlarda) ama günlük TopMovers icin ±%10.5 makul üst sınır.
   // Bunun üstündeki değerler bölünme/sermaye artırım/kupon kesintisi sonrası oluşan yanıltıcı
   // değişimlerdir; TopMovers listelerine sızmasınlar. Haftalık/aylık'ta bileşik olabilir → ±%40.
-  // NOT: Ticker (PanelPage) da aynı %11 kuralını uyguluyor — tek kaynak eşik burada.
-  const OUTLIER_CAP = period === 'day' ? 11 : 40;
+  const OUTLIER_CAP = period === 'day' ? 10.5 : 40;
   // Yahoo veri dönmeyen hisseler (price=0 veya changePct=0 yani mock fallback) elensin —
   // sadece gerçekten hareket eden hisseleri göster + outlier filter
   const sorted = stocks

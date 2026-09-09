@@ -18,7 +18,7 @@ const PERIOD_LABEL: Record<NonNullable<Props['period']>, string> = {
   year: '1 Yıl',
 };
 
-export function TopFundMovers({ funds, limit = 5, period = 'day' }: Props) {
+export function TopFundMovers({ funds, limit = 10, period = 'day' }: Props) {
   const valid = funds.filter((f) => Number.isFinite(f[period]));
   const sorted = [...valid].sort((a, b) => (b[period] as number) - (a[period] as number));
   const top = sorted.slice(0, limit);

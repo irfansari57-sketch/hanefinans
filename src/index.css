@@ -7,41 +7,43 @@
    Renkler 'r g b' formatinda (Tailwind alpha-value uyumlulugu icin).
    ============================================================ */
 :root {
-  /* THEME: Financial Times Salmon (v2)
-     130 yillik finans yayini estetigi.
-     Dark: derin lacivert zemin + somon aksan + bordo negatif + turkuaz sayi.
-     Light: klasik krem-somon (#FFF1E5) + koyu turkuaz sayi + bordo negatif. */
+  /* THEME: InvestliQ Terminal (2026-09-09 rewrite — FVT tarzi)
+     Modern data terminal estetigi. Yesil aksan (Q logo emerald ile senkron),
+     koyu lacivert-siyah zemin, tek font ailesi, minimal border.
 
-  /* Dark (default) — derin lacivert zemin */
-  --c-bg: 26 31 46;              /* #1A1F2E — derin FT dark */
-  --c-bg-soft: 30 37 55;         /* yumusak yuzeyler */
-  --c-bg-card: 36 43 61;         /* #242B3D kart */
-  --c-border: 55 63 86;          /* subtle salmon-tinted border */
-  --c-accent: 245 183 164;       /* #F5B7A4 soft salmon — marka aksan */
-  --c-accent-fg: 26 31 46;       /* koyu lacivert on salmon */
-  --c-success: 134 239 172;      /* green-300 pozitif (yumusak) */
-  --c-danger: 249 168 212;       /* rose-300 negatif (klasik FT bordo dark) */
+     Dark: cok koyu antrasit + yesil aksan + kirmizi negatif.
+     Light: temiz beyaz + koyu antrasit metin + yesil aksan. */
+
+  /* Dark (default) — terminal cok koyu */
+  --c-bg: 13 16 23;              /* #0D1017 — derin near-black */
+  --c-bg-soft: 15 19 25;         /* #0F1319 sidebar/masthead */
+  --c-bg-card: 19 25 36;         /* #131924 kart yuzeyi */
+  --c-border: 30 37 48;          /* #1E2530 hairline */
+  --c-accent: 34 197 94;         /* #22C55E emerald — Q logo ile senkron */
+  --c-accent-fg: 4 18 10;        /* koyu on yesil */
+  --c-success: 34 197 94;        /* aksan ile ayni yesil (unified) */
+  --c-danger: 239 68 68;         /* #EF4444 kirmizi — clean */
   --c-warning: 251 191 36;       /* amber-400 */
-  --c-text-1: 245 238 230;       /* #F5EEE6 kirik beyaz */
-  --c-text-2: 155 147 133;       /* #9B9385 secondary */
-  --c-text-3: 122 115 105;       /* muted */
+  --c-text-1: 248 250 252;       /* #F8FAFC neredeyse beyaz */
+  --c-text-2: 148 163 184;       /* #94A3B8 slate-400 secondary */
+  --c-text-3: 100 116 139;       /* #64748B slate-500 muted */
   color-scheme: dark;
 }
 
 html.light {
-  /* Light theme — Financial Times klasik krem-somon estetigi */
-  --c-bg: 255 241 229;           /* #FFF1E5 — FT signature paper */
-  --c-bg-soft: 250 232 216;      /* biraz koyu wash */
-  --c-bg-card: 255 250 243;      /* #FFFAF3 kart yumusak krem */
-  --c-border: 240 223 203;       /* #F0DFCB warm border */
-  --c-accent: 153 15 61;         /* #990F3D FT bordo — marka aksan */
-  --c-accent-fg: 255 250 243;    /* krem on bordo */
-  --c-success: 22 101 52;        /* green-800 pozitif (klasik FT) */
-  --c-danger: 153 15 61;         /* #990F3D bordo negatif */
-  --c-warning: 180 83 9;         /* amber-800 */
-  --c-text-1: 51 48 46;          /* #33302E koyu antrasit */
-  --c-text-2: 102 96 92;         /* #66605C secondary */
-  --c-text-3: 143 137 132;       /* muted */
+  /* Light theme — temiz beyaz + koyu antrasit (FVT'nin light modu) */
+  --c-bg: 255 255 255;           /* #FFFFFF saf beyaz */
+  --c-bg-soft: 248 250 252;      /* #F8FAFC slate-50 wash */
+  --c-bg-card: 255 255 255;      /* kart beyaz */
+  --c-border: 226 232 240;       /* #E2E8F0 slate-200 hairline */
+  --c-accent: 22 163 74;         /* #16A34A daha koyu yesil (light modda kontrast) */
+  --c-accent-fg: 255 255 255;    /* beyaz on yesil */
+  --c-success: 22 163 74;        /* aksan ile senkron */
+  --c-danger: 220 38 38;         /* #DC2626 koyu kirmizi */
+  --c-warning: 202 138 4;        /* amber-600 */
+  --c-text-1: 15 23 42;          /* #0F172A slate-900 koyu antrasit */
+  --c-text-2: 51 65 85;          /* #334155 slate-700 secondary */
+  --c-text-3: 100 116 139;       /* #64748B slate-500 muted */
   color-scheme: light;
 }
 
@@ -491,23 +493,19 @@ html.light .bg-grid {
   display: none !important;
 }
 
-/* FT SALMON AMBIENT BLOB — kose radial gradientlerle premium derinlik.
-   Dark: sol-ust salmon + sag-alt cyan; Light: sol-ust bordo + sag-alt turkuaz. */
+/* Terminal ambient — dark modda hafif emerald sizinti (Q logo ile senkron),
+   light modda beyaz + gorunmez (temiz beyaz zemin). FVT tarzi minimal. */
 .bg-finance-mesh {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(245, 183, 164, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 88% 82%, rgba(34, 211, 238, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(245, 183, 164, 0.03) 0%, transparent 70%);
+    radial-gradient(ellipse 45% 35% at 15% 20%, rgba(34, 197, 94, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 85% 80%, rgba(34, 197, 94, 0.03) 0%, transparent 60%);
 }
 html.light .bg-finance-mesh {
-  background:
-    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(153, 15, 61, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 88% 82%, rgba(13, 118, 128, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(153, 15, 61, 0.02) 0%, transparent 70%);
+  background: transparent;
 }
 
 /* Candlestick benzeri SVG pattern overlay */

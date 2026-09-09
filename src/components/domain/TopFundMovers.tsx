@@ -19,7 +19,16 @@ const PERIOD_LABEL: Record<NonNullable<Props['period']>, string> = {
 };
 
 export function TopFundMovers({ funds, limit = 10, period = 'day' }: Props) {
-  const valid = funds.filter((f) => Number.isFinite(f[period]));
+  // Sadece TEFAS'a acik fonlar — Serbest/kapali fonlar (SPK nitelikli yatirimci
+  // fonlari) TopMovers'a sizmasin. FVT ile paralel: kullanicinin gercekten
+  // alabilecegi fonlar arasindan enler.
+  //
+  // tefasOpen === undefined (heuristic bilinmiyor) durumunda dahil et:
+  // backend cache eksikligi yuzunden yaygin fonlar elenmesin. Sadece kesin
+  // false olanlari (Serbest fon) filtrele.
+  const valid = funds.filter(
+    (f) => Number.isFinite(f[period]) && f.tefasOpen !== false,
+  );
   const sorted = [...valid].sort((a, b) => (b[period] as number) - (a[period] as number));
   const top = sorted.slice(0, limit);
   const bottom = sorted.slice(-limit).reverse();

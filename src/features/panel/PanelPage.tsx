@@ -20,6 +20,7 @@ import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { DividendCalendarWidget } from '@/components/domain/DividendCalendarWidget';
 import { MarketSummaryPremium } from '@/components/domain/MarketSummaryPremium';
+import { PanelHero } from '@/components/domain/PanelHero';
 import { Newspaper, Sparkles, Activity, BarChart3, Pin, PinOff, Briefcase, CalendarClock } from 'lucide-react';
 import { readRiskProfile } from '@/lib/riskProfile';
 import { PortfolioPanelSummary } from './PortfolioPanelSummary';
@@ -334,13 +335,24 @@ export function PanelPage() {
           Sol menudeki "Risk Profilim" linki zaten cagriyi karsiliyor;
           Panel'in ust yerini bu banner tutmasin. Ihtiyaç halinde geri acilabilir. */}
 
-      {/* Piyasa Özeti — premium 3 sütun (Endeks+Döviz / Metal / Kripto), satır clickable */}
+      {/* PANEL HERO — Varyant B: pill ticker + BIST 100 buyuk grafik + AI komenter (Q ikonu).
+          FVT'nin bilgi yogunlugunu yakalar ama Q emerald imzasi ve AI yorum ile ayirt edilir. */}
+      {macro.length === 0 ? (
+        <div className="mb-5 rounded-xl border border-slate-700/30 bg-bg-card/50 p-4">
+          <MarketSkeletonGrid count={8} />
+        </div>
+      ) : (
+        <div className="mb-5">
+          <PanelHero macro={macro} />
+        </div>
+      )}
+
+      {/* Piyasa Özeti — premium 3 sütun (Endeks+Döviz / Metal / Kripto). Detay isteyenler icin akordiyon halinde alt kisimda. */}
       <PinnableAccordion
         id="panel-market-summary"
-        title="Piyasa Özeti"
+        title="Piyasa Özeti — Tüm Göstergeler"
         icon={<BarChart3 size={16} />}
         iconColorClass="bg-accent/15 text-accent"
-        defaultOpen
       >
         {macro.length === 0 ? (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">

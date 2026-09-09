@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Radio } from 'lucide-react';
+import { Radio, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AdBanner } from '@/components/domain/AdBanner';
 import { useAuth, isPro, isAdmin } from '@/store/auth';
@@ -347,146 +347,23 @@ export function PanelPage() {
         </div>
       )}
 
-      {/* Piyasa Özeti — premium 3 sütun (Endeks+Döviz / Metal / Kripto). Detay isteyenler icin akordiyon halinde alt kisimda. */}
-      <PinnableAccordion
-        id="panel-market-summary"
-        title="Piyasa Özeti — Tüm Göstergeler"
-        icon={<BarChart3 size={16} />}
-        iconColorClass="bg-accent/15 text-accent"
-      >
-        {macro.length === 0 ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-            <div className="rounded-xl border border-slate-700/30 bg-bg-card/50 p-3"><MarketSkeletonGrid count={4} /></div>
-            <div className="rounded-xl border border-slate-700/30 bg-bg-card/50 p-3"><MarketSkeletonGrid count={4} /></div>
-            <div className="rounded-xl border border-slate-700/30 bg-bg-card/50 p-3"><MarketSkeletonGrid count={4} /></div>
-          </div>
-        ) : (
-          <MarketSummaryPremium macro={macro} />
-        )}
-      </PinnableAccordion>
+      {/* Piyasa Ozeti akordiyon kaldirildi — PanelHero ust seridi tum gostergeleri sunuyor.
+          Kullanici pill'lere tiklayarak grafik degistirebiliyor (FVT tarzi). Metal/Kripto
+          detay listesi Panel dışında Emtia + Kripto nav linkleri altında ayrıca var. */}
 
       {/* Top movers — hisseler (pin'lenebilir, her ekranda aç/kapa) */}
-      <details
-        className={cn(
-          'group mb-5 overflow-hidden rounded-xl border bg-bg-soft/30 transition',
-          stocksPin.pinned ? 'border-warning/30' : 'border-border',
-        )}
-        open={stocksPin.open}
-        onToggle={stocksPin.onToggle}
-      >
-        <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            Günün Enleri — Hisseler ({stocksPeriod === 'day' ? 'Gün' : stocksPeriod === 'week' ? 'Hafta' : 'Ay'})
-            {stocksPin.pinned && (
-              <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
-                Pinli
-              </span>
-            )}
-          </h2>
-          <div className="flex items-center gap-2">
-            {/* Period toggle */}
-            <div className="inline-flex rounded-md border border-border bg-bg-soft p-0.5" onClick={(e) => e.preventDefault()}>
-              {(['day', 'week', 'month'] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); setStocksPeriod(p); }}
-                  className={cn(
-                    'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
-                    stocksPeriod === p ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                  )}
-                >
-                  {p === 'day' ? 'Gün' : p === 'week' ? 'Hafta' : 'Ay'}
-                </button>
-              ))}
-            </div>
-            {stocksReturnsLoading && stocksPeriod !== 'day' && (
-              <span className="text-[10px] text-slate-500">yükleniyor…</span>
-            )}
-            <SourceBadge source={stocksSource} />
-            <button
-              type="button"
-              onClick={stocksPin.togglePin}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition',
-                stocksPin.pinned
-                  ? 'border-warning/40 bg-warning/10 text-warning'
-                  : 'border-border bg-bg-card text-slate-400 hover:border-warning/30 hover:text-warning',
-              )}
-              title={stocksPin.pinned ? 'Pin\'i kaldır' : 'Pinle (sonraki açılışta açık gelir)'}
-              aria-label={stocksPin.pinned ? 'Pin\'i kaldır' : 'Pinle'}
-            >
-              {stocksPin.pinned ? <Pin size={11} fill="currentColor" /> : <PinOff size={11} />}
-              <span className="hidden sm:inline">{stocksPin.pinned ? 'Pinli' : 'Pin'}</span>
-            </button>
-            <span className="text-xs text-slate-500 transition-transform group-open:rotate-180">▼</span>
-          </div>
-        </summary>
-        <div className="border-t border-border bg-bg-card/40 p-3">
-          <TopMovers stocks={stocksForTopMovers} limit={5} period={stocksPeriod} />
-        </div>
-      </details>
-
-      {/* Top movers — fonlar — pin'lenebilir, sadece canlı feed bağlıyken göster */}
-      {topFunds.length > 0 && (
-        <details
-          className={cn(
-            'group mb-5 overflow-hidden rounded-xl border bg-bg-soft/30 transition',
-            fundsPin.pinned ? 'border-warning/30' : 'border-border',
-          )}
-          open={fundsPin.open}
-          onToggle={fundsPin.onToggle}
-        >
-          <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              Günün Enleri — Fonlar ({fundsPeriod === 'day' ? 'Gün' : fundsPeriod === 'week' ? 'Hafta' : 'Ay'})
-              {fundsPin.pinned && (
-                <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
-                  Pinli
-                </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-2">
-              {/* Period toggle */}
-              <div className="inline-flex rounded-md border border-border bg-bg-soft p-0.5" onClick={(e) => e.preventDefault()}>
-                {(['day', 'week', 'month'] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); setFundsPeriod(p); }}
-                    className={cn(
-                      'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
-                      fundsPeriod === p ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
-                    )}
-                  >
-                    {p === 'day' ? 'Gün' : p === 'week' ? 'Hafta' : 'Ay'}
-                  </button>
-                ))}
-              </div>
-              <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
-              <button
-                type="button"
-                onClick={fundsPin.togglePin}
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition',
-                  fundsPin.pinned
-                    ? 'border-warning/40 bg-warning/10 text-warning'
-                    : 'border-border bg-bg-card text-slate-400 hover:border-warning/30 hover:text-warning',
-                )}
-                title={fundsPin.pinned ? 'Pin\'i kaldır' : 'Pinle (sonraki açılışta açık gelir)'}
-                aria-label={fundsPin.pinned ? 'Pin\'i kaldır' : 'Pinle'}
-              >
-                {fundsPin.pinned ? <Pin size={11} fill="currentColor" /> : <PinOff size={11} />}
-                <span className="hidden sm:inline">{fundsPin.pinned ? 'Pinli' : 'Pin'}</span>
-              </button>
-              <span className="text-xs text-slate-500 transition-transform group-open:rotate-180">▼</span>
-            </div>
-          </summary>
-          <div className="border-t border-border bg-bg-card/40 p-3">
-            <TopFundMovers funds={topFunds} limit={5} period={fundsPeriod} />
-          </div>
-        </details>
-      )}
+      {/* GUNUN ENLERI — Tek karti icinde tab yapisi (FVT tarzi).
+          Tab'lar: Hisseler / Fonlar. Her tab kendi period toggle'ini gosterir. */}
+      <GununEnleriCard
+        stocks={stocksForTopMovers}
+        stocksPeriod={stocksPeriod}
+        setStocksPeriod={setStocksPeriod}
+        stocksSource={stocksSource}
+        stocksReturnsLoading={stocksReturnsLoading}
+        topFunds={topFunds}
+        fundsPeriod={fundsPeriod}
+        setFundsPeriod={setFundsPeriod}
+      />
 
       {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti.
           PortfolioHealthPanel kendi içinde mb-5 uyguluyor (boş portfolyoda null dönüyor,
@@ -548,5 +425,116 @@ function SourceBadge({ source }: { source: 'live' | 'mock' | 'mixed' | 'derived'
     <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-warning">
       demo
     </span>
+  );
+}
+
+/**
+ * GununEnleriCard — FVT tarzi tab yapisi.
+ * Tek karti icinde: Hisseler / Fonlar sekmeler. Her sekme kendi period toggle'ini gosterir.
+ * Kripto sekmesi placeholder (ileride cripto kazananlar/kaybedenler eklenebilir).
+ */
+type EnleriTab = 'stocks' | 'funds';
+function GununEnleriCard(props: {
+  stocks: Stock[];
+  stocksPeriod: 'day' | 'week' | 'month';
+  setStocksPeriod: (p: 'day' | 'week' | 'month') => void;
+  stocksSource: 'live' | 'mock' | 'mixed';
+  stocksReturnsLoading: boolean;
+  topFunds: FundPerformance[];
+  fundsPeriod: 'day' | 'week' | 'month';
+  setFundsPeriod: (p: 'day' | 'week' | 'month') => void;
+}) {
+  const [tab, setTab] = useState<EnleriTab>('stocks');
+  const {
+    stocks, stocksPeriod, setStocksPeriod, stocksSource, stocksReturnsLoading,
+    topFunds, fundsPeriod, setFundsPeriod,
+  } = props;
+
+  const activePeriod = tab === 'stocks' ? stocksPeriod : fundsPeriod;
+  const setActivePeriod = tab === 'stocks' ? setStocksPeriod : setFundsPeriod;
+
+  return (
+    <div className="mb-5 overflow-hidden rounded-xl border border-border bg-bg-soft/30">
+      {/* Baslik + tab sekmeleri + period toggle */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-border bg-bg-card/40 px-4 py-2.5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+          <TrendingUp size={15} className="text-success" /> Günün Enleri
+        </h2>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setTab('stocks')}
+            className={cn(
+              'rounded-md px-2.5 py-1 text-xs font-semibold transition',
+              tab === 'stocks'
+                ? 'bg-bg-card text-accent'
+                : 'text-slate-400 hover:bg-bg-soft/50 hover:text-slate-200',
+            )}
+          >
+            Hisseler
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('funds')}
+            disabled={topFunds.length === 0}
+            className={cn(
+              'rounded-md px-2.5 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40',
+              tab === 'funds'
+                ? 'bg-bg-card text-accent'
+                : 'text-slate-400 hover:bg-bg-soft/50 hover:text-slate-200',
+            )}
+          >
+            Fonlar
+          </button>
+          <button
+            type="button"
+            disabled
+            className="rounded-md px-2.5 py-1 text-xs font-semibold text-slate-500 cursor-not-allowed opacity-40"
+            title="Yakında"
+          >
+            Kripto
+          </button>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-border bg-bg-soft p-0.5">
+            {(['day', 'week', 'month'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setActivePeriod(p)}
+                className={cn(
+                  'rounded-sm px-2 py-0.5 text-[10px] uppercase tracking-wider transition',
+                  activePeriod === p ? 'bg-bg-card text-slate-100' : 'text-slate-400 hover:text-slate-200',
+                )}
+              >
+                {p === 'day' ? 'Gün' : p === 'week' ? 'Hafta' : 'Ay'}
+              </button>
+            ))}
+          </div>
+          {tab === 'stocks' && (
+            <>
+              {stocksReturnsLoading && stocksPeriod !== 'day' && (
+                <span className="text-[10px] text-slate-500">yükleniyor…</span>
+              )}
+              <SourceBadge source={stocksSource} />
+            </>
+          )}
+          {tab === 'funds' && (
+            <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-success">canlı</span>
+          )}
+        </div>
+      </div>
+
+      {/* Icerik — Hisseler veya Fonlar */}
+      <div className="bg-bg-card/40 p-3">
+        {tab === 'stocks' ? (
+          <TopMovers stocks={stocks} limit={5} period={stocksPeriod} />
+        ) : topFunds.length > 0 ? (
+          <TopFundMovers funds={topFunds} limit={5} period={fundsPeriod} />
+        ) : (
+          <div className="grid place-items-center py-6 text-xs text-slate-500">Fon verisi yükleniyor…</div>
+        )}
+      </div>
+    </div>
   );
 }

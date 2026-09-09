@@ -10,18 +10,16 @@
  * FVT tarzi kompakt, ama Q logosu emerald tonuyla + AI komenter InvestliQ imzasi.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { MacroIndicator } from '@/data/types';
-import { macroKeyToRoute } from '@/lib/macroRoutes';
 import { fetchHistoricalYahoo } from '@/data/api/yahoo';
 
 type Period = '1H' | '1A' | '3A' | 'YTD';
 
 interface Props {
   macro: MacroIndicator[];
-  /** Ana grafik icin gosterilecek sembol (default: BIST 100). Ileride tiklanarak degistirilebilir. */
-  primarySymbol?: string;
+  /** Ana grafik icin default sembol (BIST 100). Kullanici pill'e tiklayarak degistirebilir. */
+  defaultSymbol?: string;
 }
 
 const TICKER_KEYS = [
@@ -63,7 +61,8 @@ const PERIOD_RANGE: Record<Period, YahooRange> = {
   YTD: 'ytd',
 };
 
-export function PanelHero({ macro, primarySymbol = 'BIST 100' }: Props) {
+export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
+  const [primarySymbol, setPrimarySymbol] = useState<string>(defaultSymbol);
   const [period, setPeriod] = useState<Period>('1A');
   const [series, setSeries] = useState<number[]>([]);
   const [seriesLoading, setSeriesLoading] = useState(false);
@@ -94,10 +93,15 @@ export function PanelHero({ macro, primarySymbol = 'BIST 100' }: Props) {
 
   return (
     <div className="rounded-xl border border-accent/25 bg-bg-card/40 p-4">
-      {/* Ust ticker chip seridi */}
+      {/* Ust ticker chip seridi — tıklanınca grafik degisir (FVT tarzi) */}
       <div className="mb-4 flex flex-wrap gap-2">
         {tickers.map((m) => (
-          <TickerPill key={m.key} m={m} isPrimary={m.key === primarySymbol} />
+          <TickerPill
+            key={m.key}
+            m={m}
+            isPrimary={m.key === primarySymbol}
+            onSelect={() => setPrimarySymbol(m.key)}
+          />
         ))}
       </div>
 
@@ -156,20 +160,29 @@ export function PanelHero({ macro, primarySymbol = 'BIST 100' }: Props) {
   );
 }
 
-function TickerPill({ m, isPrimary }: { m: MacroIndicator; isPrimary: boolean }) {
-  const route = macroKeyToRoute(m.key);
+function TickerPill({ m, isPrimary, onSelect }: {
+  m: MacroIndicator;
+  isPrimary: boolean;
+  onSelect: () => void;
+}) {
   const cp = m.changePct;
   const finite = cp != null && Number.isFinite(cp);
   const isUp = finite && (cp as number) > 0;
   const isDown = finite && (cp as number) < 0;
-  const content = (
-    <div className={cn(
-      'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] transition',
-      isPrimary
-        ? 'border-accent/50 bg-accent/10'
-        : 'border-border bg-bg-card hover:border-accent/30',
-    )}>
-      {isPrimary && <span className="h-1.5 w-1.5 rounded-full bg-accent" />}
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] transition cursor-pointer',
+        isPrimary
+          ? 'border-accent/50 bg-accent/10'
+          : 'border-border bg-bg-card hover:border-accent/30 hover:bg-bg-soft/60',
+      )}
+      aria-pressed={isPrimary}
+      title={`${m.label} grafiğini göster`}
+    >
+      {isPrimary && <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />}
       <span className="font-semibold text-slate-400">{m.label}</span>
       <span className="font-bold tabular-nums text-slate-100">{formatValue(m)}</span>
       {finite && (
@@ -181,9 +194,8 @@ function TickerPill({ m, isPrimary }: { m: MacroIndicator; isPrimary: boolean })
           {isUp ? '+' : ''}{(cp as number).toFixed(2)}%
         </span>
       )}
-    </div>
+    </button>
   );
-  return route ? <Link to={route}>{content}</Link> : content;
 }
 
 /**

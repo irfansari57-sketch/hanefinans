@@ -22,38 +22,53 @@ interface Props {
   defaultSymbol?: string;
 }
 
-/** Kategorili grup — kullanici talebi (Varyant B).
- *  Metal grubuna Gr.Gümüş + Ons Gümüş dahil. */
+/** Kategorili grup + Varyant A kart tarzi (kullanici talebi 2026-09-09).
+ *  Endekse VIOP 30 + XBANK, doviz'e GBP/TRY + EUR/USD, kripto'ya XRP + DOGE eklendi. */
 const TICKER_GROUPS: Array<{ title: string; keys: string[] }> = [
-  { title: 'ENDEKS', keys: ['BIST 100', 'BIST 30'] },
-  { title: 'DÖVİZ',  keys: ['USD/TRY', 'EUR/TRY'] },
+  { title: 'ENDEKS', keys: ['BIST 100', 'BIST 30', 'VIOP 30', 'XBANK'] },
+  { title: 'DÖVİZ',  keys: ['USD/TRY', 'EUR/TRY', 'GBP/TRY', 'EUR/USD'] },
   { title: 'METAL',  keys: ['Gram Altın', 'Ons Altın', 'Gram Gümüş', 'Ons Gümüş'] },
-  { title: 'KRİPTO', keys: ['BTC/USD', 'ETH/USD'] },
+  { title: 'KRİPTO', keys: ['BTC/USD', 'ETH/USD', 'XRP/USD', 'DOGE/USD'] },
 ];
 
 function formatValue(m: MacroIndicator): string {
   const key = m.key;
-  if (key === 'BIST 100' || key === 'BIST 30') {
+  // Endeks: BIST/VIOP/XBANK — binlik ayirici
+  if (key === 'BIST 100' || key === 'BIST 30' || key === 'VIOP 30' || key === 'XBANK') {
     return m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
   }
-  if (key === 'USD/TRY' || key === 'EUR/TRY') return m.value.toFixed(2);
+  // Doviz TL karsi: 2 ondalik
+  if (key === 'USD/TRY' || key === 'EUR/TRY' || key === 'GBP/TRY') return m.value.toFixed(2);
+  // EUR/USD pariteti: 4 ondalik (1.1712)
+  if (key === 'EUR/USD') return m.value.toFixed(4);
   if (key === 'Gram Altın') return m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
   if (key === 'Ons Altın') return m.value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  // Kripto — kucuk deger (DOGE < 1) icin 4 ondalik
+  if (m.value < 1) return m.value.toFixed(4);
   if (m.value < 10) return m.value.toFixed(2);
   if (m.value < 1000) return m.value.toFixed(0);
   // BTC vs. — kısaltma (79.4K)
-  if (m.value >= 1000) return (m.value / 1000).toFixed(1) + 'K';
-  return m.value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return (m.value / 1000).toFixed(1) + 'K';
 }
 
 /** Yahoo sembol eslesmesi — ana grafik icin. */
 function toYahooSymbol(key: string): string {
   if (key === 'BIST 100') return 'XU100.IS';
   if (key === 'BIST 30') return 'XU030.IS';
+  if (key === 'VIOP 30') return 'XU030.IS'; // VIOP 30 endeksi BIST 30 vadelisi — spot XU030 kullanilir
+  if (key === 'XBANK') return 'XBANK.IS';
   if (key === 'USD/TRY') return 'USDTRY=X';
   if (key === 'EUR/TRY') return 'EURTRY=X';
+  if (key === 'GBP/TRY') return 'GBPTRY=X';
+  if (key === 'EUR/USD') return 'EURUSD=X';
   if (key === 'Gram Altın') return 'GC=F';
+  if (key === 'Ons Altın') return 'GC=F';
+  if (key === 'Gram Gümüş') return 'SI=F';
+  if (key === 'Ons Gümüş') return 'SI=F';
   if (key === 'BTC/USD') return 'BTC-USD';
+  if (key === 'ETH/USD') return 'ETH-USD';
+  if (key === 'XRP/USD') return 'XRP-USD';
+  if (key === 'DOGE/USD') return 'DOGE-USD';
   return 'XU100.IS';
 }
 
@@ -185,7 +200,8 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   );
 }
 
-/** Kategori satiri — sol yesil serit ile aktif indikator vurgulanir. */
+/** Varyant A (kullanici sectigi): her satir belirgin kart — border + bg.
+ *  Aktif olan yesil border-tint. Hover'da hafif kabarma. */
 function TickerRow({ m, isPrimary, onSelect }: {
   m: MacroIndicator;
   isPrimary: boolean;
@@ -200,10 +216,10 @@ function TickerRow({ m, isPrimary, onSelect }: {
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-2 rounded-md border-l-2 px-2.5 py-1.5 text-[11px] transition text-left',
+        'flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-[11px] transition text-left',
         isPrimary
-          ? 'border-l-accent bg-accent/10 shadow-sm shadow-accent/10'
-          : 'border-l-transparent bg-bg-soft/40 hover:bg-bg-soft/70 hover:border-l-accent/40',
+          ? 'border-accent bg-accent/15 shadow-sm shadow-accent/20'
+          : 'border-border bg-bg-card/70 hover:border-accent/40 hover:bg-bg-card',
       )}
       aria-pressed={isPrimary}
       title={`${m.label} grafiğini göster`}
@@ -216,7 +232,7 @@ function TickerRow({ m, isPrimary, onSelect }: {
       </span>
       {finite && (
         <span className={cn(
-          'shrink-0 min-w-[52px] text-right font-semibold tabular-nums',
+          'shrink-0 min-w-[48px] text-right font-semibold tabular-nums text-[10px]',
           isUp && 'text-success',
           isDown && 'text-danger',
         )}>

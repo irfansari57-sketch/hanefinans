@@ -25,8 +25,12 @@ export interface NewsItem {
 export type MacroKey =
   | 'USD/TRY'
   | 'EUR/TRY'
+  | 'GBP/TRY'
+  | 'EUR/USD'
   | 'BIST 100'
   | 'BIST 30'
+  | 'VIOP 30'
+  | 'XBANK'
   | 'Politika Faizi'
   | 'Brent'
   | 'Gram Altın'

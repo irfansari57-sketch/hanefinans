@@ -179,9 +179,13 @@ export const MOCK_MACRO_FALLBACK: MacroIndicator[] = [
   // BIST endeksleri — birinci öncelik
   { key: 'BIST 100',        label: 'BIST 100',       value: 15133,    changePct: 0.47,  source: 'mock', updatedAt: minutesAgo(1) },
   { key: 'BIST 30',         label: 'BIST 30',                   value: 16420, changePct: 0.52, source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'VIOP 30',         label: 'VIOP 30',                   value: 16580, changePct: 0.61, source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'XBANK',           label: 'XBANK',                     value: 25340, changePct: 0.82, source: 'mock', updatedAt: minutesAgo(1) },
   // Döviz
   { key: 'USD/TRY',         label: 'USD/TRY',        value: 45.40,    changePct: 0.20,  source: 'mock', updatedAt: minutesAgo(1) },
   { key: 'EUR/TRY',         label: 'EUR/TRY',        value: 53.29,    changePct: 0.30,  source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'GBP/TRY',         label: 'GBP/TRY',        value: 61.85,    changePct: 0.25,  source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'EUR/USD',         label: 'EUR/USD',        value: 1.171,    changePct: 0.10,  source: 'mock', updatedAt: minutesAgo(1) },
   // Politika
   { key: 'Politika Faizi',  label: 'Politika Faizi', value: 39.5,     unit: '%', subLabel: 'TCMB (yaklaşık)', source: 'mock', updatedAt: minutesAgo(60) },
   // Emtia — gram TL

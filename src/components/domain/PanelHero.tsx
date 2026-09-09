@@ -83,7 +83,7 @@ const PERIOD_RANGE: Record<Period, YahooRange> = {
 export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   const [primarySymbol, setPrimarySymbol] = useState<string>(defaultSymbol);
   const [period, setPeriod] = useState<Period>('YTD');
-  const [series, setSeries] = useState<number[]>([]);
+  const [series, setSeries] = useState<Array<{ date: number; close: number }>>([]);
   const [seriesLoading, setSeriesLoading] = useState(false);
 
   const primary = useMemo(() => macro.find((m) => m.key === primarySymbol), [macro, primarySymbol]);
@@ -95,11 +95,10 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
     fetchHistoricalYahoo(ysym, PERIOD_RANGE[period], '1d')
       .then((data) => {
         if (!alive) return;
-        // HistoricalSeries.closes = {date, close}[] — sadece close degerlerini al.
-        const closes = (data?.closes ?? [])
-          .map((c) => c.close)
-          .filter((v) => Number.isFinite(v) && v > 0);
-        setSeries(closes);
+        // HistoricalSeries.closes = {date, close}[] — dogrudan filter+set.
+        const pairs = (data?.closes ?? [])
+          .filter((c) => Number.isFinite(c.close) && c.close > 0);
+        setSeries(pairs);
       })
       .catch(() => setSeries([]))
       .finally(() => alive && setSeriesLoading(false));
@@ -176,7 +175,7 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
           <div className="h-32 animate-pulse rounded bg-bg-soft/40" />
         ) : series.length >= 2 ? (
           <MiniAreaChart
-            values={series}
+            data={series}
             positive={(primary?.changePct ?? 0) >= 0}
             formatValue={(v) => {
               // Sembole gore uygun format
@@ -244,31 +243,34 @@ function TickerRow({ m, isPrimary, onSelect }: {
 }
 
 /**
- * Kompakt SVG area chart — kapanis serisi. Y-axis label + grid + area.
- * Sag tarafta 3 seviyeli y-axis label (max / mid / min) — FVT tarzi deger satirlari.
+ * SVG area chart — kapanis serisi. Y-axis (sag) + X-axis (alt) tarih labellari.
+ * Data: {date: ms, close: number}[] — X-axis tarih hesabinda kullanilir.
  */
-function MiniAreaChart({ values, positive, formatValue }: {
-  values: number[];
+function MiniAreaChart({ data, positive, formatValue }: {
+  data: Array<{ date: number; close: number }>;
   positive: boolean;
   formatValue?: (v: number) => string;
 }) {
+  const values = data.map((d) => d.close);
   const W = 620;
-  const H = 140;
+  const H = 160; // yukseklik biraz artti — X-axis label icin
   const PAD_TOP = 8;
-  const PAD_BOTTOM = 8;
-  const PAD_RIGHT = 44; // y-axis label yeri
+  const PAD_BOTTOM = 22; // X-axis label yeri
+  const PAD_RIGHT = 44;  // Y-axis label yeri
   const min = Math.min(...values);
   const max = Math.max(...values);
   const mid = (min + max) / 2;
   const range = max - min || 1;
   const chartW = W - PAD_RIGHT;
+  const chartH = H - PAD_TOP - PAD_BOTTOM;
   const xStep = chartW / Math.max(1, values.length - 1);
   const points = values.map((v, i) => ({
     x: i * xStep,
-    y: PAD_TOP + (1 - (v - min) / range) * (H - PAD_TOP - PAD_BOTTOM),
+    y: PAD_TOP + (1 - (v - min) / range) * chartH,
   }));
   const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-  const area = `${line} L ${points[points.length - 1].x.toFixed(1)} ${H} L 0 ${H} Z`;
+  const bottom = PAD_TOP + chartH;
+  const area = `${line} L ${points[points.length - 1].x.toFixed(1)} ${bottom} L 0 ${bottom} Z`;
   const stroke = positive ? '#22c55e' : '#ef4444';
   const fillId = positive ? 'panelHeroGradPos' : 'panelHeroGradNeg';
   const fmt = formatValue ?? ((v: number) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 }));
@@ -276,12 +278,23 @@ function MiniAreaChart({ values, positive, formatValue }: {
   // 3 seviye y-axis: min, mid, max — sag tarafta yaslanmis
   const yLevels = [
     { v: max, y: PAD_TOP },
-    { v: mid, y: (PAD_TOP + (H - PAD_BOTTOM)) / 2 },
-    { v: min, y: H - PAD_BOTTOM },
+    { v: mid, y: PAD_TOP + chartH / 2 },
+    { v: min, y: bottom },
   ];
 
+  // X-axis tarih labellari — 5 esit noktada: 0, 25%, 50%, 75%, 100%
+  const xTicks = [0, 0.25, 0.5, 0.75, 1].map((r) => {
+    const i = Math.min(data.length - 1, Math.round(r * (data.length - 1)));
+    return { i, x: i * xStep };
+  });
+  const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+  const fmtDate = (ms: number) => {
+    const d = new Date(ms);
+    return `${d.getDate()} ${TR_MONTHS[d.getMonth()]}`;
+  };
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-36 w-full">
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-40 w-full">
       <defs>
         <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={stroke} stopOpacity="0.30" />
@@ -304,7 +317,7 @@ function MiniAreaChart({ values, positive, formatValue }: {
       {/* Y-axis label seviyeleri — sag taraf */}
       {yLevels.map((lv) => (
         <text
-          key={`t-${lv.y}`}
+          key={`y-${lv.y}`}
           x={W - 4}
           y={lv.y + 3}
           fill="rgba(148,163,184,0.75)"
@@ -316,6 +329,26 @@ function MiniAreaChart({ values, positive, formatValue }: {
           {fmt(lv.v)}
         </text>
       ))}
+      {/* X-axis tarih labellari — alt taraf */}
+      {xTicks.map((t) => {
+        const d = data[t.i];
+        if (!d) return null;
+        const anchor = t.i === 0 ? 'start' : t.i === data.length - 1 ? 'end' : 'middle';
+        return (
+          <text
+            key={`x-${t.i}`}
+            x={t.x}
+            y={H - 6}
+            fill="rgba(148,163,184,0.75)"
+            fontSize="10"
+            fontWeight="500"
+            textAnchor={anchor}
+            fontFamily="Inter, system-ui, sans-serif"
+          >
+            {fmtDate(d.date)}
+          </text>
+        );
+      })}
     </svg>
   );
 }

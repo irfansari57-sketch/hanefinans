@@ -139,8 +139,8 @@ export function PanelPage() {
   // SWR: sayfa cache'ten render ediliyor mu (en az bir kart cache'ten)
   // Bu boolean LiveBadge'e iletilecek — "guncelleniyor" yerine "cache'ten + guncelleniyor" gosterir
   const isAnyCached = macroCached || stocksCached || newsCached || sentimentCached || topFundsCached;
-  const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('week');
-  const [stocksPeriod, setStocksPeriod] = useState<'day' | 'week' | 'month'>('week');
+  const [fundsPeriod, setFundsPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [stocksPeriod, setStocksPeriod] = useState<'day' | 'week' | 'month'>('day');
   const [stocksReturns, setStocksReturns] = useState<Record<string, { '1h'?: number; '1a'?: number }>>({});
   const [stocksReturnsLoading, setStocksReturnsLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number | undefined>();

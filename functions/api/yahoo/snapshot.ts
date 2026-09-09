@@ -124,6 +124,78 @@ async function fetchIsYatirimIndex(
   }
 }
 
+// ===========================================================================
+// IS YATIRIM HISSE FEED — BIST hisseleri icin (Yahoo previousClose bug fix)
+// ===========================================================================
+//
+// Endpoint: isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/StockHistoricalAll
+//   ?hisse=SYMBOL&period=1440&from=YYYYMMDDhhmmss&to=YYYYMMDDhhmmss
+//
+// Response yapisi endeks ile aynı: { data: [[ts_ms, close], ...] }
+//
+// urazakgul/isyatirimhisse referans (FetchStockData.py):
+//   BASE_URL_STOCK = "https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/StockHistoricalAll"
+//
+// Kullanım: sadece Yahoo'nun outlier (|changePct| > 10.1) dondurdugu BIST
+// hisselerinde overrider olarak cagrilir → rate limit'e girmez, veri kalite yukselir.
+async function fetchIsYatirimStock(
+  symbol: string,
+): Promise<{ price: number; prev: number; updatedAt: number; asOf: string } | null> {
+  // ".IS" sufix temizle (FROTO.IS -> FROTO)
+  const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
+  const now = new Date();
+  const start = new Date(now);
+  // 14 gun geriye - en az 2 islem gunu (hafta sonu + tatil dahil)
+  start.setDate(start.getDate() - 14);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 0);
+
+  const url = new URL(
+    'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/StockHistoricalAll',
+  );
+  url.searchParams.set('period', '1440');
+  url.searchParams.set('from', formatTimestampForIsYatirim(start));
+  url.searchParams.set('to', formatTimestampForIsYatirim(end));
+  url.searchParams.set('hisse', sym);
+
+  try {
+    const resp = await fetch(url.toString(), {
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx',
+      },
+      cf: { cacheTtl: 300, cacheEverything: true } as RequestInitCfProperties,
+    });
+    if (!resp.ok) return null;
+    const text = await resp.text();
+    if (!text || text.length < 10) return null;
+    let parsed: IsYatirimChartResponse;
+    try {
+      parsed = JSON.parse(text) as IsYatirimChartResponse;
+    } catch {
+      return null;
+    }
+    const rows = (parsed.data ?? []).filter(
+      (r) => Array.isArray(r) && r.length >= 2 && Number.isFinite(r[1]) && r[1] > 0,
+    );
+    if (rows.length === 0) return null;
+    rows.sort((a, b) => a[0] - b[0]);
+    const last = rows[rows.length - 1];
+    const prev = rows.length >= 2 ? rows[rows.length - 2] : last;
+    return {
+      price: last[1],
+      prev: prev[1],
+      updatedAt: last[0] || Date.now(),
+      asOf: new Date(last[0]).toISOString().slice(0, 10),
+    };
+  } catch {
+    return null;
+  }
+}
+
 interface YahooChartResult {
   chart?: {
     result?: Array<{
@@ -324,6 +396,54 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       } catch (e) {
         // Network/parse hatasi - Yahoo entry'si yedek olarak kalir
         console.warn(`[snapshot] Is Yatirim fetch fail for ${symbol}:`, e);
+      }
+    }),
+  );
+
+  // -------------------------------------------------------------------------
+  // BIST HISSE OVERRIDE (Paket F): Yahoo previousClose bug fix (endeks disi)
+  //
+  // Yahoo bazi BIST hisselerinde yanlis previousClose donduruyor -> gunluk
+  // degisim +%10 ustu (BIST tavani asilamaz) veya <-%10 alti gibi imkansiz
+  // degerler cikiyor. Bu outlier'lari Is Yatirim StockHistoricalAll ile duzelt.
+  //
+  // Rate limit koruma: sadece outlier (|changePct| > 10.1) sembolleri override
+  // eder. Tipik gunde 5-15 hisse, worst case ~50. Paralel + 5dk edge cache.
+  // -------------------------------------------------------------------------
+  const outlierStocks: string[] = [];
+  for (const [symbol, quote] of Object.entries(quotes)) {
+    // BIST hissesi mi? (.IS sufix + endeks olmayan)
+    if (!/\.IS$/i.test(symbol)) continue;
+    if (isBistIndex(symbol)) continue; // endeks zaten Paket A ile handle
+    // Outlier mi? BIST tavan/taban ±%10, tolerance ±%0.1
+    if (Math.abs(quote.changePct) > 10.1) {
+      outlierStocks.push(symbol);
+    }
+  }
+  // Aşırı yüklenmemek için max 60 outlier — nadir günlerde bile yeter
+  const capped = outlierStocks.slice(0, 60);
+  await Promise.all(
+    capped.map(async (symbol) => {
+      try {
+        const iy = await fetchIsYatirimStock(symbol);
+        if (!iy) return; // Is Yatirim cevap vermezse Yahoo entry kalir (outlier ama)
+        const changePct = iy.prev > 0 && iy.prev !== iy.price
+          ? ((iy.price - iy.prev) / iy.prev) * 100
+          : 0;
+        // Is Yatirim'dan gelen deger de outlier ise (rare, VBTS band genişleme
+        // vs.) yine de daha guvenilir - Yahoo yerine bunu tut.
+        const yahooEntry = quotes[symbol];
+        quotes[symbol] = {
+          price: iy.price,
+          prev: iy.prev,
+          changePct,
+          updatedAt: iy.updatedAt,
+          name: yahooEntry?.name,
+          source: 'isyatirim',
+          asOf: iy.asOf,
+        };
+      } catch {
+        // Yahoo entry outlier olarak kalir - TopMovers filter'i (10.5) elemine eder
       }
     }),
   );

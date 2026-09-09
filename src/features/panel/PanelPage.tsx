@@ -319,14 +319,9 @@ export function PanelPage() {
           LiveBadge'i ufak bir cubukta sag ust köşede tutuyoruz.
           SWR cache: ilk render localStorage'dan instant — eger eski veri varsa
           arka planda yenileme yapilirken kullaniciya bilgi verir (gozumsenmez bir flash). */}
-      <div className="mb-3 flex justify-end items-center gap-2">
-        {isAnyCached && refreshing && (
-          <span className="text-[10px] text-slate-500 italic">
-            Son ziyaretten · guncelleniyor…
-          </span>
-        )}
-        <LiveBadge updatedAt={updatedAt} refreshing={refreshing} label="CANLI" />
-      </div>
+      {/* Kullanici talebi: "Son ziyaretten · guncelleniyor" metni kaldirildi —
+          gorunum degisikligi/kayma yaratiyor. Arka planda sessiz yenileme yeterli.
+          LiveBadge de gizlendi — canli veri her zaman aktif, ayri gostergeye gerek yok. */}
 
       {/* Reklam banner — admin Ayarlar'dan açtıysa + PRO/ELITE değilse */}
       {adBannerEnabled && !proUser && <AdBanner className="mb-5" />}

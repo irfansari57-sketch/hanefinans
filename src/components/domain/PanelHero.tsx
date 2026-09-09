@@ -22,9 +22,13 @@ interface Props {
   defaultSymbol?: string;
 }
 
-const TICKER_KEYS = [
-  'BIST 100', 'BIST 30', 'USD/TRY', 'EUR/TRY',
-  'Gram Altın', 'Ons Altın', 'BTC/USD', 'ETH/USD',
+/** Kategorili grup — kullanici talebi (Varyant B).
+ *  Metal grubuna Gr.Gümüş + Ons Gümüş dahil. */
+const TICKER_GROUPS: Array<{ title: string; keys: string[] }> = [
+  { title: 'ENDEKS', keys: ['BIST 100', 'BIST 30'] },
+  { title: 'DÖVİZ',  keys: ['USD/TRY', 'EUR/TRY'] },
+  { title: 'METAL',  keys: ['Gram Altın', 'Ons Altın', 'Gram Gümüş', 'Ons Gümüş'] },
+  { title: 'KRİPTO', keys: ['BTC/USD', 'ETH/USD'] },
 ];
 
 function formatValue(m: MacroIndicator): string {
@@ -87,21 +91,31 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
     return () => { alive = false; };
   }, [primarySymbol, period]);
 
-  const tickers = TICKER_KEYS
-    .map((k) => macro.find((m) => m.key === k))
-    .filter((m): m is MacroIndicator => !!m);
-
   return (
     <div className="rounded-xl border border-accent/25 bg-bg-card/40 p-4">
-      {/* Ust ticker chip seridi — tıklanınca grafik degisir (FVT tarzi) */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {tickers.map((m) => (
-          <TickerPill
-            key={m.key}
-            m={m}
-            isPrimary={m.key === primarySymbol}
-            onSelect={() => setPrimarySymbol(m.key)}
-          />
+      {/* Ust ticker — Varyant B: 4 kategorili grup (Endeks/Doviz/Metal/Kripto).
+          Kullanici talebi. Aktif satirda sol yesil seritli border. */}
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {TICKER_GROUPS.map((group) => (
+          <div key={group.title} className="min-w-0">
+            <div className="mb-1.5 pl-1 text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+              {group.title}
+            </div>
+            <div className="flex flex-col gap-1">
+              {group.keys.map((key) => {
+                const m = macro.find((mm) => mm.key === key);
+                if (!m) return null;
+                return (
+                  <TickerRow
+                    key={m.key}
+                    m={m}
+                    isPrimary={m.key === primarySymbol}
+                    onSelect={() => setPrimarySymbol(m.key)}
+                  />
+                );
+              })}
+            </div>
+          </div>
         ))}
       </div>
 
@@ -171,7 +185,8 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   );
 }
 
-function TickerPill({ m, isPrimary, onSelect }: {
+/** Kategori satiri — sol yesil serit ile aktif indikator vurgulanir. */
+function TickerRow({ m, isPrimary, onSelect }: {
   m: MacroIndicator;
   isPrimary: boolean;
   onSelect: () => void;
@@ -185,20 +200,23 @@ function TickerPill({ m, isPrimary, onSelect }: {
       type="button"
       onClick={onSelect}
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] transition cursor-pointer',
+        'flex w-full items-center gap-2 rounded-md border-l-2 px-2.5 py-1.5 text-[11px] transition text-left',
         isPrimary
-          ? 'border-accent/50 bg-accent/10'
-          : 'border-border bg-bg-card hover:border-accent/30 hover:bg-bg-soft/60',
+          ? 'border-l-accent bg-accent/10 shadow-sm shadow-accent/10'
+          : 'border-l-transparent bg-bg-soft/40 hover:bg-bg-soft/70 hover:border-l-accent/40',
       )}
       aria-pressed={isPrimary}
       title={`${m.label} grafiğini göster`}
     >
-      {isPrimary && <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />}
-      <span className="font-semibold text-slate-400">{m.label}</span>
-      <span className="font-bold tabular-nums text-slate-100">{formatValue(m)}</span>
+      <span className="min-w-0 flex-1 truncate font-medium text-slate-400 dark:text-slate-300">
+        {m.label}
+      </span>
+      <span className="shrink-0 font-bold tabular-nums text-slate-900 dark:text-slate-100">
+        {formatValue(m)}
+      </span>
       {finite && (
         <span className={cn(
-          'font-semibold tabular-nums',
+          'shrink-0 min-w-[52px] text-right font-semibold tabular-nums',
           isUp && 'text-success',
           isDown && 'text-danger',
         )}>

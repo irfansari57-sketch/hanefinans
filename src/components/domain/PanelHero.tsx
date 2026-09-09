@@ -77,10 +77,11 @@ export function PanelHero({ macro, primarySymbol = 'BIST 100' }: Props) {
     fetchHistoricalYahoo(ysym, PERIOD_RANGE[period], '1d')
       .then((data) => {
         if (!alive) return;
-        // fetchHistoricalYahoo dönüşü `{ closes: number[], ...} | null`.
-        // closes yoksa cluster'i bos birak — mock/skeleton icin.
-        const closes = (data as { closes?: number[] } | null)?.closes ?? [];
-        setSeries(closes.filter((v) => Number.isFinite(v) && v > 0));
+        // HistoricalSeries.closes = {date, close}[] — sadece close degerlerini al.
+        const closes = (data?.closes ?? [])
+          .map((c) => c.close)
+          .filter((v) => Number.isFinite(v) && v > 0);
+        setSeries(closes);
       })
       .catch(() => setSeries([]))
       .finally(() => alive && setSeriesLoading(false));

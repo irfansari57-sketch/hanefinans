@@ -376,7 +376,7 @@ export function PanelPage() {
       >
         <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-            {stocksPeriod === 'day' ? 'Günlük' : stocksPeriod === 'week' ? 'Haftalık' : 'Aylık'} Hareketler — Hisseler
+            Günün Enleri — Hisseler ({stocksPeriod === 'day' ? 'Gün' : stocksPeriod === 'week' ? 'Hafta' : 'Ay'})
             {stocksPin.pinned && (
               <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
                 Pinli
@@ -439,7 +439,7 @@ export function PanelPage() {
         >
           <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
-              {fundsPeriod === 'day' ? 'Günlük' : fundsPeriod === 'week' ? 'Haftalık' : 'Aylık'} En İyi & En Kötü Fonlar
+              Günün Enleri — Fonlar ({fundsPeriod === 'day' ? 'Gün' : fundsPeriod === 'week' ? 'Hafta' : 'Ay'})
               {fundsPin.pinned && (
                 <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
                   Pinli

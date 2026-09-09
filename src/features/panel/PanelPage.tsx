@@ -31,7 +31,8 @@ import {
 } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
-import { fetchHistoricalYahoo, computePeriodReturns } from '@/data/api/yahoo';
+import { fetchHistoricalYahoo, computePeriodReturns, fetchQuotesYahoo } from '@/data/api/yahoo';
+import { CRYPTOS } from '@/data/cryptoSymbols';
 import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches } from '@/data/services';
 import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance } from '@/data/types';
 import { usePersistedState } from '@/lib/usePersistedState';
@@ -147,6 +148,41 @@ export function PanelPage() {
   const [refreshing, setRefreshing] = useState(false);
   // Mini sparkline serileri — macro key -> son ~30 gunluk kapanis dizisi
   const [sparklineMap, setSparklineMap] = useState<Record<string, number[]>>(() => sparklineMemo.data);
+
+  // Kripto Enler icin ozel state — CRYPTOS listesi (13 sembol) Yahoo'dan cekilir.
+  // macro sadece 4 kripto (BTC/ETH/XRP/DOGE) ve EUR/USD gibi forex de karisiyordu.
+  // Bu state MacroIndicator-benzeri sekilde CryptoMovers'a gonderilir.
+  const [cryptoQuotes, setCryptoQuotes] = useState<MacroIndicator[]>([]);
+
+  // Kripto fetch — CRYPTOS listesindeki 13 sembolu Yahoo'dan al, MacroIndicator'a map et.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const yahooSyms = CRYPTOS.map((c) => c.yahoo);
+        const stocks = await fetchQuotesYahoo(yahooSyms);
+        if (cancelled || !stocks) return;
+        const items: MacroIndicator[] = stocks.map((s) => {
+          const meta = CRYPTOS.find((c) => c.yahoo === s.symbol);
+          const symKey = meta ? `${meta.symbol}/USD` : s.symbol;
+          return {
+            key: symKey as MacroIndicator['key'],
+            label: symKey,
+            value: s.price,
+            changePct: s.changePct,
+            unit: 'USD',
+            source: 'live' as const,
+            updatedAt: s.updatedAt,
+            subLabel: meta?.name,
+          };
+        }).filter((m) => Number.isFinite(m.changePct));
+        setCryptoQuotes(items);
+      } catch {
+        /* silent — Enler tab bos gozukur */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Pin'lenebilir bölümler — kullanıcı isterse açık/kapalı durumunu kaydeder.
   // Default kapalı (hem mobile hem desktop) — kullanıcı isterse açar, pin'le sabitler.
@@ -363,7 +399,7 @@ export function PanelPage() {
         topFunds={topFunds}
         fundsPeriod={fundsPeriod}
         setFundsPeriod={setFundsPeriod}
-        macro={macro}
+        cryptoQuotes={cryptoQuotes}
       />
 
       {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti.
@@ -444,20 +480,20 @@ function GununEnleriCard(props: {
   topFunds: FundPerformance[];
   fundsPeriod: 'day' | 'week' | 'month';
   setFundsPeriod: (p: 'day' | 'week' | 'month') => void;
-  macro: MacroIndicator[];
+  cryptoQuotes: MacroIndicator[];
 }) {
   const [tab, setTab] = useState<EnleriTab>('stocks');
   const {
     stocks, stocksPeriod, setStocksPeriod, stocksSource, stocksReturnsLoading,
-    topFunds, fundsPeriod, setFundsPeriod, macro,
+    topFunds, fundsPeriod, setFundsPeriod, cryptoQuotes,
   } = props;
 
-  // Kripto listesi macro'dan turetilir — BTC/ETH/XRP/SOL/BNB + varsa digerleri
-  const cryptoItems = useMemo(() => {
-    return macro
-      .filter((m) => m.key.endsWith('/USD') && !['USD/TRY', 'EUR/TRY'].includes(m.key))
-      .filter((m) => m.changePct != null && Number.isFinite(m.changePct));
-  }, [macro]);
+  // Kripto listesi CRYPTOS'dan (13 sembol) turetilir — forex sembolleri (EUR/USD)
+  // artik dahil olamaz. Yahoo'dan direkt cekiliyor.
+  const cryptoItems = useMemo(
+    () => cryptoQuotes.filter((m) => m.changePct != null && Number.isFinite(m.changePct)),
+    [cryptoQuotes],
+  );
 
   const activePeriod = tab === 'stocks' ? stocksPeriod : tab === 'funds' ? fundsPeriod : 'day';
   const setActivePeriod = tab === 'stocks' ? setStocksPeriod : tab === 'funds' ? setFundsPeriod : () => {};

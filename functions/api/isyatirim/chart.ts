@@ -36,8 +36,12 @@ function formatTimestamp(d: Date): string {
 /** BIST endeks kodu mu? XU100 / XU030 / XUSIN / XUMAL / XBANK / XU100D vs. */
 function isIndex(symbol: string): boolean {
   // 3-5 harf sonrasi endeks (XU100, XBANK, XUSIN, XUMAL, XUTUM, XU030)
-  // VIOP kontratlari (XU030DV2026 gibi) BURADA index sayilmaz - hisse endpoint'ine gider
-  return /^X[A-Z0-9]{3,5}$/i.test(symbol) && !/DV\d{4}$/i.test(symbol);
+  return /^X[A-Z0-9]{3,5}$/i.test(symbol) && !isViop(symbol);
+}
+
+/** VIOP kontrat kodu mu? XU030DV2026, XU100DV2026 gibi vadeli endeks kontratlari */
+function isViop(symbol: string): boolean {
+  return /DV\d{4}$/i.test(symbol);
 }
 
 function rangeToStartDate(range: Range, now: Date): Date {
@@ -53,24 +57,18 @@ function rangeToStartDate(range: Range, now: Date): Date {
   return start;
 }
 
-async function fetchIsYatirim(symbol: string, range: Range): Promise<Array<{ date: number; close: number }> | null> {
-  const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
-  const now = new Date();
-  const start = rangeToStartDate(range, now);
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 0);
-
-  const idx = isIndex(sym);
-  const base = idx
-    ? 'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/IndexHistoricalAll'
-    : 'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/StockHistoricalAll';
-
+async function tryEndpoint(
+  base: string,
+  paramName: string,
+  sym: string,
+  fromStr: string,
+  toStr: string,
+): Promise<Array<{ date: number; close: number }> | null> {
   const url = new URL(base);
-  url.searchParams.set('period', '1440'); // 1440dk = gunluk
-  url.searchParams.set('from', formatTimestamp(start));
-  url.searchParams.set('to', formatTimestamp(end));
-  url.searchParams.set(idx ? 'endeks' : 'hisse', sym);
-
+  url.searchParams.set('period', '1440');
+  url.searchParams.set('from', fromStr);
+  url.searchParams.set('to', toStr);
+  url.searchParams.set(paramName, sym);
   try {
     const resp = await fetch(url.toString(), {
       headers: {
@@ -99,6 +97,33 @@ async function fetchIsYatirim(symbol: string, range: Range): Promise<Array<{ dat
   } catch {
     return null;
   }
+}
+
+async function fetchIsYatirim(symbol: string, range: Range): Promise<Array<{ date: number; close: number }> | null> {
+  const sym = symbol.replace(/\.IS$/i, '').toUpperCase();
+  const now = new Date();
+  const start = rangeToStartDate(range, now);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 0);
+  const fromStr = formatTimestamp(start);
+  const toStr = formatTimestamp(end);
+
+  const BASE_INDEX = 'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/IndexHistoricalAll';
+  const BASE_STOCK = 'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/StockHistoricalAll';
+  const BASE_VIOP  = 'https://www.isyatirim.com.tr/_Layouts/15/IsYatirim.Website/Common/ChartData.aspx/ViopHistoricalAll';
+
+  // VIOP kontrati: onceligi Viop, sonra Stock (bazi tanimlarda viop de hisse gibi indekslenir)
+  if (isViop(sym)) {
+    return (await tryEndpoint(BASE_VIOP, 'viop', sym, fromStr, toStr))
+      ?? (await tryEndpoint(BASE_STOCK, 'hisse', sym, fromStr, toStr))
+      ?? (await tryEndpoint(BASE_INDEX, 'endeks', sym, fromStr, toStr));
+  }
+  // Endeks: birincil IndexHistoricalAll
+  if (isIndex(sym)) {
+    return await tryEndpoint(BASE_INDEX, 'endeks', sym, fromStr, toStr);
+  }
+  // Hisse: birincil StockHistoricalAll
+  return await tryEndpoint(BASE_STOCK, 'hisse', sym, fromStr, toStr);
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request }) => {

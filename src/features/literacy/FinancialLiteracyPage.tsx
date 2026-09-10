@@ -501,9 +501,36 @@ export function FinancialLiteracyPage() {
         subtitle="Borsa, fonlar, teknik analiz, risk yönetimi, kripto ve vergi — bilmen gereken her şey."
       />
 
+      {/* Mobilde konu seçici: tek satır, yatay kaydırmali chip strip (Gunun Enleri tarzi).
+          Kaplama ~48px, hemen altinda hesaplayici acilir. Desktop icinde eskisi gibi
+          sol sidebar. */}
+      <div className="lg:hidden -mx-4 sm:mx-0 mb-3">
+        <div className="scrollbar-none flex gap-1.5 overflow-x-auto px-4 sm:px-0 pb-1.5">
+          {ORDERED_TOPICS.map((t) => {
+            const TIcon = t.icon;
+            const isActive = t.slug === active;
+            return (
+              <button
+                key={t.slug}
+                onClick={() => setActive(t.slug)}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition',
+                  isActive
+                    ? 'border-accent/40 bg-accent/15 text-accent'
+                    : 'border-border bg-bg-card/50 text-slate-300 hover:border-accent/30',
+                )}
+              >
+                <TIcon size={12} />
+                <span className="whitespace-nowrap">{t.title}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-12">
-        {/* Konu listesi */}
-        <aside className="lg:col-span-3">
+        {/* Konu listesi (sadece desktop) */}
+        <aside className="hidden lg:block lg:col-span-3">
           <div className="glass-card p-3">
             <div className="relative mb-3">
               <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -514,9 +541,7 @@ export function FinancialLiteracyPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            {/* Mobilde grid 3 sütun (chip stili — kompakt, kaydırma az).
-                Desktop'ta lg breakpoint'ten sonra tek sütun dikey liste. */}
-            <nav className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:flex lg:flex-col lg:space-y-1 lg:gap-0">
+            <nav className="flex flex-col space-y-1">
               {filtered.map((t) => {
                 const TIcon = t.icon;
                 const isActive = t.slug === active;
@@ -525,13 +550,10 @@ export function FinancialLiteracyPage() {
                     key={t.slug}
                     onClick={() => setActive(t.slug)}
                     className={cn(
-                      // Mobil: küçük chip (ikon üstte, başlık altta)
-                      'flex flex-col items-center gap-1 rounded-lg p-1.5 text-center text-[10px] leading-tight transition',
-                      // Desktop: yatay liste (mevcut düzen)
-                      'lg:flex-row lg:items-center lg:gap-2.5 lg:px-2.5 lg:py-2 lg:text-left lg:text-xs',
+                      'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition',
                       isActive
                         ? 'bg-gradient-to-r from-accent/15 to-accent/5 text-accent ring-1 ring-accent/20'
-                        : 'text-slate-300 hover:bg-bg-card lg:hover:translate-x-0.5',
+                        : 'text-slate-300 hover:bg-bg-card hover:translate-x-0.5',
                     )}
                   >
                     <span
@@ -542,13 +564,13 @@ export function FinancialLiteracyPage() {
                     >
                       <TIcon size={12} />
                     </span>
-                    <span className="font-medium line-clamp-2 lg:truncate">{t.title}</span>
-                    {isActive && <ChevronRight size={12} className="hidden lg:inline ml-auto shrink-0" />}
+                    <span className="font-medium truncate">{t.title}</span>
+                    {isActive && <ChevronRight size={12} className="ml-auto shrink-0" />}
                   </button>
                 );
               })}
               {filtered.length === 0 && (
-                <p className="col-span-full px-2 py-4 text-center text-[11px] text-slate-500">Arama eşleşmiyor.</p>
+                <p className="px-2 py-4 text-center text-[11px] text-slate-500">Arama eşleşmiyor.</p>
               )}
             </nav>
           </div>

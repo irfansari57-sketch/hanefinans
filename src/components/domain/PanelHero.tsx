@@ -25,7 +25,7 @@ interface Props {
 /** Kategorili grup + Varyant A kart tarzi (kullanici talebi 2026-09-09).
  *  Endekse VIOP 30 + XBANK, doviz'e GBP/TRY + EUR/USD, kripto'ya XRP + DOGE eklendi. */
 const TICKER_GROUPS: Array<{ title: string; keys: string[] }> = [
-  { title: 'ENDEKS', keys: ['BIST 100', 'BIST 30', 'VIOP 30', 'XBANK'] },
+  { title: 'ENDEKS', keys: ['BIST 100', 'BIST 30', 'XUTUM', 'XBANK'] },
   { title: 'DÖVİZ',  keys: ['USD/TRY', 'EUR/TRY', 'GBP/TRY', 'EUR/USD'] },
   { title: 'METAL',  keys: ['Gram Altın', 'Ons Altın', 'Gram Gümüş', 'Ons Gümüş'] },
   { title: 'KRİPTO', keys: ['BTC/USD', 'ETH/USD', 'XRP/USD', 'DOGE/USD'] },
@@ -34,7 +34,7 @@ const TICKER_GROUPS: Array<{ title: string; keys: string[] }> = [
 function formatValue(m: MacroIndicator): string {
   const key = m.key;
   // Endeks: BIST/VIOP/XBANK — binlik ayirici
-  if (key === 'BIST 100' || key === 'BIST 30' || key === 'VIOP 30' || key === 'XBANK') {
+  if (key === 'BIST 100' || key === 'BIST 30' || key === 'XUTUM' || key === 'XBANK') {
     return m.value.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
   }
   // Doviz TL karsi: 2 ondalik
@@ -57,6 +57,7 @@ function toYahooSymbol(key: string): string {
   if (key === 'BIST 30') return 'XU030.IS';
   if (key === 'VIOP 30') return 'XU030.IS'; // VIOP 30 endeksi BIST 30 vadelisi — spot XU030 kullanilir
   if (key === 'XBANK') return 'XBANK.IS';
+  if (key === 'XUTUM') return 'XUTUM.IS';
   if (key === 'USD/TRY') return 'USDTRY=X';
   if (key === 'EUR/TRY') return 'EURTRY=X';
   if (key === 'GBP/TRY') return 'GBPTRY=X';
@@ -92,6 +93,7 @@ function toIsYatirimSymbol(key: string): string | null {
   // (yillik guncelleme gerekebilir - Ocak 2027'de XU030DV2027 olmali).
   if (key === 'VIOP 30') return 'XU030DV2026';
   if (key === 'XBANK') return 'XBANK';
+  if (key === 'XUTUM') return 'XUTUM';
   return null; // forex + kripto + emtia Yahoo'da kalir
 }
 
@@ -124,31 +126,42 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   const [period, setPeriod] = useState<Period>('YTD');
   const [series, setSeries] = useState<Array<{ date: number; close: number }>>([]);
   const [seriesLoading, setSeriesLoading] = useState(false);
-  // VIOP 30 canli fetch — macro'da sadece mock (16580) var, gercek deger icin
-  // Is Yatirim XU030DV2026 kontratindan son 2 close alalim.
-  const [viopQuote, setViopQuote] = useState<{ value: number; changePct: number } | null>(null);
+  // Macro'da sadece mock deger olan bazi endeksler icin (XUTUM vs) Is Yatirim'dan
+  // canli fetch — /api/isyatirim/chart son 2 close'undan value + changePct hesaplarız.
+  const [extraQuotes, setExtraQuotes] = useState<Record<string, { value: number; changePct: number }>>({});
 
   useEffect(() => {
     let alive = true;
+    // {macroKey: isYatirimSymbol}
+    const targets: Array<[string, string]> = [
+      ['XUTUM', 'XUTUM'], // BIST Tum endeksi — Yahoo bazen bos donuyor
+    ];
     (async () => {
-      const bars = await fetchIsYatirimChart('XU030DV2026', '1mo');
-      if (!alive || !bars || bars.length < 2) return;
-      const last = bars[bars.length - 1].close;
-      const prev = bars[bars.length - 2].close;
-      const changePct = prev > 0 ? ((last - prev) / prev) * 100 : 0;
-      setViopQuote({ value: last, changePct });
+      const results = await Promise.all(targets.map(async ([_, sym]) => {
+        const bars = await fetchIsYatirimChart(sym, '1mo');
+        if (!bars || bars.length < 2) return null;
+        const last = bars[bars.length - 1].close;
+        const prev = bars[bars.length - 2].close;
+        return { value: last, changePct: prev > 0 ? ((last - prev) / prev) * 100 : 0 };
+      }));
+      if (!alive) return;
+      const map: Record<string, { value: number; changePct: number }> = {};
+      targets.forEach(([key], i) => { const r = results[i]; if (r) map[key] = r; });
+      setExtraQuotes(map);
     })();
     return () => { alive = false; };
   }, []);
 
-  // Macro'yu VIOP quote ile enrich et (VIOP 30 icin canli deger)
+  // Macro'yu extra quote'lar ile enrich et (XUTUM vs. icin canli deger)
   const enrichedMacro = useMemo(() => {
-    if (!viopQuote) return macro;
-    return macro.map((m) => m.key === 'VIOP 30'
-      ? { ...m, value: viopQuote.value, changePct: viopQuote.changePct, source: 'live' as const }
-      : m,
-    );
-  }, [macro, viopQuote]);
+    if (Object.keys(extraQuotes).length === 0) return macro;
+    return macro.map((m) => {
+      const q = extraQuotes[m.key];
+      return q
+        ? { ...m, value: q.value, changePct: q.changePct, source: 'live' as const }
+        : m;
+    });
+  }, [macro, extraQuotes]);
 
   const primary = useMemo(() => enrichedMacro.find((m) => m.key === primarySymbol), [enrichedMacro, primarySymbol]);
 

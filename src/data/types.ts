@@ -31,6 +31,7 @@ export type MacroKey =
   | 'BIST 30'
   | 'VIOP 30'
   | 'XBANK'
+  | 'XUTUM'
   | 'Politika Faizi'
   | 'Brent'
   | 'Gram Altın'

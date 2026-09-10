@@ -132,22 +132,30 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
 
   useEffect(() => {
     let alive = true;
-    // {macroKey: isYatirimSymbol}
-    const targets: Array<[string, string]> = [
-      ['XUTUM', 'XUTUM'], // BIST Tum endeksi — Yahoo bazen bos donuyor
-    ];
+    // /api/yahoo/snapshot Is Yatirim override'i uyguluyor (BIST_INDEX_SYMBOLS)
+    // XUTUM.IS, XU100.IS vs. icin dogrudan gercek deger doner.
     (async () => {
-      const results = await Promise.all(targets.map(async ([_, sym]) => {
-        const bars = await fetchIsYatirimChart(sym, '1mo');
-        if (!bars || bars.length < 2) return null;
-        const last = bars[bars.length - 1].close;
-        const prev = bars[bars.length - 2].close;
-        return { value: last, changePct: prev > 0 ? ((last - prev) / prev) * 100 : 0 };
-      }));
-      if (!alive) return;
-      const map: Record<string, { value: number; changePct: number }> = {};
-      targets.forEach(([key], i) => { const r = results[i]; if (r) map[key] = r; });
-      setExtraQuotes(map);
+      try {
+        const r = await fetch('/api/yahoo/snapshot');
+        if (!r.ok) return;
+        const j = await r.json() as {
+          ok?: boolean;
+          quotes?: Record<string, { price?: number; changePct?: number }>;
+        };
+        if (!alive || !j.ok || !j.quotes) return;
+        const map: Record<string, { value: number; changePct: number }> = {};
+        // Snapshot key -> macro key eslesmesi
+        const mapping: Record<string, string> = {
+          'XUTUM.IS': 'XUTUM',
+        };
+        for (const [snapKey, macroKey] of Object.entries(mapping)) {
+          const q = j.quotes[snapKey];
+          if (q && Number.isFinite(q.price) && Number.isFinite(q.changePct) && (q.price as number) > 0) {
+            map[macroKey] = { value: q.price as number, changePct: q.changePct as number };
+          }
+        }
+        if (Object.keys(map).length > 0) setExtraQuotes(map);
+      } catch { /* snapshot fetch failed - macro mock degeri kalir, panel calisir */ }
     })();
     return () => { alive = false; };
   }, []);

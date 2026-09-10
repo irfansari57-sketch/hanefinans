@@ -80,6 +80,42 @@ const PERIOD_RANGE: Record<Period, YahooRange> = {
   YTD: 'ytd',
 };
 
+/**
+ * Is Yatirim chart fallback — kurumsal aglarda Yahoo bloklu ise
+ * BIST endeks/hisse icin /api/isyatirim/chart endpoint'inden data cek.
+ * Forex/kripto/emtia icin null doner (Is Yatirim kapsamı disi).
+ */
+function toIsYatirimSymbol(key: string): string | null {
+  if (key === 'BIST 100') return 'XU100';
+  if (key === 'BIST 30' || key === 'VIOP 30') return 'XU030';
+  if (key === 'XBANK') return 'XBANK';
+  return null; // forex + kripto + emtia Yahoo'da kalir
+}
+
+type IsRange = '1mo' | '3mo' | '6mo' | '1y' | 'ytd';
+const PERIOD_TO_IS: Record<Period, IsRange> = {
+  '1H': '1mo', // Is Yatirim'da daily minimum period, 5d icin 1mo yeter
+  '1A': '1mo',
+  '3A': '3mo',
+  YTD: 'ytd',
+};
+
+async function fetchIsYatirimChart(
+  isSym: string, isRange: IsRange,
+): Promise<Array<{ date: number; close: number }> | null> {
+  try {
+    const resp = await fetch(`/api/isyatirim/chart?symbol=${isSym}&range=${isRange}`);
+    if (!resp.ok) return null;
+    const json = await resp.json() as {
+      ok?: boolean; bars?: Array<{ date: number; close: number }>;
+    };
+    if (!json.ok || !Array.isArray(json.bars) || json.bars.length === 0) return null;
+    return json.bars;
+  } catch {
+    return null;
+  }
+}
+
 export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   const [primarySymbol, setPrimarySymbol] = useState<string>(defaultSymbol);
   const [period, setPeriod] = useState<Period>('YTD');
@@ -92,16 +128,33 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
     let alive = true;
     setSeriesLoading(true);
     const ysym = toYahooSymbol(primarySymbol);
-    fetchHistoricalYahoo(ysym, PERIOD_RANGE[period], '1d')
-      .then((data) => {
-        if (!alive) return;
-        // HistoricalSeries.closes = {date, close}[] — dogrudan filter+set.
+    (async () => {
+      try {
+        // 1) Yahoo Finance — birincil kaynak
+        const data = await fetchHistoricalYahoo(ysym, PERIOD_RANGE[period], '1d');
         const pairs = (data?.closes ?? [])
           .filter((c) => Number.isFinite(c.close) && c.close > 0);
-        setSeries(pairs);
-      })
-      .catch(() => setSeries([]))
-      .finally(() => alive && setSeriesLoading(false));
+        if (pairs.length >= 2) {
+          if (alive) setSeries(pairs);
+          return;
+        }
+        // 2) Fallback: Is Yatirim (kurumsal aglarda Yahoo bloklu)
+        //    Sadece BIST endeks/hisse sembolleri icin — forex/kripto atlanir.
+        const isSym = toIsYatirimSymbol(primarySymbol);
+        if (isSym) {
+          const isBars = await fetchIsYatirimChart(isSym, PERIOD_TO_IS[period]);
+          if (isBars && isBars.length >= 2 && alive) {
+            setSeries(isBars);
+            return;
+          }
+        }
+        if (alive) setSeries(pairs); // Yahoo'dan gelen (bos veya <2) — no data state
+      } catch {
+        if (alive) setSeries([]);
+      } finally {
+        if (alive) setSeriesLoading(false);
+      }
+    })();
     return () => { alive = false; };
   }, [primarySymbol, period]);
 

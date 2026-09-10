@@ -35,7 +35,9 @@ function formatTimestamp(d: Date): string {
 
 /** BIST endeks kodu mu? XU100 / XU030 / XUSIN / XUMAL / XBANK / XU100D vs. */
 function isIndex(symbol: string): boolean {
-  return /^X[A-Z0-9]{3,5}$/i.test(symbol);
+  // 3-5 harf sonrasi endeks (XU100, XBANK, XUSIN, XUMAL, XUTUM, XU030)
+  // VIOP kontratlari (XU030DV2026 gibi) BURADA index sayilmaz - hisse endpoint'ine gider
+  return /^X[A-Z0-9]{3,5}$/i.test(symbol) && !/DV\d{4}$/i.test(symbol);
 }
 
 function rangeToStartDate(range: Range, now: Date): Date {

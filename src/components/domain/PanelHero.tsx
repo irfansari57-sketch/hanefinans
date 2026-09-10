@@ -87,7 +87,10 @@ const PERIOD_RANGE: Record<Period, YahooRange> = {
  */
 function toIsYatirimSymbol(key: string): string | null {
   if (key === 'BIST 100') return 'XU100';
-  if (key === 'BIST 30' || key === 'VIOP 30') return 'XU030';
+  if (key === 'BIST 30') return 'XU030';
+  // VIOP 30 = BIST 30 vadeli kontrat. Aktif kontrat sembolu XU030DV{YIL}
+  // (yillik guncelleme gerekebilir - Ocak 2027'de XU030DV2027 olmali).
+  if (key === 'VIOP 30') return 'XU030DV2026';
   if (key === 'XBANK') return 'XBANK';
   return null; // forex + kripto + emtia Yahoo'da kalir
 }
@@ -121,25 +124,55 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   const [period, setPeriod] = useState<Period>('YTD');
   const [series, setSeries] = useState<Array<{ date: number; close: number }>>([]);
   const [seriesLoading, setSeriesLoading] = useState(false);
+  // VIOP 30 canli fetch — macro'da sadece mock (16580) var, gercek deger icin
+  // Is Yatirim XU030DV2026 kontratindan son 2 close alalim.
+  const [viopQuote, setViopQuote] = useState<{ value: number; changePct: number } | null>(null);
 
-  const primary = useMemo(() => macro.find((m) => m.key === primarySymbol), [macro, primarySymbol]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const bars = await fetchIsYatirimChart('XU030DV2026', '1mo');
+      if (!alive || !bars || bars.length < 2) return;
+      const last = bars[bars.length - 1].close;
+      const prev = bars[bars.length - 2].close;
+      const changePct = prev > 0 ? ((last - prev) / prev) * 100 : 0;
+      setViopQuote({ value: last, changePct });
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // Macro'yu VIOP quote ile enrich et (VIOP 30 icin canli deger)
+  const enrichedMacro = useMemo(() => {
+    if (!viopQuote) return macro;
+    return macro.map((m) => m.key === 'VIOP 30'
+      ? { ...m, value: viopQuote.value, changePct: viopQuote.changePct, source: 'live' as const }
+      : m,
+    );
+  }, [macro, viopQuote]);
+
+  const primary = useMemo(() => enrichedMacro.find((m) => m.key === primarySymbol), [enrichedMacro, primarySymbol]);
 
   useEffect(() => {
     let alive = true;
     setSeriesLoading(true);
     const ysym = toYahooSymbol(primarySymbol);
+    // VIOP 30 vadelidir - Yahoo'da yok, dogrudan Is Yatirim'a git.
+    // Diger BIST endeksleri onceki gibi: Yahoo birincil, IS fallback.
+    const skipYahoo = primarySymbol === 'VIOP 30';
     (async () => {
       try {
-        // 1) Yahoo Finance — birincil kaynak
-        const data = await fetchHistoricalYahoo(ysym, PERIOD_RANGE[period], '1d');
-        const pairs = (data?.closes ?? [])
-          .filter((c) => Number.isFinite(c.close) && c.close > 0);
-        if (pairs.length >= 2) {
-          if (alive) setSeries(pairs);
-          return;
+        // 1) Yahoo Finance — birincil kaynak (VIOP haric)
+        if (!skipYahoo) {
+          const data = await fetchHistoricalYahoo(ysym, PERIOD_RANGE[period], '1d');
+          const pairs = (data?.closes ?? [])
+            .filter((c) => Number.isFinite(c.close) && c.close > 0);
+          if (pairs.length >= 2) {
+            if (alive) setSeries(pairs);
+            return;
+          }
         }
-        // 2) Fallback: Is Yatirim (kurumsal aglarda Yahoo bloklu)
-        //    Sadece BIST endeks/hisse sembolleri icin — forex/kripto atlanir.
+        // 2) Fallback: Is Yatirim (kurumsal aglarda Yahoo bloklu + VIOP)
+        //    Sadece BIST endeks/hisse/VIOP sembolleri icin — forex/kripto atlanir.
         const isSym = toIsYatirimSymbol(primarySymbol);
         if (isSym) {
           const isBars = await fetchIsYatirimChart(isSym, PERIOD_TO_IS[period]);
@@ -148,7 +181,7 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
             return;
           }
         }
-        if (alive) setSeries(pairs); // Yahoo'dan gelen (bos veya <2) — no data state
+        if (alive) setSeries([]);
       } catch {
         if (alive) setSeries([]);
       } finally {
@@ -170,7 +203,7 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
             </div>
             <div className="flex flex-col gap-1">
               {group.keys.map((key) => {
-                const m = macro.find((mm) => mm.key === key);
+                const m = enrichedMacro.find((mm) => mm.key === key);
                 if (!m) return null;
                 return (
                   <TickerRow

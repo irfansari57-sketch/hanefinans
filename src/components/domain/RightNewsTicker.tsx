@@ -25,11 +25,14 @@ const sourceTone: Record<string, string> = {
 export function RightNewsTicker() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // Default collapsed=true (kompakt UX 11 Eylul 2026): sag panel ana icerikten
+  // yer aliyordu. Kullanici acmak isterse tikliyor, tercihi localStorage'da kalir.
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(COLLAPSE_KEY) === '1';
+      const v = localStorage.getItem(COLLAPSE_KEY);
+      return v == null ? true : v === '1';
     } catch {
-      return false;
+      return true;
     }
   });
 
@@ -85,21 +88,27 @@ export function RightNewsTicker() {
       'relative z-10 hidden lg:flex lg:w-72 lg:flex-col xl:w-80 border-l border-border bg-bg-soft/80 backdrop-blur-md',
       collapsed && 'lg:w-72 xl:w-80',
     )}>
-      <div className="border-b border-border bg-bg-card/40 p-2">
-        <AdVideo />
-      </div>
-
-      {/* Hane Mod Studio branding + Copyright + Resmi YouTube — Gundem & Haberler'in ustunde.
-          Tum kullanicilara gorunur (kayitli + kayitsiz). Sol sidebar'da da ayrica var. */}
-      <div className="border-b border-border bg-bg-soft/40 px-2 py-3">
-        <BrandingBlock />
-        <div className="mt-3">
-          <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
-            Resmi YouTube
+      {/* AdVideo + Sponsor bloklari sadece panel acikken. Kompakt UX icin
+          collapsed durumda tamamen gizlenir - kullanici sadece news header'i gorur. */}
+      {!collapsed && (
+        <>
+          <div className="border-b border-border bg-bg-card/40 p-2">
+            <AdVideo />
           </div>
-          <HaneModAdBanner variant="compact" />
-        </div>
-      </div>
+
+          {/* Hane Mod Studio branding + Copyright + Resmi YouTube — Gundem & Haberler'in ustunde.
+              Tum kullanicilara gorunur (kayitli + kayitsiz). Sol sidebar'da da ayrica var. */}
+          <div className="border-b border-border bg-bg-soft/40 px-2 py-3">
+            <BrandingBlock />
+            <div className="mt-3">
+              <div className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                Resmi YouTube
+              </div>
+              <HaneModAdBanner variant="compact" />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Header — collapse + direction toggle */}
       <div className="flex w-full items-center border-b border-border transition hover:bg-bg-card/50">

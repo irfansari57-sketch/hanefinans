@@ -1,31 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <defs>
-    <!-- Deep dark navy → emerald hint background -->
+    <!-- Terminal dark bg with subtle emerald undertone -->
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0a0f1a"/>
-      <stop offset="60%" stop-color="#0d1424"/>
-      <stop offset="100%" stop-color="#0f1f1a"/>
+      <stop offset="0%" stop-color="#0a0f14"/>
+      <stop offset="55%" stop-color="#0d1420"/>
+      <stop offset="100%" stop-color="#0f1a1c"/>
     </linearGradient>
-    <radialGradient id="glow" cx="88%" cy="18%" r="60%">
-      <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
-      <stop offset="60%" stop-color="#10b981" stop-opacity="0.05"/>
+    <radialGradient id="glow-tl" cx="0%" cy="0%" r="60%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.18"/>
       <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="glow2" cx="10%" cy="90%" r="50%">
-      <stop offset="0%" stop-color="#059669" stop-opacity="0.20"/>
-      <stop offset="100%" stop-color="#059669" stop-opacity="0"/>
+    <radialGradient id="glow-br" cx="100%" cy="100%" r="55%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
     </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#10b981" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
 
-    <!-- Emerald 3D diamond gradients -->
+    <!-- 3D emerald diamond gradients -->
     <linearGradient id="diamondFace" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#6ee7b7"/>
       <stop offset="45%" stop-color="#22c55e"/>
       <stop offset="100%" stop-color="#065f46"/>
-    </linearGradient>
-    <linearGradient id="diamondShine" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
     <linearGradient id="chromeRing" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#e5e7eb"/>
@@ -33,111 +30,140 @@
       <stop offset="100%" stop-color="#4b5563"/>
     </linearGradient>
 
-    <!-- Chart line gradient (emerald upward trend) -->
-    <linearGradient id="chartLine" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#10b981" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="#34d399" stop-opacity="1"/>
-    </linearGradient>
+    <!-- Chart -->
     <linearGradient id="chartFill" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
       <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
     </linearGradient>
-
-    <!-- Grid pattern -->
-    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#10b981" stroke-opacity="0.06" stroke-width="1"/>
-    </pattern>
   </defs>
 
-  <!-- Background -->
+  <!-- Background layers -->
   <rect width="1200" height="630" fill="url(#bg)"/>
   <rect width="1200" height="630" fill="url(#grid)"/>
-  <rect width="1200" height="630" fill="url(#glow)"/>
-  <rect width="1200" height="630" fill="url(#glow2)"/>
+  <rect width="1200" height="630" fill="url(#glow-tl)"/>
+  <rect width="1200" height="630" fill="url(#glow-br)"/>
 
-  <!-- Faint chart line background right side -->
-  <g opacity="0.45">
-    <path d="M 620 480 L 700 460 L 770 470 L 830 420 L 890 440 L 950 380 L 1020 400 L 1080 340 L 1140 360"
-          stroke="url(#chartLine)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 620 480 L 700 460 L 770 470 L 830 420 L 890 440 L 950 380 L 1020 400 L 1080 340 L 1140 360 L 1140 560 L 620 560 Z"
-          fill="url(#chartFill)"/>
-  </g>
+  <!-- LEFT SIDE: Brand + tickers -->
 
-  <!-- Logo: 3D emerald diamond with magnifier ring -->
-  <g transform="translate(112, 92)">
-    <!-- Magnifier chrome ring -->
-    <circle cx="80" cy="80" r="80" fill="none" stroke="url(#chromeRing)" stroke-width="6"/>
-    <circle cx="80" cy="80" r="76" fill="none" stroke="#000" stroke-opacity="0.35" stroke-width="1"/>
-    <!-- Magnifier handle -->
-    <rect x="140" y="140" width="60" height="14" rx="7"
-          fill="url(#chromeRing)" transform="rotate(45, 140, 140)"/>
-    <!-- Inner black bezel -->
-    <circle cx="80" cy="80" r="70" fill="#050a10"/>
-    <!-- 3D emerald diamond -->
-    <g transform="translate(80,80)">
-      <polygon points="0,-42 32,-4 0,42 -32,-4" fill="url(#diamondFace)"/>
-      <polygon points="0,-42 32,-4 0,-8" fill="#ffffff" opacity="0.28"/>
-      <polygon points="0,-42 -32,-4 0,-8" fill="#000000" opacity="0.15"/>
-      <!-- Sparkle -->
-      <circle cx="-10" cy="-18" r="3" fill="#ffffff" opacity="0.9"/>
+  <!-- Small logo + tagline strip top -->
+  <g transform="translate(60, 60)">
+    <!-- Compact logo: magnifier + diamond -->
+    <g transform="translate(0, 0)">
+      <circle cx="24" cy="24" r="24" fill="none" stroke="url(#chromeRing)" stroke-width="2.5"/>
+      <circle cx="24" cy="24" r="21" fill="#050a10"/>
+      <g transform="translate(24,24)">
+        <polygon points="0,-13 10,-1 0,13 -10,-1" fill="url(#diamondFace)"/>
+      </g>
+      <rect x="42" y="42" width="20" height="5" rx="2.5" fill="url(#chromeRing)" transform="rotate(45,42,42)"/>
     </g>
+    <text x="76" y="30" fill="#10b981" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="14" font-weight="600" letter-spacing="3">INVESTLIQ · CANLI TERMİNAL</text>
   </g>
 
-  <!-- Brand name: InvestliQ -->
-  <text x="310" y="180" fill="#f1f5f9" font-family="'Inter', 'Segoe UI', system-ui, sans-serif"
-        font-size="96" font-weight="800" letter-spacing="-2">
-    <tspan fill="#f1f5f9">Invest</tspan><tspan fill="#22c55e">liQ</tspan>
+  <!-- Wordmark -->
+  <text x="60" y="220" fill="#f1f5f9" font-family="'Inter',system-ui,sans-serif" font-size="108" font-weight="800" letter-spacing="-3">
+    <tspan>Invest</tspan><tspan fill="#10b981">liQ</tspan>
   </text>
 
-  <!-- Tagline -->
-  <text x="310" y="228" fill="#94a3b8" font-family="'Inter', 'Segoe UI', system-ui, sans-serif"
-        font-size="28" font-weight="500" letter-spacing="0">
+  <!-- Slogan -->
+  <text x="60" y="270" fill="#94a3b8" font-family="'Inter',system-ui,sans-serif" font-size="26" font-weight="400">
     Yatırımcılar İçin Akıllı Veri Platformu
   </text>
 
-  <!-- Main headline -->
-  <text x="112" y="360" fill="#f8fafc" font-family="'Inter', 'Segoe UI', system-ui, sans-serif"
-        font-size="52" font-weight="700" letter-spacing="-1">
+  <!-- Tagline -->
+  <text x="60" y="335" fill="#f8fafc" font-family="'Inter',system-ui,sans-serif" font-size="34" font-weight="700" letter-spacing="-0.5">
     Veri · Analiz · Fırsat
   </text>
 
-  <!-- Subline -->
-  <text x="112" y="410" fill="#cbd5e1" font-family="'Inter', 'Segoe UI', system-ui, sans-serif"
-        font-size="24" font-weight="400">
-    BIST hisseleri, TEFAS fonları, kripto, döviz ve makro
-  </text>
-  <text x="112" y="442" fill="#cbd5e1" font-family="'Inter', 'Segoe UI', system-ui, sans-serif"
-        font-size="24" font-weight="400">
-    göstergeler için canlı fiyat ve günlük yorum.
-  </text>
-
-  <!-- Category pills -->
-  <g font-family="'Inter', 'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="600">
-    <g transform="translate(112, 502)">
-      <rect x="0" y="0" width="120" height="44" rx="22" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-opacity="0.4"/>
-      <text x="60" y="30" fill="#34d399" text-anchor="middle">BIST 100</text>
+  <!-- Ticker satırları (monospace, canlı hissi) -->
+  <g font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="19">
+    <g transform="translate(60,395)">
+      <text fill="#64748b">BIST 100</text>
+      <text x="140" fill="#f1f5f9" font-weight="500">14,394</text>
+      <text x="240" fill="#10b981" font-weight="500">▲ 0.47%</text>
     </g>
-    <g transform="translate(244, 502)">
-      <rect x="0" y="0" width="110" height="44" rx="22" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-opacity="0.4"/>
-      <text x="55" y="30" fill="#34d399" text-anchor="middle">TEFAS</text>
+    <g transform="translate(60,425)">
+      <text fill="#64748b">USD/TRY</text>
+      <text x="140" fill="#f1f5f9" font-weight="500">48.59</text>
+      <text x="240" fill="#ef4444" font-weight="500">▼ 0.23%</text>
     </g>
-    <g transform="translate(366, 502)">
-      <rect x="0" y="0" width="120" height="44" rx="22" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-opacity="0.4"/>
-      <text x="60" y="30" fill="#34d399" text-anchor="middle">Kripto</text>
+    <g transform="translate(60,455)">
+      <text fill="#64748b">GRAM ALTIN</text>
+      <text x="140" fill="#f1f5f9" font-weight="500">6,850</text>
+      <text x="240" fill="#10b981" font-weight="500">▲ 0.65%</text>
     </g>
-    <g transform="translate(498, 502)">
-      <rect x="0" y="0" width="110" height="44" rx="22" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-opacity="0.4"/>
-      <text x="55" y="30" fill="#34d399" text-anchor="middle">Döviz</text>
-    </g>
-    <g transform="translate(620, 502)">
-      <rect x="0" y="0" width="100" height="44" rx="22" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-opacity="0.4"/>
-      <text x="50" y="30" fill="#fbbf24" text-anchor="middle">AI</text>
+    <g transform="translate(60,485)">
+      <text fill="#64748b">BTC/USD</text>
+      <text x="140" fill="#f1f5f9" font-weight="500">77.3K</text>
+      <text x="240" fill="#10b981" font-weight="500">▲ 0.97%</text>
     </g>
   </g>
 
-  <!-- URL bottom right -->
-  <text x="1088" y="590" fill="#64748b" font-family="'Inter', 'Segoe UI', system-ui, sans-serif"
-        font-size="22" font-weight="500" text-anchor="end">
+  <!-- RIGHT SIDE: Simplified dashboard preview -->
+
+  <!-- Stat card grid (2x2, no browser frame) -->
+  <g transform="translate(650, 90)" font-family="'Inter',system-ui,sans-serif">
+    <!-- Card 1 -->
+    <g>
+      <rect x="0" y="0" width="235" height="88" rx="12" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <text x="18" y="26" fill="#64748b" font-size="11" font-weight="600" letter-spacing="1.5">ENDEKS · BIST 100</text>
+      <text x="18" y="58" fill="#f1f5f9" font-size="26" font-weight="700">14,394</text>
+      <text x="18" y="78" fill="#10b981" font-size="12" font-weight="600">+0.47%</text>
+    </g>
+    <!-- Card 2 -->
+    <g transform="translate(255, 0)">
+      <rect x="0" y="0" width="235" height="88" rx="12" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <text x="18" y="26" fill="#64748b" font-size="11" font-weight="600" letter-spacing="1.5">DÖVİZ · USD/TRY</text>
+      <text x="18" y="58" fill="#f1f5f9" font-size="26" font-weight="700">48.59</text>
+      <text x="18" y="78" fill="#ef4444" font-size="12" font-weight="600">-0.23%</text>
+    </g>
+    <!-- Card 3 -->
+    <g transform="translate(0, 105)">
+      <rect x="0" y="0" width="235" height="88" rx="12" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <text x="18" y="26" fill="#64748b" font-size="11" font-weight="600" letter-spacing="1.5">METAL · GRAM ALTIN</text>
+      <text x="18" y="58" fill="#f1f5f9" font-size="26" font-weight="700">6,850</text>
+      <text x="18" y="78" fill="#10b981" font-size="12" font-weight="600">+0.65%</text>
+    </g>
+    <!-- Card 4 -->
+    <g transform="translate(255, 105)">
+      <rect x="0" y="0" width="235" height="88" rx="12" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <text x="18" y="26" fill="#64748b" font-size="11" font-weight="600" letter-spacing="1.5">KRİPTO · BTC/USD</text>
+      <text x="18" y="58" fill="#f1f5f9" font-size="26" font-weight="700">77.3K</text>
+      <text x="18" y="78" fill="#10b981" font-size="12" font-weight="600">+0.97%</text>
+    </g>
+
+    <!-- Chart panel below -->
+    <g transform="translate(0, 230)">
+      <rect x="0" y="0" width="490" height="220" rx="14" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <text x="18" y="28" fill="#94a3b8" font-size="12" font-weight="600" letter-spacing="1.5">BIST 100 · YTD</text>
+      <text x="18" y="58" fill="#f1f5f9" font-size="24" font-weight="700">14,394 <tspan fill="#10b981" font-size="14">+21.3%</tspan></text>
+      <!-- Y-axis labels -->
+      <text x="472" y="90" fill="#64748b" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">15.1K</text>
+      <text x="472" y="140" fill="#64748b" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">12.7K</text>
+      <text x="472" y="185" fill="#64748b" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">10.2K</text>
+      <!-- Gridlines -->
+      <line x1="18" y1="86" x2="452" y2="86" stroke="#1e293b" stroke-dasharray="2 4"/>
+      <line x1="18" y1="136" x2="452" y2="136" stroke="#1e293b" stroke-dasharray="2 4"/>
+      <line x1="18" y1="181" x2="452" y2="181" stroke="#1e293b" stroke-dasharray="2 4"/>
+      <!-- Chart line -->
+      <path d="M 20,175 L 60,160 L 100,168 L 140,140 L 180,150 L 220,120 L 260,132 L 300,105 L 340,118 L 380,90 L 420,100 L 452,82"
+            stroke="#10b981" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 20,175 L 60,160 L 100,168 L 140,140 L 180,150 L 220,120 L 260,132 L 300,105 L 340,118 L 380,90 L 420,100 L 452,82 L 452,200 L 20,200 Z"
+            fill="url(#chartFill)"/>
+      <!-- X-axis labels -->
+      <text x="20" y="215" fill="#64748b" font-size="10" font-family="ui-monospace,monospace">Oca</text>
+      <text x="130" y="215" fill="#64748b" font-size="10" font-family="ui-monospace,monospace">Mar</text>
+      <text x="240" y="215" fill="#64748b" font-size="10" font-family="ui-monospace,monospace">Haz</text>
+      <text x="350" y="215" fill="#64748b" font-size="10" font-family="ui-monospace,monospace">Ağu</text>
+      <text x="440" y="215" fill="#64748b" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">Eyl</text>
+    </g>
+  </g>
+
+  <!-- Footer strip -->
+  <line x1="60" y1="555" x2="1140" y2="555" stroke="#10b981" stroke-opacity="0.20" stroke-width="1"/>
+  <text x="60" y="590" fill="#64748b" font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="14" letter-spacing="2.5">
+    BIST · TEFAS · KRİPTO · DÖVİZ · EMTİA · MAKRO · AI
+  </text>
+  <text x="1140" y="590" fill="#10b981" font-family="'Inter',system-ui,sans-serif" font-size="18" font-weight="600" text-anchor="end">
     investliq.com
   </text>
 </svg>

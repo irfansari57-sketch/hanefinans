@@ -76,15 +76,15 @@ export function PinnableAccordion({
       open={open}
       onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
     >
-      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
+      <summary className="flex cursor-pointer items-center gap-2 px-3 py-1.5 sm:gap-2.5 sm:px-3.5 sm:py-1.5 select-none [&::-webkit-details-marker]:hidden hover:bg-bg-card/30">
         {icon && (
-          <span className={cn('grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-lg', iconColorClass)}>
+          <span className={cn('grid h-6 w-6 shrink-0 place-items-center rounded-md', iconColorClass)}>
             {icon}
           </span>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-100">{title}</h3>
             {pinned && (
               <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
                 Pinli

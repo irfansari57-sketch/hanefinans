@@ -1,0 +1,50 @@
+name: BIST Snapshot Warmer
+
+# BIST 100+ evrenini Is Yatirim'dan cekip D1 bist_snapshot'a UPSERT.
+# Piyasa saatlerinde her 5dk (UTC — TR 07:00-15:00 arasi ~= BIST 10:00-18:00).
+# Hafta sonu piyasalar kapali — cron yok. Ilk cron'da tum semboller populasyona
+# alinir, sonrasinda sadece degisiklikler yansir (fiyat + changePct).
+
+on:
+  schedule:
+    # Pzt-Cum 07:00-15:59 UTC = 10:00-18:59 TR, her 5dk
+    - cron: '*/5 7-15 * * 1-5'
+  workflow_dispatch:
+    # Manuel tetikleme (debug/ilk populasyon icin)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bist-warm
+  cancel-in-progress: false
+
+jobs:
+  warm-bist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call bist-warm endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET secret not set in repo settings — abort"
+            exit 1
+          fi
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -H "Accept: application/json" \
+            --max-time 180 \
+            "https://investliq.com/api/cron/bist-warm")
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP $code"
+          echo "$body" | head -100
+          if [ "$code" -eq 200 ]; then
+            success=$(echo "$body" | grep -o '"success":[0-9]*' | head -1 | cut -d: -f2)
+            fail=$(echo "$body" | grep -o '"fail":[0-9]*' | head -1 | cut -d: -f2)
+            echo "::notice::BIST warm: $success success, $fail fail"
+          else
+            echo "::warning::BIST warm returned HTTP $code — next cron will retry"
+          fi

@@ -353,6 +353,38 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   }
 
   // -------------------------------------------------------------------------
+  // BIST HISSE PRE-WARM CACHE (Paket F3): Is Yatirim cron her 5dk BIST 100+
+  // evrenini bist_snapshot'a UPSERT ediyor. Bu authoritative kaynak - Yahoo
+  // yerine buraya bak. Cron 15dk'dan eski ise stale (piyasa saatlerinde
+  // kron mutlaka 5dk sonra tekrar yazar; hafta sonu stale beklenir).
+  // -------------------------------------------------------------------------
+  try {
+    const bistRows = await env.DB
+      .prepare(
+        `SELECT symbol, price, prev, change_pct, as_of, updated_at
+         FROM bist_snapshot`,
+      )
+      .all<{ symbol: string; price: number; prev: number; change_pct: number; as_of: string; updated_at: number }>();
+    for (const row of bistRows.results ?? []) {
+      const key = `${row.symbol}.IS`;
+      const yahooEntry = quotes[key];
+      quotes[key] = {
+        price: row.price,
+        prev: row.prev,
+        changePct: row.change_pct,
+        updatedAt: row.updated_at,
+        name: yahooEntry?.name,
+        source: 'isyatirim',
+        asOf: row.as_of,
+      };
+      if (!yahooEntry) parsedCount++;
+    }
+  } catch (e) {
+    // bist_snapshot tablo yok / migration yapilmamis olabilir. Yahoo fallback devam.
+    console.warn('[snapshot] bist_snapshot read failed:', (e as Error).message);
+  }
+
+  // -------------------------------------------------------------------------
   // BIST ENDEKS OVERRIDE (Paket A): Yahoo previousClose bug fix
   //
   // XU100/XU030/... icin Yahoo'nun verdigi degisim genelde yanlis. Is Yatirim

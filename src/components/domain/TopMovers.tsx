@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 import type { Stock } from '@/data/types';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { BIST_100_SYMBOLS } from '@/data/bistIndices';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -24,8 +25,10 @@ export function TopMovers({ stocks, limit = 10, period = 'day' }: TopMoversProps
   // Is Yatirim override devrede, ama outlier hala gelirse burada kes).
   // ±%10.05 hafif yuvarlama toleransı. Haftalık/aylık bileşik → ±%40.
   const OUTLIER_CAP = period === 'day' ? 10.05 : 40;
-  // Yahoo veri dönmeyen hisseler (price=0 veya changePct=0 yani mock fallback) elensin —
-  // sadece gerçekten hareket eden hisseleri göster + outlier filter
+  // Tüm BIST evreni (BIST 100 disi kucuk kap dahil) — FVT gibi tam kapsam.
+  // Not: Yahoo'nun BIST 100 disi bazi hisselerde stale/yanlis previousClose
+  // problemi var. Kalici cozum: Paket F3 (Is Yatirim cron pre-warm) — sonraki seans.
+  void BIST_100_SYMBOLS; // reserved for future filtering options
   const sorted = stocks
     .filter(
       (s) =>

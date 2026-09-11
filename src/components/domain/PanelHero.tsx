@@ -179,6 +179,18 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
     // VIOP 30 vadelidir - Yahoo'da yok, dogrudan Is Yatirim'a git.
     // Diger BIST endeksleri onceki gibi: Yahoo birincil, IS fallback.
     const skipYahoo = primarySymbol === 'VIOP 30';
+    // Gram Altin/Gumus Yahoo/Is Yatirim'dan Ons (GC=F/SI=F) ceker.
+    // Cizilen chart Ons cinsinden gozukur (~4500 USD, ~100 USD gibi degerler).
+    // Ticker Gram TL'e cevirir icin scale factor: currentGramTL / currentOnsUSD
+    // Historical Ons close'lari bu ratio ile carpip Gram TL yaklasik degeri gosterelim.
+    // Not: USD/TRY zamanla degistigi icin bu tam degil, ama trend/sekil dogru.
+    const primaryMacro = enrichedMacro.find((mm) => mm.key === primarySymbol);
+    const onsMacroKey = primarySymbol === 'Gram Altın' ? 'Ons Altın'
+      : primarySymbol === 'Gram Gümüş' ? 'Ons Gümüş' : null;
+    const onsMacro = onsMacroKey ? enrichedMacro.find((mm) => mm.key === onsMacroKey) : null;
+    const scaleFactor = onsMacro && primaryMacro && onsMacro.value > 0
+      ? primaryMacro.value / onsMacro.value
+      : null;
     (async () => {
       try {
         // 1) Yahoo Finance — birincil kaynak (VIOP haric)
@@ -187,17 +199,22 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
           const pairs = (data?.closes ?? [])
             .filter((c) => Number.isFinite(c.close) && c.close > 0);
           if (pairs.length >= 2) {
-            if (alive) setSeries(pairs);
+            const scaled = scaleFactor
+              ? pairs.map((p) => ({ date: p.date, close: p.close * scaleFactor }))
+              : pairs;
+            if (alive) setSeries(scaled);
             return;
           }
         }
         // 2) Fallback: Is Yatirim (kurumsal aglarda Yahoo bloklu + VIOP)
-        //    Sadece BIST endeks/hisse/VIOP sembolleri icin — forex/kripto atlanir.
         const isSym = toIsYatirimSymbol(primarySymbol);
         if (isSym) {
           const isBars = await fetchIsYatirimChart(isSym, PERIOD_TO_IS[period]);
           if (isBars && isBars.length >= 2 && alive) {
-            setSeries(isBars);
+            const scaled = scaleFactor
+              ? isBars.map((b) => ({ date: b.date, close: b.close * scaleFactor }))
+              : isBars;
+            setSeries(scaled);
             return;
           }
         }
@@ -209,7 +226,7 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
       }
     })();
     return () => { alive = false; };
-  }, [primarySymbol, period]);
+  }, [primarySymbol, period, enrichedMacro]);
 
   return (
     <div className="rounded-xl border border-accent/25 bg-bg-card/40 p-4">

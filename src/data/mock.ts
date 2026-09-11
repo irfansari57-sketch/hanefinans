@@ -180,7 +180,7 @@ export const MOCK_MACRO_FALLBACK: MacroIndicator[] = [
   { key: 'BIST 100',        label: 'BIST 100',       value: 15133,    changePct: 0.47,  source: 'mock', updatedAt: minutesAgo(1) },
   { key: 'BIST 30',         label: 'BIST 30',                   value: 16420, changePct: 0.52, source: 'mock', updatedAt: minutesAgo(1) },
   { key: 'VIOP 30',         label: 'VIOP 30',                   value: 16580, changePct: 0.61, source: 'mock', updatedAt: minutesAgo(1) },
-  { key: 'XBANK',           label: 'XBANK',                     value: 25340, changePct: 0.82, source: 'mock', updatedAt: minutesAgo(1) },
+  { key: 'XBANK',           label: 'XBANK',                     value: 16890, changePct: 0.35, source: 'mock', updatedAt: minutesAgo(1) },
   { key: 'XUTUM',           label: 'BIST Tüm',                  value: 18400, changePct: -0.55, source: 'mock', updatedAt: minutesAgo(1) },
   // Döviz
   { key: 'USD/TRY',         label: 'USD/TRY',        value: 45.40,    changePct: 0.20,  source: 'mock', updatedAt: minutesAgo(1) },

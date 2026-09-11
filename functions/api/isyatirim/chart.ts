@@ -77,7 +77,7 @@ async function tryEndpoint(
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': 'https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx',
       },
-      cf: { cacheTtl: 300, cacheEverything: true } as RequestInitCfProperties,
+      cf: { cacheTtl: 900, cacheEverything: true } as RequestInitCfProperties,
     });
     if (!resp.ok) return null;
     const text = await resp.text();
@@ -148,14 +148,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
     });
   }
 
+  // TTL sirasi:
+  //   - 1mo/3mo/YTD gunluk kapanislar - degismeyen historical - 15 dk cache
+  //   - 6mo/1y daha uzun - degisken az - 30 dk
+  //   Browser cache 5dk (kullanici scroll ederken tazelenmez) + CDN 15-30dk.
+  const maxAge = range === '6mo' || range === '1y' ? 1800 : 900;
   return new Response(
     JSON.stringify({ ok: true, source: 'isyatirim', symbol: symbol.toUpperCase(), range, bars }),
     {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        // 5 dakika edge cache — piyasa saatlerinde bile fresh yeter (BIST 1dk kalinlik)
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+        // s-maxage CDN icin, max-age browser icin (kucuk), SWR ile stale kalabilir 1sa
+        'Cache-Control': `public, max-age=300, s-maxage=${maxAge}, stale-while-revalidate=3600`,
       },
     },
   );

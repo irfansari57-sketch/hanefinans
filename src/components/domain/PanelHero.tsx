@@ -213,9 +213,52 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
 
   return (
     <div className="rounded-xl border border-accent/25 bg-bg-card/40 p-4">
-      {/* Ust ticker — Varyant B: 4 kategorili grup (Endeks/Doviz/Metal/Kripto).
-          Kullanici talebi. Aktif satirda sol yesil seritli border. */}
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Ust ticker — Desktop: 4 kategorili grup (Endeks/Doviz/Metal/Kripto).
+          Mobil: yatay kaydirmali tek satir chip strip (kompakt UX 11 Eyl 2026).
+          Aktif chip'te accent border + subtle bg. */}
+
+      {/* MOBIL: yatay chip strip */}
+      <div className="mb-3 md:hidden -mx-1">
+        <div className="scrollbar-none flex gap-1.5 overflow-x-auto px-1 pb-1">
+          {TICKER_GROUPS.flatMap((g) => g.keys).map((key) => {
+            const m = enrichedMacro.find((mm) => mm.key === key);
+            if (!m) return null;
+            const isActive = m.key === primarySymbol;
+            const isPositive = (m.changePct ?? 0) >= 0;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setPrimarySymbol(m.key)}
+                className={cn(
+                  'shrink-0 rounded-lg border px-2.5 py-1.5 text-left transition',
+                  isActive
+                    ? 'border-accent/50 bg-accent/15'
+                    : 'border-border bg-bg-soft/40 hover:border-accent/30',
+                )}
+              >
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 leading-none">
+                  {m.key}
+                </div>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-xs font-bold tabular-nums text-slate-100">{formatValue(m)}</span>
+                  {m.changePct != null && Number.isFinite(m.changePct) && (
+                    <span className={cn(
+                      'text-[10px] tabular-nums',
+                      isPositive ? 'text-success' : 'text-danger',
+                    )}>
+                      {isPositive ? '+' : ''}{m.changePct.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* DESKTOP: 4 kategorili grup */}
+      <div className="mb-4 hidden md:grid grid-cols-2 gap-3 md:grid-cols-4">
         {TICKER_GROUPS.map((group) => (
           <div key={group.title} className="min-w-0">
             <div className="mb-1.5 pl-1 text-[9px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">

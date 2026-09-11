@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Landmark } from 'lucide-react';
+import { TrendingUp, TrendingDown, Landmark, Star } from 'lucide-react';
 import type { FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { fundsRepo } from '@/data/repositories';
 
 interface Props {
   funds: FundPerformance[];
@@ -55,6 +57,22 @@ function FundMoverList({
     success: 'text-success bg-success/10',
     danger: 'text-danger bg-danger/10',
   };
+  // Watchlist (Dexie funds tablosu) — reactive: kullanici star tikladi diyelim
+  // hemen dolu/bosluk arasi geciyor
+  const watched = useLiveQuery(() => fundsRepo.active(), []) ?? [];
+  const watchedSet = new Set(watched.map((f) => f.code));
+
+  const toggleWatch = async (e: React.MouseEvent, f: FundPerformance) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (watchedSet.has(f.code)) {
+      const entry = watched.find((w) => w.code === f.code);
+      if (entry?.id != null) await fundsRepo.remove(entry.id);
+    } else {
+      await fundsRepo.add({ code: f.code, name: f.name, category: f.category });
+    }
+  };
+
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
@@ -93,9 +111,25 @@ function FundMoverList({
                   )}
                 </div>
               </div>
-              <div className={cn('text-sm font-semibold tabular-nums', stoneTone)}>
-                {sign}
-                {v.toFixed(2)}%
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => toggleWatch(e, f)}
+                  title={watchedSet.has(f.code) ? 'Takipten cikar' : 'Takip listeme ekle'}
+                  className={cn(
+                    'grid h-6 w-6 place-items-center rounded transition',
+                    watchedSet.has(f.code)
+                      ? 'text-warning hover:text-warning/70'
+                      : 'text-slate-500 hover:text-warning',
+                  )}
+                  aria-label={watchedSet.has(f.code) ? 'Takipten cikar' : 'Takip listeme ekle'}
+                >
+                  <Star size={13} fill={watchedSet.has(f.code) ? 'currentColor' : 'none'} />
+                </button>
+                <div className={cn('text-sm font-semibold tabular-nums', stoneTone)}>
+                  {sign}
+                  {v.toFixed(2)}%
+                </div>
               </div>
             </Link>
           );

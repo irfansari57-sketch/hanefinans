@@ -316,6 +316,56 @@ export function PortfolioPage() {
         }
       />
 
+      {/* Bugunku K/Z hero bar — sayfa acilir acilmaz "aha" momenti (11 Eyl 2026).
+          Hisse pozisyonu varsa + gecerli veriler geldiyse gorunur; degilse gizlenir. */}
+      {tab === 'stocks' && positions.length > 0 && totals.validCount > 0 && (
+        <section
+          className={cn(
+            'mb-4 rounded-xl border p-4 transition',
+            totals.dailyChange >= 0
+              ? 'border-success/30 bg-gradient-to-r from-success/15 to-success/5'
+              : 'border-danger/30 bg-gradient-to-r from-danger/15 to-danger/5',
+          )}
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Bugünkü Kâr / Zarar
+              </div>
+              <div className="mt-1 flex items-baseline gap-3">
+                <span className={cn(
+                  'text-2xl font-bold tabular-nums sm:text-3xl',
+                  totals.dailyChange >= 0 ? 'text-success' : 'text-danger',
+                )}>
+                  {totals.dailyChange >= 0 ? '+' : ''}{formatMoney(totals.dailyChange)}
+                </span>
+                <span className={cn(
+                  'text-sm font-semibold tabular-nums',
+                  totals.dailyChange >= 0 ? 'text-success' : 'text-danger',
+                )}>
+                  {totals.dailyChange >= 0 ? '↗ +' : '↘ '}{totals.dailyPnlPct.toFixed(2)}%
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Toplam Değer
+              </div>
+              <div className="mt-1 text-lg font-bold tabular-nums text-slate-100 sm:text-xl">
+                {formatMoney(totals.totalValue)}
+              </div>
+              <div className={cn(
+                'text-[11px] tabular-nums',
+                totals.totalPnl >= 0 ? 'text-success' : 'text-danger',
+              )}>
+                Toplam K/Z: {totals.totalPnl >= 0 ? '+' : ''}{formatMoney(totals.totalPnl)}
+                {' '}({totals.totalPnl >= 0 ? '+' : ''}{totals.totalPnlPct.toFixed(2)}%)
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Tab switcher — Hisseler / Fonlar */}
       <div className="mb-4 flex items-center gap-2 border-b border-border">
         <button

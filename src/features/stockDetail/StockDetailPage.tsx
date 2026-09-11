@@ -395,15 +395,71 @@ export function StockDetailPage() {
         </Suspense>
       </div>
 
-      {/* Multi-Timeframe Trend Analizi */}
-      {mtResult && (
-        <div className="card mb-4 p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Activity size={14} className="text-accent" /> Çoklu Zaman Dilimi Yön Analizi
-            <span className="ml-auto text-[10px] text-slate-500">1H / 4H / 1D</span>
-          </h2>
-          <MultiTimeframeCard r={mtResult} currency={isUs ? '$' : '₺'} hideHeader />
+      {/* Kompakt ozet — chart altinda tek tek accordion yerine, hepsi bir satirda gozet
+          Kartlar: RSI+MACD birlesik + EMA yon | Destek+Direnc birlesik | Bugunku yorum */}
+      {technicalAnalysis && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          {/* Sol: RSI + MACD + EMA yon */}
+          <div className="rounded-xl border border-border bg-bg-soft/50 p-4">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+              RSI · MACD · EMA
+            </div>
+            <div className="flex items-baseline gap-3">
+              <span className={cn(
+                'text-2xl font-bold tabular-nums',
+                (technicalAnalysis.rsi ?? 0) >= 70 ? 'text-warning' :
+                (technicalAnalysis.rsi ?? 0) <= 30 ? 'text-success' : 'text-slate-100',
+              )}>
+                RSI {technicalAnalysis.rsi != null ? technicalAnalysis.rsi.toFixed(1) : '—'}
+              </span>
+              <span className="text-xs text-slate-400">· {technicalAnalysis.rsiNote}</span>
+            </div>
+            <div className="mt-2 text-xs text-slate-300">
+              MACD:{' '}
+              {technicalAnalysis.macdBullish ? <span className="text-success font-semibold">Bullish ✓</span>
+                : technicalAnalysis.macdBearish ? <span className="text-danger font-semibold">Bearish ✗</span>
+                : <span className="text-slate-400">Nötr</span>}
+              {' · '}EMA:{' '}
+              <span className={cn(
+                'font-semibold',
+                (technicalAnalysis.emas[0]?.abovePct ?? 0) >= 0 ? 'text-success' : 'text-danger',
+              )}>
+                {(technicalAnalysis.emas[0]?.abovePct ?? 0) >= 0 ? 'Yukarı ↑' : 'Aşağı ↓'}
+              </span>
+            </div>
+          </div>
+          {/* Sag: Destek/Direnc birlesik */}
+          <div className="rounded-xl border border-border bg-bg-soft/50 p-4">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+              Destek / Direnç
+            </div>
+            <div className="flex items-baseline gap-2 text-lg font-bold tabular-nums">
+              <span className="text-success">
+                {isUs ? `$${technicalAnalysis.support.toFixed(2)}` : `${technicalAnalysis.support.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}₺`}
+              </span>
+              <span className="text-slate-500 text-xs">—</span>
+              <span className="text-danger">
+                {isUs ? `$${technicalAnalysis.resistance.toFixed(2)}` : `${technicalAnalysis.resistance.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}₺`}
+              </span>
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+              %{(((technicalAnalysis.cur - technicalAnalysis.support) / technicalAnalysis.cur) * 100).toFixed(1)} alt · %{(((technicalAnalysis.resistance - technicalAnalysis.cur) / technicalAnalysis.cur) * 100).toFixed(1)} üst uzakta
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* Multi-Timeframe Trend Analizi — accordion, default kapali */}
+      {mtResult && (
+        <PinnableAccordion
+          id={`mtf-${stock.symbol}`}
+          title="Çoklu Zaman Dilimi Yön Analizi"
+          description="1H · 4H · 1D trend özeti"
+          icon={<Activity size={14} />}
+          iconColorClass="bg-accent/15 text-accent"
+        >
+          <MultiTimeframeCard r={mtResult} currency={isUs ? '$' : '₺'} hideHeader />
+        </PinnableAccordion>
       )}
 
       {/* AI Derin Analiz — accordion (default kapali, ag istek/AI maliyet) */}
@@ -428,13 +484,16 @@ export function StockDetailPage() {
         </PinnableAccordion>
       )}
 
-      {/* Teknik Analiz — Fintables tarzı */}
+      {/* Teknik Analiz — accordion, kompakt UX: kullanici isterse acar */}
       {technicalAnalysis && (
-        <div className="card mb-4 p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Activity size={14} className="text-accent" /> Teknik Analiz
-            <span className="ml-auto text-[10px] text-slate-500">{historical?.bars.length} günlük veri</span>
-          </h2>
+        <PinnableAccordion
+          id={`ta-${stock.symbol}`}
+          title="Teknik Analiz Detayı"
+          description={`RSI · MACD · Bollinger · ADX · EMA (${historical?.bars.length ?? 0} günlük veri)`}
+          icon={<Activity size={14} />}
+          iconColorClass="bg-accent/15 text-accent"
+        >
+          <div className="p-1">
 
           {/* RSI / MACD / Bollinger / ADX */}
           <div className="grid gap-2 grid-cols-2 lg:grid-cols-4 mb-4">
@@ -517,20 +576,24 @@ export function StockDetailPage() {
               );
             })}
           </div>
-        </div>
+          </div>
+        </PinnableAccordion>
       )}
 
       {/* Pozisyon Hesaplayıcı kaldırıldı — kullanıcı talebi */}
 
-      {/* AI Hisse Analizi — PRO/ELITE özellik */}
-      <div className="card mb-4 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Sparkles size={14} className="text-warning" /> AI Hisse Analizi
-            <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
-              PRO
-            </span>
-          </h2>
+      {/* AI Hisse Analizi — accordion */}
+      <PinnableAccordion
+        id={`ai-${stock.symbol}`}
+        title="AI Hisse Analizi"
+        description="Claude Haiku ile teknik + haber özet · PRO"
+        icon={<Sparkles size={14} />}
+        iconColorClass="bg-warning/15 text-warning"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
+            PRO / ELITE
+          </span>
           {!aiAnalysis && (
             <button
               className="btn-primary"
@@ -576,7 +639,7 @@ export function StockDetailPage() {
             ⚠️ {aiError}
           </div>
         )}
-      </div>
+      </PinnableAccordion>
 
       {/* Stats grid */}
       {historical && (

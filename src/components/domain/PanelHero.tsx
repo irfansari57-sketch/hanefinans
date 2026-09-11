@@ -147,6 +147,12 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
         // Snapshot key -> macro key eslesmesi
         const mapping: Record<string, string> = {
           'XUTUM.IS': 'XUTUM',
+          'XBANK.IS': 'XBANK',
+          // BIST 100/30 zaten macro loader'da snapshot'tan geliyor — burada
+          // eklemek gereksiz ama defensive: eger loadMacroAll snapshot fail'lersede
+          // buradan güncellenir.
+          'XU100.IS': 'BIST 100',
+          'XU030.IS': 'BIST 30',
         };
         for (const [snapKey, macroKey] of Object.entries(mapping)) {
           const q = j.quotes[snapKey];

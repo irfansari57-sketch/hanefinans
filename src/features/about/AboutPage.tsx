@@ -8,7 +8,7 @@
 
 import { Link } from 'react-router-dom';
 import {
-  Sparkles, TrendingUp, PiggyBank, Shield, ChartBar, Users,
+  Sparkles, TrendingUp, Landmark, Shield, ChartBar, Users,
   Mail, ExternalLink, CheckCircle2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -65,7 +65,7 @@ export function AboutPage() {
             desc="600+ BIST hissesi için canlı fiyat, teknik analiz, MA 5/8/13, sektörel karşılaştırma ve haftalık/aylık/yıllık dönem getirileri."
           />
           <Feature
-            icon={<PiggyBank size={16} />}
+            icon={<Landmark size={16} />}
             title="TEFAS Fon Verileri"
             desc="2000+ yatırım fonu için günlük NAV, dönem performansları, TEFAS açık/kapalı durum tespiti ve yan yana fon karşılaştırma."
           />

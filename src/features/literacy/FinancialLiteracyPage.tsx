@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
-  BookOpen, TrendingUp, PiggyBank, Activity, ShieldAlert, Bitcoin, Calculator, GraduationCap,
-  Search, ExternalLink, ChevronRight, Briefcase, Wallet, Landmark,
+  BookOpen, TrendingUp, Landmark, Activity, ShieldAlert, Bitcoin, Calculator, GraduationCap,
+  Search, ExternalLink, ChevronRight, Briefcase, Wallet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BESCalculator } from '@/components/domain/BESCalculator';
@@ -72,7 +72,7 @@ const TOPICS: Topic[] = [
   {
     slug: 'yatirim-fonlari',
     title: 'Yatırım Fonları (TEFAS)',
-    icon: PiggyBank,
+    icon: Landmark,
     tone: 'success',
     description:
       'Fonlar nedir, neden tercih edilir, getiri nasıl ölçülür, ücretler nelerdir? TEFAS sisteminde işlem nasıl yapılır?',

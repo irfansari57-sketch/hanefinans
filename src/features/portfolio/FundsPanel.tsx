@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Trash2, RefreshCw, ChevronRight, Search, PiggyBank, AlertCircle, Pencil, History, FileText } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, ChevronRight, Search, Landmark, AlertCircle, Pencil, History, FileText } from 'lucide-react';
 import { downloadPortfolioPdf } from '@/lib/portfolioPdfExport';
 import { useAuth } from '@/store/auth';
 import { TxnHistoryModal } from './TxnHistoryModal';
@@ -320,7 +320,7 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
       {/* Liste */}
       {positions.length === 0 ? (
         <EmptyState
-          icon={<PiggyBank size={28} />}
+          icon={<Landmark size={28} />}
           title="Fon portfoyun bos"
           description="TEFAS fonlarini ekle, getiri takibini baslat."
           action={

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
+import { TrendingUp, TrendingDown, Landmark } from 'lucide-react';
 import type { FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 
@@ -80,7 +80,7 @@ function FundMoverList({
               <div className="flex items-center gap-3 min-w-0">
                 <span className="w-4 text-[11px] text-slate-500">{i + 1}</span>
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-warning/15 text-warning">
-                  <PiggyBank size={11} />
+                  <Landmark size={11} />
                 </span>
                 <div className="min-w-0">
                   <div className="font-mono text-xs text-accent">{f.code}</div>

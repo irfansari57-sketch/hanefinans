@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { PiggyBank, RefreshCw, Zap, Briefcase, PieChart, Bell, BellOff, TrendingUp, Star, ExternalLink } from 'lucide-react';
+import { Landmark, RefreshCw, Zap, Briefcase, PieChart, Bell, BellOff, TrendingUp, Star, ExternalLink } from 'lucide-react';
 import { BrokerRecommendations } from '@/components/domain/BrokerRecommendations';
 import { BrokerPortfolios } from '@/components/domain/BrokerPortfolios';
 import { RecPoolStats } from '@/components/domain/RecPoolStats';
@@ -387,7 +387,7 @@ export function RecommendationsPage() {
 
       {/* Sira: Fon Havuzu -> Hisse Havuzu -> Algoritmik (MA Uclu Ust) -> Araci Kurum -> Model Portfoyler.
           Hepsi default kapali — kullanici hangisini isterse acar. */}
-      <PinnableAccordion id="recs-fundpool" title="Fon Havuzu" icon={<PiggyBank size={16} />} iconColorClass="bg-accent/15 text-accent">
+      <PinnableAccordion id="recs-fundpool" title="Fon Havuzu" icon={<Landmark size={16} />} iconColorClass="bg-accent/15 text-accent">
         <FundPoolTab allFunds={allFunds} />
       </PinnableAccordion>
       <PinnableAccordion id="recs-strongbuy" title="Guclu Al Hisse Havuzu" icon={<TrendingUp size={16} />} iconColorClass="bg-success/15 text-success">

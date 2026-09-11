@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  ArrowLeft, PiggyBank, ExternalLink, BarChart3, StickyNote, Trash2, AlertCircle, Radio, TrendingUp,
+  ArrowLeft, Landmark, ExternalLink, BarChart3, StickyNote, Trash2, AlertCircle, Radio, TrendingUp,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -98,7 +98,7 @@ export function FundDetailPage() {
           description={`"${fundCode}" listende yok. Fonlar sayfasından ekleyebilirsin.`}
           action={
             <Link to="/funds" className="btn-primary">
-              <PiggyBank size={16} /> Fonlara git
+              <Landmark size={16} /> Fonlara git
             </Link>
           }
         />
@@ -131,7 +131,7 @@ export function FundDetailPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-warning/15 text-warning">
-                <PiggyBank size={20} />
+                <Landmark size={20} />
               </span>
               <h1 className="font-mono text-3xl font-bold tracking-tight text-slate-100">{fundCode}</h1>
               {fund.category && (

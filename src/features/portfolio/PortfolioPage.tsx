@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, PiggyBank, Pencil, History,
+  Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, Landmark, Pencil, History,
 } from 'lucide-react';
 import { FundsPanel } from './FundsPanel';
 import { TxnHistoryModal } from './TxnHistoryModal';
@@ -343,7 +343,7 @@ export function PortfolioPage() {
               : 'border-transparent text-slate-400 hover:text-slate-200',
           )}
         >
-          <PiggyBank size={13} /> Fonlar
+          <Landmark size={13} /> Fonlar
           <span className="rounded-full bg-bg-card px-1.5 py-0.5 text-[10px] tabular-nums">
             {fundCount}
           </span>

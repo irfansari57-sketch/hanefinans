@@ -12,7 +12,7 @@ import {
   User,
   TrendingUp,
   History,
-  PiggyBank,
+  Landmark,
   Sun,
   Flame,
   GraduationCap,
@@ -85,8 +85,8 @@ const navGroups: NavGroup[] = [
     title: 'Piyasalar',
     items: [
       // Yeni sıra: Fonlar → Hisseler → Emtialar → Döviz Kurları → Takip Listem → Portföyüm → Ekonomik Takvim → Gelişmeler
-      { to: '/funds', label: 'Fonlar', icon: PiggyBank },
-      { to: '/karsilastir', label: 'Fon Karşılaştır', icon: PiggyBank },
+      { to: '/funds', label: 'Fonlar', icon: Landmark },
+      { to: '/karsilastir', label: 'Fon Karşılaştır', icon: Landmark },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/doviz', label: 'Döviz Kurları', icon: Coins },

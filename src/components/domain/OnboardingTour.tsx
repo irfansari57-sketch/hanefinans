@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, LayoutDashboard, Star, Bell, PiggyBank, ChevronRight, X } from 'lucide-react';
+import { Sparkles, LayoutDashboard, Star, Bell, Landmark, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'fa.onboarding.completed.v1';
@@ -41,7 +41,7 @@ const STEPS: Step[] = [
     action: { label: 'Portföyüm', to: '/portfoy' },
   },
   {
-    icon: PiggyBank,
+    icon: Landmark,
     title: 'BES Birikim Hesaplayıcı',
     description:
       'Eğitim sayfasında 25 yıllık BES projeksiyonu — devlet katkısı + bileşik getiri. Aylık katkı, başlangıç birikimi, yaş senaryolarını dene.',

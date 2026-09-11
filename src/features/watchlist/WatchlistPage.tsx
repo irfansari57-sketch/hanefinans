@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Plus, Star, X, Search, RefreshCw, PiggyBank, TrendingUp, ExternalLink } from 'lucide-react';
+import { Plus, Star, X, Search, RefreshCw, Landmark, TrendingUp, ExternalLink } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -258,7 +258,7 @@ export function WatchlistPage() {
               'data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:text-slate-200',
             )}
           >
-            <PiggyBank size={13} /> Fonlar ({watchedFunds.length})
+            <Landmark size={13} /> Fonlar ({watchedFunds.length})
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -608,7 +608,7 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
   if (watchedFundsWithData.length === 0) {
     return (
       <EmptyState
-        icon={<PiggyBank size={28} />}
+        icon={<Landmark size={28} />}
         title="Takipte fon yok"
         description="Fonlar sayfasından yıldıza basarak takip ekleyebilirsin."
       />

@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, Search, X, Plus, PiggyBank, TrendingUp, TrendingDown } from 'lucide-react';
+import { BarChart3, Search, X, Plus, Landmark, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SeoHead } from '@/components/seo/SeoHead';
@@ -144,7 +144,7 @@ export function FundComparePage() {
       {/* Seçim chip'leri */}
       <section className="glass-card mb-4 p-4">
         <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-          <PiggyBank size={12} /> Karşılaştırılacak fonlar ({selected.length}/{MAX_SELECT})
+          <Landmark size={12} /> Karşılaştırılacak fonlar ({selected.length}/{MAX_SELECT})
         </div>
 
         {selected.length > 0 && (

@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Briefcase, TrendingUp, PiggyBank, ChevronRight } from 'lucide-react';
+import { Briefcase, TrendingUp, Landmark, ChevronRight } from 'lucide-react';
 import { db } from '@/data/db';
 import { loadStocks } from '@/data/services';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
@@ -166,7 +166,7 @@ export function PortfolioPanelSummary({ isLoggedIn }: Props) {
       />
       <SummaryCard
         title="Fonlar"
-        icon={<PiggyBank size={15} />}
+        icon={<Landmark size={15} />}
         summary={fundSummary}
         empty="Fon pozisyonu yok"
         href="/portfoy?tab=funds"

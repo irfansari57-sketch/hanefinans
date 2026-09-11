@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { PiggyBank, Search, Star, AlertCircle, ArrowUpDown, Check, X } from 'lucide-react';
+import { Landmark, Search, Star, AlertCircle, ArrowUpDown, Check, X } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
@@ -427,7 +427,7 @@ export function FundsPage() {
         <TableSkeleton rows={12} cols={8} />
       ) : sorted.length === 0 ? (
         <EmptyState
-          icon={<PiggyBank size={28} />}
+          icon={<Landmark size={28} />}
           title={!feedConfigured ? 'Veri bekleniyor' : tab === 'watched' ? 'Takipte fon yok' : 'Eşleşme yok'}
           description={!feedConfigured ? 'TEFAS feed kurulumu tamamlanmalı.' : tab === 'watched' ? 'Üstteki "Tüm Fonlar"a geç, yıldıza basarak fon ekle.' : 'Arama veya kategori filtresini gevşet.'}
         />

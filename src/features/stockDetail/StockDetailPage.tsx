@@ -11,6 +11,7 @@ import { useAuth, isElite } from '@/store/auth';
 
 // lightweight-charts heavy (~200KB) — lazy load
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
+import { PanelStyleChart } from '@/components/domain/PanelStyleChart';
 import { PeriodReturns } from '@/components/domain/PeriodReturns';
 import { Sparkline } from '@/components/domain/Sparkline';
 import { NewsCard } from '@/components/domain/NewsCard';
@@ -385,14 +386,22 @@ export function StockDetailPage() {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart — Panel Hero stilinde emerald/red area chart. Kullanici talebi
+          11 Eyl 2026: ana sayfayla tutarli gorsel, TradingView agir chart yerine
+          hafif SVG. Detay isteyen "TradingView'de aç" ile external gider. */}
       <div className="card mb-4 overflow-hidden p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-300">
-          Canlı Grafik <span className="text-slate-500">(Yahoo Finance + lightweight-charts)</span>
-        </h2>
-        <Suspense fallback={<Skeleton variant="rect" className="w-full" height={520} />}>
-          <LiveChart symbol={sym} height={520} bistSuffix={!isUs} />
-        </Suspense>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-300">Canlı Grafik</h2>
+          <a
+            href={`https://tr.tradingview.com/chart/?symbol=${isUs ? sym : `BIST:${sym}`}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] text-slate-500 hover:text-accent"
+          >
+            TradingView'de aç ↗
+          </a>
+        </div>
+        <PanelStyleChart symbol={sym} isBist={!isUs} defaultPeriod="1Y" />
       </div>
 
       {/* Kompakt ozet — chart altinda tek tek accordion yerine, hepsi bir satirda gozet

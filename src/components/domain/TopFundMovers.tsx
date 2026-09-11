@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Landmark, Star } from 'lucide-react';
+import { TrendingUp, TrendingDown, Star } from 'lucide-react';
 import type { FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -84,53 +84,55 @@ function FundMoverList({
         </h3>
         <span className="text-[10px] text-slate-500">{subtitle}</span>
       </div>
-      <div className="divide-y divide-border">
+      {/* FVT tarzi kompakt fon satiri — rank badge + kod + isim (kucuk) + % + star */}
+      <div className="divide-y divide-border/50">
         {funds.map((f, i) => {
           const v = f[period] as number;
           const sign = v >= 0 ? '+' : '';
           const stoneTone = v >= 0 ? 'text-success' : 'text-danger';
+          const isWatched = watchedSet.has(f.code);
+          const rankColor = i === 0 ? 'bg-warning/20 text-warning' : i === 1 ? 'bg-slate-500/20 text-slate-300' : i === 2 ? 'bg-orange-500/15 text-orange-400' : 'bg-bg-card text-slate-500';
           return (
             <Link
               to={`/fund/${f.code}`}
               key={f.code}
-              className="flex items-center justify-between px-4 py-2.5 hover:bg-bg-soft"
+              className="flex items-center gap-2.5 px-3 py-2 hover:bg-bg-soft/70"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="w-4 text-[11px] text-slate-500">{i + 1}</span>
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-warning/15 text-warning">
-                  <Landmark size={11} />
-                </span>
-                <div className="min-w-0">
-                  <div className="font-mono text-xs text-accent">{f.code}</div>
-                  {/* Fon adı varsa (kod ile farklıysa) göster; yoksa kategori; ikisi de yoksa boş */}
-                  {f.name && f.name !== f.code && (
-                    <div className="truncate text-[10px] text-slate-500 max-w-[200px]">{f.name}</div>
-                  )}
-                  {(!f.name || f.name === f.code) && f.category && f.category !== 'Serbest' && (
-                    <div className="truncate text-[10px] text-slate-500 max-w-[200px]">{f.category}</div>
-                  )}
-                </div>
+              {/* Rank badge */}
+              <span className={cn(
+                'grid h-5 w-5 shrink-0 place-items-center rounded text-[10px] font-bold tabular-nums',
+                rankColor,
+              )}>
+                {i + 1}
+              </span>
+              {/* Kod + isim (2 satir, kompakt) */}
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-[13px] font-semibold text-slate-100">{f.code}</div>
+                {f.name && f.name !== f.code ? (
+                  <div className="truncate text-[10px] text-slate-500">{f.name}</div>
+                ) : f.category && f.category !== 'Serbest' ? (
+                  <div className="truncate text-[10px] text-slate-500">{f.category}</div>
+                ) : null}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => toggleWatch(e, f)}
-                  title={watchedSet.has(f.code) ? 'Takipten cikar' : 'Takip listeme ekle'}
-                  className={cn(
-                    'grid h-6 w-6 place-items-center rounded transition',
-                    watchedSet.has(f.code)
-                      ? 'text-warning hover:text-warning/70'
-                      : 'text-slate-500 hover:text-warning',
-                  )}
-                  aria-label={watchedSet.has(f.code) ? 'Takipten cikar' : 'Takip listeme ekle'}
-                >
-                  <Star size={13} fill={watchedSet.has(f.code) ? 'currentColor' : 'none'} />
-                </button>
-                <div className={cn('text-sm font-semibold tabular-nums', stoneTone)}>
-                  {sign}
-                  {v.toFixed(2)}%
-                </div>
-              </div>
+              {/* Yildiz */}
+              <button
+                type="button"
+                onClick={(e) => toggleWatch(e, f)}
+                title={isWatched ? 'Takipten cikar' : 'Takip listeme ekle'}
+                className={cn(
+                  'grid h-6 w-6 place-items-center rounded transition',
+                  isWatched
+                    ? 'text-warning hover:text-warning/70'
+                    : 'text-slate-500 hover:text-warning',
+                )}
+                aria-label={isWatched ? 'Takipten cikar' : 'Takip listeme ekle'}
+              >
+                <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
+              </button>
+              {/* Change % */}
+              <span className={cn('w-[68px] text-right text-[13px] font-semibold tabular-nums', stoneTone)}>
+                {sign}{v.toFixed(2)}%
+              </span>
             </Link>
           );
         })}

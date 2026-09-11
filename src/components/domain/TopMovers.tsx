@@ -74,32 +74,37 @@ function MoverList({
         </h3>
         <span className="text-[10px] text-slate-500">{subtitle}</span>
       </div>
-      <div className="divide-y divide-border">
+      {/* FVT tarzi kompakt satir — no logo, no name, sadece rank badge + symbol + price + % */}
+      <div className="divide-y divide-border/50">
         {stocks.map((s, i) => {
           const sign = s.changePct >= 0 ? '+' : '';
           const stoneTone = s.changePct >= 0 ? 'text-success' : 'text-danger';
+          const rankColor = i === 0 ? 'bg-warning/20 text-warning' : i === 1 ? 'bg-slate-500/20 text-slate-300' : i === 2 ? 'bg-orange-500/15 text-orange-400' : 'bg-bg-card text-slate-500';
           return (
             <Link
               to={`/stock/${s.symbol}`}
               key={s.symbol}
-              className="flex items-center justify-between px-4 py-2.5 hover:bg-bg-soft"
+              className="flex items-center gap-3 px-3 py-2 hover:bg-bg-soft/70"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="w-4 text-[11px] text-slate-500">{i + 1}</span>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-accent">{s.symbol}</span>
-                  </div>
-                  <div className="truncate text-xs text-slate-400">{s.name}</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-medium tabular-nums">{formatMoney(s.price)}</div>
-                <div className={cn('text-xs tabular-nums', stoneTone)}>
-                  {sign}
-                  {s.changePct.toFixed(2)}%
-                </div>
-              </div>
+              {/* Rank badge — top 3 renkli */}
+              <span className={cn(
+                'grid h-5 w-5 shrink-0 place-items-center rounded text-[10px] font-bold tabular-nums',
+                rankColor,
+              )}>
+                {i + 1}
+              </span>
+              {/* Symbol — buyuk, bold */}
+              <span className="min-w-0 flex-1 font-mono text-[13px] font-semibold text-slate-100 truncate">
+                {s.symbol}
+              </span>
+              {/* Price */}
+              <span className="text-[13px] font-medium tabular-nums text-slate-200">
+                {formatMoney(s.price)}
+              </span>
+              {/* Change % */}
+              <span className={cn('w-[68px] text-right text-[13px] font-semibold tabular-nums', stoneTone)}>
+                {sign}{s.changePct.toFixed(2)}%
+              </span>
             </Link>
           );
         })}

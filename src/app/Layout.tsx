@@ -68,7 +68,9 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/panel', label: 'Panel', icon: LayoutDashboard },
       { to: '/egitim', label: 'Finansal Okuryazarlık', icon: GraduationCap },
-      { to: '/morning', label: 'Günlük Analiz', icon: Sun },
+      // Günlük Analiz gecici olarak pasifize edildi (kullanici talebi 11 Eylul 2026).
+      // Route hala mevcut - direkt URL ile erisilebilir. Yeniden aktive icin bu satiri geri ac.
+      // { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Piyasa Radarı', icon: Flame, pro: false },
       // Akilli Sorgu: aiForAllUsers=false iken sadece admin gorur. flag acilinca herkese acilir.
       ...(FEATURES.smartQuery

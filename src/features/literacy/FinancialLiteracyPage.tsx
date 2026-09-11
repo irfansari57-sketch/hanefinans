@@ -576,21 +576,10 @@ export function FinancialLiteracyPage() {
           </div>
         </aside>
 
-        {/* Konu detayı */}
+        {/* Konu detayı — hero kart kaldirildi (kullanici talebi: kompakt/hizli erisim).
+            Baslik + description alani ekranin ust kismini fazla kapliyordu; hesaplayici
+            direkt gorunsun. Konu tanimi zaten sol menude + chip'te (mobil) var. */}
         <main className="lg:col-span-9 space-y-4">
-          {/* Hero */}
-          <section className="glass-card p-5">
-            <div className="flex items-start gap-3">
-              <span className={cn('grid h-12 w-12 shrink-0 place-items-center rounded-xl', toneClasses[current.tone])}>
-                <Icon size={22} />
-              </span>
-              <div>
-                <h2 className="text-xl font-bold text-slate-100">{current.title}</h2>
-                <p className="mt-1 text-sm text-slate-400">{current.description}</p>
-              </div>
-            </div>
-          </section>
-
           {/* BES için özel hesaplayıcı — konunun başında, görsel olarak yüksek değer */}
           {current.slug === 'bes-bireysel-emeklilik' && <BESCalculator />}
 

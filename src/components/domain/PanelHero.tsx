@@ -226,7 +226,12 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
       }
     })();
     return () => { alive = false; };
-  }, [primarySymbol, period, enrichedMacro]);
+    // enrichedMacro DEP DIŞI — macro her 30sn refresh oldugu icin bagimlilikta
+    // olsaydi chart durmadan re-fetch olurdu (Panel skeleton'a duser). Scale factor
+    // ilk mount'ta hesaplanan degerle kalır — historical chart aylık, gram/ons
+    // ratio yavas degisir, tolerable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primarySymbol, period]);
 
   return (
     <div className="rounded-xl border border-accent/25 bg-bg-card/40 p-4">

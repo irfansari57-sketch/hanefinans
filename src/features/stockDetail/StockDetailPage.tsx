@@ -12,6 +12,7 @@ import { useAuth, isElite } from '@/store/auth';
 // lightweight-charts heavy (~200KB) — lazy load
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
 import { PanelStyleChart } from '@/components/domain/PanelStyleChart';
+import { ShareButton } from '@/components/ui/ShareButton';
 import { PeriodReturns } from '@/components/domain/PeriodReturns';
 import { Sparkline } from '@/components/domain/Sparkline';
 import { NewsCard } from '@/components/domain/NewsCard';
@@ -332,6 +333,10 @@ export function StockDetailPage() {
           </button>
           <AlertButton stock={stock} />
           <NoteButton symbol={sym} hint={`${stock.name} için not`} />
+          <ShareButton
+            title={`${stock.symbol} — ${stock.name} · ${sign}${displayChangePct.toFixed(2)}% | InvestliQ`}
+            text={`${stock.name} (${stock.symbol}) fiyat, teknik analiz ve grafik`}
+          />
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { NoteButton } from '@/components/domain/NoteButton';
 import { AlertButton } from '@/components/domain/AlertButton';
+import { ShareButton } from '@/components/ui/ShareButton';
 import { fundsRepo, notesRepo, activityRepo } from '@/data/repositories';
 import type { FundEntry } from '@/data/db';
 import { formatDateTR, formatRelative } from '@/lib/date';
@@ -121,6 +122,10 @@ export function FundDetailPage() {
             }}
           />
           <NoteButton symbol={fundCode} hint={`${fundCode} fonu için not`} />
+          <ShareButton
+            title={`${fundCode} — ${githubData?.name ?? fund?.name ?? 'Fon'} | InvestliQ`}
+            text={`${fundCode} fon detayı: NAV, performans, portföy dağılımı`}
+          />
         </div>
       </div>
 

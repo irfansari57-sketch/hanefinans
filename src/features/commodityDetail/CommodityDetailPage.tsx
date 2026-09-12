@@ -6,6 +6,7 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { LiveBadge } from '@/components/domain/LiveBadge';
+import { ShareButton } from '@/components/ui/ShareButton';
 import { fetchHistoricalYahoo, fetchIndexYahoo, computePeriodReturns, ouncePriceToGramTRY, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
 import { loadMacroAll } from '@/data/services';
 import { rsi, macd, bollinger, adx, ema, sma, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
@@ -212,6 +213,7 @@ export function CommodityDetailPage() {
           <button className="btn-secondary" onClick={refresh} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
           </button>
+          <ShareButton title={`${meta.label} · InvestliQ`} text={`${meta.label} fiyat, grafik ve teknik analiz`} />
         </div>
       </div>
 

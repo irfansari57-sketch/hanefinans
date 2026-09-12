@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { LiveBadge } from '@/components/domain/LiveBadge';
+import { ShareButton } from '@/components/ui/ShareButton';
 import {
   fetchHistoricalYahoo, fetchIndexYahoo, computePeriodReturns,
   type HistoricalSeries, type PeriodReturns as PeriodReturnsT,
@@ -159,6 +160,7 @@ export function CryptoDetailPage() {
           <button className="btn-secondary" onClick={refresh} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Yenile
           </button>
+          <ShareButton title={`${meta.symbol} — ${meta.name} · InvestliQ`} text={`${meta.name} kripto fiyat, grafik ve analiz`} />
         </div>
       </div>
 

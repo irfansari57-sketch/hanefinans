@@ -34,6 +34,9 @@ export function FundDetailPage() {
   const [liveData, setLiveData] = useState<TefasFundDetail | null>(null);
   const [githubData, setGithubData] = useState<TefasFundData | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
+  // Tab yapisi — kompakt UX (kullanici talebi 12 Eyl 2026): Ozet + Getiri + Portfoy + Bilgi
+  type FundTab = 'ozet' | 'getiri' | 'portfoy' | 'bilgi';
+  const [activeTab, setActiveTab] = useState<FundTab>('ozet');
 
   // Watchlist'te değilse canlı feed'den sentetik bir entry üret —
   // detay sayfası yine de açılsın (yükleniyor ekranında takılmasın)
@@ -218,8 +221,37 @@ export function FundDetailPage() {
         );
       })()}
 
-      {/* Canlı TEFAS verisi — GitHub feed birinci, CF Worker yedek */}
-      {githubData ? (
+      {/* Tab strip — Ozet / Getiri Detayi / Portfoy Dagilimi / Bilgi */}
+      <div className="mb-4 -mx-4 sm:mx-0">
+        <div className="scrollbar-none flex gap-1.5 overflow-x-auto px-4 sm:px-0 pb-1.5">
+          {([
+            { k: 'ozet',    label: 'Özet',            icon: '📊' },
+            { k: 'getiri',  label: 'Getiri Detayı',   icon: '📈' },
+            { k: 'portfoy', label: 'Portföy Dağılımı', icon: '🥧' },
+            { k: 'bilgi',   label: 'Bilgiler',        icon: 'ℹ️' },
+          ] as Array<{ k: FundTab; label: string; icon: string }>).map((t) => {
+            const isActive = activeTab === t.k;
+            return (
+              <button
+                key={t.k}
+                type="button"
+                onClick={() => setActiveTab(t.k)}
+                className={cn(
+                  'shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition',
+                  isActive
+                    ? 'border-accent/50 bg-accent/15 text-accent'
+                    : 'border-border bg-bg-card/50 text-slate-300 hover:border-accent/30',
+                )}
+              >
+                <span className="mr-1.5">{t.icon}</span>{t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Canlı TEFAS verisi — Ozet tab (NAV + Performans + Chart) */}
+      {activeTab === 'ozet' && githubData ? (
         <div className="mb-4 grid gap-3 sm:grid-cols-3">
           <div className="card p-4">
             <div className="flex items-center justify-between">
@@ -292,24 +324,8 @@ export function FundDetailPage() {
           <div className="card sm:col-span-3 p-4">
             <FundPerformanceChart fund={githubData} />
           </div>
-
-          {/* Fon Getiri Karşılaştırma — BIST, döviz, altın, TÜFE, mevduat */}
-          <div className="sm:col-span-3">
-            <FundComparisonChart
-              fundCode={githubData.code}
-              fundName={githubData.name}
-              fundReturns={{
-                '1w': githubData.returns['1w'] ?? null,
-                '1m': githubData.returns['1m'] ?? null,
-                '3m': githubData.returns['3m'] ?? null,
-                '6m': githubData.returns['6m'] ?? null,
-                ytd: githubData.returns.ytd ?? null,
-                '1y': githubData.returns['1y'] ?? null,
-              }}
-            />
-          </div>
         </div>
-      ) : isTefasWorkerConfigured() ? (
+      ) : activeTab === 'ozet' && isTefasWorkerConfigured() ? (
         liveLoading ? (
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4 text-xs text-slate-400">
             TEFAS canlı veri çekiliyor (Cloudflare Worker → headless Chrome → TEFAS)…
@@ -364,38 +380,84 @@ export function FundDetailPage() {
             TEFAS Worker yapılandırıldı ama bu fon için veri alınamadı. Worker log'larını kontrol et.
           </div>
         )
-      ) : (
+      ) : activeTab === 'ozet' ? (
         <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4 text-xs leading-relaxed text-slate-300">
           <strong>İpucu:</strong> GitHub Actions feed'i kurarsan bu sayfada canlı NAV ve performans gözükür.{' '}
           Projedeki <code className="rounded bg-bg-card px-1 font-mono">SETUP_GITHUB_TEFAS.md</code> dosyasını
           takip et (10 dk, ücretsiz, sadece GitHub hesabı yeter).
         </div>
-      )}
+      ) : null}
 
-      {/* Dış kaynaklar — tam genişlik, 3 link tek satırda simetrik */}
-      <section className="mb-4 space-y-3">
-        <h2 className="text-sm font-semibold text-slate-200">Detaylı Bilgi Kaynakları</h2>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <ExtLink
-            title="TEFAS — Fon Analizi"
-            description="Resmi: NAV, getiri, fon büyüklüğü, yatırımcı sayısı, varlık dağılımı"
-            url={tefasUrl}
-          />
-          <ExtLink
-            title="TEFAS — Karşılaştırma"
-            description="Benchmark karşılaştırma, getiri grafikleri"
-            url={tefasComp}
-          />
-          <ExtLink
-            title="Fintables (Premium)"
-            description="Detaylı portföy analizi, en büyük pozisyonlar"
-            url={fintablesUrl}
+      {/* GETIRI DETAYI TAB — Fon-BIST/Doviz/Altin karsilastirma grafigi */}
+      {activeTab === 'getiri' && githubData && (
+        <div className="mb-4">
+          <FundComparisonChart
+            fundCode={githubData.code}
+            fundName={githubData.name}
+            fundReturns={{
+              '1w': githubData.returns['1w'] ?? null,
+              '1m': githubData.returns['1m'] ?? null,
+              '3m': githubData.returns['3m'] ?? null,
+              '6m': githubData.returns['6m'] ?? null,
+              ytd: githubData.returns.ytd ?? null,
+              '1y': githubData.returns['1y'] ?? null,
+            }}
           />
         </div>
-      </section>
+      )}
+      {activeTab === 'getiri' && !githubData && (
+        <div className="mb-4 rounded-xl border border-border bg-bg-soft/50 p-6 text-center text-xs text-slate-500">
+          Getiri karşılaştırma için TEFAS verisi bekleniyor.
+        </div>
+      )}
 
-      {/* Notlarım — tam genişlik, dış kaynakların altında simetrik şerit */}
-      <section className="card overflow-hidden">
+      {/* PORTFOY DAGILIMI TAB — Varlik dagilimi (worker verisi varsa) */}
+      {activeTab === 'portfoy' && liveData?.allocation && liveData.allocation.length > 0 && (
+        <div className="mb-4 card p-4">
+          <div className="mb-3 text-[10px] uppercase tracking-wider text-slate-500">Varlık Dağılımı</div>
+          <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+            {liveData.allocation.map((a) => (
+              <div key={a.label} className="flex items-center justify-between rounded bg-bg-soft px-2.5 py-1.5">
+                <span className="text-slate-300">{a.label}</span>
+                <span className="tabular-nums text-accent">%{a.pct.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {activeTab === 'portfoy' && (!liveData?.allocation || liveData.allocation.length === 0) && (
+        <div className="mb-4 rounded-xl border border-border bg-bg-soft/50 p-6 text-center text-xs text-slate-500">
+          Portföy dağılımı verisi henüz mevcut değil.
+          <a href={tefasUrl} target="_blank" rel="noreferrer" className="ml-2 text-accent hover:underline">TEFAS'ta görüntüle ↗</a>
+        </div>
+      )}
+
+      {/* BILGI TAB — Dis kaynaklar + Notlarim */}
+      {activeTab === 'bilgi' && (
+        <>
+          <section className="mb-4 space-y-3">
+            <h2 className="text-sm font-semibold text-slate-200">Detaylı Bilgi Kaynakları</h2>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <ExtLink
+                title="TEFAS — Fon Analizi"
+                description="Resmi: NAV, getiri, fon büyüklüğü, yatırımcı sayısı, varlık dağılımı"
+                url={tefasUrl}
+              />
+              <ExtLink
+                title="TEFAS — Karşılaştırma"
+                description="Benchmark karşılaştırma, getiri grafikleri"
+                url={tefasComp}
+              />
+              <ExtLink
+                title="Fintables (Premium)"
+                description="Detaylı portföy analizi, en büyük pozisyonlar"
+                url={fintablesUrl}
+              />
+            </div>
+          </section>
+
+          {/* Notlarım — sadece Bilgi tab'inda */}
+          <section className="card overflow-hidden">
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-300">
             <StickyNote size={12} /> Notlarım
@@ -423,6 +485,8 @@ export function FundDetailPage() {
           </div>
         )}
       </section>
+        </>
+      )}
     </>
   );
 }

@@ -34,8 +34,9 @@ export function FundDetailPage() {
   const [liveData, setLiveData] = useState<TefasFundDetail | null>(null);
   const [githubData, setGithubData] = useState<TefasFundData | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
-  // Tab yapisi — kompakt UX (kullanici talebi 12 Eyl 2026): Ozet + Getiri + Portfoy + Bilgi
-  type FundTab = 'ozet' | 'getiri' | 'portfoy' | 'bilgi';
+  // Tab yapisi — A+B hibrit (kullanici talebi 12 Eyl 2026):
+  // Ozet (kapsamli) + Portfoy Agi (network diagram bize ozgu) + Getiri + Bilgi
+  type FundTab = 'ozet' | 'agi' | 'getiri' | 'bilgi';
   const [activeTab, setActiveTab] = useState<FundTab>('ozet');
 
   // Watchlist'te değilse canlı feed'den sentetik bir entry üret —
@@ -85,7 +86,7 @@ export function FundDetailPage() {
 
   const tefasUrl = `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(fundCode)}`;
   const tefasComp = `https://www.tefas.gov.tr/FonKarsilastirma.aspx?FonKod=${encodeURIComponent(fundCode)}`;
-  const fintablesUrl = `https://fintables.com/fonlar/${fundCode}`;
+  // Fintables link kaldirildi (kullanici talebi: baska site referanslari yok).
 
   if (fund === undefined) {
     return <div className="p-6 text-center text-sm text-slate-500">Yükleniyor…</div>;
@@ -225,10 +226,10 @@ export function FundDetailPage() {
       <div className="mb-4 -mx-4 sm:mx-0">
         <div className="scrollbar-none flex gap-1.5 overflow-x-auto px-4 sm:px-0 pb-1.5">
           {([
-            { k: 'ozet',    label: 'Özet',            icon: '📊' },
-            { k: 'getiri',  label: 'Getiri Detayı',   icon: '📈' },
-            { k: 'portfoy', label: 'Portföy Dağılımı', icon: '🥧' },
-            { k: 'bilgi',   label: 'Bilgiler',        icon: 'ℹ️' },
+            { k: 'ozet',    label: 'Özet',           icon: '📊' },
+            { k: 'agi',     label: 'Portföy Ağı',    icon: '🕸️' },
+            { k: 'getiri',  label: 'Getiri Detayı',  icon: '📈' },
+            { k: 'bilgi',   label: 'Bilgiler',       icon: 'ℹ️' },
           ] as Array<{ k: FundTab; label: string; icon: string }>).map((t) => {
             const isActive = activeTab === t.k;
             return (
@@ -292,33 +293,57 @@ export function FundDetailPage() {
               })}
             </div>
           </div>
-          {githubData.marketCap || githubData.investorCount ? (
-            <div className="card sm:col-span-3 p-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {githubData.marketCap ? (
+          {/* InvestliQ Skor — bize ozgu risk-adjusted deger; kural tabanli. */}
+          {(() => {
+            // Basit hesap: getiri buyuklugu (1Y) + Fon buyuklugu + yatirimci coklugu -
+            // (kategori riski) → 0-100 arasi bir skor. Kural tabanli hızlı MVP.
+            const ret1y = githubData.returns['1y'] ?? 0;
+            const size = githubData.marketCap ? Math.min(30, Math.log10(githubData.marketCap / 1_000_000) * 10) : 5;
+            const investors = githubData.investorCount ? Math.min(20, Math.log10(githubData.investorCount) * 5) : 5;
+            const returnPart = Math.max(0, Math.min(35, ret1y / 3));
+            const cat = (githubData.category ?? '').toLowerCase();
+            const riskPenalty = cat.includes('serbest') || cat.includes('hisse') ? 5 : 0;
+            const iqScore = Math.max(0, Math.min(100, Math.round(returnPart + size + investors + 15 - riskPenalty)));
+            const iqTone = iqScore >= 70 ? 'text-success' : iqScore >= 40 ? 'text-warning' : 'text-danger';
+            const iqLabel = iqScore >= 70 ? 'Güçlü' : iqScore >= 40 ? 'Orta' : 'Zayıf';
+            return (
+              <div className="card sm:col-span-3 p-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Fon Büyüklüğü</div>
-                    <div className="mt-1 text-base font-semibold tabular-nums">
-                      {(githubData.marketCap / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}M ₺
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">InvestliQ Skor</div>
+                    <div className={cn('mt-1 flex items-baseline gap-1.5', iqTone)}>
+                      <span className="text-2xl font-bold tabular-nums">{iqScore}</span>
+                      <span className="text-xs font-semibold">/ 100</span>
                     </div>
+                    <div className={cn('text-[10px]', iqTone)}>{iqLabel}</div>
                   </div>
-                ) : null}
-                {githubData.investorCount ? (
+                  {githubData.marketCap ? (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500">Fon Büyüklüğü</div>
+                      <div className="mt-1 text-base font-semibold tabular-nums">
+                        {(githubData.marketCap / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}M ₺
+                      </div>
+                    </div>
+                  ) : <div />}
+                  {githubData.investorCount ? (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500">Yatırımcı Sayısı</div>
+                      <div className="mt-1 text-base font-semibold tabular-nums">
+                        {githubData.investorCount.toLocaleString('tr-TR')}
+                      </div>
+                    </div>
+                  ) : <div />}
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Yatırımcı Sayısı</div>
-                    <div className="mt-1 text-base font-semibold tabular-nums">
-                      {githubData.investorCount.toLocaleString('tr-TR')}
-                    </div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Kategori</div>
+                    <div className="mt-1 text-base font-semibold text-slate-200">{githubData.category || '—'}</div>
                   </div>
-                ) : null}
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-slate-500">Kategori</div>
-                  <div className="mt-1 text-base font-semibold text-slate-200">{githubData.category || '—'}</div>
                 </div>
+                <p className="mt-3 text-[10px] text-slate-500">
+                  InvestliQ Skor: 1Y getiri + fon büyüklüğü + yatırımcı çokluğu + kategori riski. Kural tabanlı, bilgi amaçlı.
+                </p>
               </div>
-              <p className="mt-3 text-[10px] text-slate-500">Kaynak: TEFAS via GitHub Actions feed (saatlik)</p>
-            </div>
-          ) : null}
+            );
+          })()}
 
           {/* Performans grafiği — anchor noktalardan reconstruct */}
           <div className="card sm:col-span-3 p-4">
@@ -411,24 +436,32 @@ export function FundDetailPage() {
         </div>
       )}
 
-      {/* PORTFOY DAGILIMI TAB — Varlik dagilimi (worker verisi varsa) */}
-      {activeTab === 'portfoy' && liveData?.allocation && liveData.allocation.length > 0 && (
+      {/* PORTFOY AGI TAB — network diagram (bize ozgu, kullanici talebi A+B hibrit).
+          Merkez: fon kodu · etrafinda: varlik siniflari (Hisse/Fon/Mevduat/vb.) daire buyuklugu = agirlik.
+          Yesil = pozitif getiri, kirmizi = negatif (o siniftan varsa)
+          Fon ici hisse bilgisi TEFAS'ta yaygin yok, o yuzden varlik kategorileri gosteriyoruz. */}
+      {activeTab === 'agi' && (
         <div className="mb-4 card p-4">
-          <div className="mb-3 text-[10px] uppercase tracking-wider text-slate-500">Varlık Dağılımı</div>
-          <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 text-xs">
-            {liveData.allocation.map((a) => (
-              <div key={a.label} className="flex items-center justify-between rounded bg-bg-soft px-2.5 py-1.5">
-                <span className="text-slate-300">{a.label}</span>
-                <span className="tabular-nums text-accent">%{a.pct.toFixed(2)}</span>
-              </div>
-            ))}
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-slate-200">
+              Portföy Ağı
+              <span className="ml-2 text-[10px] font-normal text-slate-500">bize özgü görselleştirme</span>
+            </h2>
+            {liveData?.allocation && liveData.allocation.length > 0 && (
+              <span className="text-[10px] text-slate-500">
+                {liveData.allocation.length} varlık sınıfı
+              </span>
+            )}
           </div>
-        </div>
-      )}
-      {activeTab === 'portfoy' && (!liveData?.allocation || liveData.allocation.length === 0) && (
-        <div className="mb-4 rounded-xl border border-border bg-bg-soft/50 p-6 text-center text-xs text-slate-500">
-          Portföy dağılımı verisi henüz mevcut değil.
-          <a href={tefasUrl} target="_blank" rel="noreferrer" className="ml-2 text-accent hover:underline">TEFAS'ta görüntüle ↗</a>
+          <FundNetworkDiagram
+            fundCode={fundCode}
+            allocation={liveData?.allocation ?? []}
+            navReturn={githubData?.returns?.['1y'] ?? null}
+          />
+          <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+            🕸️ Merkez fon, etrafındaki daireler varlık sınıfları — çap = fon içi ağırlık.
+            Yeşil çevre = fonun 1 yıllık pozitif getirisi, kırmızı = negatif.
+          </p>
         </div>
       )}
 
@@ -447,11 +480,6 @@ export function FundDetailPage() {
                 title="TEFAS — Karşılaştırma"
                 description="Benchmark karşılaştırma, getiri grafikleri"
                 url={tefasComp}
-              />
-              <ExtLink
-                title="Fintables (Premium)"
-                description="Detaylı portföy analizi, en büyük pozisyonlar"
-                url={fintablesUrl}
               />
             </div>
           </section>
@@ -488,6 +516,102 @@ export function FundDetailPage() {
         </>
       )}
     </>
+  );
+}
+
+/**
+ * FundNetworkDiagram — Fon Ağı (bize özgü görselleştirme).
+ * Merkez = fon kodu · etrafında = varlık sınıfları
+ * Her varlık daire çapı = ağırlık, çevre rengi = fon yıllık getirisine göre.
+ * TEFAS fon içi hisse listesi vermiyor, o yüzden varlık kategorileri ile
+ * network diagram cizip InvestliQ'nun ayirt edici gorseli olusturuyoruz.
+ */
+function FundNetworkDiagram({ fundCode, allocation, navReturn }: {
+  fundCode: string;
+  allocation: Array<{ label: string; pct: number }>;
+  navReturn: number | null;
+}) {
+  if (allocation.length === 0) {
+    return (
+      <div className="grid place-items-center py-16 text-xs text-slate-500">
+        <div className="text-center">
+          <div className="text-4xl mb-3">🕸️</div>
+          <div>Portföy dağılım verisi bekleniyor</div>
+          <div className="mt-1 text-[10px]">TEFAS'ın açıkladığı varlık dağılımı geldiğinde otomatik doldurulur</div>
+        </div>
+      </div>
+    );
+  }
+  const W = 700;
+  const H = 500;
+  const cx = W / 2;
+  const cy = H / 2;
+  const centerR = 55;
+  // Etraftaki dairelerin yarıçapları — max ağırlık büyük olsun
+  const maxPct = Math.max(...allocation.map((a) => a.pct));
+  const positive = (navReturn ?? 0) >= 0;
+  const stroke = positive ? '#22c55e' : '#ef4444';
+  // Kategori bazli renk: hisse -> mor, fon -> emerald, mevduat -> gri, doviz -> mavi
+  const categoryColor = (label: string): string => {
+    const l = label.toLowerCase();
+    if (l.includes('hisse')) return '#a855f7';
+    if (l.includes('fon') || l.includes('katılım')) return '#10b981';
+    if (l.includes('mevduat') || l.includes('kkm')) return '#94a3b8';
+    if (l.includes('döviz') || l.includes('altın') || l.includes('gümüş')) return '#f59e0b';
+    if (l.includes('tahvil') || l.includes('bono')) return '#3b82f6';
+    return '#22c55e';
+  };
+  // Daireler çember üstünde eşit dağıtılır
+  const orbitR = 180;
+  const items = allocation.map((a, i) => {
+    const angle = (i / allocation.length) * Math.PI * 2 - Math.PI / 2;
+    const r = 20 + (a.pct / maxPct) * 30;
+    const x = cx + Math.cos(angle) * orbitR;
+    const y = cy + Math.sin(angle) * orbitR;
+    return { ...a, x, y, r, color: categoryColor(a.label) };
+  });
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-96 sm:h-[500px]" style={{ display: 'block' }}>
+      <defs>
+        <radialGradient id="fnd-center" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.35"/>
+          <stop offset="100%" stopColor={stroke} stopOpacity="0.05"/>
+        </radialGradient>
+      </defs>
+      {/* Bağlantı çizgileri — merkezden her aset'e */}
+      {items.map((it) => (
+        <line
+          key={`ln-${it.label}`}
+          x1={cx} y1={cy}
+          x2={it.x} y2={it.y}
+          stroke={stroke}
+          strokeOpacity="0.25"
+          strokeWidth="1"
+        />
+      ))}
+      {/* Yörünge dairesi */}
+      <circle cx={cx} cy={cy} r={orbitR} fill="none" stroke="rgba(148,163,184,0.1)" strokeDasharray="4 4"/>
+      {/* Merkez fon çemberi */}
+      <circle cx={cx} cy={cy} r={centerR} fill="url(#fnd-center)" stroke={stroke} strokeWidth="2"/>
+      <text x={cx} y={cy - 4} fill="#f1f5f9" fontSize="16" fontWeight="700" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
+        {fundCode}
+      </text>
+      <text x={cx} y={cy + 14} fill="rgba(148,163,184,0.8)" fontSize="10" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
+        {navReturn != null ? `1Y ${navReturn >= 0 ? '+' : ''}${navReturn.toFixed(1)}%` : 'InvestliQ'}
+      </text>
+      {/* Varlık daireleri */}
+      {items.map((it) => (
+        <g key={it.label}>
+          <circle cx={it.x} cy={it.y} r={it.r} fill={it.color} fillOpacity="0.20" stroke={it.color} strokeWidth="1.5"/>
+          <text x={it.x} y={it.y - 3} fill="#f1f5f9" fontSize="10" fontWeight="600" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
+            {it.label.length > 12 ? it.label.slice(0, 12) + '…' : it.label}
+          </text>
+          <text x={it.x} y={it.y + 10} fill={it.color} fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
+            %{it.pct.toFixed(1)}
+          </text>
+        </g>
+      ))}
+    </svg>
   );
 }
 

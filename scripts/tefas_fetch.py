@@ -719,9 +719,22 @@ def main() -> int:
     # Kucuk fonlar Worker fallback kaldi (dinamik fetch), buradan allocation almaz.
     ALLOC_TOP_N = int(os.environ.get('TEFAS_ALLOC_TOP_N', '500'))
     ALLOC_DELAY_MS = int(os.environ.get('TEFAS_ALLOC_DELAY_MS', '150'))
-    alloc_candidates = [f for f in funds if f.get('tefasOpen') and (f.get('marketCap') or 0) > 0]
-    alloc_candidates.sort(key=lambda f: (f.get('marketCap') or 0), reverse=True)
+    # marketCap kolonu tefasfon'dan gelmiyor (hep null) — shareCount * nav ile
+    # yaklasik portfoy buyuklugu hesapla, buna gore sirala.
+    def _size_proxy(f: dict) -> float:
+        mc = f.get('marketCap')
+        if mc and mc > 0:
+            return float(mc)
+        sc = f.get('shareCount') or 0
+        nav = f.get('nav') or 0
+        try:
+            return float(sc) * float(nav)
+        except (ValueError, TypeError):
+            return 0.0
+    alloc_candidates = [f for f in funds if f.get('tefasOpen')]
+    alloc_candidates.sort(key=_size_proxy, reverse=True)
     alloc_targets = alloc_candidates[:ALLOC_TOP_N]
+    print(f"[allocation] {len(alloc_candidates)} tefasOpen aday -> top {len(alloc_targets)} secildi", flush=True)
     print(f"\n[allocation] {len(alloc_targets)} fon icin varlik dagilimi cekiliyor...", flush=True)
     alloc_ok, alloc_fail = 0, 0
     for i, f in enumerate(alloc_targets):

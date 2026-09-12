@@ -11,6 +11,7 @@ import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
 import { cn } from '@/lib/utils';
 
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
+import { PanelStyleChart } from '@/components/domain/PanelStyleChart';
 
 interface MacroMeta {
   label: string;
@@ -223,17 +224,26 @@ export function MacroDetailPage() {
 
       {/* Chart */}
       <div className="card mb-4 overflow-hidden p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-300">
-          {isCustom ? 'Tarihsel Grafik' : 'Canlı Grafik'}
-          <span className="text-slate-500"> ({isCustom ? 'worldgovernmentbonds.com' : 'Yahoo Finance + lightweight-charts'})</span>
-        </h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-300">
+            {isCustom ? 'Tarihsel Grafik' : 'Canlı Grafik'}
+          </h2>
+          {!isCustom && (
+            <a
+              href={`https://tr.tradingview.com/chart/?symbol=${encodeURIComponent(ySym)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[10px] text-slate-500 hover:text-accent"
+            >
+              TradingView'de aç ↗
+            </a>
+          )}
+        </div>
 
         {isCustom ? (
           <TrCdsHistoryChart data={trCdsData} />
         ) : (
-          <Suspense fallback={<Skeleton variant="rect" className="w-full" height={460} />}>
-            <LiveChart symbol={ySym} height={460} bistSuffix={false} />
-          </Suspense>
+          <PanelStyleChart symbol={ySym} isBist={false} defaultPeriod="1Y" />
         )}
       </div>
 

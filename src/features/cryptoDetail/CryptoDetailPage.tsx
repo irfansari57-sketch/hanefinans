@@ -24,6 +24,7 @@ import { fetchCryptoDetail, type CryptoMarketDetail } from '@/data/api/coingecko
 import { cn } from '@/lib/utils';
 
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
+import { PanelStyleChart } from '@/components/domain/PanelStyleChart';
 
 export function CryptoDetailPage() {
   const { symbol = '' } = useParams<{ symbol: string }>();
@@ -192,14 +193,20 @@ export function CryptoDetailPage() {
         </div>
       </div>
 
-      {/* Live Chart */}
+      {/* Canlı Grafik — PanelStyleChart (site geneli tek stil) */}
       <div className="card mb-4 overflow-hidden p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-300">
-          Canlı Grafik <span className="text-slate-500">(Yahoo Finance + lightweight-charts)</span>
-        </h2>
-        <Suspense fallback={<Skeleton variant="rect" className="w-full" height={500} />}>
-          <LiveChart symbol={meta.yahoo} height={500} bistSuffix={false} />
-        </Suspense>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-300">Canlı Grafik</h2>
+          <a
+            href={`https://tr.tradingview.com/chart/?symbol=${encodeURIComponent(meta.yahoo)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] text-slate-500 hover:text-accent"
+          >
+            TradingView'de aç ↗
+          </a>
+        </div>
+        <PanelStyleChart symbol={meta.yahoo} isBist={false} defaultPeriod="1Y" />
       </div>
 
       {/* CoinGecko market enrichment */}

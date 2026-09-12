@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { MacroIndicator } from '@/data/types';
 import { fetchHistoricalYahoo } from '@/data/api/yahoo';
+import { MiniAreaChart as SharedMiniAreaChart } from './PanelStyleChart';
 
 type Period = '1H' | '1A' | '3A' | 'YTD';
 
@@ -345,11 +346,10 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
         {seriesLoading && series.length === 0 ? (
           <div className="h-32 animate-pulse rounded bg-bg-soft/40" />
         ) : series.length >= 2 ? (
-          <MiniAreaChart
+          <SharedMiniAreaChart
             data={series}
             positive={(primary?.changePct ?? 0) >= 0}
             formatValue={(v) => {
-              // Sembole gore uygun format
               if (primarySymbol === 'BIST 100' || primarySymbol === 'BIST 30') {
                 return v.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
               }

@@ -51,6 +51,8 @@ interface Props {
   formatValue?: (v: number) => string;
   /** Ust baslik gizle (embedded kullanim icin) */
   hideHeader?: boolean;
+  /** Fiyat donusumu (emtia gram cevirme vs.) */
+  priceTransform?: (p: number) => number;
 }
 
 export function PanelStyleChart({
@@ -59,6 +61,7 @@ export function PanelStyleChart({
   defaultPeriod = '1Y',
   formatValue,
   hideHeader = false,
+  priceTransform,
 }: Props) {
   const [period, setPeriod] = useState<Period>(defaultPeriod);
   const [series, setSeries] = useState<Array<{ date: number; close: number }>>([]);
@@ -71,16 +74,20 @@ export function PanelStyleChart({
       try {
         // 1) Yahoo birincil — BIST icin .IS otomatik eklenir
         const data = await fetchHistoricalYahoo(symbol, PERIOD_RANGE[period], '1d', { bistSuffix: isBist });
-        const pairs = (data?.closes ?? []).filter((c) => Number.isFinite(c.close) && c.close > 0);
+        let pairs = (data?.closes ?? []).filter((c) => Number.isFinite(c.close) && c.close > 0);
         if (pairs.length >= 2) {
+          if (priceTransform) pairs = pairs.map((p) => ({ date: p.date, close: priceTransform(p.close) }));
           if (alive) setSeries(pairs);
           return;
         }
         // 2) BIST icin Is Yatirim fallback
         if (isBist) {
           const cleanSym = symbol.replace(/\.IS$/i, '');
-          const bars = await fetchIsYatirimChart(cleanSym, PERIOD_IS[period]);
-          if (bars && bars.length >= 2 && alive) {
+          const raw = await fetchIsYatirimChart(cleanSym, PERIOD_IS[period]);
+          if (raw && raw.length >= 2 && alive) {
+            const bars = priceTransform
+              ? raw.map((b) => ({ date: b.date, close: priceTransform(b.close) }))
+              : raw;
             setSeries(bars);
             return;
           }

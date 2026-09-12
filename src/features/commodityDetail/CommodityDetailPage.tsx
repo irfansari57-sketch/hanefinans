@@ -16,6 +16,7 @@ import { PeriodReturns } from '@/components/domain/PeriodReturns';
 import { cn } from '@/lib/utils';
 
 const LiveChart = lazy(() => import('@/components/domain/LiveChart').then((m) => ({ default: m.LiveChart })));
+import { PanelStyleChart } from '@/components/domain/PanelStyleChart';
 
 // Yahoo spot XA?USD=X için historical / chart veri yok — futures'a fallback (yön/yapı için yeterli)
 const SPOT_TO_FUTURES: Record<string, string> = {
@@ -294,26 +295,23 @@ export function CommodityDetailPage() {
       </div>
 
       <div className="card mb-4 overflow-hidden p-4">
-        <h2 className="mb-1 text-sm font-semibold text-slate-300">
-          Canlı Grafik <span className="text-slate-500">(Yahoo Finance + lightweight-charts)</span>
-        </h2>
+        <h2 className="mb-1 text-sm font-semibold text-slate-300">Canlı Grafik</h2>
         {showGramAsPrimary && (
           <p className="mb-3 text-[11px] text-slate-500">
             Grafik <span className="text-accent">₺/gram</span> bazlı (her bar: USD/ons ÷ 31.1035 × USD/TRY).
             {usdTry && <> Anlık USD/TRY: <span className="tabular-nums text-slate-300">{usdTry.toFixed(2)}</span></>}
           </p>
         )}
-        <Suspense fallback={<Skeleton variant="rect" className="w-full" height={460} />}>
-          <LiveChart
-            symbol={SPOT_TO_FUTURES[ySym] ?? ySym}
-            height={460}
-            priceTransform={
-              showGramAsPrimary && usdTry
-                ? (p: number) => (p / 31.1035) * usdTry
-                : undefined
-            }
-          />
-        </Suspense>
+        <PanelStyleChart
+          symbol={SPOT_TO_FUTURES[ySym] ?? ySym}
+          isBist={false}
+          defaultPeriod="1Y"
+          priceTransform={
+            showGramAsPrimary && usdTry
+              ? (p: number) => (p / 31.1035) * usdTry
+              : undefined
+          }
+        />
       </div>
 
       {mtResult && (

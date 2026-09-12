@@ -86,15 +86,17 @@ describe('buildVerdict', () => {
     expect(v.length).toBeGreaterThan(0);
   });
 
-  it('EMA 5/8 kesişim cümlesi Aksiyon önerisinden ÖNCE gelir (kullanıcı pozisyon kararını anında görsün)', () => {
+  it('EMA 5/8 kesişim/pozisyon cümlesi Aksiyon önerisinden ÖNCE gelir (kullanıcı pozisyon kararını anında görsün)', () => {
     const closes = Array.from({ length: 250 }, (_, i) => 100 + i); // long trend
     const tf1d = analyzeTimeframe(closes, [5, 8, 13, 21, 55, 200]);
     expect(tf1d).not.toBeNull();
     const v = buildVerdict({ ...baseResult, tf1d, changePct: 0.5 });
-    // Verdict "Günlük EMA 5" ifadesini içermeli (verdict'in başında değil,
-    // çünkü timeContextLine önce gelir — bkz. task #131 zaman-bazlı yorumlar).
-    expect(v.includes('Günlük EMA 5')).toBe(true);
-    // ve "Aksiyon önerisi" cümlesi EMA 5'ten SONRA gelir
-    expect(v.indexOf('Aksiyon önerisi')).toBeGreaterThan(v.indexOf('EMA 5'));
+    // Kısa vade EMA cümlesi (triCrossLine/shortCrossLine) - "Günlük vadede"
+    // prefix'i ile başlar ve "kısa periyot" veya "kısa vadeli" ortalamalar geçer.
+    const emaSentenceIdx = v.search(/Günlük vadede/);
+    expect(emaSentenceIdx).toBeGreaterThanOrEqual(0);
+    // Aksiyon önerisi cümlesi EMA cümlesinden SONRA gelir
+    const actionIdx = v.indexOf('Aksiyon önerisi');
+    expect(actionIdx).toBeGreaterThan(emaSentenceIdx);
   });
 });

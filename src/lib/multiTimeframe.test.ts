@@ -95,8 +95,9 @@ describe('buildVerdict', () => {
     // prefix'i ile başlar ve "kısa periyot" veya "kısa vadeli" ortalamalar geçer.
     const emaSentenceIdx = v.search(/Günlük vadede/);
     expect(emaSentenceIdx).toBeGreaterThanOrEqual(0);
-    // Aksiyon önerisi cümlesi EMA cümlesinden SONRA gelir
-    const actionIdx = v.indexOf('Aksiyon önerisi');
+    // "Genel değerlendirme" ile başlayan aksiyon önerisi cümlesi EMA cümlesinden SONRA gelir
+    // (actionHintLine "Aksiyon önerisi" değil "Genel değerlendirme:" prefix'i üretiyor)
+    const actionIdx = v.indexOf('Genel değerlendirme');
     expect(actionIdx).toBeGreaterThan(emaSentenceIdx);
   });
 });

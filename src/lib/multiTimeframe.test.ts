@@ -86,14 +86,15 @@ describe('buildVerdict', () => {
     expect(v.length).toBeGreaterThan(0);
   });
 
-  it('EMA 5/8 kesişim cümlesi yorumun EN BAŞINDA gelir (kullanıcı pozisyon kararını anında görsün)', () => {
+  it('EMA 5/8 kesişim cümlesi Aksiyon önerisinden ÖNCE gelir (kullanıcı pozisyon kararını anında görsün)', () => {
     const closes = Array.from({ length: 250 }, (_, i) => 100 + i); // long trend
     const tf1d = analyzeTimeframe(closes, [5, 8, 13, 21, 55, 200]);
     expect(tf1d).not.toBeNull();
     const v = buildVerdict({ ...baseResult, tf1d, changePct: 0.5 });
-    // EMA 5/8 cümlesi ilk cümle olmalı → tüm verdict "Günlük EMA 5" ile başlar
-    expect(v.startsWith('Günlük EMA 5')).toBe(true);
-    // ve "Aksiyon önerisi" cümlesi ondan SONRA gelir
+    // Verdict "Günlük EMA 5" ifadesini içermeli (verdict'in başında değil,
+    // çünkü timeContextLine önce gelir — bkz. task #131 zaman-bazlı yorumlar).
+    expect(v.includes('Günlük EMA 5')).toBe(true);
+    // ve "Aksiyon önerisi" cümlesi EMA 5'ten SONRA gelir
     expect(v.indexOf('Aksiyon önerisi')).toBeGreaterThan(v.indexOf('EMA 5'));
   });
 });

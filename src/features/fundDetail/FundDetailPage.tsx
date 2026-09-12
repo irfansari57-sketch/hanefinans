@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { NoteButton } from '@/components/domain/NoteButton';
 import { AlertButton } from '@/components/domain/AlertButton';
 import { ShareButton } from '@/components/ui/ShareButton';
+import { MiniAreaChart } from '@/components/domain/PanelStyleChart';
 import { fundsRepo, notesRepo, activityRepo } from '@/data/repositories';
 import type { FundEntry } from '@/data/db';
 import { formatDateTR, formatRelative } from '@/lib/date';
@@ -533,13 +534,13 @@ function FundPerformanceChart({ fund }: { fund: TefasFundData }) {
   );
 }
 
-/** Native SVG çizgi grafik — recharts gerekmez, 7 anchor için yeter. */
+/**
+ * Fund line chart artik PanelStyleChart'in MiniAreaChart component'ini kullaniyor —
+ * sitedeki tum grafiklerle bire bir ayni gorsel (emerald/red area + Y-axis + hover tooltip).
+ * Anchor points {ts, nav} formatindan {date, close} formatina cevirip pass edilir.
+ */
 function FundLineSvg({
   points,
-  minNav,
-  maxNav,
-  pad,
-  firstNav,
   isPositive,
 }: {
   points: Array<{ date: string; label: string; nav: number; ts: number }>;
@@ -549,82 +550,12 @@ function FundLineSvg({
   firstNav: number;
   isPositive: boolean;
 }) {
-  const W = 800;
-  const H = 200;
-  const padX = 50;
-  const padY = 24;
-  const innerW = W - padX * 2;
-  const innerH = H - padY * 2;
-  const yMin = minNav - pad;
-  const yMax = maxNav + pad;
-  const yRange = yMax - yMin || 1;
-  const stepX = innerW / Math.max(1, points.length - 1);
-
-  const coords = points.map((p, i) => ({
-    ...p,
-    x: padX + i * stepX,
-    y: padY + innerH - ((p.nav - yMin) / yRange) * innerH,
-  }));
-
-  const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
-  const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(1)} ${(padY + innerH).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(padY + innerH).toFixed(1)} Z`;
-
-  const stroke = isPositive ? '#22c55e' : '#ef4444';
-  const fill = isPositive ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
-
-  // Referans çizgisi y koordinatı
-  const refY = padY + innerH - ((firstNav - yMin) / yRange) * innerH;
-
-  // 3 Y-axis tick
-  const yTicks = [yMin + yRange * 0.1, yMin + yRange * 0.5, yMin + yRange * 0.9];
-
+  const chartData = points.map((p) => ({ date: p.ts, close: p.nav }));
   return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-56" preserveAspectRatio="xMidYMid meet">
-        {/* Y-axis tick labels + grid çizgileri */}
-        {yTicks.map((v, i) => {
-          const y = padY + innerH - ((v - yMin) / yRange) * innerH;
-          return (
-            <g key={`tick-${i}`}>
-              <line x1={padX} x2={W - padX} y1={y} y2={y} stroke="rgba(31,42,68,0.5)" strokeDasharray="2 4" />
-              <text x={padX - 6} y={y + 3} fill="#94a3b8" fontSize="10" textAnchor="end">
-                {v.toFixed(4)}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Başlangıç referans çizgisi (1Y önce NAV) */}
-        <line x1={padX} x2={W - padX} y1={refY} y2={refY} stroke="#475569" strokeDasharray="3 3" strokeWidth="1" />
-
-        {/* Area dolgusu */}
-        <path d={areaPath} fill={fill} />
-
-        {/* Çizgi */}
-        <path d={linePath} fill="none" stroke={stroke} strokeWidth="2.5" />
-
-        {/* Noktalar + label'lar */}
-        {coords.map((c) => (
-          <g key={c.label}>
-            <circle cx={c.x} cy={c.y} r="4" fill={stroke} />
-            <title>{c.label}: {c.nav.toFixed(6)}₺ ({c.date})</title>
-          </g>
-        ))}
-
-        {/* X-axis label'ları */}
-        {coords.map((c) => (
-          <text
-            key={`x-${c.label}`}
-            x={c.x}
-            y={H - 6}
-            fill="#94a3b8"
-            fontSize="10"
-            textAnchor="middle"
-          >
-            {c.label}
-          </text>
-        ))}
-      </svg>
-    </div>
+    <MiniAreaChart
+      data={chartData}
+      positive={isPositive}
+      formatValue={(v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+    />
   );
 }

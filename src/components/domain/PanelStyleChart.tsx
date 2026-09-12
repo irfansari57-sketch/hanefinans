@@ -8,7 +8,7 @@
  * ana sayfayla tutarli gorsel.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { fetchHistoricalYahoo } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
 
@@ -146,13 +146,18 @@ export function PanelStyleChart({
   );
 }
 
-// Panel Hero'daki MiniAreaChart ile bire bir ayni — emerald/red area chart,
-// Y-axis 3 seviye (min/mid/max), X-axis 5 tarih tick.
-function MiniAreaChart({ data, positive, formatValue }: {
+// Panel Hero + StockDetail + FundDetail'in tumu ayni gorsel — emerald/red area chart,
+// Y-axis 3 seviye (min/mid/max), X-axis 5 tarih tick, HOVER TOOLTIP (FVT tarzi).
+// Export edildi - StockDetail chart fetch ederken, FundDetail anchor points ile
+// direkt cizim yapabilir.
+export function MiniAreaChart({ data, positive, formatValue }: {
   data: Array<{ date: number; close: number }>;
   positive: boolean;
   formatValue?: (v: number) => string;
 }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   const values = data.map((d) => d.close);
   const W = 620;
   const H = 200;
@@ -192,9 +197,45 @@ function MiniAreaChart({ data, positive, formatValue }: {
     const d = new Date(ms);
     return `${d.getDate()} ${TR_MONTHS[d.getMonth()]}`;
   };
+  const fmtDateLong = (ms: number) => {
+    const d = new Date(ms);
+    return `${d.getDate()} ${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  // Hover — SVG koordinatlarindan en yakin data index'i bul
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    // SVG koordinatına çevir (viewBox scale)
+    const xInSvg = ((e.clientX - rect.left) / rect.width) * W;
+    // xInSvg → index
+    const rawIdx = Math.round(xInSvg / xStep);
+    const idx = Math.max(0, Math.min(data.length - 1, rawIdx));
+    setHoverIdx(idx);
+  };
+  const handleLeave = () => setHoverIdx(null);
+
+  const hover = hoverIdx != null ? { p: points[hoverIdx], d: data[hoverIdx] } : null;
+  // Tooltip pozisyonu — kenardan taşmayı önle
+  const tooltipW = 100;
+  const tooltipH = 42;
+  const tooltipX = hover
+    ? Math.min(Math.max(hover.p.x - tooltipW / 2, 0), chartW - tooltipW)
+    : 0;
+  const tooltipY = hover
+    ? Math.max(hover.p.y - tooltipH - 8, 4)
+    : 0;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-52 w-full sm:h-64">
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      className="h-52 w-full sm:h-64 cursor-crosshair"
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+    >
       <defs>
         <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={stroke} stopOpacity="0.30" />
@@ -246,6 +287,59 @@ function MiniAreaChart({ data, positive, formatValue }: {
           </text>
         );
       })}
+      {/* Hover crosshair + nokta + tooltip */}
+      {hover && (
+        <>
+          <line
+            x1={hover.p.x} x2={hover.p.x}
+            y1={PAD_TOP} y2={bottom}
+            stroke={stroke}
+            strokeOpacity="0.35"
+            strokeWidth="1"
+            strokeDasharray="3 3"
+          />
+          <circle
+            cx={hover.p.x} cy={hover.p.y}
+            r="4"
+            fill={stroke}
+            stroke="#0a0f14"
+            strokeWidth="2"
+          />
+          <g transform={`translate(${tooltipX},${tooltipY})`}>
+            <rect
+              width={tooltipW}
+              height={tooltipH}
+              rx="4"
+              fill="#0f172a"
+              stroke={stroke}
+              strokeOpacity="0.4"
+              strokeWidth="1"
+            />
+            <text
+              x={tooltipW / 2}
+              y="16"
+              fill="rgba(203,213,225,0.9)"
+              fontSize="10"
+              fontWeight="500"
+              textAnchor="middle"
+              fontFamily="Inter, system-ui, sans-serif"
+            >
+              {fmtDateLong(hover.d.date)}
+            </text>
+            <text
+              x={tooltipW / 2}
+              y="32"
+              fill={stroke}
+              fontSize="12"
+              fontWeight="700"
+              textAnchor="middle"
+              fontFamily="Inter, system-ui, sans-serif"
+            >
+              {fmt(hover.d.close)}
+            </text>
+          </g>
+        </>
+      )}
     </svg>
   );
 }

@@ -378,8 +378,57 @@ export function FundDetailPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">TEFAS</span>
-                <span className="font-semibold text-success">✓ Açık</span>
+                {(() => {
+                  const backendOpen = githubData.tefasOpen;
+                  const clientOpen = computeTefasOpenClient(githubData.category ?? '', githubData.name ?? '');
+                  const isOpen = backendOpen !== false && clientOpen !== false;
+                  return isOpen
+                    ? <span className="font-semibold text-success">✓ Açık</span>
+                    : <span className="font-semibold text-danger">✗ Kapalı</span>;
+                })()}
               </div>
+              {/* Katılım endeksi uygunluğu — kategori/isim ile hızlı kontrol */}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Katılım Endeksi</span>
+                {(() => {
+                  const catName = `${githubData.category ?? ''} ${githubData.name ?? ''}`.toLowerCase();
+                  const isKatilim = catName.includes('katılım') || catName.includes('katilim');
+                  return isKatilim
+                    ? <span className="font-semibold text-success">✓ Uyumlu</span>
+                    : <span className="font-semibold text-slate-400">— Uyumsuz</span>;
+                })()}
+              </div>
+              {/* Risk profil uygunlugu — kullanici risk profili kaydetmisse */}
+              {(() => {
+                const saved = readRiskProfile();
+                if (!saved) {
+                  return (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Profil Uyumu</span>
+                      <Link to="/risk-profili" className="text-[10px] text-accent hover:underline">Profil oluştur →</Link>
+                    </div>
+                  );
+                }
+                const cat = githubData.category ?? '';
+                const name = githubData.name ?? githubData.code;
+                const open = githubData.tefasOpen ?? computeTefasOpenClient(cat, name) ?? undefined;
+                const s = evaluateFundSuitability(cat, name, open, saved.profile);
+                const cfg: Record<SuitabilityLevel, { text: string; label: string }> = {
+                  good:     { text: 'text-success',  label: '✓ Uygun' },
+                  caution:  { text: 'text-warning',  label: '△ Dikkat' },
+                  mismatch: { text: 'text-orange-300', label: '△ Uyumsuz' },
+                  blocked:  { text: 'text-danger',   label: '✗ Alınamaz' },
+                };
+                const c = cfg[s.level];
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Profil Uyumu</span>
+                    <span className={cn('font-semibold', c.text)} title={s.message}>
+                      {c.label}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -678,43 +727,41 @@ function ExtLink({ title, description, url }: { title: string; description: stri
  * yine de eğilim ve büyüklük hakkında net bir görsel sağlar.
  */
 function FundPerformanceChart({ fund }: { fund: TefasFundData }) {
+  // Hisse detay chart'in aynisi (PanelStyleChart tarzi) — period switcher + MiniAreaChart.
+  // NAV history: TEFAS'in gunluk history feed'i yok, bu yuzden anchor noktalar
+  // kullaniyoruz (7 noktadan interpolate). Kullanici period sec, o araligi gorur.
+  type PeriodKey = '1H' | '1A' | '3A' | '6A' | 'YTD' | '1Y';
+  const [period, setPeriod] = useState<PeriodKey>('1Y');
   const today = new Date();
-  const points: Array<{ date: string; label: string; nav: number; ts: number }> = [];
+  const allPoints: Array<{ label: string; nav: number; ts: number }> = [];
 
   const addPoint = (label: string, daysAgo: number, returnPct: number | null) => {
     if (returnPct == null) return;
     const d = new Date(today);
     d.setDate(d.getDate() - daysAgo);
-    // pastNav × (1 + return/100) = todayNav  →  pastNav = todayNav / (1 + return/100)
     const pastNav = fund.nav / (1 + returnPct / 100);
     if (!Number.isFinite(pastNav) || pastNav <= 0) return;
-    points.push({
-      date: d.toISOString().slice(0, 10),
-      label,
-      nav: pastNav,
-      ts: d.getTime(),
-    });
+    allPoints.push({ label, nav: pastNav, ts: d.getTime() });
   };
-
-  // YTD için yıl başından geçen gün sayısı
   const ytdDays = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / 86_400_000);
-  addPoint('1Y önce',   365, fund.returns['1y']);
-  addPoint('Yılbaşı',   ytdDays, fund.returns.ytd);
-  addPoint('6A önce',   180, fund.returns['6m']);
-  addPoint('3A önce',   90,  fund.returns['3m']);
-  addPoint('1A önce',   30,  fund.returns['1m']);
-  addPoint('1H önce',   7,   fund.returns['1w']);
+  addPoint('1Y önce',  365, fund.returns['1y']);
+  addPoint('Yılbaşı',  ytdDays, fund.returns.ytd);
+  addPoint('6A önce',  180, fund.returns['6m']);
+  addPoint('3A önce',   90, fund.returns['3m']);
+  addPoint('1A önce',   30, fund.returns['1m']);
+  addPoint('1H önce',    7, fund.returns['1w']);
+  allPoints.push({ label: 'Bugün', nav: fund.nav, ts: today.getTime() });
+  allPoints.sort((a, b) => a.ts - b.ts);
 
-  // Bugün noktasını ekle
-  points.push({
-    date: fund.date || today.toISOString().slice(0, 10),
-    label: 'Bugün',
-    nav: fund.nav,
-    ts: today.getTime(),
-  });
-
-  // Sıralı: eski → yeni
-  points.sort((a, b) => a.ts - b.ts);
+  // Period'a gore aralik cutoff (gun cinsinden)
+  const PERIOD_DAYS: Record<PeriodKey, number> = {
+    '1H': 7, '1A': 30, '3A': 90, '6A': 180, YTD: ytdDays, '1Y': 365,
+  };
+  const cutoff = today.getTime() - PERIOD_DAYS[period] * 86_400_000;
+  const filteredPoints = allPoints.filter((p) => p.ts >= cutoff);
+  const points = filteredPoints.length >= 2
+    ? filteredPoints
+    : allPoints.slice(-2); // en az 2 nokta garanti
 
   if (points.length < 2) {
     return (
@@ -724,33 +771,53 @@ function FundPerformanceChart({ fund }: { fund: TefasFundData }) {
     );
   }
 
-  const minNav = Math.min(...points.map((p) => p.nav));
-  const maxNav = Math.max(...points.map((p) => p.nav));
-  const pad = (maxNav - minNav) * 0.08;
   const firstNav = points[0].nav;
   const lastNav = points[points.length - 1].nav;
   const totalReturn = ((lastNav - firstNav) / firstNav) * 100;
   const isPositive = totalReturn >= 0;
 
+  // MiniAreaChart formati {date, close}
+  const chartData = points.map((p) => ({ date: p.ts, close: p.nav }));
+
   return (
     <div>
-      <div className="mb-3 flex items-baseline justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
           <TrendingUp size={14} className="text-accent" />
           NAV Performans Eğrisi
-          <span className="text-[10px] font-normal text-slate-500">son 1 yıl • anchor noktalar</span>
         </h3>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500">1Y toplam</div>
-          <div className={`text-base font-bold tabular-nums ${isPositive ? 'text-success' : 'text-danger'}`}>
+        <div className="flex items-baseline gap-2">
+          <span className={cn('text-xs font-semibold tabular-nums', isPositive ? 'text-success' : 'text-danger')}>
             {isPositive ? '+' : ''}{totalReturn.toFixed(2)}%
+          </span>
+          {/* Period switcher — hisse detay chart ile ayni gorsel */}
+          <div className="flex gap-1">
+            {(['1H', '1A', '3A', '6A', 'YTD', '1Y'] as PeriodKey[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  'rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition',
+                  period === p
+                    ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
+                    : 'text-slate-400 hover:bg-bg-soft hover:text-slate-200',
+                )}
+              >
+                {p}
+              </button>
+            ))}
           </div>
         </div>
       </div>
-      <FundLineSvg points={points} minNav={minNav} maxNav={maxNav} pad={pad} firstNav={firstNav} isPositive={isPositive} />
+      <MiniAreaChart
+        data={chartData}
+        positive={isPositive}
+        formatValue={(v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+      />
       <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
-        ℹ️ Grafik, mevcut NAV ve TEFAS dönemsel getirilerinden geri-hesaplanan 7 anchor noktayı kullanır.
-        Günlük NAV detayı için <a href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fund.code}`} target="_blank" rel="noreferrer" className="text-accent hover:underline">TEFAS</a>.
+        ℹ️ Grafik anchor noktalardan interpolate edilir. Günlük NAV detayı için
+        {' '}<a href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fund.code}`} target="_blank" rel="noreferrer" className="text-accent hover:underline">TEFAS</a>.
       </p>
     </div>
   );

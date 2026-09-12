@@ -444,11 +444,13 @@ def detect_columns(df: pd.DataFrame) -> dict[str, str | None]:
         ] if c in df.columns), None),
         'mcap':       next((c for c in [
             'portfoy_buyuklugu', 'market_cap', 'buyukluk', 'portfoyBuyuklugu',
+            'portfoyBuyukluk',  # tefasfon 0.x son sürümü bu isimle donuyor (u eksik)
             'fon_portfoy_degeri', 'portfoy_degeri',
         ] if c in df.columns), None),
         'investors':  next((c for c in [
             'yatirimci_sayisi', 'kisi_sayisi', 'number_of_investors',
-            'yatirimciSayisi', 'kisi', 'investor_count',
+            'yatirimciSayisi', 'kisiSayisi',  # tefasfon 0.x son sürümü
+            'kisi', 'investor_count',
         ] if c in df.columns), None),
         'shares':     next((c for c in [
             'ted_pay_sayisi', 'pay_sayisi', 'number_of_shares', 'tedPaySayisi',

@@ -31,6 +31,13 @@ export interface TefasFundData {
     '1y': number | null;
   };
   history: Array<{ date: string; price: number }>;
+  /**
+   * Varlık dağılımı — TEFAS BindFonPortfoyDagilimi endpoint'inden çekilir.
+   * Sadece top-N (marketCap desc) tefasOpen fonlar için doldurulur; kalan
+   * fonlarda null döner. Frontend "hazırlanıyor" state gösterir.
+   * Format: [{label: "Hisse Senedi", pct: 59.03}, ...] — pct desc siralı.
+   */
+  allocation?: Array<{ label: string; pct: number }> | null;
 }
 
 export interface TefasFeed {

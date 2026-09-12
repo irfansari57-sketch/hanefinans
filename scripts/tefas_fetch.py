@@ -229,6 +229,53 @@ def strictly_prior_business_day(d: datetime) -> datetime:
     return previous_business_day(d)
 
 
+def fetch_fund_allocation(code: str, timeout: int = 10) -> "list[dict] | None":
+    """TEFAS'in BindFonPortfoyDagilimi endpoint'inden fon varlik dagilimini ceker.
+
+    POST https://www.tefas.gov.tr/api/DB/BindFonPortfoyDagilimi
+    Body: fonkodu=STI (form-encoded)
+    Response: [{"VARLIK_ADI": "Hisse Senedi", "ORAN": 59.03}, ...]
+
+    Cluster limit: her fon icin ayri call — cron rate limit dikkat.
+    Yalnizca aktif TEFAS fonlari icin cagirilir (top N by marketCap).
+    """
+    try:
+        r = requests.post(
+            'https://www.tefas.gov.tr/api/DB/BindFonPortfoyDagilimi',
+            data={'fonkodu': code.strip().upper()},
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Referer': 'https://www.tefas.gov.tr/FonAnaliz.aspx',
+            },
+            timeout=timeout,
+        )
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        if not isinstance(data, list) or len(data) == 0:
+            return None
+        # Format: [{"VARLIK_ADI": "...", "ORAN": 0.0}, ...]
+        result = []
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            label = str(item.get('VARLIK_ADI') or item.get('varlik_adi') or '').strip()
+            oran = item.get('ORAN') or item.get('oran')
+            try:
+                pct = float(oran) if oran is not None else None
+            except (ValueError, TypeError):
+                pct = None
+            if label and pct is not None and pct > 0:
+                result.append({'label': label, 'pct': pct})
+        # % desc siraliyalim - en buyuk ilk
+        result.sort(key=lambda x: x['pct'], reverse=True)
+        return result if result else None
+    except Exception as e:
+        print(f"[allocation] {code} fetch fail: {e}", file=sys.stderr)
+        return None
+
+
 def pct_change(latest: float, past: float | None) -> float | None:
     if past is None or past == 0 or latest is None:
         return None
@@ -659,10 +706,36 @@ def main() -> int:
             "shareCount": int(last_row.get(cols['shares'], 0) or 0) if cols['shares'] else None,
             "returns": returns,
             "history": history_arr,
+            # allocation asagida top-N icin doldurulacak
+            "allocation": None,
         })
 
     # 1Y getiriye göre desc sırala
     funds.sort(key=lambda f: (f["returns"].get("1y") or -9999), reverse=True)
+
+    # ---------- Allocation fetch (top N by marketCap + tefasOpen) ----------
+    # TEFAS BindFonPortfoyDagilimi endpoint'i her fon icin ayri POST — rate limit
+    # koruma icin sadece TEFAS'a acik + market cap'i buyuk fonlara sinirlariz.
+    # Kucuk fonlar Worker fallback kaldi (dinamik fetch), buradan allocation almaz.
+    ALLOC_TOP_N = int(os.environ.get('TEFAS_ALLOC_TOP_N', '500'))
+    ALLOC_DELAY_MS = int(os.environ.get('TEFAS_ALLOC_DELAY_MS', '150'))
+    alloc_candidates = [f for f in funds if f.get('tefasOpen') and (f.get('marketCap') or 0) > 0]
+    alloc_candidates.sort(key=lambda f: (f.get('marketCap') or 0), reverse=True)
+    alloc_targets = alloc_candidates[:ALLOC_TOP_N]
+    print(f"\n[allocation] {len(alloc_targets)} fon icin varlik dagilimi cekiliyor...", flush=True)
+    alloc_ok, alloc_fail = 0, 0
+    for i, f in enumerate(alloc_targets):
+        alloc = fetch_fund_allocation(f['code'])
+        if alloc:
+            f['allocation'] = alloc
+            alloc_ok += 1
+        else:
+            alloc_fail += 1
+        # Rate limit protection
+        time.sleep(ALLOC_DELAY_MS / 1000.0)
+        if (i + 1) % 50 == 0:
+            print(f"  {i+1}/{len(alloc_targets)} — ok:{alloc_ok} fail:{alloc_fail}", flush=True)
+    print(f"[allocation] Tamamlandi: {alloc_ok} basarili, {alloc_fail} basarisiz", flush=True)
 
     payload = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),

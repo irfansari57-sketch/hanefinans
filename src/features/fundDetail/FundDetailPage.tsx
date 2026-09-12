@@ -251,105 +251,134 @@ export function FundDetailPage() {
         </div>
       </div>
 
-      {/* Canlı TEFAS verisi — Ozet tab (NAV + Performans + Chart) */}
+      {/* OZET TAB — Kapsamli dashboard (kompakt, tek ekran).
+          Yapı: NAV + 6 period + Skor tek satir | Chart (sol) + Yandaki karlar (sag) | Getiri tablosu alt */}
       {activeTab === 'ozet' && githubData ? (
-        <div className="mb-4 grid gap-3 sm:grid-cols-3">
-          <div className="card p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-wider text-slate-500">Birim Pay Değeri (NAV)</div>
-              <></>
+        <>
+        {/* Ust seride: NAV big + 6 periyot + InvestliQ Skor kucuk chip */}
+        <div className="mb-3 card p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* NAV */}
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-slate-500 leading-none">NAV</div>
+              <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-100">
+                {githubData.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}₺
+              </div>
+              <div className="text-[9px] text-slate-500">{githubData.date}</div>
             </div>
-            <div className="mt-1 text-2xl font-bold tabular-nums text-slate-100">
-              {githubData.nav.toLocaleString('tr-TR', { maximumFractionDigits: 6 })}₺
-            </div>
-            <div className="mt-0.5 text-[11px] text-slate-500">{githubData.date}</div>
-          </div>
-          <div className="card sm:col-span-2 p-4">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">Performans (TEFAS)</div>
-            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-6 text-xs">
+            <div className="h-8 w-px bg-border" />
+            {/* Period returns compact */}
+            <div className="flex flex-1 flex-wrap items-center gap-1.5">
               {[
-                { k: '1w', l: '1 Hafta' },
-                { k: '1m', l: '1 Ay' },
-                { k: '3m', l: '3 Ay' },
-                { k: '6m', l: '6 Ay' },
+                { k: '1w', l: '1 HAFTA' },
+                { k: '1m', l: '1 AY' },
+                { k: '3m', l: '3 AY' },
+                { k: '6m', l: '6 AY' },
                 { k: 'ytd', l: 'YTD' },
-                { k: '1y', l: '1 Yıl' },
+                { k: '1y', l: '1 YIL' },
               ].map(({ k, l }) => {
                 const v = (githubData.returns as Record<string, number | null>)[k];
-                if (v == null) return (
-                  <div key={k} className="rounded bg-bg-soft px-2 py-1">
-                    <div className="text-[10px] text-slate-500">{l}</div>
-                    <div className="tabular-nums text-slate-600">—</div>
-                  </div>
-                );
+                const t = v == null ? 'text-slate-600' : v >= 0 ? 'text-success' : 'text-danger';
                 return (
-                  <div key={k} className="rounded bg-bg-soft px-2 py-1">
-                    <div className="text-[10px] text-slate-500">{l}</div>
-                    <div className={cn('tabular-nums font-medium', v >= 0 ? 'text-success' : 'text-danger')}>
-                      {v >= 0 ? '+' : ''}{v.toFixed(2)}%
+                  <div key={k} className="rounded border border-border bg-bg-soft/50 px-2 py-1 min-w-[70px]">
+                    <div className="text-[8px] uppercase tracking-wider text-slate-500 leading-none">{l}</div>
+                    <div className={cn('mt-0.5 text-xs font-semibold tabular-nums', t)}>
+                      {v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-          {/* InvestliQ Skor — bize ozgu risk-adjusted deger; kural tabanli. */}
-          {(() => {
-            // Basit hesap: getiri buyuklugu (1Y) + Fon buyuklugu + yatirimci coklugu -
-            // (kategori riski) → 0-100 arasi bir skor. Kural tabanli hızlı MVP.
-            const ret1y = githubData.returns['1y'] ?? 0;
-            const size = githubData.marketCap ? Math.min(30, Math.log10(githubData.marketCap / 1_000_000) * 10) : 5;
-            const investors = githubData.investorCount ? Math.min(20, Math.log10(githubData.investorCount) * 5) : 5;
-            const returnPart = Math.max(0, Math.min(35, ret1y / 3));
-            const cat = (githubData.category ?? '').toLowerCase();
-            const riskPenalty = cat.includes('serbest') || cat.includes('hisse') ? 5 : 0;
-            const iqScore = Math.max(0, Math.min(100, Math.round(returnPart + size + investors + 15 - riskPenalty)));
-            const iqTone = iqScore >= 70 ? 'text-success' : iqScore >= 40 ? 'text-warning' : 'text-danger';
-            const iqLabel = iqScore >= 70 ? 'Güçlü' : iqScore >= 40 ? 'Orta' : 'Zayıf';
-            return (
-              <div className="card sm:col-span-3 p-4">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">InvestliQ Skor</div>
-                    <div className={cn('mt-1 flex items-baseline gap-1.5', iqTone)}>
-                      <span className="text-2xl font-bold tabular-nums">{iqScore}</span>
-                      <span className="text-xs font-semibold">/ 100</span>
-                    </div>
-                    <div className={cn('text-[10px]', iqTone)}>{iqLabel}</div>
-                  </div>
-                  {githubData.marketCap ? (
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-500">Fon Büyüklüğü</div>
-                      <div className="mt-1 text-base font-semibold tabular-nums">
-                        {(githubData.marketCap / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}M ₺
-                      </div>
-                    </div>
-                  ) : <div />}
-                  {githubData.investorCount ? (
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-slate-500">Yatırımcı Sayısı</div>
-                      <div className="mt-1 text-base font-semibold tabular-nums">
-                        {githubData.investorCount.toLocaleString('tr-TR')}
-                      </div>
-                    </div>
-                  ) : <div />}
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Kategori</div>
-                    <div className="mt-1 text-base font-semibold text-slate-200">{githubData.category || '—'}</div>
+            {/* InvestliQ Skor kompakt chip */}
+            {(() => {
+              const ret1y = githubData.returns['1y'] ?? 0;
+              const size = githubData.marketCap ? Math.min(30, Math.log10(githubData.marketCap / 1_000_000) * 10) : 5;
+              const investors = githubData.investorCount ? Math.min(20, Math.log10(githubData.investorCount) * 5) : 5;
+              const returnPart = Math.max(0, Math.min(35, ret1y / 3));
+              const cat = (githubData.category ?? '').toLowerCase();
+              const riskPenalty = cat.includes('serbest') || cat.includes('hisse') ? 5 : 0;
+              const iqScore = Math.max(0, Math.min(100, Math.round(returnPart + size + investors + 15 - riskPenalty)));
+              const iqTone = iqScore >= 70 ? 'text-success border-success/40 bg-success/10'
+                : iqScore >= 40 ? 'text-warning border-warning/40 bg-warning/10'
+                : 'text-danger border-danger/40 bg-danger/10';
+              return (
+                <div className={cn('rounded border px-2.5 py-1', iqTone)}>
+                  <div className="text-[8px] uppercase tracking-wider leading-none opacity-80">InvestliQ Skor</div>
+                  <div className="mt-0.5 flex items-baseline gap-1">
+                    <span className="text-base font-bold tabular-nums">{iqScore}</span>
+                    <span className="text-[9px] opacity-70">/100</span>
                   </div>
                 </div>
-                <p className="mt-3 text-[10px] text-slate-500">
-                  InvestliQ Skor: 1Y getiri + fon büyüklüğü + yatırımcı çokluğu + kategori riski. Kural tabanlı, bilgi amaçlı.
-                </p>
-              </div>
-            );
-          })()}
-
-          {/* Performans grafiği — anchor noktalardan reconstruct */}
-          <div className="card sm:col-span-3 p-4">
-            <FundPerformanceChart fund={githubData} />
+              );
+            })()}
           </div>
         </div>
+
+        {/* Orta grid: Chart (sol) + Yandaki kartlar (sag) */}
+        <div className="mb-3 grid gap-3 lg:grid-cols-3">
+          {/* Chart */}
+          <div className="card p-3 lg:col-span-2">
+            <FundPerformanceChart fund={githubData} />
+          </div>
+          {/* Sag column: Varlık Dağılımı + Meta bilgi kartlari */}
+          <div className="space-y-3">
+            {/* Varlık Dağılımı — Worker'dan gelirse donut, gelmezse "hazırlanıyor" */}
+            <div className="card p-3">
+              <div className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">Varlık Dağılımı</div>
+              {liveData?.allocation && liveData.allocation.length > 0 ? (
+                <div className="space-y-1.5 text-xs">
+                  {liveData.allocation.slice(0, 5).map((a) => (
+                    <div key={a.label}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-300 truncate">{a.label}</span>
+                        <span className="tabular-nums text-accent">%{a.pct.toFixed(1)}</span>
+                      </div>
+                      <div className="mt-0.5 h-1 rounded-full bg-bg-soft overflow-hidden">
+                        <div className="h-full bg-accent" style={{ width: `${Math.min(100, a.pct)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-500 italic">
+                  Portföy Ağı tab'ında görselleştirilir.<br/>Detay TEFAS'ta.
+                </div>
+              )}
+            </div>
+            {/* Kategori + Yönetim + Stopaj */}
+            <div className="card p-3 space-y-2 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Kategori</span>
+                <span className="font-semibold text-slate-200">{githubData.category || '—'}</span>
+              </div>
+              {githubData.marketCap && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Fon Büyüklüğü</span>
+                  <span className="font-semibold tabular-nums text-slate-200">
+                    {(githubData.marketCap / 1_000_000).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}M ₺
+                  </span>
+                </div>
+              )}
+              {githubData.investorCount && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Yatırımcı</span>
+                  <span className="font-semibold tabular-nums text-slate-200">
+                    {githubData.investorCount.toLocaleString('tr-TR')}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Stopaj</span>
+                <span className="font-semibold text-slate-200">%17.5</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">TEFAS</span>
+                <span className="font-semibold text-success">✓ Açık</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        </>
       ) : activeTab === 'ozet' && isTefasWorkerConfigured() ? (
         liveLoading ? (
           <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4 text-xs text-slate-400">

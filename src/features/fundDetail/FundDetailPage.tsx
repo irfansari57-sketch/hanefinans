@@ -86,7 +86,9 @@ export function FundDetailPage() {
 
   const tefasUrl = `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(fundCode)}`;
   const tefasComp = `https://www.tefas.gov.tr/FonKarsilastirma.aspx?FonKod=${encodeURIComponent(fundCode)}`;
-  // Fintables link kaldirildi (kullanici talebi: baska site referanslari yok).
+  // Fintables link geri getirildi (kullanici talebi 12 Eyl 2026):
+  // detayli portfoy analizi + risk skoru icin external kaynak, TEFAS'a bir alternatif.
+  const fintablesUrl = `https://fintables.com/fonlar/${fundCode}`;
 
   if (fund === undefined) {
     return <div className="p-6 text-center text-sm text-slate-500">Yükleniyor…</div>;
@@ -356,6 +358,35 @@ export function FundDetailPage() {
                 <span className="text-slate-500">Kategori</span>
                 <span className="font-semibold text-slate-200">{githubData.category || '—'}</span>
               </div>
+              {/* Risk seviyesi — TEFAS 1-7 skalasi, kategoriye gore derive edilir */}
+              {(() => {
+                const cat = (githubData.category ?? '').toLowerCase();
+                const name = (githubData.name ?? '').toLowerCase();
+                let risk = 4;
+                let riskLabel = 'Orta';
+                if (cat.includes('para piyasası') || cat.includes('para piyasasi')) { risk = 1; riskLabel = 'Çok Düşük'; }
+                else if (cat.includes('borçlanma') || cat.includes('borclanma')) { risk = 2; riskLabel = 'Düşük'; }
+                else if (cat.includes('katılım') || cat.includes('katilim')) { risk = 3; riskLabel = 'Düşük-Orta'; }
+                else if (cat.includes('karma')) { risk = 4; riskLabel = 'Orta'; }
+                else if (cat.includes('değişken') || cat.includes('degisken')) { risk = 5; riskLabel = 'Orta-Yüksek'; }
+                else if (cat.includes('kıymetli') || cat.includes('kiymetli') || cat.includes('altın') || cat.includes('altin')) { risk = 5; riskLabel = 'Orta-Yüksek'; }
+                else if (cat.includes('fon sepeti')) { risk = 5; riskLabel = 'Orta-Yüksek'; }
+                else if (cat.includes('hisse senedi')) { risk = 6; riskLabel = 'Yüksek'; }
+                else if (cat.includes('serbest')) { risk = 7; riskLabel = 'Çok Yüksek'; }
+                // Katılım Serbest → 6 (serbest risk yuksek ama katilim disiplini var)
+                if (cat.includes('katılım') && cat.includes('serbest')) { risk = 6; riskLabel = 'Yüksek'; }
+                // isim bazli override
+                if (name.includes('hisse')) { risk = Math.max(risk, 6); riskLabel = risk === 7 ? 'Çok Yüksek' : 'Yüksek'; }
+                const riskTone = risk <= 2 ? 'text-success' : risk <= 4 ? 'text-warning' : risk <= 5 ? 'text-orange-300' : 'text-danger';
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Risk Seviyesi</span>
+                    <span className={cn('font-semibold tabular-nums', riskTone)}>
+                      {risk}/7 · {riskLabel}
+                    </span>
+                  </div>
+                );
+              })()}
               {githubData.marketCap && (
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Fon Büyüklüğü</span>
@@ -563,6 +594,11 @@ export function FundDetailPage() {
                 title="TEFAS — Karşılaştırma"
                 description="Benchmark karşılaştırma, getiri grafikleri"
                 url={tefasComp}
+              />
+              <ExtLink
+                title="Fintables (Premium)"
+                description="Detaylı portföy analizi, risk skoru, en büyük pozisyonlar"
+                url={fintablesUrl}
               />
             </div>
           </section>

@@ -70,6 +70,8 @@ const PanelPage             = lazyWithRetry(() => import('@/features/panel/Panel
 const NewsPage              = lazyWithRetry(() => import('@/features/news/NewsPage').then((m) => ({ default: m.NewsPage })));
 const WatchlistPage         = lazyWithRetry(() => import('@/features/watchlist/WatchlistPage').then((m) => ({ default: m.WatchlistPage })));
 const FundsPage             = lazyWithRetry(() => import('@/features/funds/FundsPage').then((m) => ({ default: m.FundsPage })));
+const BesFundsPage          = lazyWithRetry(() => import('@/features/bes/BesFundsPage').then((m) => ({ default: m.BesFundsPage })));
+const BorsaYatirimFundsPage = lazyWithRetry(() => import('@/features/byf/BorsaYatirimFundsPage').then((m) => ({ default: m.BorsaYatirimFundsPage })));
 const FundComparePage       = lazyWithRetry(() => import('@/features/fundCompare/FundComparePage').then((m) => ({ default: m.FundComparePage })));
 const AboutPage             = lazyWithRetry(() => import('@/features/about/AboutPage').then((m) => ({ default: m.AboutPage })));
 const StocksPage            = lazyWithRetry(() => import('@/features/stocks/StocksPage').then((m) => ({ default: m.StocksPage })));
@@ -136,6 +138,8 @@ export const router = createBrowserRouter([
       { path: 'risk-profili', element: withSuspense(<RiskProfilePage />) },
       { path: 'takvim', element: withSuspense(<EconomicCalendarPage />) },
       { path: 'funds', element: withSuspense(<FundsPage />) },
+      { path: 'bes', element: withSuspense(<BesFundsPage />) },
+      { path: 'byf', element: withSuspense(<BorsaYatirimFundsPage />) },
       { path: 'karsilastir', element: withSuspense(<FundComparePage />) },
       { path: 'hakkinda', element: withSuspense(<AboutPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },

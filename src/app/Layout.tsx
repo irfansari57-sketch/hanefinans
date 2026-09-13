@@ -84,8 +84,10 @@ const navGroups: NavGroup[] = [
   {
     title: 'Piyasalar',
     items: [
-      // Yeni sıra: Fonlar → Hisseler → Emtialar → Döviz Kurları → Takip Listem → Portföyüm → Ekonomik Takvim → Gelişmeler
-      { to: '/funds', label: 'Fonlar', icon: Landmark },
+      // Yeni sıra: Fonlar → BES → BYF → Karşılaştır → Hisseler → Emtialar → Döviz Kurları → Takip Listem → Portföyüm → Ekonomik Takvim → Gelişmeler
+      { to: '/funds', label: 'Yatırım Fonları', icon: Landmark },
+      { to: '/bes', label: 'BES Fonları', icon: Landmark },
+      { to: '/byf', label: 'Borsa Yatırım Fonları', icon: Landmark },
       { to: '/karsilastir', label: 'Fon Karşılaştır', icon: Landmark },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/emtia', label: 'Emtialar', icon: Gem },

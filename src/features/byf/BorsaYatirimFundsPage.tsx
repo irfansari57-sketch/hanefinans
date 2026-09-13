@@ -79,22 +79,65 @@ export function BorsaYatirimFundsPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    // BYF sembolleri BIST'te .IS suffix ile işlem görüyor
-    const symbols = BYF_LIST.map((f) => f.symbol + '.IS');
-    loadStocks(symbols)
-      .then(({ data }) => {
+    /**
+     * BYF fiyat kaynagi zinciri:
+     *   1. /api/byf/live — Fintables SSR HTML scrape (asil calisan kaynak,
+     *      Yahoo BIST BYF ticker'larini tanimiyor, Is Yatirim CF Worker'dan bloklu)
+     *   2. Yahoo Finance fallback (nadiren calisir ama denemeye deger)
+     */
+    (async () => {
+      try {
+        // Adim 1: /api/byf/live
+        try {
+          const r = await fetch(`/api/byf/live?t=${Date.now()}`);
+          if (r.ok) {
+            const j = await r.json() as {
+              ok: boolean;
+              funds: Array<{ code: string; price: number | null; changePct: number | null; lastUpdate: string | null }>;
+            };
+            if (j.ok && j.funds && j.funds.length > 0) {
+              const map: Record<string, Stock> = {};
+              for (const f of j.funds) {
+                // Fintables kodlari .F'siz (APBDL), bizim listede F'li (APBDLF). Ikisini de mapleyelim.
+                const withF = f.code + 'F';
+                const stockShape: Stock = {
+                  symbol: withF,
+                  name: withF,
+                  price: f.price ?? 0,
+                  changePct: f.changePct ?? 0,
+                  updatedAt: new Date().toISOString(),
+                };
+                map[withF] = stockShape;
+                map[f.code] = stockShape; // ikinci alias
+              }
+              console.info(`[byf] Fintables live: ${j.funds.length} fon`);
+              if (alive) {
+                setQuotes(map);
+                setUpdatedAt(new Date().toISOString());
+              }
+              return;
+            }
+          }
+          console.warn('[byf] /api/byf/live bos veya fail');
+        } catch (e) {
+          console.warn('[byf] /api/byf/live exception:', e);
+        }
+
+        // Adim 2: Yahoo fallback (BYF ticker'lari genelde 404 doner, ama deneriz)
+        const symbols = BYF_LIST.map((f) => f.symbol + '.IS');
+        const { data } = await loadStocks(symbols);
         if (!alive) return;
         const map: Record<string, Stock> = {};
         data.forEach((s) => {
-          // Yahoo'dan gelen symbol '.IS' suffix'li, biz base sembolle map ederiz
           const base = s.symbol.replace(/\.IS$/i, '');
           map[base] = s;
         });
         setQuotes(map);
         setUpdatedAt(new Date().toISOString());
-      })
-      .catch(() => { /* graceful */ })
-      .finally(() => alive && setLoading(false));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
     return () => { alive = false; };
   }, []);
 

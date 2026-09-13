@@ -41,9 +41,57 @@ function parseNum(s: string): number | null {
 }
 
 /**
- * Fintables innerText'ini parse et.
- * Format (tab-separated):
- *   1  APBDL.F  18:05:00  Hisse Senedi Yoğun  G  41,18  G  %  -0,53  G  325,15 bin  566,38 mn  %  4,17  %  5,43 ...
+ * Fintables RSC payload'ini parse et.
+ * Format: self.__next_f.push([1, "...{\"code\":\"APBDL.F\",\"yield_1m\":5.43,...}..."])
+ * JSON escape'lerini un-escape ederek her fon objesini yakalar.
+ */
+function parseFintablesRSC(html: string): ByfFund[] {
+  const funds: ByfFund[] = [];
+  // RSC push satirlarini bul
+  const rscMatches = html.match(/self\.__next_f\.push\(\[1,\s*"([\s\S]*?)"\]\)/g);
+  if (!rscMatches) return funds;
+
+  for (const rscBlock of rscMatches) {
+    // JSON string'i un-escape et
+    const raw = rscBlock
+      .replace(/\\"/g, '"')
+      .replace(/\\n/g, '\n')
+      .replace(/\\\\/g, '\\');
+
+    // Her fund objesini yakala — {"code":"XXX.F",...,"yield_1y":..,"yield_3y":..,"yield_5y":..,"latest_record__fund_aum":..}
+    const fundRegex = /\{"code":"([A-Z0-9]{3,6})\.F","management_company_id":"[^"]*","title":"([^"]+)","type":"([^"]+)","yield_1m":([^,]+),"yield_3m":([^,]+),"yield_6m":([^,]+),"yield_ytd":([^,]+),"yield_1y":([^,]+),"yield_3y":([^,]+),"yield_5y":([^,]+),"latest_record__fund_aum":(-?[\d.]+|null)\}/g;
+
+    let m;
+    while ((m = fundRegex.exec(raw)) !== null) {
+      const parseYield = (s: string) => (s === 'null' ? null : parseFloat(s));
+      const parseAum = (s: string) => (s === 'null' ? null : parseFloat(s));
+      const aum = parseAum(m[11]);
+      funds.push({
+        code: m[1],
+        category: m[3],
+        price: null, // RSC'de fiyat yok, ayri API'den gelir
+        changePct: null,
+        volume: null,
+        totalValue: aum != null ? aum.toLocaleString('tr-TR', { maximumFractionDigits: 0 }) : null,
+        returns: {
+          '1w': null,
+          '1m':  parseYield(m[4]),
+          '3m':  parseYield(m[5]),
+          '6m':  parseYield(m[6]),
+          ytd:   parseYield(m[7]),
+          '1y':  parseYield(m[8]),
+          '3y':  parseYield(m[9]),
+          '5y':  parseYield(m[10]),
+        },
+        lastUpdate: null,
+      });
+    }
+  }
+  return funds;
+}
+
+/**
+ * Eski parser (fallback) — Fintables innerText format.
  */
 function parseFintablesText(text: string): ByfFund[] {
   const funds: ByfFund[] = [];
@@ -141,25 +189,29 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
 
     const html = await r.text();
 
-    // HTML'i basit metne cevir (tag'leri ayikla)
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, '\n')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&#39;/g, "'")
-      .replace(/&quot;/g, '"');
+    // Once RSC parse dene (Fintables Next.js RSC ile embed ediyor)
+    let funds = parseFintablesRSC(html);
 
-    const funds = parseFintablesText(text);
+    // Fallback: innerText parse (RSC bulunmazsa)
+    if (funds.length === 0) {
+      const text = html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, '\n')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"');
+      funds = parseFintablesText(text);
+    }
 
     if (debug) {
       return new Response(JSON.stringify({
         ok: true,
         htmlSize: html.length,
-        textSize: text.length,
+        parser: funds.length > 0 ? 'rsc-or-text' : 'both-failed',
         fundCount: funds.length,
         sample: funds.slice(0, 3),
       }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json' } });

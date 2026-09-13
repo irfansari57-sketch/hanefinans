@@ -72,29 +72,32 @@ const navGroups: NavGroup[] = [
       // Route hala mevcut - direkt URL ile erisilebilir. Yeniden aktive icin bu satiri geri ac.
       // { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/recommendations', label: 'Piyasa Radarı', icon: Flame, pro: false },
-      // Akilli Sorgu: aiForAllUsers=false iken sadece admin gorur. flag acilinca herkese acilir.
-      ...(FEATURES.smartQuery
-        ? [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles }]
-        : [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles, adminOnly: true }]),
+      // Akilli Sorgu: kullanici talebi 13 Eyl 2026 — nav'dan tamamen kaldirildi.
+      // Route hala mevcut, direkt URL ile erisilebilir. Yeniden aktive: alttaki satiri geri ac.
+      // ...(FEATURES.smartQuery
+      //   ? [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles }]
+      //   : [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles, adminOnly: true }]),
       { to: '/risk-profili', label: 'Risk Profilim', icon: Shield },
       { to: '/tahmin', label: 'Oyunlarım', icon: Sparkles },
-      { to: '/hakkinda', label: 'Hakkında', icon: BadgeCheck },
+      // Hakkinda -> Hesap grubuna tasindi (kullanici talebi 13 Eyl 2026)
     ],
   },
   {
     title: 'Piyasalar',
     items: [
-      // Yeni sıra: Fonlar → BES → BYF → Karşılaştır → Hisseler → Emtialar → Döviz Kurları → Takip Listem → Portföyüm → Ekonomik Takvim → Gelişmeler
+      // Yeni sıra: Fonlar → BES → BYF → Karşılaştır → Portföyüm → Portföy Simülatörü
+      //           → Hisseler → Emtialar → Döviz → Takip → Takvim → Gelişmeler
       { to: '/funds', label: 'Yatırım Fonları', icon: Landmark },
       { to: '/bes', label: 'BES Fonları', icon: Landmark },
       { to: '/byf', label: 'Borsa Yatırım Fonları', icon: Landmark },
       { to: '/karsilastir', label: 'Fon Karşılaştır', icon: Landmark },
+      // Portfoyum + Simulator, Emtialar'in USTUNDE (kullanici talebi 13 Eyl 2026)
+      { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
       { to: '/simulator', label: 'Portföy Simülatörü', icon: Grid3x3 },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/doviz', label: 'Döviz Kurları', icon: Coins },
       { to: '/watchlist', label: 'Takip Listem', icon: Star },
-      { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
       { to: '/takvim', label: 'Ekonomik Takvim', icon: CalendarClock },
       { to: '/news', label: 'Gelişmeler', icon: Newspaper },
       { to: '/alarmlar', label: 'Alarmlarım', icon: Bell },
@@ -108,6 +111,7 @@ const navGroups: NavGroup[] = [
     title: 'Hesap',
     items: [
       { to: '/uyelik', label: 'Üyelik', icon: BadgeCheck },
+      { to: '/hakkinda', label: 'Hakkında', icon: BadgeCheck },
       { to: '/admin/data-quality', label: 'Data Quality', icon: Shield, adminOnly: true },
       { to: '/history', label: 'Geçmiş', icon: History, adminOnly: true },
       { to: '/settings', label: 'Ayarlar', icon: Settings, adminOnly: true },

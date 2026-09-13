@@ -71,6 +71,29 @@ function toNum(v: unknown): number | null {
 }
 
 /**
+ * Kurucu firmayı fon adından cıkarır — regex ile "A.Ş" (period optional).
+ * Sonuc her zaman Title Case + " A.Ş." canonical formuna cevrilir ki dropdown'da
+ * "KATILIM EMEKLİLİK VE HAYAT A.Ş." tek satır olsun, varyantlar dagilmasin.
+ */
+function extractFounder(fonAdi: string): string {
+  if (!fonAdi) return '';
+  // "AGESA HAYAT VE EMEKLİLİK A.Ş. XXX" | "KATILIM EMEKLİLİK VE HAYAT A.Ş XXX" (no period)
+  const m = fonAdi.match(/^(.+?)\s+A\.?Ş\.?/i);
+  if (!m) return '';
+  const base = m[1].trim();
+  // Title Case with TR-aware casing
+  const small = new Set(['VE', 'İLE']);
+  const titled = base.split(/\s+/).map((w, i) => {
+    if (i > 0 && small.has(w)) return w.toLocaleLowerCase('tr-TR');
+    // Kisa buyukharfli kisaltmalar (BNP, HDI, QNB, AXA, S.A, N.V. vs.)
+    if (/^[A-Z0-9]{2,4}$/.test(w)) return w;
+    const lower = w.toLocaleLowerCase('tr-TR');
+    return lower.charAt(0).toLocaleUpperCase('tr-TR') + lower.slice(1);
+  }).join(' ');
+  return titled + ' A.Ş.';
+}
+
+/**
  * FVT fund → InvestliQ shape (BesFund).
  * Frontend hem seed hem live'dan gelen datayi ayni sekilde isliyor.
  */
@@ -81,7 +104,7 @@ function normalizeFund(f: FvtFund) {
     name: f.fonAdi ?? '',
     category: 'Emeklilik' as const,
     besKategori: f.fonTipi ?? f.kategori ?? 'Emeklilik',
-    founder: (f.fonAdi ?? '').split(' A.Ş.')[0] + ' A.Ş.', // "AGESA HAYAT VE EMEKLİLİK A.Ş." from fonAdi
+    founder: extractFounder(f.fonAdi ?? ''),
     tip: (f.bes ? 'BES' : (f.fonTipi?.includes('OKS') ? 'OKS' : 'DK')) as 'BES' | 'OKS' | 'DK',
     tefasOpen: false as const,
     befasOpen: true as const,

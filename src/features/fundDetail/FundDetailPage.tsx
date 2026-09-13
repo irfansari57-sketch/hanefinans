@@ -64,7 +64,10 @@ export function FundDetailPage() {
     activityRepo.log({ type: 'page-view', symbol: fundCode, detail: `/fund/${fundCode}` }).catch(() => {});
     if (!fundCode) return;
     setLiveLoading(true);
-    // Önce GitHub feed (daha kolay setup), sonra CF Worker fallback
+    // 3-adim fetch chain:
+    //   1. GitHub tefas.json feed (regular yatirim fonlari)
+    //   2. TEFAS Cloudflare Worker (opsiyonel canli)
+    //   3. /api/befas/live — BES fonlari icin FVT proxy (325+ BES fonu, tam veri)
     (async () => {
       try {
         if (isTefasGithubConfigured()) {
@@ -76,7 +79,59 @@ export function FundDetailPage() {
         }
         if (isTefasWorkerConfigured()) {
           const w = await fetchTefasFund(fundCode);
-          setLiveData(w);
+          if (w?.nav) {
+            setLiveData(w);
+            return;
+          }
+        }
+        // BES fallback: /api/befas/live'dan bu fonu ara
+        try {
+          const r = await fetch(`/api/befas/live?t=${Date.now()}`);
+          if (r.ok) {
+            const j = await r.json() as { ok: boolean; funds: Array<{
+              code: string; name: string; besKategori: string; founder: string;
+              nav: number | null; navDate: string;
+              returns: Record<string, number | null>;
+              risk?: Record<string, number | null>;
+              size?: Record<string, number | null>;
+              fees?: Record<string, number | null>;
+              meta?: Record<string, string | null>;
+              description?: string;
+            }> };
+            const match = j.ok && j.funds?.find((f) => f.code === fundCode);
+            if (match) {
+              // BES fonu icin TefasFundData'ya mapleyip goster
+              const mapped: TefasFundData = {
+                code: match.code,
+                name: match.name,
+                category: 'Emeklilik',
+                tefasOpen: false,
+                befasOpen: true,
+                founder: match.founder,
+                nav: match.nav ?? 0,
+                date: match.navDate ?? new Date().toISOString().slice(0, 10),
+                marketCap: match.size?.totalValue ?? undefined,
+                investorCount: match.size?.investorCount ?? undefined,
+                returns: {
+                  '1d':  match.returns['1d']  ?? null,
+                  '1w':  match.returns['1w']  ?? null,
+                  '1m':  match.returns['1m']  ?? null,
+                  '3m':  match.returns['3m']  ?? null,
+                  '6m':  match.returns['6m']  ?? null,
+                  ytd:   match.returns.ytd    ?? null,
+                  '1y':  match.returns['1y']  ?? null,
+                },
+                history: [],
+                isin: match.meta?.isin ?? undefined,
+                riskValue: match.risk?.value ?? undefined,
+                managementFeeYearly: match.fees?.managementFee ?? undefined,
+                publicOfferDate: match.meta?.establishedDate ?? undefined,
+              };
+              setGithubData(mapped);
+            }
+          }
+        } catch (e) {
+          console.warn('[fund-detail] /api/befas/live fail:', e);
         }
       } finally {
         setLiveLoading(false);

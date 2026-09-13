@@ -21,32 +21,42 @@ import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
-// BIST'te işlem gören BYF sembolleri — 13 Eyl 2026 itibariyle kayıtlı liste.
-// Yeni BYF çıktıkça buraya eklenir. Kategori, sembol prefix'i ve isimden çıkarılır.
+// BIST'te işlem gören BYF sembolleri — 13 Eyl 2026 itibariyle 27 fonluk tam liste.
+// Kaynak: Fintables BYF listesi. Yeni BYF çıktıkça buraya eklenir.
 const BYF_LIST: Array<{ symbol: string; name: string; category: BYFCategory; issuer: string }> = [
   // Ak Portföy
   { symbol: 'APBDLF', name: 'Ak Portföy BIST Banka Dışı Likit 10 Endeksi', category: 'Hisse Endeksi', issuer: 'Ak Portföy' },
-  { symbol: 'APLIBF', name: 'Ak Portföy BIST Likit Banka Endeksi', category: 'Hisse Endeksi', issuer: 'Ak Portföy' },
-  { symbol: 'APX30F', name: 'Ak Portföy BIST 30 Endeksi', category: 'Hisse Endeksi', issuer: 'Ak Portföy' },
+  { symbol: 'APGLDF', name: 'Ak Portföy Altın',                              category: 'Altın',         issuer: 'Ak Portföy' },
+  { symbol: 'APLIBF', name: 'Ak Portföy BIST Likit Banka Endeksi',           category: 'Hisse Endeksi', issuer: 'Ak Portföy' },
+  { symbol: 'APMDLF', name: 'Ak Portföy BIST Orta Ölçekli Endeksi',          category: 'Hisse Endeksi', issuer: 'Ak Portföy' },
+  { symbol: 'APX30F', name: 'Ak Portföy BIST 30 Endeksi',                     category: 'Hisse Endeksi', issuer: 'Ak Portföy' },
   // QNB Finans / QNB Portföy
-  { symbol: 'GLDTRF', name: 'QNB Portföy Altın Katılım', category: 'Altın', issuer: 'QNB Portföy' },
-  { symbol: 'GMSTRF', name: 'QNB Portföy Gümüş Katılım', category: 'Gümüş', issuer: 'QNB Portföy' },
-  { symbol: 'QTEMZF', name: 'QNB Finans Temiz Enerji Endeksi', category: 'Sürdürülebilirlik', issuer: 'QNB Portföy' },
-  { symbol: 'USDTRF', name: 'QNB Portföy Amerikan Doları', category: 'Döviz', issuer: 'QNB Portföy' },
+  { symbol: 'GLDTRF', name: 'QNB Portföy Altın Katılım',                     category: 'Altın',         issuer: 'QNB Portföy' },
+  { symbol: 'GMSTRF', name: 'QNB Portföy Gümüş Katılım',                     category: 'Gümüş',         issuer: 'QNB Portföy' },
+  { symbol: 'QTEMZF', name: 'QNB Finans Temiz Enerji Endeksi',                category: 'Sürdürülebilirlik', issuer: 'QNB Portföy' },
+  { symbol: 'USDTRF', name: 'QNB Portföy Amerikan Doları',                   category: 'Döviz',         issuer: 'QNB Portföy' },
   // İş Portföy
-  { symbol: 'ISGLKF', name: 'İş Portföy Altın Katılım', category: 'Altın', issuer: 'İş Portföy' },
+  { symbol: 'ISGLKF', name: 'İş Portföy Altın Katılım',                       category: 'Altın',         issuer: 'İş Portföy' },
+  { symbol: 'ISMDLF', name: 'İş Portföy BIST Orta Ölçekli Endeksi',           category: 'Hisse Endeksi', issuer: 'İş Portföy' },
+  { symbol: 'ISX30F', name: 'İş Portföy BIST 30 Endeksi',                     category: 'Hisse Endeksi', issuer: 'İş Portföy' },
+  // Piramit / Neta Portföy
+  { symbol: 'NPTLRF', name: 'Neta Portföy Likit Endeksi',                     category: 'Hisse Endeksi', issuer: 'Neta Portföy' },
   // Osmanlı Portföy
-  { symbol: 'OPK30F', name: 'Osmanlı Portföy Katılım 30 Endeksi', category: 'Katılım', issuer: 'Osmanlı Portföy' },
-  { symbol: 'OPT25F', name: 'Osmanlı Portföy BIST Temettü 25 Endeksi', category: 'Temettü', issuer: 'Osmanlı Portföy' },
-  { symbol: 'OPTGYF', name: 'Osmanlı Portföy Kar Payı Ödeyen BIST GYO Endeksi', category: 'GYO', issuer: 'Osmanlı Portföy' },
-  { symbol: 'OPX30F', name: 'Osmanlı Portföy BIST 30 Endeksi', category: 'Hisse Endeksi', issuer: 'Osmanlı Portföy' },
+  { symbol: 'OPK30F', name: 'Osmanlı Portföy Katılım 30 Endeksi',             category: 'Katılım',       issuer: 'Osmanlı Portföy' },
+  { symbol: 'OPT25F', name: 'Osmanlı Portföy BIST Temettü 25 Endeksi',        category: 'Temettü',       issuer: 'Osmanlı Portföy' },
+  { symbol: 'OPTGYF', name: 'Osmanlı Portföy Kar Payı Ödeyen BIST GYO Endeksi', category: 'GYO',        issuer: 'Osmanlı Portföy' },
+  { symbol: 'OPTLRF', name: 'Osmanlı Portföy Likit Endeksi',                  category: 'Hisse Endeksi', issuer: 'Osmanlı Portföy' },
+  { symbol: 'OPX30F', name: 'Osmanlı Portföy BIST 30 Endeksi',                category: 'Hisse Endeksi', issuer: 'Osmanlı Portföy' },
   // Ziraat Portföy
-  { symbol: 'Z30EAF', name: 'Ziraat Portföy BIST 30 Eşit Ağırlıklı', category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
-  { symbol: 'Z30KEF', name: 'Ziraat Portföy Katılım 30 Eşit Ağırlıklı', category: 'Katılım', issuer: 'Ziraat Portföy' },
-  { symbol: 'Z30KPF', name: 'Ziraat Portföy Katılım 30 Endeksi', category: 'Katılım', issuer: 'Ziraat Portföy' },
-  { symbol: 'ZELOTF', name: 'Ziraat Portföy BIST 50-30 Endeksi', category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
-  { symbol: 'ZGOLDF', name: 'Ziraat Portföy Altın Katılım', category: 'Altın', issuer: 'Ziraat Portföy' },
-  { symbol: 'ZPBDLF', name: 'Ziraat Portföy BIST Banka Dışı Likit 10', category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
+  { symbol: 'Z30EAF', name: 'Ziraat Portföy BIST 30 Eşit Ağırlıklı',          category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
+  { symbol: 'Z30KEF', name: 'Ziraat Portföy Katılım 30 Eşit Ağırlıklı',       category: 'Katılım',       issuer: 'Ziraat Portföy' },
+  { symbol: 'Z30KPF', name: 'Ziraat Portföy Katılım 30 Endeksi',              category: 'Katılım',       issuer: 'Ziraat Portföy' },
+  { symbol: 'ZELOTF', name: 'Ziraat Portföy BIST 50-30 Endeksi',              category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
+  { symbol: 'ZGOLDF', name: 'Ziraat Portföy Altın Katılım',                   category: 'Altın',         issuer: 'Ziraat Portföy' },
+  { symbol: 'ZPBDLF', name: 'Ziraat Portföy BIST Banka Dışı Likit 10',         category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
+  { symbol: 'ZPLIBF', name: 'Ziraat Portföy BIST Likit Banka Endeksi',         category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
+  { symbol: 'ZPT10F', name: 'Ziraat Portföy BIST Temettü 10 Endeksi',          category: 'Temettü',       issuer: 'Ziraat Portföy' },
+  { symbol: 'ZPX30F', name: 'Ziraat Portföy BIST 30 Endeksi',                  category: 'Hisse Endeksi', issuer: 'Ziraat Portföy' },
 ];
 
 type BYFCategory = 'Hisse Endeksi' | 'Katılım' | 'Altın' | 'Gümüş' | 'Döviz' | 'Temettü' | 'GYO' | 'Sürdürülebilirlik' | 'Tümü';

@@ -50,6 +50,112 @@ const BES_CATEGORIES = [
 ] as const;
 type BesCategoryChip = typeof BES_CATEGORIES[number];
 
+/**
+ * Kullanicinin browserından TEFAS'a canli fetch — server IP bloke edildiği
+ * icin sunucudan olmayan, browser'dan yapilir. Public CORS proxy uzerinden
+ * (corsproxy.io) TEFAS BindComparisonFundReturns endpoint'ine POST atılır.
+ *
+ * Neden calisir: TEFAS bot koruma browser fingerprint'i kontrol ediyor;
+ * CF Workers ve GitHub Actions basit HTTP client oldugu icin blokluyor,
+ * ama gercek Chrome/Firefox browser'a izin veriyor.
+ *
+ * Return: BES fon dizisi VEYA null (fail).
+ */
+async function tryBrowserTefasFetch(): Promise<FundPerformance[] | null> {
+  const now = new Date();
+  const dow = now.getDay();
+  const backDays = dow === 0 ? 2 : dow === 6 ? 1 : 0;
+  const end = new Date(now.getTime() - backDays * 86400_000);
+  const start = new Date(end.getTime() - 7 * 86400_000);
+  const fmt = (d: Date) => {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}.${mm}.${d.getFullYear()}`;
+  };
+  const body = new URLSearchParams({
+    calismatipi: '2',
+    fontip: 'EMK',
+    bastarih: fmt(start),
+    bittarih: fmt(end),
+    strperiod: '1,1,1,1,1,1,1',
+    islemdurum: '1',
+    fongrup: '',
+    kurucukod: '',
+    fonturkod: '',
+    fonunvantip: '',
+  }).toString();
+
+  // Iki CORS proxy dene sirayla (biri fail olursa digerine gec)
+  const proxies = [
+    'https://corsproxy.io/?url=',
+    'https://api.allorigins.win/raw?url=',
+  ];
+  const target = 'https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns';
+
+  for (const proxy of proxies) {
+    try {
+      const url = `${proxy}${encodeURIComponent(target)}`;
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Accept': 'application/json, text/plain, */*',
+        },
+        body,
+      });
+      if (!r.ok) {
+        console.warn(`[bes] CORS proxy ${proxy} HTTP ${r.status}`);
+        continue;
+      }
+      const j = await r.json() as { data?: unknown[]; Data?: unknown[] };
+      const items = j.data ?? j.Data ?? [];
+      if (!Array.isArray(items) || items.length === 0) {
+        console.warn(`[bes] CORS proxy ${proxy} bos response`);
+        continue;
+      }
+      const funds: FundPerformance[] = [];
+      const seen = new Set<string>();
+      for (const raw of items) {
+        if (!raw || typeof raw !== 'object') continue;
+        const o = raw as Record<string, unknown>;
+        const code = String(o.FONKODU ?? o.fonkodu ?? '').trim().toUpperCase();
+        if (!code || seen.has(code)) continue;
+        seen.add(code);
+        const name = String(o.FONUNVAN ?? o.fonunvan ?? code).trim();
+        const kategori = String(o.KATEGORI ?? o.kategori ?? 'Emeklilik').trim() || 'Emeklilik';
+        const nav = Number(o.SONFIYAT ?? o.sonfiyat ?? 0);
+        const toNum = (v: unknown): number => {
+          const n = Number(v);
+          return Number.isFinite(n) ? n : NaN;
+        };
+        funds.push({
+          code,
+          name,
+          category: 'Emeklilik',
+          tefas: false,
+          tefasOpen: false,
+          befasOpen: true,
+          besKategori: kategori,
+          nav: nav > 0 ? nav : undefined,
+          navDate: undefined,
+          day:        toNum(o.GETIRIGUNLUK ?? o.getirigunluk),
+          week:       NaN,
+          month:      toNum(o.GETIRI1AY ?? o.getiri1ay),
+          threeMonth: toNum(o.GETIRI3AY ?? o.getiri3ay),
+          sixMonth:   toNum(o.GETIRI6AY ?? o.getiri6ay),
+          ytd:        toNum(o.GETIRIYILBASI ?? o.getirivilbasi),
+          year:       toNum(o.GETIRI1YIL ?? o.getiri1yil),
+        });
+      }
+      return funds;
+    } catch (e) {
+      console.warn(`[bes] CORS proxy ${proxy} exception:`, e);
+      continue;
+    }
+  }
+  return null;
+}
+
 function matchBesCategory(f: FundPerformance, chip: BesCategoryChip): boolean {
   if (chip === 'Tümü') return true;
   // Öncelik besKategori (EGM/BEFAS alt kategorisi), yoksa fon adi (KATILIM STANDART vs.)
@@ -107,6 +213,39 @@ export function BesFundsPage() {
           setFunds(besFundsFromFeed);
           return;
         }
+
+        // ==== Browser-side canli TEFAS fetch (CORS proxy uzerinden) ====
+        // TEFAS server IP'lerinden (CF Workers + GitHub Actions) blokluyor.
+        // Kullanicinin browseri gercek Chrome fingerprint'ine sahip, calisir.
+        // localStorage cache 30 dk — CORS proxy'ye yuk bindirmez.
+        const CLIENT_TEFAS_CACHE_KEY = 'iq.bes.clientTefas.v1';
+        const CLIENT_TEFAS_TTL_MS = 30 * 60 * 1000;
+        try {
+          const raw = localStorage.getItem(CLIENT_TEFAS_CACHE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw) as { at: number; funds: FundPerformance[] };
+            if (Date.now() - parsed.at < CLIENT_TEFAS_TTL_MS && parsed.funds.length > 0) {
+              console.info(`[bes] Client-side cache hit: ${parsed.funds.length} BES fonu (${Math.round((Date.now() - parsed.at) / 60000)} dk once)`);
+              setFunds(parsed.funds);
+              setFeedUpdatedAt(new Date(parsed.at).toISOString());
+              return;
+            }
+          }
+        } catch { /* localStorage error, devam et */ }
+
+        console.info('[bes] Client-side TEFAS/CORS proxy fetch deneniyor...');
+        const clientTefas = await tryBrowserTefasFetch();
+        if (!alive) return;
+        if (clientTefas && clientTefas.length > 0) {
+          console.info(`[bes] Client-side TEFAS BASARI: ${clientTefas.length} BES fonu`);
+          try {
+            localStorage.setItem(CLIENT_TEFAS_CACHE_KEY, JSON.stringify({ at: Date.now(), funds: clientTefas }));
+          } catch { /* ignore */ }
+          setFunds(clientTefas);
+          setFeedUpdatedAt(new Date().toISOString());
+          return;
+        }
+        console.warn('[bes] Client-side TEFAS fail — CF Function seed fallback');
 
         // Fallback: CF Function on-demand fetch (force=1 -> cache bypass, taze veri)
         console.info('[bes] Feed\'de BES yok → /api/befas/funds fallback deneniyor...');

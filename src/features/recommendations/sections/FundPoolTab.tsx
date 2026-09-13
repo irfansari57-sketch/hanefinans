@@ -64,25 +64,27 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
   };
 
   // Veri setinde gerçekten bulunan kategoriler — SADECE TEFAS açık fonlardan
-  // (Katılım en başta sabit). Kapalı-only kategoriler chip listesine eklenmez.
+  // Basta "Tümü" (butun kategoriler), ardindan "Katilim" sabit, digerleri alfabetik.
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     for (const f of allFunds) {
       if (f.tefasOpen !== true) continue;
       if (f.category) set.add(f.category as string);
     }
-    return Array.from(set).sort((a, b) => {
+    const cats = Array.from(set).sort((a, b) => {
       if (a === 'Katılım') return -1;
       if (b === 'Katılım') return 1;
       return a.localeCompare(b, 'tr');
     });
+    return ['Tümü', ...cats];
   }, [allFunds]);
 
   // Seçili kategoriden top N — SADECE TEFAS'ta İŞLEME AÇIK fonlar
   // (Serbest/BES/Girişim Sermayesi/Gayrimenkul fonları kullanıcı doğrudan alamaz)
+  // "Tümü" seçildiginde kategori filtresi devre disi → tum acik fonlardan top N.
   const pool = useMemo(() => {
     const filtered = allFunds.filter(
-      (f) => f.category === selectedCategory && f.tefasOpen === true,
+      (f) => f.tefasOpen === true && (selectedCategory === 'Tümü' || f.category === selectedCategory),
     );
     const sorted = [...filtered].sort((a, b) => {
       const va = a[sortKey];

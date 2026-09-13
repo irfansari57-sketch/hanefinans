@@ -65,8 +65,11 @@ const CATEGORIES: BYFCategory[] = ['Tümü', 'Hisse Endeksi', 'Katılım', 'Alt�
 
 type SortKey = 'symbol' | 'price' | 'changePct';
 
+type ByfReturns = { '1m'?: number | null; '3m'?: number | null; '6m'?: number | null; ytd?: number | null; '1y'?: number | null; '3y'?: number | null; '5y'?: number | null };
+
 export function BorsaYatirimFundsPage() {
   const [quotes, setQuotes] = useState<Record<string, Stock>>({});
+  const [returnsMap, setReturnsMap] = useState<Record<string, ByfReturns>>({});
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
@@ -93,10 +96,14 @@ export function BorsaYatirimFundsPage() {
           if (r.ok) {
             const j = await r.json() as {
               ok: boolean;
-              funds: Array<{ code: string; price: number | null; changePct: number | null; lastUpdate: string | null }>;
+              funds: Array<{
+                code: string; price: number | null; changePct: number | null; lastUpdate: string | null;
+                returns?: ByfReturns;
+              }>;
             };
             if (j.ok && j.funds && j.funds.length > 0) {
               const map: Record<string, Stock> = {};
+              const rMap: Record<string, ByfReturns> = {};
               for (const f of j.funds) {
                 // Fintables kodlari .F'siz (APBDL), bizim listede F'li (APBDLF). Ikisini de mapleyelim.
                 const withF = f.code + 'F';
@@ -108,11 +115,16 @@ export function BorsaYatirimFundsPage() {
                   updatedAt: new Date().toISOString(),
                 };
                 map[withF] = stockShape;
-                map[f.code] = stockShape; // ikinci alias
+                map[f.code] = stockShape;
+                if (f.returns) {
+                  rMap[withF] = f.returns;
+                  rMap[f.code] = f.returns;
+                }
               }
               console.info(`[byf] Fintables live: ${j.funds.length} fon`);
               if (alive) {
                 setQuotes(map);
+                setReturnsMap(rMap);
                 setUpdatedAt(new Date().toISOString());
               }
               return;
@@ -149,13 +161,20 @@ export function BorsaYatirimFundsPage() {
   const enriched = useMemo(() => {
     return BYF_LIST.map((f) => {
       const q = quotes[f.symbol];
+      const r = returnsMap[f.symbol];
       return {
         ...f,
         price: q?.price ?? null,
         changePct: q?.changePct ?? null,
+        r1m:  r?.['1m']  ?? null,
+        r3m:  r?.['3m']  ?? null,
+        r6m:  r?.['6m']  ?? null,
+        rYtd: r?.ytd     ?? null,
+        r1y:  r?.['1y']  ?? null,
+        r3y:  r?.['3y']  ?? null,
       };
     });
-  }, [quotes]);
+  }, [quotes, returnsMap]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
@@ -257,7 +276,7 @@ export function BorsaYatirimFundsPage() {
             {sorted.length} BYF · Kaynak: BIST canlı akışı
           </div>
           <DoubleScrollTable>
-            <table className="min-w-[720px] w-full text-xs">
+            <table className="min-w-[1100px] w-full text-xs">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2 text-left w-[2.5rem]">#</th>
@@ -268,7 +287,13 @@ export function BorsaYatirimFundsPage() {
                   </th>
                   <th className="hidden sm:table-cell px-2 py-2 text-left">Kategori / Fon Adı</th>
                   <SortableTh label="Fiyat" k="price" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="Değişim" k="changePct" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="Gün %" k="changePct" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">1A</th>
+                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">3A</th>
+                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">6A</th>
+                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">YBB</th>
+                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">1Y</th>
+                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">3Y</th>
                 </tr>
               </thead>
               <tbody>
@@ -289,9 +314,15 @@ export function BorsaYatirimFundsPage() {
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-200 whitespace-nowrap">
-                      {f.price != null ? `₺${f.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                      {f.price != null && f.price > 0 ? `₺${f.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                     </td>
                     <ReturnCell v={f.changePct} />
+                    <ReturnCell v={f.r1m} />
+                    <ReturnCell v={f.r3m} />
+                    <ReturnCell v={f.r6m} />
+                    <ReturnCell v={f.rYtd} />
+                    <ReturnCell v={f.r1y} />
+                    <ReturnCell v={f.r3y} />
                   </tr>
                 ))}
               </tbody>

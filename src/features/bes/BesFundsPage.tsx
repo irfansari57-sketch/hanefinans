@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ArrowUpDown, Landmark, AlertCircle } from 'lucide-react';
+import { Search, ArrowUpDown, Landmark, AlertCircle, RefreshCw } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -71,9 +71,16 @@ export function BesFundsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('year');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  // Kullanici retry butonuna basinca useEffect'i tekrar tetiklemek icin counter.
+  const [retryTick, setRetryTick] = useState(0);
+  // Detayli hata mesaji (feedFailed=true iken)
+  const [failureDetail, setFailureDetail] = useState<string | null>(null);
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setFeedFailed(false);
+    setFailureDetail(null);
 
     /**
      * BES fonu yukleme stratejisi (2-adim):
@@ -81,6 +88,7 @@ export function BesFundsPage() {
      *   2) Feed'de BES fonu yoksa (Python cron henuz calismamis olabilir),
      *      /api/befas/funds CF Function'undan on-demand cek (TEFAS live).
      * Bu sayede BES sayfasi haftalik Python cron'una bagimli kalmaz.
+     * Console'a debug log yaziyor — DevTools'tan takip edilebilir.
      */
     (async () => {
       try {
@@ -90,6 +98,9 @@ export function BesFundsPage() {
         if (feedRes.ok && feedRes.funds && feedRes.feed) {
           besFundsFromFeed = feedRes.funds.filter(isBesFund);
           setFeedUpdatedAt(feedRes.feed.updatedAt);
+          console.info(`[bes] tefas.json: ${feedRes.funds.length} toplam, ${besFundsFromFeed.length} BES fonu`);
+        } else {
+          console.warn('[bes] tefas.json feed yuklenemedi:', feedRes.error);
         }
 
         if (besFundsFromFeed.length > 0) {
@@ -97,11 +108,17 @@ export function BesFundsPage() {
           return;
         }
 
-        // Fallback: CF Function on-demand fetch
+        // Fallback: CF Function on-demand fetch (force=1 -> cache bypass, taze veri)
+        console.info('[bes] Feed\'de BES yok → /api/befas/funds fallback deneniyor...');
         try {
-          const r = await fetch('/api/befas/funds');
+          const r = await fetch(`/api/befas/funds?t=${Date.now()}`);
+          console.info(`[bes] CF Function status: ${r.status}`);
           if (!r.ok) {
-            setFeedFailed(true);
+            const text = await r.text().catch(() => '');
+            if (alive) {
+              setFeedFailed(true);
+              setFailureDetail(`CF Function HTTP ${r.status}${text ? ' — ' + text.slice(0, 200) : ''}`);
+            }
             return;
           }
           const data = await r.json() as {
@@ -121,11 +138,12 @@ export function BesFundsPage() {
             }>;
           };
           if (!alive) return;
+          console.info(`[bes] CF Function response: ok=${data.ok}, count=${data.count ?? data.funds?.length}`);
           if (!data.ok || !Array.isArray(data.funds) || data.funds.length === 0) {
             setFeedFailed(true);
+            setFailureDetail('CF Function boş veri döndürdü — TEFAS geçici olarak yanıt vermiyor olabilir.');
             return;
           }
-          // BES fund → FundPerformance shape
           const mapped: FundPerformance[] = data.funds.map((f) => ({
             code: f.code,
             name: f.name,
@@ -145,8 +163,12 @@ export function BesFundsPage() {
           }));
           setFunds(mapped);
           setFeedUpdatedAt(data.updatedAt);
-        } catch {
-          if (alive) setFeedFailed(true);
+        } catch (e) {
+          console.error('[bes] CF Function fetch hata:', e);
+          if (alive) {
+            setFeedFailed(true);
+            setFailureDetail(e instanceof Error ? e.message : String(e));
+          }
         }
       } finally {
         if (alive) setLoading(false);
@@ -154,7 +176,7 @@ export function BesFundsPage() {
     })();
 
     return () => { alive = false; };
-  }, []);
+  }, [retryTick]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
@@ -259,8 +281,38 @@ export function BesFundsPage() {
       ) : feedFailed ? (
         <EmptyState
           icon={<AlertCircle size={28} />}
-          title="Veri yüklenemedi"
-          description="TEFAS feed'i şu an erişilemiyor. Kısa süre sonra tekrar deneyin."
+          title="BES verisi geçici olarak alınamadı"
+          description={
+            <span className="block text-slate-400">
+              Ana feed'de BES fonu yok ve canlı TEFAS proxy'si de yanıt vermedi.
+              {failureDetail && (
+                <span className="mt-2 block rounded bg-bg-soft/60 px-2 py-1 font-mono text-[10px] text-slate-500">
+                  {failureDetail}
+                </span>
+              )}
+              <span className="mt-3 block text-[11px] text-slate-500">
+                Genellikle bu, TEFAS scraper'ın haftalık cron'unun henüz çalışmadığı anlamına gelir.
+                {' '}
+                <a
+                  href="https://github.com/irfansari57-sketch/hanefinans/actions/workflows/tefas-fetch.yml"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  "TEFAS Fund Fetch" workflow'unu manuel tetikleyebilirsiniz →
+                </a>
+              </span>
+            </span>
+          }
+          action={
+            <button
+              type="button"
+              onClick={() => setRetryTick((t) => t + 1)}
+              className="btn-primary"
+            >
+              <RefreshCw size={14} /> Tekrar Dene
+            </button>
+          }
         />
       ) : sorted.length === 0 ? (
         <EmptyState

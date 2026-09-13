@@ -25,11 +25,15 @@ import { SeoHead } from '@/components/seo/SeoHead';
 type SortKey = 'code' | 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear';
 type Tab = 'getiri' | 'buyukluk';
 
-// BES fonu tespiti: SADECE isim içinde 'EMEKLİLİK' geçmeli.
+// BES fonu tespiti:
+//   1) category alanı tam 'Emeklilik' ise (backend scraper BEFAS/EMK fetch sonrası
+//      bu kategoriyi setliyor — Takasbank BEFAS Excel + TEFAS fiyat entegrasyonu)
+//   2) fallback: isim içinde 'EMEKLİLİK' geçer
 // UYARI: 'BES' substring'i 'SERBEST' kategorisi içinde de match ediyor
-// (SE-R-B-E-S-T → BES). Bu yüzden 'BES' string arama YAPILMAZ, sadece
-// 'EMEKLİLİK' (Türkçe / ASCII varyantları) tam kelime olarak aranır.
+// (SE-R-B-E-S-T → BES). Bu yüzden 'BES' string arama YAPILMAZ.
 function isBesFund(f: FundPerformance): boolean {
+  const c = (f.category ?? '').toString();
+  if (c === 'Emeklilik') return true;
   const n = (f.name ?? '').toLocaleUpperCase('tr-TR');
   return n.includes('EMEKLİLİK') || n.includes('EMEKLILIK');
 }

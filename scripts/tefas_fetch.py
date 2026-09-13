@@ -786,18 +786,80 @@ def main() -> int:
             print(f"  {i+1}/{len(alloc_targets)} — ok:{alloc_ok} fail:{alloc_fail}", flush=True)
     print(f"[allocation] Tamamlandi: {alloc_ok} basarili, {alloc_fail} basarisiz", flush=True)
 
-    # ---------- BES (BEFAS) fetch — TEFAS BindComparisonFundReturns endpoint direkt ----------
-    # tefasfon Python paketi 'EMK' fund_type'i desteklemiyor, TEFAS'in kendi resmi
-    # comparison endpoint'ini dogrudan cagiriyoruz:
-    #   POST https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns
-    #   calismatipi=2  -> BEFAS (BES fonlari)
-    #   fontip=EMK     -> Emeklilik fonlari
-    #   strperiod=1,1,1,1,1,1,1 -> tum donem getirileri (1g, 1a, 3a, 6a, ytd, 1y, 3y)
-    #
-    # Response format (aynen open-codes fetch ile ayni chrome131 impersonation):
-    #   {"data": [{"FONKODU": "AAJ", "FONUNVAN": "...", "SONFIYAT": 0.0,
-    #              "GETIRIGUNLUK": 0.0, "GETIRI1AY": 0.0, ..., "KATEGORI": "..."}, ...]}
-    print(f"\n[bes] TEFAS BindComparisonFundReturns (BEFAS/EMK) endpoint cagriliyor...", flush=True)
+    # ---------- BES (BEFAS) fetch — 3 strateji sirayla ----------
+    # 1. TAKASBANK BEFAS Excel (fon listesi: kod + isim + ihraccı) — TEFAS Excel
+    #    ile ayni pattern, kesin calisir (biz TEFAS ac.k kodlari icin de kullaniyoruz)
+    # 2. TEFAS BindComparisonFundReturns (calismatipi=2, fontip=EMK) — toplu fiyat+getiri
+    # 3. Ikisi de fail -> statik empty
+    # Strateji 1 fon listesini garantiler; 2 fiyat/getirileri getirir. 2 fail olursa
+    # sadece kod+isim ile listelemis oluruz (kullanici en azindan fon adlarini gorur).
+    print(f"\n[bes] Adim 1: TAKASBANK BEFAS Excel indiriliyor...", flush=True)
+    bes_fund_list: list[dict] = []
+    try:
+        befas_excel_url = (
+            "https://www.takasbank.com.tr/plugins/"
+            "ExcelExportBefasFundsTradingInvestmentPlatform?language=tr"
+        )
+        excel_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            ),
+            "Accept": "*/*",
+            "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+        }
+        excel_content = None
+        try:
+            r_excel = requests.get(befas_excel_url, headers=excel_headers, timeout=30)
+            if r_excel.status_code == 200:
+                excel_content = r_excel.content
+        except Exception as e:
+            print(f"[bes] Takasbank requests fail: {e}", flush=True)
+        # Fallback curl_cffi
+        if excel_content is None:
+            try:
+                from curl_cffi import requests as cr
+                session = cr.Session(impersonate="chrome131")
+                r_excel = session.get(befas_excel_url, headers=excel_headers, timeout=30)
+                if r_excel.status_code == 200:
+                    excel_content = r_excel.content
+            except Exception as e:
+                print(f"[bes] Takasbank curl_cffi fail: {e}", flush=True)
+        if excel_content:
+            try:
+                import io, openpyxl
+                wb = openpyxl.load_workbook(io.BytesIO(excel_content), read_only=True, data_only=True)
+                ws = wb.active
+                for i, row in enumerate(ws.iter_rows(values_only=True)):
+                    if i == 0:
+                        continue  # header
+                    if len(row) < 2:
+                        continue
+                    # BEFAS Excel format: [Fon Adi, Fon Kodu, ...] veya [Fon Kodu, Fon Adi, ...]
+                    # Genelde row[1]=kod, row[0]=isim (TEFAS pattern ayni)
+                    fund_name = row[0]
+                    fund_code = row[1] if len(row) > 1 else None
+                    if not fund_code or not isinstance(fund_code, str):
+                        # bazen sirasi ters olabilir
+                        if isinstance(fund_name, str) and len(fund_name.strip()) == 3:
+                            fund_code = fund_name
+                            fund_name = row[1] if len(row) > 1 else fund_code
+                    if fund_code and isinstance(fund_code, str):
+                        code = fund_code.strip().upper()
+                        name = str(fund_name or code).strip()
+                        # Ihraccı: isimden cikar (genelde "AK EMEKLİLİK...", "AVIVASA EMEKLİLİK...")
+                        issuer = name.split(' ')[0].title() if name else ''
+                        bes_fund_list.append({'code': code, 'name': name, 'issuer': issuer})
+                print(f"[bes] Takasbank BEFAS Excel: {len(bes_fund_list)} fon", flush=True)
+            except Exception as e:
+                print(f"[bes] Excel parse fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        else:
+            print(f"[bes] Takasbank BEFAS Excel indirilemedi", flush=True)
+    except Exception as e:
+        print(f"[bes] BEFAS Excel fetch exception: {e}", file=sys.stderr, flush=True)
+
+    # Adim 2: TEFAS BindComparisonFundReturns ile fiyat+getiri (opsiyonel)
+    print(f"[bes] Adim 2: TEFAS BindComparisonFundReturns (BEFAS/EMK) fiyat+getiri...", flush=True)
     bes_added = 0
     try:
         bittarih = anchors['last'].strftime('%d.%m.%Y')
@@ -900,11 +962,39 @@ def main() -> int:
                     existing_codes.add(code)
                 except Exception as e:
                     print(f"[bes] item parse fail: {e}", flush=True)
-            print(f"[bes] Feed'e {bes_added} BES fonu eklendi", flush=True)
+            print(f"[bes] TEFAS'tan {bes_added} BES fonu fiyat+getiri ile eklendi", flush=True)
         else:
             print(f"[bes] TEFAS response bos veya format hatasi", flush=True)
     except Exception as e:
-        print(f"[bes] BES fetch fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        print(f"[bes] BES TEFAS fetch fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+    # Adim 3: Takasbank BEFAS listesinde olan ama TEFAS'tan gelmemis fonlari da
+    # ekle (nav=null, returns bos). Kullanici en azindan fon adlarini gorur.
+    existing_codes_final = {f['code'] for f in funds}
+    takasbank_added = 0
+    for bes_fund in bes_fund_list:
+        if bes_fund['code'] in existing_codes_final:
+            continue
+        funds.append({
+            "code": bes_fund['code'],
+            "name": bes_fund['name'],
+            "category": 'Emeklilik',
+            "besIssuer": bes_fund.get('issuer', ''),
+            "tefasOpen": False,
+            "befasOpen": True,
+            "nav": None,
+            "date": anchors['last'].strftime('%Y-%m-%d'),
+            "marketCap": None,
+            "investorCount": None,
+            "shareCount": None,
+            "returns": {},
+            "history": [],
+            "allocation": None,
+        })
+        takasbank_added += 1
+        existing_codes_final.add(bes_fund['code'])
+    if takasbank_added > 0:
+        print(f"[bes] Takasbank listesinden ek {takasbank_added} BES fonu (fiyat/getiri henuz yok)", flush=True)
 
     payload = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),

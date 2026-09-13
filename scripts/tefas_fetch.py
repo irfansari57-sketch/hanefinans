@@ -593,15 +593,23 @@ def main() -> int:
             snapshots[key] = pd.DataFrame()
         time.sleep(0.3)
 
-    # Son 14 is gunu icin RANGE fetch — 1d/1w icin guvenilir kaynak + history field
-    print(f"\nSon 14 is gunu history range cekiliyor...", flush=True)
+    # Son ~14 ay (400 gun) history RANGE fetch — hem 1d/1w hem simulator icin uzun history
+    # 400 gun = ~13 ay: kullanicilar 6-12 aylik backtest yapabilir. TEFAS tek call'da
+    # 400+ gun destekliyor. File size etkisi: ~1-2 MB gzipped (kabul edilebilir CDN).
+    # Fallback: 400 fail olursa 90'a, 90 fail olursa 14'e dus.
+    HISTORY_DAYS_TRY = [400, 90, 14]
+    print(f"\nHistory range cekiliyor (hedef: {HISTORY_DAYS_TRY[0]} gun)...", flush=True)
     t0 = time.time()
     history_df = None
-    try:
-        history_df = fetch_history_range(working_ftype, anchors['last'], days_back=14)
-    except Exception as e:
-        print(f"  ! history range exception: {type(e).__name__}: {e}", flush=True)
-        history_df = None
+    for db in HISTORY_DAYS_TRY:
+        try:
+            history_df = fetch_history_range(working_ftype, anchors['last'], days_back=db)
+            if history_df is not None and not history_df.empty:
+                print(f"  ✓ {db} gun history basarili", flush=True)
+                break
+        except Exception as e:
+            print(f"  ! {db} gun history fail: {type(e).__name__}: {e} — daha kisa deneniyor", flush=True)
+            history_df = None
     elapsed = time.time() - t0
     if history_df is not None and not history_df.empty:
         print(f"  ✓ history range: {len(history_df)} satır ({elapsed:.1f}s)", flush=True)

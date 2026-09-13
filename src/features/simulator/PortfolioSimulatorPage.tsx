@@ -98,11 +98,20 @@ function yahooToPricePoints(closes: Array<{ date: number; close: number }>): Pri
   }));
 }
 
-/** TÜFE statik sürekli büyüme — yıllık oran ile günlük compound */
+/**
+ * TÜFE statik sürekli büyüme — yıllık oran ile günlük compound.
+ * Genis aralikta uretilir (start'tan 2 yil once - bugun) ki engine effective range'e
+ * ayarlanirsa TÜFE datası hala kesişecek.
+ */
 function synthesizeTufeSeries(start: string, end: string, yoyPct: number, initial = 100): PricePoint[] {
   const dailyRate = Math.pow(1 + yoyPct / 100, 1 / 365) - 1;
-  const s = new Date(start + 'T00:00:00Z').getTime();
-  const e = new Date(end + 'T00:00:00Z').getTime();
+  // Genişlet: start'tan 2 yıl önce başla, end sonrası 1 ay ekle
+  const startD = new Date(start + 'T00:00:00Z');
+  startD.setFullYear(startD.getFullYear() - 2);
+  const endD = new Date(end + 'T00:00:00Z');
+  endD.setMonth(endD.getMonth() + 1);
+  const s = startD.getTime();
+  const e = Math.min(endD.getTime(), Date.now());
   const out: PricePoint[] = [];
   let val = initial;
   for (let t = s; t <= e; t += 24 * 60 * 60 * 1000) {
@@ -112,13 +121,17 @@ function synthesizeTufeSeries(start: string, end: string, yoyPct: number, initia
   return out;
 }
 
-/** Yahoo range karar — start/end aralığına göre en uygun */
-function pickYahooRange(startYmd: string, endYmd: string): '1y' | '2y' | '5y' {
+/**
+ * Yahoo range karar — kullanicinin BAŞLANGIÇ tarihinden bugüne kadar olan
+ * süreye göre secilir. Yahoo range="Xy" son X yildan bugüne kadar döner, o yüzden
+ * kullanicinin start tarihi 3 yıl önce ise 5y gerekir.
+ */
+function pickYahooRange(startYmd: string, _endYmd: string): '1y' | '2y' | '5y' {
   const s = new Date(startYmd + 'T00:00:00Z').getTime();
-  const e = new Date(endYmd + 'T00:00:00Z').getTime();
-  const yrs = (e - s) / (365.25 * 24 * 60 * 60 * 1000);
-  if (yrs <= 1) return '1y';
-  if (yrs <= 2) return '2y';
+  const now = Date.now();
+  const yrsBack = (now - s) / (365.25 * 24 * 60 * 60 * 1000);
+  if (yrsBack <= 1) return '1y';
+  if (yrsBack <= 2) return '2y';
   return '5y';
 }
 
@@ -655,6 +668,37 @@ export function PortfolioSimulatorPage() {
             />
           </div>
 
+          {/* Auto-adjust bilgi banneri */}
+          {result.rangeAdjusted && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-[11px]">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warning" />
+              <div className="flex-1">
+                <div className="font-semibold text-warning">
+                  Tarih aralığı otomatik ayarlandı
+                </div>
+                <div className="mt-0.5 text-slate-300 leading-relaxed">
+                  Talep: <span className="tabular-nums">{startDate} → {endDate}</span>
+                  {' · '}
+                  Uygulanan: <span className="tabular-nums font-semibold">{result.effectiveStartDate} → {result.effectiveEndDate}</span>
+                  <br />
+                  Bazı varlıkların history verisi kısıtlıydı — simulasyon tüm varlıkların ortak veri aralığında yapıldı.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Uyarilar (rangeAdjusted disi) */}
+          {result.warnings.length > 0 && !result.rangeAdjusted && (
+            <div className="mb-3 rounded-lg border border-warning/30 bg-warning/5 p-2 text-[11px] text-warning">
+              {result.warnings.map((w, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <Info size={10} className="mt-0.5 shrink-0" />
+                  <span>{w}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Equity curve */}
           <div className="card mb-4 p-4">
             <div className="mb-3 flex items-baseline justify-between">
@@ -662,14 +706,9 @@ export function PortfolioSimulatorPage() {
                 <BarChart3 className="mr-1 inline" size={14} />
                 Equity Curve
                 <span className="ml-2 text-[10px] font-normal text-slate-500">
-                  {startDate} → {endDate}
+                  {result.effectiveStartDate} → {result.effectiveEndDate}
                 </span>
               </h2>
-              {result.warnings.length > 0 && (
-                <span className="flex items-center gap-1 text-[10px] text-warning">
-                  <Info size={10} /> {result.warnings[0]}
-                </span>
-              )}
             </div>
             <EquityCurveChart
               series={chartSeries}

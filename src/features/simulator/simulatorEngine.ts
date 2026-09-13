@@ -95,6 +95,12 @@ export interface SimulationResult {
   /** TÜFE-adjusted reel getiri (yıllık ortalama) — TÜFE benchmark verilmişse */
   realReturnPct: number | null;
   warnings: string[];
+  /** Simulasyon aralığı otomatik ayarlandiysa gerçek başlangıç (asset veri yetersizligi) */
+  effectiveStartDate: string;
+  /** Aynı — gerçek bitiş (bazi assetlerin en yeni verisi user endDate'ten önce olabilir) */
+  effectiveEndDate: string;
+  /** Aralık otomatik ayarlandiysa true — UI banner gosterir */
+  rangeAdjusted: boolean;
 }
 
 // ---- Yardimci fonksiyonlar ----
@@ -202,9 +208,66 @@ export function simulate(input: SimulationInput): SimulationResult {
     warnings.push('Portföyde varlık yok.');
   }
 
-  // Tüm history serilerini birleştirip trading days topla
-  const allSerieses = input.assets.map((a) => a.history);
-  const days = collectTradingDays(input.startDate, input.endDate, allSerieses);
+  // ---- AUTO-RANGE ADJUSTMENT ----
+  // Her assetin gerçek veri kapsamını hesapla. Kullanicinin istedigi araligi
+  // asset verisiyle intersect et: effective range = [max(first_avail), min(last_avail)].
+  // Bu sayede kısıtlı verili fonlar bile portföyde kalir; sadece equity curve
+  // aralik otomatik ayarlanir.
+  const assetRanges = input.assets
+    .filter((a) => a.history.length > 0)
+    .map((a) => {
+      const sorted = [...a.history].sort((x, y) => cmpDate(x.date, y.date));
+      return { code: a.code, first: sorted[0].date, last: sorted[sorted.length - 1].date };
+    });
+
+  let effectiveStart = input.startDate;
+  let effectiveEnd = input.endDate;
+  if (assetRanges.length > 0) {
+    // En geç başlayan asset (kısıtlayıcı) — bu tarihten önce ortak veri yok
+    const latestFirst = assetRanges.reduce((mx, r) => (cmpDate(r.first, mx) > 0 ? r.first : mx), assetRanges[0].first);
+    // En erken biten asset (kısıtlayıcı)
+    const earliestLast = assetRanges.reduce((mn, r) => (cmpDate(r.last, mn) < 0 ? r.last : mn), assetRanges[0].last);
+    if (cmpDate(latestFirst, effectiveStart) > 0) effectiveStart = latestFirst;
+    if (cmpDate(earliestLast, effectiveEnd) < 0) effectiveEnd = earliestLast;
+  }
+  // Intersection bos ise (fon verisi kullanicinin secitigi aralikla hic ortusmuyor):
+  // en geniş kapsayan aralığa fallback yap ki en azından bir simulasyon çıksın.
+  let intersectionEmpty = false;
+  if (assetRanges.length > 0 && cmpDate(effectiveStart, effectiveEnd) > 0) {
+    intersectionEmpty = true;
+    const widestFirst = assetRanges.reduce((mn, r) => (cmpDate(r.first, mn) < 0 ? r.first : mn), assetRanges[0].first);
+    const widestLast = assetRanges.reduce((mx, r) => (cmpDate(r.last, mx) > 0 ? r.last : mx), assetRanges[0].last);
+    effectiveStart = widestFirst;
+    effectiveEnd = widestLast;
+  }
+
+  const rangeAdjusted =
+    effectiveStart !== input.startDate || effectiveEnd !== input.endDate;
+  if (rangeAdjusted) {
+    if (intersectionEmpty) {
+      warnings.push(
+        `Seçilen aralık (${input.startDate} → ${input.endDate}) portföy varlıklarının veri kapsamı dışındaydı. ` +
+        `Simulasyon mevcut verilerin geniş aralığında (${effectiveStart} → ${effectiveEnd}) yapıldı.`,
+      );
+    } else {
+      const shortAssets = assetRanges
+        .filter((r) => cmpDate(r.first, input.startDate) > 0 || cmpDate(r.last, input.endDate) < 0)
+        .map((r) => r.code)
+        .slice(0, 3);
+      warnings.push(
+        `Tarih aralığı otomatik olarak ${effectiveStart} → ${effectiveEnd} olarak ayarlandı` +
+        (shortAssets.length ? ` (kısıtlayan varlık${shortAssets.length > 1 ? 'lar' : ''}: ${shortAssets.join(', ')})` : '') +
+        '.',
+      );
+    }
+  }
+
+  // Tüm history serilerini + benchmarkları birleştirip trading days topla
+  const allSerieses = [
+    ...input.assets.map((a) => a.history),
+    ...Object.values(input.benchmarks ?? {}),
+  ];
+  const days = collectTradingDays(effectiveStart, effectiveEnd, allSerieses);
 
   // Assets için başlangıç fiyatları + unit hesabı
   const perAsset: PerAssetResult[] = [];
@@ -217,11 +280,16 @@ export function simulate(input: SimulationInput): SimulationResult {
     priceLookupByCode.set(asset.code, lookup);
 
     const alloc = (input.initialCapital * asset.allocationPct) / 100;
-    // Başlangıç: startDate veya sonrasındaki ilk mevcut fiyat
-    const firstDay = days.find((d) => lookup(d) != null) ?? input.startDate;
-    const startPrice = lookup(firstDay);
+    // Başlangıç: effectiveStart veya sonrasındaki ilk mevcut fiyat
+    // Yeterli veri yoksa fon'un kendi en erken tarihini kullan (asla atma).
+    let firstDay = days.find((d) => lookup(d) != null);
+    if (!firstDay && asset.history.length > 0) {
+      const sorted = [...asset.history].sort((x, y) => cmpDate(x.date, y.date));
+      firstDay = sorted[0].date;
+    }
+    const startPrice = firstDay ? lookup(firstDay) : null;
     if (!startPrice || startPrice <= 0) {
-      warnings.push(`${asset.code}: başlangıç fiyatı bulunamadı, portföyden atlandı.`);
+      warnings.push(`${asset.code}: history verisi yok, portföyden atlandı.`);
       perAsset.push({
         code: asset.code, name: asset.name, type: asset.type,
         allocationPct: asset.allocationPct,
@@ -234,7 +302,7 @@ export function simulate(input: SimulationInput): SimulationResult {
     unitsByCode.set(asset.code, units);
     spentCapital += units * startPrice;
 
-    const lastDay = [...days].reverse().find((d) => lookup(d) != null) ?? input.endDate;
+    const lastDay = [...days].reverse().find((d) => lookup(d) != null) ?? effectiveEnd;
     const endPrice = lookup(lastDay) ?? startPrice;
     const startValue = units * startPrice;
     const endValue = units * endPrice;
@@ -252,7 +320,7 @@ export function simulate(input: SimulationInput): SimulationResult {
 
   // Günlük portföy değeri (rebalans yoksa units sabit; rebalans varsa update)
   const equityCurve: Array<{ date: string; value: number }> = [];
-  let prevDay = days[0] ?? input.startDate;
+  let prevDay = days[0] ?? effectiveStart;
 
   for (let i = 0; i < days.length; i++) {
     const d = days[i];
@@ -288,7 +356,7 @@ export function simulate(input: SimulationInput): SimulationResult {
   const lastVal = equityCurve[equityCurve.length - 1]?.value ?? firstVal;
   const totalReturnPct = firstVal > 0 ? ((lastVal - firstVal) / firstVal) * 100 : 0;
 
-  const years = Math.max(1 / 365, yearsBetween(input.startDate, input.endDate));
+  const years = Math.max(1 / 365, yearsBetween(effectiveStart, effectiveEnd));
   const cagr = firstVal > 0 && lastVal > 0
     ? (Math.pow(lastVal / firstVal, 1 / years) - 1) * 100
     : 0;
@@ -336,7 +404,7 @@ export function simulate(input: SimulationInput): SimulationResult {
     for (const [id, series] of Object.entries(input.benchmarks)) {
       if (!series || series.length === 0) continue;
       const bl = buildPriceLookup(series);
-      const firstDay = days.find((d) => bl(d) != null) ?? input.startDate;
+      const firstDay = days.find((d) => bl(d) != null) ?? effectiveStart;
       const startPrice = bl(firstDay);
       if (!startPrice) continue;
       const bcurve: Array<{ date: string; value: number }> = [];
@@ -398,6 +466,9 @@ export function simulate(input: SimulationInput): SimulationResult {
     taxes,
     realReturnPct,
     warnings,
+    effectiveStartDate: effectiveStart,
+    effectiveEndDate: effectiveEnd,
+    rangeAdjusted,
   };
 }
 

@@ -566,9 +566,7 @@ export function FundDetailPage() {
                 <span className="text-[10px] text-slate-500">
                   {alloc.length} varlık sınıfı · TEFAS
                 </span>
-              ) : (
-                <span className="text-[10px] text-amber-300/70">tahmini · kategori bazlı</span>
-              );
+              ) : null;
             })()}
           </div>
           <FundAllocationDonut
@@ -681,120 +679,51 @@ function allocationColor(label: string): string {
   return '#22c55e';
 }
 
-/**
- * Fon kategorisine göre TAHMINI (typical) varlık dağılımı fallback'i.
- * TEFAS allocation datası olmadığında bile kullanıcı bir görsel görsün diye.
- * Gerçek dağılım değil, kategori standardı yaklaşımı — "tahmini" etiketiyle sunulur.
- */
-function inferAllocationFromCategory(category: string): Array<{ label: string; pct: number }> {
-  const c = (category || '').toLowerCase();
-  if (c.includes('hisse') && c.includes('katılım')) {
-    return [
-      { label: 'Katılım Hisse Senedi', pct: 85 },
-      { label: 'Kira Sertifikası',     pct: 10 },
-      { label: 'Katılım Hesabı',       pct: 5 },
-    ];
-  }
-  if (c.includes('hisse')) {
-    return [
-      { label: 'Hisse Senedi', pct: 85 },
-      { label: 'Ters Repo',    pct: 10 },
-      { label: 'Mevduat (TL)', pct: 5 },
-    ];
-  }
-  if (c === 'katılım' || c.includes('katılım')) {
-    return [
-      { label: 'Kira Sertifikası', pct: 60 },
-      { label: 'Katılım Hesabı',   pct: 30 },
-      { label: 'Katılım Hisse',    pct: 10 },
-    ];
-  }
-  if (c.includes('para piyasası')) {
-    return [
-      { label: 'Ters Repo',    pct: 55 },
-      { label: 'Mevduat (TL)', pct: 40 },
-      { label: 'Diğer',        pct: 5 },
-    ];
-  }
-  if (c.includes('borçlanma') || c.includes('tahvil') || c.includes('bono')) {
-    return [
-      { label: 'Kamu Borçlanma Senedi',        pct: 65 },
-      { label: 'Özel Sektör Borçlanma Araçları', pct: 30 },
-      { label: 'Ters Repo',                     pct: 5 },
-    ];
-  }
-  if (c.includes('altın')) {
-    return [
-      { label: 'Altın',         pct: 88 },
-      { label: 'Ters Repo',     pct: 7 },
-      { label: 'Mevduat (TL)',  pct: 5 },
-    ];
-  }
-  if (c.includes('gümüş')) {
-    return [
-      { label: 'Gümüş',         pct: 88 },
-      { label: 'Ters Repo',     pct: 7 },
-      { label: 'Mevduat (TL)',  pct: 5 },
-    ];
-  }
-  if (c.includes('kıymetli maden')) {
-    return [
-      { label: 'Altın',        pct: 50 },
-      { label: 'Gümüş',        pct: 40 },
-      { label: 'Ters Repo',    pct: 10 },
-    ];
-  }
-  if (c.includes('döviz')) {
-    return [
-      { label: 'Eurobond',     pct: 70 },
-      { label: 'Döviz',        pct: 25 },
-      { label: 'Ters Repo',    pct: 5 },
-    ];
-  }
-  if (c.includes('emtia')) {
-    return [
-      { label: 'Emtia (YBF)',  pct: 80 },
-      { label: 'Ters Repo',    pct: 15 },
-      { label: 'Mevduat (TL)', pct: 5 },
-    ];
-  }
-  if (c.includes('fon sepeti')) {
-    return [
-      { label: 'Yatırım Fonları Katılma Payları', pct: 85 },
-      { label: 'Ters Repo',                        pct: 10 },
-      { label: 'Mevduat (TL)',                     pct: 5 },
-    ];
-  }
-  if (c.includes('karma') || c.includes('değişken') || c.includes('serbest')) {
-    return [
-      { label: 'Hisse Senedi',                     pct: 45 },
-      { label: 'Yatırım Fonları Katılma Payları', pct: 25 },
-      { label: 'Kamu Borçlanma Senedi',            pct: 15 },
-      { label: 'Ters Repo',                        pct: 10 },
-      { label: 'Mevduat (TL)',                     pct: 5 },
-    ];
-  }
-  // fallback generic
-  return [
-    { label: 'Ters Repo',    pct: 45 },
-    { label: 'Mevduat (TL)', pct: 35 },
-    { label: 'Diğer',        pct: 20 },
-  ];
-}
+// NOT: inferAllocationFromCategory (tahmini dağılım fallback) 13 Eyl 2026'da
+// KALDIRILDI — kategori bazlı tahmin FVT gerçek datasından %10-15 sapıyordu,
+// yanlış bilgi riski var. Sadece TEFAS resmi verisi gösterilir, yoksa empty state.
 
 /**
  * FundAllocationDonut — TEFAS varlık dağılımı FVT tarzı donut chart.
- * Allocation data varsa gerçek, yoksa fund kategorisine göre TAHMINI dağılım
- * "Tahmini" etiketiyle gösterilir. Böylece her fon için görsel akış korunur.
+ * SADECE gerçek TEFAS datası varsa gösterilir. Tahmini dağılım kaldırıldı —
+ * kategori bazlı tahmin gerçek dağılımdan %10-15 sapabiliyor, yanlış bilgi
+ * riski var. Data yoksa empty state gösterilir, kullanıcı TEFAS güncellemesi
+ * bekler (cron her saat başı çalışır).
  */
-function FundAllocationDonut({ fundCode, allocation, navReturn, category }: {
+function FundAllocationDonut({ fundCode, allocation, navReturn, category: _category }: {
   fundCode: string;
   allocation: Array<{ label: string; pct: number }>;
   navReturn: number | null;
   category?: string;
 }) {
-  const isReal = allocation.length > 0;
-  const data = isReal ? allocation : inferAllocationFromCategory(category || '');
+  // Sadece gerçek TEFAS datası — tahmini dağılım YANLIŞ BİLGİ riski nedeniyle
+  // devre dışı. Data yok = empty state, kullanıcıyı yanıltmıyoruz.
+  if (allocation.length === 0) {
+    return (
+      <div className="grid place-items-center py-16 text-xs text-slate-500">
+        <div className="text-center max-w-sm">
+          <div className="text-4xl mb-3">📊</div>
+          <div className="text-slate-300 font-medium">
+            TEFAS varlık dağılımı bekleniyor
+          </div>
+          <div className="mt-2 text-[11px] leading-relaxed">
+            Bu fon için TEFAS'ın açıkladığı resmi varlık dağılımı henüz veri kaynağımıza yansımadı.
+            Otomatik güncelleme her saat başı çalışır — kısa süre sonra bu ekran dolacaktır.
+          </div>
+          <div className="mt-3">
+            <a
+              href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fundCode}`}
+              target="_blank" rel="noreferrer"
+              className="text-accent hover:underline text-[11px]"
+            >
+              TEFAS'ta görüntüle →
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const data = allocation;
   const total = data.reduce((s, a) => s + a.pct, 0) || 1;
   const items = data.map((a) => ({ ...a, color: allocationColor(a.label) }));
 
@@ -847,7 +776,7 @@ function FundAllocationDonut({ fundCode, allocation, navReturn, category }: {
               key={a.label}
               d={a.d}
               fill={a.color}
-              fillOpacity={isReal ? 0.9 : 0.55}
+              fillOpacity={0.9}
               stroke="rgba(15,23,42,0.6)"
               strokeWidth="1"
             >
@@ -875,14 +804,6 @@ function FundAllocationDonut({ fundCode, allocation, navReturn, category }: {
 
       {/* Legend */}
       <div className="w-full sm:w-auto sm:min-w-[280px] max-w-md">
-        {!isReal && (
-          <div className="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-[11px] text-amber-200/90">
-            <div className="font-semibold">Tahmini dağılım</div>
-            <div className="mt-0.5 opacity-80">
-              TEFAS bu fon için varlık dağılımı yayınlamamış. Kategori ({category || '—'}) tipik dağılımı gösteriliyor.
-            </div>
-          </div>
-        )}
         <div className="space-y-1.5">
           {items.map((it) => (
             <div key={it.label} className="flex items-center gap-2 text-xs">
@@ -894,9 +815,7 @@ function FundAllocationDonut({ fundCode, allocation, navReturn, category }: {
         </div>
         <div className="mt-3 text-[10px] text-slate-500 leading-relaxed">
           Fon: <span className="text-slate-300 font-mono">{fundCode}</span>
-          {isReal
-            ? ' · Kaynak: TEFAS resmi varlık dağılımı'
-            : ' · Kategori bazlı yaklaşık — gerçek dağılım için TEFAS güncellemesi beklenmekte'}
+          {' · Kaynak: TEFAS resmi varlık dağılımı'}
         </div>
       </div>
     </div>

@@ -85,7 +85,16 @@ async function fetchScore(input: {
     credentials: 'include',
     body: JSON.stringify(input),
   });
-  return (await r.json()) as HealthResponse;
+  // 500/404 dönerse Cloudflare HTML error page geliyor → JSON.parse çöker.
+  // r.ok kontrolü ile empty state döndürüyoruz, Panel skeleton kilit çözülüyor.
+  if (!r.ok) {
+    return { ok: false, error: `HTTP ${r.status}` } as unknown as HealthResponse;
+  }
+  try {
+    return (await r.json()) as HealthResponse;
+  } catch {
+    return { ok: false, error: 'JSON parse failed' } as unknown as HealthResponse;
+  }
 }
 
 async function fetchCachedScore(): Promise<HealthResponse> {
@@ -93,7 +102,14 @@ async function fetchCachedScore(): Promise<HealthResponse> {
     method: 'GET',
     credentials: 'include',
   });
-  return (await r.json()) as HealthResponse;
+  if (!r.ok) {
+    return { ok: false, error: `HTTP ${r.status}` } as unknown as HealthResponse;
+  }
+  try {
+    return (await r.json()) as HealthResponse;
+  } catch {
+    return { ok: false, error: 'JSON parse failed' } as unknown as HealthResponse;
+  }
 }
 
 export function PortfolioHealthCard({ positions, bist30d, riskProfileTolerance, className }: Props) {

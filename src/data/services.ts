@@ -35,6 +35,22 @@ const SENTIMENT_TTL_MS = 5 * 60_000;
       localStorage.removeItem('hf.cache.macro');
       localStorage.setItem(bistFixKey, '1');
     }
+    // v9 (13 Eyl 2026): Gunun Enleri VAKBN +9.99 vs FVT +3.93 farki - Yahoo
+    // stale previousClose. Tum eski snapshot cache'lerini bir kez daha sur ki
+    // yeni feedSource='yahoo' filter'i temiz data ile calıssın.
+    const bistFixKeyV9 = 'hf.cache.bist-snapshot-v9-purged';
+    if (!localStorage.getItem(bistFixKeyV9)) {
+      const keysToPurge: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.startsWith('hf.cache.stocks:') || k === 'hf.cache.macro') {
+          keysToPurge.push(k);
+        }
+      }
+      keysToPurge.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(bistFixKeyV9, '1');
+    }
   } catch { /* ignore */ }
 })();
 
@@ -107,7 +123,16 @@ interface SnapshotApi {
   ok: boolean;
   count: number;
   updatedAt: number;
-  quotes: Record<string, { price: number; changePct: number; prev: number; updatedAt: number; asOf?: string; name?: string }>;
+  quotes: Record<string, {
+    price: number;
+    changePct: number;
+    prev: number;
+    updatedAt: number;
+    asOf?: string;
+    name?: string;
+    /** 'isyatirim' = bist_snapshot D1 authoritative, 'yahoo' = Yahoo Finance (default) */
+    source?: 'yahoo' | 'isyatirim';
+  }>;
 }
 let snapshotMemo: { fetchedAt: number; data: SnapshotApi } | null = null;
 const SNAPSHOT_TTL_MS = 60_000;
@@ -188,6 +213,9 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
         price: q.price,
         changePct: q.changePct,
         updatedAt: new Date(q.updatedAt).toISOString(),
+        // feedSource'u TopMovers Yahoo previousClose bug filter'i icin propagate ediyoruz.
+        // 'isyatirim' = authoritative (bist_snapshot D1), 'yahoo' = default fallback.
+        feedSource: q.source === 'isyatirim' ? 'isyatirim' : 'yahoo',
       });
     }
   }

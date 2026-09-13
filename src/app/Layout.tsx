@@ -219,6 +219,25 @@ export function Layout() {
     return () => { alive = false; };
   }, []);
 
+  // Ana ekran grafik pre-warm — Panel component'i mount olmadan Yahoo chart
+  // endpoint'ini paralel olarak fetch et. Cloudflare edge cache'e girer, Panel
+  // yuklendigi zaman edge hit ~50ms olur (miss ~800ms yerine).
+  // 13 Eyl 2026 optimizasyonu: ilk yukleme hissedilir sekilde hizlansin.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // 100ms bekle - critical rendering path'i engellemesin, arka planda calis.
+    const timer = setTimeout(() => {
+      const priorityCharts = [
+        '/api/yahoo/v8/finance/chart/%5EXU100?range=ytd&interval=1d', // BIST 100 default
+        '/api/yahoo/snapshot',                                          // Panel ticker snapshot
+      ];
+      priorityCharts.forEach((url) => {
+        fetch(url, { priority: 'low' } as RequestInit).catch(() => { /* prefetch fail sessiz */ });
+      });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     setSearchOpen(query.trim().length > 0);
   }, [query]);

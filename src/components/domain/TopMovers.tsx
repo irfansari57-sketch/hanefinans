@@ -25,18 +25,32 @@ export function TopMovers({ stocks, limit = 10, period = 'day' }: TopMoversProps
   // Is Yatirim override devrede, ama outlier hala gelirse burada kes).
   // ±%10.05 hafif yuvarlama toleransı. Haftalık/aylık bileşik → ±%40.
   const OUTLIER_CAP = period === 'day' ? 10.05 : 40;
-  // Tüm BIST evreni (BIST 100 disi kucuk kap dahil) — FVT gibi tam kapsam.
-  // Not: Yahoo'nun BIST 100 disi bazi hisselerde stale/yanlis previousClose
-  // problemi var. Kalici cozum: Paket F3 (Is Yatirim cron pre-warm) — sonraki seans.
+  // YENI (13 Eyl 2026): Yahoo kaynagi authoritative degil (FVT ile VAKBN +3.93 vs
+  // bizde +9.99 farki). BIST hissesi + feedSource='yahoo' + |changePct| >= 9.5
+  // -> muhtemel previousClose bug. Bu durumda listede gostermeyelim. Is Yatirim
+  // pre-warm cache'ten (bist_snapshot D1) gelen 'isyatirim' feedSource olan
+  // entryler tavana yakin olsa bile guvenilir - onlar gecer.
+  const YAHOO_SUSPECT_THRESHOLD = 9.5;
   void BIST_100_SYMBOLS; // reserved for future filtering options
   const sorted = stocks
-    .filter(
-      (s) =>
-        Number.isFinite(s.changePct) &&
-        s.price > 0 &&
-        s.changePct !== 0 &&
-        Math.abs(s.changePct) <= OUTLIER_CAP,
-    )
+    .filter((s) => {
+      if (!Number.isFinite(s.changePct)) return false;
+      if (s.price <= 0) return false;
+      if (s.changePct === 0) return false;
+      if (Math.abs(s.changePct) > OUTLIER_CAP) return false;
+      // Yahoo previousClose bug: BIST hissesi + Yahoo kaynagi + tavana yakin
+      // deger -> guvenilmez. isyatirim feedSource olanlarda bu kontrol yok.
+      const isBistStock = /\.IS$/i.test(s.symbol) || !s.symbol.includes('.');
+      if (
+        period === 'day' &&
+        isBistStock &&
+        s.feedSource === 'yahoo' &&
+        Math.abs(s.changePct) >= YAHOO_SUSPECT_THRESHOLD
+      ) {
+        return false;
+      }
+      return true;
+    })
     .sort((a, b) => b.changePct - a.changePct);
   const top = sorted.slice(0, limit);
   const bottom = sorted.slice(-limit).reverse();

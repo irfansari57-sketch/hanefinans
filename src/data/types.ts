@@ -7,6 +7,13 @@ export interface Stock {
   price: number;
   changePct: number;
   updatedAt: string;
+  /**
+   * Veri kaynagi - snapshot endpoint'inden gelir.
+   *   'yahoo'     - Yahoo Finance (default)
+   *   'isyatirim' - Is Yatirim pre-warm cache (bist_snapshot D1, authoritative)
+   * TopMovers filter'i Yahoo previousClose bug'ini elemek icin bu alani kullanir.
+   */
+  feedSource?: 'yahoo' | 'isyatirim';
 }
 
 export type NewsSource = string;

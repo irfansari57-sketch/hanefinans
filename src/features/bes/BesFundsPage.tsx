@@ -562,39 +562,40 @@ export function BesFundsPage() {
             {founder !== 'Tümü' ? ` · Kurucu: ${founder}` : ''}
           </div>
           <DoubleScrollTable className="rounded-xl border border-border bg-bg-soft">
-            {/* FundsPage layout paritesi: FIYAT sutunu kaldirildi (NAV detay
-                sayfada goruluyor). BES'in 8 return sutunu (Gun/1H/1A/3A/6A/YTD/1Y/3Y)
-                FundsPage'in 7 sutunundan 1 fazla oldugu icin min-w 940px. */}
-            <table className="w-full min-w-[940px] text-base">
-              <thead className="border-b border-border bg-bg-soft text-[11px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
+            {/* 8 return sutunu + Kod + Ad sutunu = 10 sutun. text-xs + kisa etiket
+                (1H/1A/3A) + kompakt padding + fon adi max-w 220px ile 1080px'e
+                sigar. Genis ekran (>1200px) icin fon adi genisler; dar ekranda
+                yatay scroll kalir ama gorunur alan tam sigar. */}
+            <table className="w-full min-w-[1080px] text-xs">
+              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
-                  <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left w-[2.5rem]">#</th>
-                  <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2.5 text-left">
+                  <th className="sticky left-0 z-20 bg-bg-soft px-1.5 py-2 text-left w-[2rem]">#</th>
+                  <th className="sticky left-8 z-20 bg-bg-soft px-1.5 py-2 text-left">
                     <button type="button" onClick={() => handleSort('code')} className="flex items-center gap-1 hover:text-accent">
                       Kod {sortKey === 'code' && <span>{sortDir === 'asc' ? '↑' : '↓'}</span>}
                     </button>
                   </th>
-                  <th className="hidden sm:table-cell px-2 py-2.5 text-left">Kategori / Fon Adı</th>
-                  <SortableTh label="Gün %" k="day" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="1 Hafta %" k="week" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="1 Ay %" k="month" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="3 Ay %" k="threeMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="6 Ay %" k="sixMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="YTD %" k="ytd" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="1 Yıl %" k="year" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <SortableTh label="3 Yıl %" k="threeYear" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <th className="hidden sm:table-cell px-1.5 py-2 text-left">Kategori / Fon Adı</th>
+                  <SortableTh label="Gün" k="day" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="1H" k="week" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="1A" k="month" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="3A" k="threeMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="6A" k="sixMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="YBB" k="ytd" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="1Y" k="year" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="3Y" k="threeYear" active={sortKey} dir={sortDir} onClick={handleSort} />
                 </tr>
               </thead>
               <tbody>
                 {sorted.slice(0, 200).map((f, i) => (
                   <tr key={f.code} className="border-b border-border/60 transition hover:bg-bg-card">
-                    <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2.5 text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
-                    <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2.5">
-                      <Link to={`/fund/${f.code}`} className="font-mono text-sm font-bold text-slate-100 hover:text-accent">
+                    <td className="sticky left-0 z-10 bg-bg-soft px-1.5 py-2 text-[10px] text-slate-500 tabular-nums">{i + 1}</td>
+                    <td className="sticky left-8 z-10 bg-bg-soft px-1.5 py-2">
+                      <Link to={`/fund/${f.code}`} className="font-mono text-xs font-bold text-slate-100 hover:text-accent">
                         {f.code}
                       </Link>
                     </td>
-                    <td className="hidden sm:table-cell px-2 py-2.5">
+                    <td className="hidden sm:table-cell px-1.5 py-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         {(() => {
                           const label = f.besKategori && f.besKategori.trim().length > 0 ? f.besKategori : f.category;
@@ -604,7 +605,7 @@ export function BesFundsPage() {
                             </span>
                           );
                         })()}
-                        <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[400px]" title={f.name}>{f.name}</span>
+                        <span className="truncate text-[11px] font-medium text-slate-700 dark:text-slate-200 max-w-[220px]" title={f.name}>{f.name}</span>
                       </div>
                     </td>
                     <ReturnCell v={f.day} />
@@ -646,13 +647,13 @@ function SortableTh({
     <th
       onClick={() => onClick(k)}
       className={cn(
-        'cursor-pointer select-none px-2.5 py-2 whitespace-nowrap',
+        'cursor-pointer select-none px-1.5 py-2 whitespace-nowrap',
         align === 'right' ? 'text-right' : 'text-left',
       )}
     >
-      <span className={cn('inline-flex items-center gap-1', isActive && 'text-accent')}>
+      <span className={cn('inline-flex items-center gap-0.5', isActive && 'text-accent')}>
         {label}
-        <ArrowUpDown size={9} className={cn(!isActive && 'opacity-40')} />
+        <ArrowUpDown size={8} className={cn(!isActive && 'opacity-40')} />
         {isActive && <span className="text-[9px]">{dir === 'asc' ? '↑' : '↓'}</span>}
       </span>
     </th>
@@ -686,12 +687,12 @@ function CategoryChip({ label }: { label: string }) {
 
 function ReturnCell({ v }: { v: number | null | undefined }) {
   if (v == null || !Number.isFinite(v)) {
-    return <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-500 whitespace-nowrap">—</td>;
+    return <td className="px-1.5 py-2 text-right font-mono text-xs tabular-nums text-slate-500 whitespace-nowrap">—</td>;
   }
   const positive = v >= 0;
   return (
     <td className={cn(
-      'px-2 py-2 text-right font-mono text-sm font-semibold tabular-nums whitespace-nowrap',
+      'px-1.5 py-2 text-right font-mono text-xs font-semibold tabular-nums whitespace-nowrap',
       positive ? 'text-success' : 'text-danger',
     )}>
       {positive ? '+' : ''}{v.toFixed(2)}%

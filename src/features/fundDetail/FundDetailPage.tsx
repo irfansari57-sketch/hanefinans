@@ -550,31 +550,36 @@ export function FundDetailPage() {
         </div>
       )}
 
-      {/* PORTFOY AGI TAB — network diagram (bize ozgu, kullanici talebi A+B hibrit).
-          Merkez: fon kodu · etrafinda: varlik siniflari (Hisse/Fon/Mevduat/vb.) daire buyuklugu = agirlik.
-          Yesil = pozitif getiri, kirmizi = negatif (o siniftan varsa)
-          Fon ici hisse bilgisi TEFAS'ta yaygin yok, o yuzden varlik kategorileri gosteriyoruz. */}
+      {/* PORTFOY AGI TAB — Varlık Dağılımı Donut (FVT tarzı).
+          Allocation datası varsa gerçek TEFAS oranları, yoksa fon kategorisine
+          göre tahmini dağılım — kullanıcı her fonda görsel geribildirim alır. */}
       {activeTab === 'agi' && (
         <div className="mb-4 card p-4">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-semibold text-slate-200">
               Portföy Ağı
-              <span className="ml-2 text-[10px] font-normal text-slate-500">bize özgü görselleştirme</span>
+              <span className="ml-2 text-[10px] font-normal text-slate-500">varlık dağılımı</span>
             </h2>
-            {liveData?.allocation && liveData.allocation.length > 0 && (
-              <span className="text-[10px] text-slate-500">
-                {liveData.allocation.length} varlık sınıfı
-              </span>
-            )}
+            {(() => {
+              const alloc = githubData?.allocation ?? liveData?.allocation ?? [];
+              return alloc.length > 0 ? (
+                <span className="text-[10px] text-slate-500">
+                  {alloc.length} varlık sınıfı · TEFAS
+                </span>
+              ) : (
+                <span className="text-[10px] text-amber-300/70">tahmini · kategori bazlı</span>
+              );
+            })()}
           </div>
-          <FundNetworkDiagram
+          <FundAllocationDonut
             fundCode={fundCode}
             allocation={githubData?.allocation ?? liveData?.allocation ?? []}
             navReturn={githubData?.returns?.['1y'] ?? null}
+            category={githubData?.category ?? ''}
           />
           <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-            🕸️ Merkez fon, etrafındaki daireler varlık sınıfları — çap = fon içi ağırlık.
-            Yeşil çevre = fonun 1 yıllık pozitif getirisi, kırmızı = negatif.
+            Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
+            Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
           </p>
         </div>
       )}
@@ -638,99 +643,263 @@ export function FundDetailPage() {
   );
 }
 
+// Kategori bazli renk paleti - donut/network/legend hepsi kullanir
+const CATEGORY_COLOR: Record<string, string> = {
+  'hisse senedi':               '#a855f7',
+  'hisse':                       '#a855f7',
+  'yatırım fonları katılma payları': '#10b981',
+  'fon':                          '#10b981',
+  'katılım':                      '#14b8a6',
+  'mevduat (tl)':                 '#94a3b8',
+  'mevduat':                      '#94a3b8',
+  'kkm':                          '#64748b',
+  'ters repo':                    '#0ea5e9',
+  'repo':                         '#0ea5e9',
+  'kira sertifikası':             '#22c55e',
+  'kira sertifikaları':           '#22c55e',
+  'finansman bonosu':             '#f97316',
+  'kamu borçlanma senedi':        '#3b82f6',
+  'özel sektör borçlanma araçları': '#3b82f6',
+  'devlet tahvili':               '#3b82f6',
+  'hazine bonosu':                '#3b82f6',
+  'eurobond':                     '#6366f1',
+  'döviz':                        '#f59e0b',
+  'altın':                        '#eab308',
+  'gümüş':                        '#cbd5e1',
+  'takasbank para piyasası':      '#8b5cf6',
+  'vaad':                         '#ec4899',
+  'diğer':                        '#78716c',
+};
+
+function allocationColor(label: string): string {
+  const key = label.toLowerCase().trim();
+  if (CATEGORY_COLOR[key]) return CATEGORY_COLOR[key];
+  // partial match
+  for (const [k, v] of Object.entries(CATEGORY_COLOR)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return '#22c55e';
+}
+
 /**
- * FundNetworkDiagram — Fon Ağı (bize özgü görselleştirme).
- * Merkez = fon kodu · etrafında = varlık sınıfları
- * Her varlık daire çapı = ağırlık, çevre rengi = fon yıllık getirisine göre.
- * TEFAS fon içi hisse listesi vermiyor, o yüzden varlık kategorileri ile
- * network diagram cizip InvestliQ'nun ayirt edici gorseli olusturuyoruz.
+ * Fon kategorisine göre TAHMINI (typical) varlık dağılımı fallback'i.
+ * TEFAS allocation datası olmadığında bile kullanıcı bir görsel görsün diye.
+ * Gerçek dağılım değil, kategori standardı yaklaşımı — "tahmini" etiketiyle sunulur.
  */
-function FundNetworkDiagram({ fundCode, allocation, navReturn }: {
+function inferAllocationFromCategory(category: string): Array<{ label: string; pct: number }> {
+  const c = (category || '').toLowerCase();
+  if (c.includes('hisse') && c.includes('katılım')) {
+    return [
+      { label: 'Katılım Hisse Senedi', pct: 85 },
+      { label: 'Kira Sertifikası',     pct: 10 },
+      { label: 'Katılım Hesabı',       pct: 5 },
+    ];
+  }
+  if (c.includes('hisse')) {
+    return [
+      { label: 'Hisse Senedi', pct: 85 },
+      { label: 'Ters Repo',    pct: 10 },
+      { label: 'Mevduat (TL)', pct: 5 },
+    ];
+  }
+  if (c === 'katılım' || c.includes('katılım')) {
+    return [
+      { label: 'Kira Sertifikası', pct: 60 },
+      { label: 'Katılım Hesabı',   pct: 30 },
+      { label: 'Katılım Hisse',    pct: 10 },
+    ];
+  }
+  if (c.includes('para piyasası')) {
+    return [
+      { label: 'Ters Repo',    pct: 55 },
+      { label: 'Mevduat (TL)', pct: 40 },
+      { label: 'Diğer',        pct: 5 },
+    ];
+  }
+  if (c.includes('borçlanma') || c.includes('tahvil') || c.includes('bono')) {
+    return [
+      { label: 'Kamu Borçlanma Senedi',        pct: 65 },
+      { label: 'Özel Sektör Borçlanma Araçları', pct: 30 },
+      { label: 'Ters Repo',                     pct: 5 },
+    ];
+  }
+  if (c.includes('altın')) {
+    return [
+      { label: 'Altın',         pct: 88 },
+      { label: 'Ters Repo',     pct: 7 },
+      { label: 'Mevduat (TL)',  pct: 5 },
+    ];
+  }
+  if (c.includes('gümüş')) {
+    return [
+      { label: 'Gümüş',         pct: 88 },
+      { label: 'Ters Repo',     pct: 7 },
+      { label: 'Mevduat (TL)',  pct: 5 },
+    ];
+  }
+  if (c.includes('kıymetli maden')) {
+    return [
+      { label: 'Altın',        pct: 50 },
+      { label: 'Gümüş',        pct: 40 },
+      { label: 'Ters Repo',    pct: 10 },
+    ];
+  }
+  if (c.includes('döviz')) {
+    return [
+      { label: 'Eurobond',     pct: 70 },
+      { label: 'Döviz',        pct: 25 },
+      { label: 'Ters Repo',    pct: 5 },
+    ];
+  }
+  if (c.includes('emtia')) {
+    return [
+      { label: 'Emtia (YBF)',  pct: 80 },
+      { label: 'Ters Repo',    pct: 15 },
+      { label: 'Mevduat (TL)', pct: 5 },
+    ];
+  }
+  if (c.includes('fon sepeti')) {
+    return [
+      { label: 'Yatırım Fonları Katılma Payları', pct: 85 },
+      { label: 'Ters Repo',                        pct: 10 },
+      { label: 'Mevduat (TL)',                     pct: 5 },
+    ];
+  }
+  if (c.includes('karma') || c.includes('değişken') || c.includes('serbest')) {
+    return [
+      { label: 'Hisse Senedi',                     pct: 45 },
+      { label: 'Yatırım Fonları Katılma Payları', pct: 25 },
+      { label: 'Kamu Borçlanma Senedi',            pct: 15 },
+      { label: 'Ters Repo',                        pct: 10 },
+      { label: 'Mevduat (TL)',                     pct: 5 },
+    ];
+  }
+  // fallback generic
+  return [
+    { label: 'Ters Repo',    pct: 45 },
+    { label: 'Mevduat (TL)', pct: 35 },
+    { label: 'Diğer',        pct: 20 },
+  ];
+}
+
+/**
+ * FundAllocationDonut — TEFAS varlık dağılımı FVT tarzı donut chart.
+ * Allocation data varsa gerçek, yoksa fund kategorisine göre TAHMINI dağılım
+ * "Tahmini" etiketiyle gösterilir. Böylece her fon için görsel akış korunur.
+ */
+function FundAllocationDonut({ fundCode, allocation, navReturn, category }: {
   fundCode: string;
   allocation: Array<{ label: string; pct: number }>;
   navReturn: number | null;
+  category?: string;
 }) {
-  if (allocation.length === 0) {
-    return (
-      <div className="grid place-items-center py-16 text-xs text-slate-500">
-        <div className="text-center">
-          <div className="text-4xl mb-3">🕸️</div>
-          <div>Portföy dağılım verisi bekleniyor</div>
-          <div className="mt-1 text-[10px]">TEFAS'ın açıkladığı varlık dağılımı geldiğinde otomatik doldurulur</div>
-        </div>
-      </div>
-    );
-  }
-  const W = 700;
-  const H = 500;
+  const isReal = allocation.length > 0;
+  const data = isReal ? allocation : inferAllocationFromCategory(category || '');
+  const total = data.reduce((s, a) => s + a.pct, 0) || 1;
+  const items = data.map((a) => ({ ...a, color: allocationColor(a.label) }));
+
+  // Donut geometrisi
+  const W = 260;
+  const H = 260;
   const cx = W / 2;
   const cy = H / 2;
-  const centerR = 55;
-  // Etraftaki dairelerin yarıçapları — max ağırlık büyük olsun
-  const maxPct = Math.max(...allocation.map((a) => a.pct));
-  const positive = (navReturn ?? 0) >= 0;
-  const stroke = positive ? '#22c55e' : '#ef4444';
-  // Kategori bazli renk: hisse -> mor, fon -> emerald, mevduat -> gri, doviz -> mavi
-  const categoryColor = (label: string): string => {
-    const l = label.toLowerCase();
-    if (l.includes('hisse')) return '#a855f7';
-    if (l.includes('fon') || l.includes('katılım')) return '#10b981';
-    if (l.includes('mevduat') || l.includes('kkm')) return '#94a3b8';
-    if (l.includes('döviz') || l.includes('altın') || l.includes('gümüş')) return '#f59e0b';
-    if (l.includes('tahvil') || l.includes('bono')) return '#3b82f6';
-    return '#22c55e';
-  };
-  // Daireler çember üstünde eşit dağıtılır
-  const orbitR = 180;
-  const items = allocation.map((a, i) => {
-    const angle = (i / allocation.length) * Math.PI * 2 - Math.PI / 2;
-    const r = 20 + (a.pct / maxPct) * 30;
-    const x = cx + Math.cos(angle) * orbitR;
-    const y = cy + Math.sin(angle) * orbitR;
-    return { ...a, x, y, r, color: categoryColor(a.label) };
+  const outerR = 110;
+  const innerR = 68;
+
+  let cumAngle = -Math.PI / 2; // start top
+  const arcs = items.map((it) => {
+    const frac = it.pct / total;
+    const startAngle = cumAngle;
+    const endAngle = cumAngle + frac * Math.PI * 2;
+    cumAngle = endAngle;
+    // arc path
+    const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+    const x1 = cx + Math.cos(startAngle) * outerR;
+    const y1 = cy + Math.sin(startAngle) * outerR;
+    const x2 = cx + Math.cos(endAngle) * outerR;
+    const y2 = cy + Math.sin(endAngle) * outerR;
+    const xi1 = cx + Math.cos(endAngle) * innerR;
+    const yi1 = cy + Math.sin(endAngle) * innerR;
+    const xi2 = cx + Math.cos(startAngle) * innerR;
+    const yi2 = cy + Math.sin(startAngle) * innerR;
+    const d = [
+      `M ${x1} ${y1}`,
+      `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2}`,
+      `L ${xi1} ${yi1}`,
+      `A ${innerR} ${innerR} 0 ${largeArc} 0 ${xi2} ${yi2}`,
+      'Z',
+    ].join(' ');
+    return { ...it, d };
   });
+
+  const centerReturn = navReturn != null
+    ? `${navReturn >= 0 ? '+' : ''}${navReturn.toFixed(1)}%`
+    : fundCode;
+  const centerColor = navReturn != null && navReturn < 0 ? '#ef4444' : '#22c55e';
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-96 sm:h-[500px]" style={{ display: 'block' }}>
-      <defs>
-        <radialGradient id="fnd-center" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.35"/>
-          <stop offset="100%" stopColor={stroke} stopOpacity="0.05"/>
-        </radialGradient>
-      </defs>
-      {/* Bağlantı çizgileri — merkezden her aset'e */}
-      {items.map((it) => (
-        <line
-          key={`ln-${it.label}`}
-          x1={cx} y1={cy}
-          x2={it.x} y2={it.y}
-          stroke={stroke}
-          strokeOpacity="0.25"
-          strokeWidth="1"
-        />
-      ))}
-      {/* Yörünge dairesi */}
-      <circle cx={cx} cy={cy} r={orbitR} fill="none" stroke="rgba(148,163,184,0.1)" strokeDasharray="4 4"/>
-      {/* Merkez fon çemberi */}
-      <circle cx={cx} cy={cy} r={centerR} fill="url(#fnd-center)" stroke={stroke} strokeWidth="2"/>
-      <text x={cx} y={cy - 4} fill="#f1f5f9" fontSize="16" fontWeight="700" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
-        {fundCode}
-      </text>
-      <text x={cx} y={cy + 14} fill="rgba(148,163,184,0.8)" fontSize="10" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
-        {navReturn != null ? `1Y ${navReturn >= 0 ? '+' : ''}${navReturn.toFixed(1)}%` : 'InvestliQ'}
-      </text>
-      {/* Varlık daireleri */}
-      {items.map((it) => (
-        <g key={it.label}>
-          <circle cx={it.x} cy={it.y} r={it.r} fill={it.color} fillOpacity="0.20" stroke={it.color} strokeWidth="1.5"/>
-          <text x={it.x} y={it.y - 3} fill="#f1f5f9" fontSize="10" fontWeight="600" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
-            {it.label.length > 12 ? it.label.slice(0, 12) + '…' : it.label}
+    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-center sm:gap-8">
+      {/* Donut SVG */}
+      <div className="relative shrink-0">
+        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: 'block' }}>
+          {arcs.map((a) => (
+            <path
+              key={a.label}
+              d={a.d}
+              fill={a.color}
+              fillOpacity={isReal ? 0.9 : 0.55}
+              stroke="rgba(15,23,42,0.6)"
+              strokeWidth="1"
+            >
+              <title>{`${a.label}: %${a.pct.toFixed(2)}`}</title>
+            </path>
+          ))}
+          {/* Center label */}
+          <text
+            x={cx} y={cy - 4}
+            fill={navReturn != null ? centerColor : '#f1f5f9'}
+            fontSize="18" fontWeight="700" textAnchor="middle"
+            fontFamily="Inter, system-ui, sans-serif"
+          >
+            {centerReturn}
           </text>
-          <text x={it.x} y={it.y + 10} fill={it.color} fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, system-ui, sans-serif">
-            %{it.pct.toFixed(1)}
+          <text
+            x={cx} y={cy + 14}
+            fill="rgba(148,163,184,0.9)" fontSize="10" textAnchor="middle"
+            fontFamily="Inter, system-ui, sans-serif"
+          >
+            {navReturn != null ? '1Y' : ''}
           </text>
-        </g>
-      ))}
-    </svg>
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div className="w-full sm:w-auto sm:min-w-[280px] max-w-md">
+        {!isReal && (
+          <div className="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2 text-[11px] text-amber-200/90">
+            <div className="font-semibold">Tahmini dağılım</div>
+            <div className="mt-0.5 opacity-80">
+              TEFAS bu fon için varlık dağılımı yayınlamamış. Kategori ({category || '—'}) tipik dağılımı gösteriliyor.
+            </div>
+          </div>
+        )}
+        <div className="space-y-1.5">
+          {items.map((it) => (
+            <div key={it.label} className="flex items-center gap-2 text-xs">
+              <div className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: it.color }} />
+              <div className="min-w-0 flex-1 truncate text-slate-300">{it.label}</div>
+              <div className="tabular-nums font-semibold text-slate-100">%{it.pct.toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+          Fon: <span className="text-slate-300 font-mono">{fundCode}</span>
+          {isReal
+            ? ' · Kaynak: TEFAS resmi varlık dağılımı'
+            : ' · Kategori bazlı yaklaşık — gerçek dağılım için TEFAS güncellemesi beklenmekte'}
+        </div>
+      </div>
+    </div>
   );
 }
 

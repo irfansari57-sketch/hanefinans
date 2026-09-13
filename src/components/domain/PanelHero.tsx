@@ -122,6 +122,29 @@ async function fetchIsYatirimChart(
   }
 }
 
+/**
+ * Ana grafik cache — modul level Map. Aynı sembol+period kombosu 5 dk boyunca
+ * memory'den servisEdilir, tekrar Yahoo/IS Yatırım fetch atılmaz. Ticker chip'leri
+ * arasında gezinirken flicker sıfır, ilk açılış sonrası anında yüklenir.
+ */
+type SeriesCacheEntry = { at: number; series: Array<{ date: number; close: number }> };
+const SERIES_CACHE = new Map<string, SeriesCacheEntry>();
+const SERIES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 dk
+
+function readSeriesCache(key: string): Array<{ date: number; close: number }> | null {
+  const e = SERIES_CACHE.get(key);
+  if (!e) return null;
+  if (Date.now() - e.at > SERIES_CACHE_TTL_MS) {
+    SERIES_CACHE.delete(key);
+    return null;
+  }
+  return e.series;
+}
+
+function writeSeriesCache(key: string, series: Array<{ date: number; close: number }>) {
+  SERIES_CACHE.set(key, { at: Date.now(), series });
+}
+
 export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
   const [primarySymbol, setPrimarySymbol] = useState<string>(defaultSymbol);
   const [period, setPeriod] = useState<Period>('YTD');
@@ -175,6 +198,17 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
 
   useEffect(() => {
     let alive = true;
+    const cacheKey = `${primarySymbol}|${period}`;
+    // Cache hit: skeleton'ı hiç gösterme, direkt eski data'yı ver.
+    const cached = readSeriesCache(cacheKey);
+    if (cached) {
+      setSeries(cached);
+      setSeriesLoading(false);
+      return () => { alive = false; };
+    }
+    // Cache miss: skeleton yerine önceki series'i tut (chart üstünde loading yerine
+    // eski çizim durur, fetch bitince yenisiyle değişir). Sadece hiç series yoksa
+    // skeleton (loading dot) göster.
     setSeriesLoading(true);
     const ysym = toYahooSymbol(primarySymbol);
     // VIOP 30 vadelidir - Yahoo'da yok, dogrudan Is Yatirim'a git.
@@ -203,7 +237,10 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
             const scaled = scaleFactor
               ? pairs.map((p) => ({ date: p.date, close: p.close * scaleFactor }))
               : pairs;
-            if (alive) setSeries(scaled);
+            if (alive) {
+              setSeries(scaled);
+              writeSeriesCache(cacheKey, scaled);
+            }
             return;
           }
         }
@@ -216,6 +253,7 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
               ? isBars.map((b) => ({ date: b.date, close: b.close * scaleFactor }))
               : isBars;
             setSeries(scaled);
+            writeSeriesCache(cacheKey, scaled);
             return;
           }
         }

@@ -229,27 +229,61 @@ def strictly_prior_business_day(d: datetime) -> datetime:
     return previous_business_day(d)
 
 
-def fetch_fund_allocation(code: str, timeout: int = 10) -> "list[dict] | None":
+_ALLOCATION_SESSION = None
+
+
+def _get_alloc_session():
+    """curl_cffi Session (chrome131 impersonation) - TEFAS bot korumasi asma icin.
+    GitHub Actions IP'lerinden requests kutuphanesi ile timeout aliyoruz, curl_cffi
+    chrome imitasyonu ile calisan bir session olusturup reuse ediyoruz."""
+    global _ALLOCATION_SESSION
+    if _ALLOCATION_SESSION is None:
+        try:
+            from curl_cffi import requests as cr
+            _ALLOCATION_SESSION = cr.Session(impersonate="chrome131")
+            print("[allocation] curl_cffi session (chrome131) hazir", flush=True)
+        except ImportError:
+            print("[allocation] curl_cffi YOK - requests fallback", file=sys.stderr, flush=True)
+            _ALLOCATION_SESSION = False  # tekrar denememek icin flag
+    return _ALLOCATION_SESSION if _ALLOCATION_SESSION else None
+
+
+def fetch_fund_allocation(code: str, timeout: int = 30) -> "list[dict] | None":
     """TEFAS'in BindFonPortfoyDagilimi endpoint'inden fon varlik dagilimini ceker.
 
     POST https://www.tefas.gov.tr/api/DB/BindFonPortfoyDagilimi
     Body: fonkodu=STI (form-encoded)
     Response: [{"VARLIK_ADI": "Hisse Senedi", "ORAN": 59.03}, ...]
 
-    Cluster limit: her fon icin ayri call — cron rate limit dikkat.
-    Yalnizca aktif TEFAS fonlari icin cagirilir (top N by marketCap).
+    curl_cffi (chrome131 impersonation) kullanir — GitHub Actions'tan direkt requests
+    ile timeout aliniyordu, TLS fingerprint korumasi. 30s timeout uzun tolerans.
     """
+    session = _get_alloc_session()
+    headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        'Referer': f'https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={code.strip().upper()}',
+        'Origin': 'https://www.tefas.gov.tr',
+        'X-Requested-With': 'XMLHttpRequest',
+    }
     try:
-        r = requests.post(
-            'https://www.tefas.gov.tr/api/DB/BindFonPortfoyDagilimi',
-            data={'fonkodu': code.strip().upper()},
-            headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Referer': 'https://www.tefas.gov.tr/FonAnaliz.aspx',
-            },
-            timeout=timeout,
-        )
+        if session:
+            r = session.post(
+                'https://www.tefas.gov.tr/api/DB/BindFonPortfoyDagilimi',
+                data={'fonkodu': code.strip().upper()},
+                headers=headers,
+                timeout=timeout,
+            )
+        else:
+            r = requests.post(
+                'https://www.tefas.gov.tr/api/DB/BindFonPortfoyDagilimi',
+                data={'fonkodu': code.strip().upper()},
+                headers={
+                    **headers,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                },
+                timeout=timeout,
+            )
         if r.status_code != 200:
             return None
         data = r.json()
@@ -272,7 +306,7 @@ def fetch_fund_allocation(code: str, timeout: int = 10) -> "list[dict] | None":
         result.sort(key=lambda x: x['pct'], reverse=True)
         return result if result else None
     except Exception as e:
-        print(f"[allocation] {code} fetch fail: {e}", file=sys.stderr)
+        print(f"[allocation] {code} fetch fail: {type(e).__name__}: {e}", file=sys.stderr)
         return None
 
 
@@ -720,7 +754,7 @@ def main() -> int:
     # koruma icin sadece TEFAS'a acik + market cap'i buyuk fonlara sinirlariz.
     # Kucuk fonlar Worker fallback kaldi (dinamik fetch), buradan allocation almaz.
     ALLOC_TOP_N = int(os.environ.get('TEFAS_ALLOC_TOP_N', '500'))
-    ALLOC_DELAY_MS = int(os.environ.get('TEFAS_ALLOC_DELAY_MS', '150'))
+    ALLOC_DELAY_MS = int(os.environ.get('TEFAS_ALLOC_DELAY_MS', '300'))
     # marketCap kolonu tefasfon'dan gelmiyor (hep null) — shareCount * nav ile
     # yaklasik portfoy buyuklugu hesapla, buna gore sirala.
     def _size_proxy(f: dict) -> float:

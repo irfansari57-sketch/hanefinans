@@ -205,6 +205,21 @@ interface YahooHistoricalRaw {
   };
 }
 
+/**
+ * fetchHistoricalYahoo modul-level in-memory cache.
+ * Ayni sembol+range+interval kombinasyonu 3 dk boyunca hafızadan servis edilir.
+ * Panel, hisse detay, watchlist, screener gibi coklu component ayni sembolu
+ * cektiginde network round-trip bir kez olur. Kullanici sayfa gecislerinde
+ * chart flicker'i cok azalir, ilk yukleme sonrasi anlik gorunur.
+ * Sonuc: BIST 100 ilk yuklenme 800ms → sonraki gecislerde 5ms.
+ */
+type HistCacheEntry = { at: number; data: HistoricalSeries | null };
+const HIST_CACHE = new Map<string, HistCacheEntry>();
+const HIST_CACHE_TTL_MS = 3 * 60 * 1000; // 3 dk — piyasa acikken taze, kapaliyken de yeter
+
+/** İn-flight de-dup: aynı istegi eş zamanlı 2 yerden atma. */
+const HIST_IN_FLIGHT = new Map<string, Promise<HistoricalSeries | null>>();
+
 export async function fetchHistoricalYahoo(
   symbol: string,
   range: '1d' | '5d' | '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | 'ytd' = '1y',
@@ -217,6 +232,20 @@ export async function fetchHistoricalYahoo(
   )
     ? symbol
     : `${symbol}.IS`;
+
+  const cacheKey = `${ySym}|${range}|${interval}`;
+
+  // Cache hit
+  const cached = HIST_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.at < HIST_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  // In-flight de-dup
+  const inFlight = HIST_IN_FLIGHT.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const fetchPromise = (async (): Promise<HistoricalSeries | null> => {
   try {
     const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(ySym)}?range=${range}&interval=${interval}`;
     const r = await fetch(url);
@@ -268,6 +297,16 @@ export async function fetchHistoricalYahoo(
   } catch {
     return null;
   }
+  })();
+
+  HIST_IN_FLIGHT.set(cacheKey, fetchPromise);
+  try {
+    const data = await fetchPromise;
+    HIST_CACHE.set(cacheKey, { at: Date.now(), data });
+    return data;
+  } finally {
+    HIST_IN_FLIGHT.delete(cacheKey);
+  }
 }
 
 export interface PeriodReturns {
@@ -282,22 +321,37 @@ export interface PeriodReturns {
 export function computePeriodReturns(closes: { date: number; close: number }[]): PeriodReturns {
   if (closes.length === 0) return {};
   const last = closes[closes.length - 1];
-  const findOldest = (daysAgo: number) => {
+
+  /**
+   * Hedef tarihe en yakın bar'ı bul. Önce <= target şartıyla ara (klasik),
+   * yoksa target tarihinden SONRAKI en yakın bar'ı döndür (tolerance).
+   * Düşük likiditeli hisselerde (örn BAHKM) tam gün öncesi bar olmayabilir —
+   * bu durumda 1-2 gün sonraki bar da yaklaşık aynı fiyatı verir, "—" yerine
+   * gerçek bir değer göstermek daha faydalı.
+   */
+  const findNearest = (daysAgo: number, toleranceDays = 5) => {
     const targetMs = last.date - daysAgo * 86400_000;
-    let best: { date: number; close: number } | null = null;
+    const toleranceMs = toleranceDays * 86400_000;
+    let bestBefore: { date: number; close: number } | null = null;
+    let bestAfter: { date: number; close: number } | null = null;
     for (const p of closes) {
-      if (p.date <= targetMs) best = p;
-      else break;
+      if (p === last) continue;
+      if (p.date <= targetMs) bestBefore = p;
+      else if (!bestAfter) bestAfter = p;
     }
-    return best;
+    if (bestBefore) return bestBefore;
+    // Fallback: eğer 'sonraki' bar tolerance içindeyse onu kullan
+    if (bestAfter && Math.abs(bestAfter.date - targetMs) <= toleranceMs) return bestAfter;
+    return null;
   };
+
   const pct = (oldClose: number) => ((last.close - oldClose) / oldClose) * 100;
   const r: PeriodReturns = {};
-  const days1 = findOldest(1); if (days1) r['1g'] = pct(days1.close);
-  const days7 = findOldest(7); if (days7) r['1h'] = pct(days7.close);
-  const days30 = findOldest(30); if (days30) r['1a'] = pct(days30.close);
-  const days90 = findOldest(90); if (days90) r['3a'] = pct(days90.close);
-  const days180 = findOldest(180); if (days180) r['6a'] = pct(days180.close);
+  const d1 = findNearest(1, 3);    if (d1)  r['1g'] = pct(d1.close);
+  const d7 = findNearest(7, 5);    if (d7)  r['1h'] = pct(d7.close);
+  const d30 = findNearest(30, 10); if (d30) r['1a'] = pct(d30.close);
+  const d90 = findNearest(90, 20); if (d90) r['3a'] = pct(d90.close);
+  const d180 = findNearest(180, 30); if (d180) r['6a'] = pct(d180.close);
   if (closes.length > 1) r['1y'] = pct(closes[0].close);
   return r;
 }

@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = 'code' | 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear';
-type Tab = 'getiri' | 'buyukluk';
 
 // BES fonu tespiti — SIKI (source of truth backend):
 //   1) befasOpen === true (Takasbank BEFAS Excel listesinde ise BEFAS ürünüdür)
@@ -53,10 +52,11 @@ type BesCategoryChip = typeof BES_CATEGORIES[number];
 
 function matchBesCategory(f: FundPerformance, chip: BesCategoryChip): boolean {
   if (chip === 'Tümü') return true;
-  const c = (f.category ?? '').toString().toLocaleUpperCase('tr-TR');
+  // Öncelik besKategori (EGM/BEFAS alt kategorisi), yoksa fon adi (KATILIM STANDART vs.)
+  const bk = (f.besKategori ?? '').toLocaleUpperCase('tr-TR');
   const n = (f.name ?? '').toLocaleUpperCase('tr-TR');
   const target = chip.toLocaleUpperCase('tr-TR');
-  return c.includes(target) || n.includes(target);
+  return bk.includes(target) || n.includes(target);
 }
 
 export function BesFundsPage() {
@@ -68,7 +68,6 @@ export function BesFundsPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<BesCategoryChip>('Tümü');
   const [founder, setFounder] = useState<string>('Tümü'); // Kurucu filter
-  const [tab, setTab] = useState<Tab>('getiri');
   const [sortKey, setSortKey] = useState<SortKey>('year');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -154,6 +153,7 @@ export function BesFundsPage() {
             tefasOpen: false,
             befasOpen: true,
             founder: f.founder,
+            besKategori: f.besKategori,
             nav: f.nav ?? undefined,
             navDate: undefined,
             day: f.returns['1d'] ?? NaN,
@@ -300,26 +300,6 @@ export function BesFundsPage() {
         ))}
       </div>
 
-      {/* Tab switcher */}
-      <div className="mb-3 border-b border-border">
-        <div className="flex gap-4">
-          {(['getiri', 'buyukluk'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={cn(
-                'py-2 text-xs font-medium border-b-2 transition -mb-px',
-                tab === t
-                  ? 'border-accent text-accent'
-                  : 'border-transparent text-slate-500 hover:text-slate-300',
-              )}
-            >
-              {t === 'getiri' ? '📈 Getiri' : '💰 Büyüklük'}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {loading ? (
         <TableSkeleton rows={8} />
       ) : feedFailed ? (
@@ -382,24 +362,15 @@ export function BesFundsPage() {
                   <th className="text-left px-2.5 py-2 w-[3rem]">#</th>
                   <SortableTh label="Fon" k="code" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
                   <th className="text-left px-2.5 py-2">Kategori</th>
-                  {tab === 'getiri' ? (
-                    <>
-                      <th className="text-right px-2.5 py-2">Fiyat</th>
-                      <SortableTh label="1G" k="day" active={sortKey} dir={sortDir} onClick={handleSort} />
-                      <SortableTh label="1H" k="week" active={sortKey} dir={sortDir} onClick={handleSort} />
-                      <SortableTh label="1A" k="month" active={sortKey} dir={sortDir} onClick={handleSort} />
-                      <SortableTh label="3A" k="threeMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
-                      <SortableTh label="6A" k="sixMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
-                      <SortableTh label="YBB" k="ytd" active={sortKey} dir={sortDir} onClick={handleSort} />
-                      <SortableTh label="1Y" k="year" active={sortKey} dir={sortDir} onClick={handleSort} />
-                      <SortableTh label="3Y" k="threeYear" active={sortKey} dir={sortDir} onClick={handleSort} />
-                    </>
-                  ) : (
-                    <>
-                      <th className="text-right px-2.5 py-2">Fiyat</th>
-                      <th className="text-right px-2.5 py-2">Kategori</th>
-                    </>
-                  )}
+                  <th className="text-right px-2.5 py-2">Fiyat</th>
+                  <SortableTh label="1G" k="day" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="1H" k="week" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="1A" k="month" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="3A" k="threeMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="6A" k="sixMonth" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="YBB" k="ytd" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="1Y" k="year" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="3Y" k="threeYear" active={sortKey} dir={sortDir} onClick={handleSort} />
                 </tr>
               </thead>
               <tbody>
@@ -428,29 +399,26 @@ export function BesFundsPage() {
                         </button>
                       )}
                     </td>
-                    <td className="px-2.5 py-1.5 text-slate-300">{f.category}</td>
-                    {tab === 'getiri' ? (
-                      <>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-200">
-                          {f.nav != null ? f.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
-                        </td>
-                        <ReturnCell v={f.day} />
-                        <ReturnCell v={f.week} />
-                        <ReturnCell v={f.month} />
-                        <ReturnCell v={f.threeMonth} />
-                        <ReturnCell v={f.sixMonth} />
-                        <ReturnCell v={f.ytd} />
-                        <ReturnCell v={f.year} />
-                        <ReturnCell v={f.threeYear ?? null} />
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-200">
-                          {f.nav != null ? f.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
-                        </td>
-                        <td className="px-2.5 py-1.5 text-right text-slate-400">{f.category}</td>
-                      </>
-                    )}
+                    <td className="px-2.5 py-1.5 text-slate-300">
+                      {(() => {
+                        // EGM/BEFAS alt kategori tercih; yoksa "Emeklilik" fallback
+                        const label = f.besKategori && f.besKategori.trim().length > 0
+                          ? f.besKategori
+                          : f.category;
+                        return <CategoryChip label={label} />;
+                      })()}
+                    </td>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-200">
+                      {f.nav != null ? f.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
+                    </td>
+                    <ReturnCell v={f.day} />
+                    <ReturnCell v={f.week} />
+                    <ReturnCell v={f.month} />
+                    <ReturnCell v={f.threeMonth} />
+                    <ReturnCell v={f.sixMonth} />
+                    <ReturnCell v={f.ytd} />
+                    <ReturnCell v={f.year} />
+                    <ReturnCell v={f.threeYear ?? null} />
                   </tr>
                 ))}
               </tbody>
@@ -492,6 +460,31 @@ function SortableTh({
         {isActive && <span className="text-[9px]">{dir === 'asc' ? '↑' : '↓'}</span>}
       </span>
     </th>
+  );
+}
+
+/**
+ * CategoryChip — BES fon alt kategori chip'i (renkli, kompakt).
+ * FVT tarzi renk kodlamasiyla goze hitap eder.
+ */
+function CategoryChip({ label }: { label: string }) {
+  const upper = label.toLocaleUpperCase('tr-TR');
+  const tone =
+    upper.includes('HİSSE SENED')      ? 'bg-danger/15 text-danger border-danger/30'
+    : upper.includes('KATILIM')        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+    : upper.includes('ALTIN')          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+    : upper.includes('OKS')            ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+    : upper.includes('PARA PİYAS')     ? 'bg-slate-500/15 text-slate-300 border-slate-500/30'
+    : upper.includes('KIRA SERTIFIK') || upper.includes('KIRA SERTİFİK')
+                                       ? 'bg-teal-500/15 text-teal-300 border-teal-500/30'
+    : upper.includes('DEĞİŞKEN') || upper.includes('DEGISKEN')
+                                       ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+    : upper.includes('STANDART')       ? 'bg-slate-500/15 text-slate-200 border-slate-500/30'
+    :                                    'bg-accent/15 text-accent border-accent/30';
+  return (
+    <span className={cn('inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-medium', tone)}>
+      {label}
+    </span>
   );
 }
 

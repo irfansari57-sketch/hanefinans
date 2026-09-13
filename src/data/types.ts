@@ -139,6 +139,12 @@ export interface FundPerformance {
    * TEFAS/GitHub feed'den veya CF Function seed'inden gelir.
    */
   founder?: string;
+  /**
+   * BES fonlari icin alt kategori — EGM/BEFAS raporunda "Fonun Turu" alani.
+   * Ornek: "Katılım Değişken Fon", "Hisse Senedi Fonu", "Katılım Standart Fon".
+   * category='Emeklilik' altinda daha detayli tanim; UI'da bunu gosteririz.
+   */
+  besKategori?: string;
   /** Anlik fiyat (NAV / pay degeri) - feed'den gelir, opsiyonel */
   nav?: number;
   /** NAV tarihi (YYYY-MM-DD) */

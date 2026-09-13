@@ -257,31 +257,33 @@ export function BorsaYatirimFundsPage() {
             {sorted.length} BYF · Kaynak: BIST canlı akışı
           </div>
           <DoubleScrollTable>
-            <table className="min-w-[900px] w-full text-xs">
-              <thead className="bg-bg-soft/60 text-slate-400 uppercase text-[10px] tracking-wider">
+            <table className="min-w-[720px] w-full text-xs">
+              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
+                  <th className="px-2 py-2 text-left w-[2.5rem]">#</th>
                   <SortableTh label="Sembol" k="symbol" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
-                  <th className="text-left px-2.5 py-2">Fon Adı</th>
-                  <th className="text-left px-2.5 py-2">Kategori</th>
-                  <th className="text-left px-2.5 py-2">İhraççı</th>
+                  <th className="hidden sm:table-cell px-2 py-2 text-left">İhraççı / Kategori / Fon</th>
                   <SortableTh label="Fiyat" k="price" active={sortKey} dir={sortDir} onClick={handleSort} />
                   <SortableTh label="Değişim" k="changePct" active={sortKey} dir={sortDir} onClick={handleSort} />
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((f) => (
-                  <tr key={f.symbol} className="border-t border-border/40 hover:bg-bg-soft/50">
-                    <td className="px-2.5 py-1.5">
-                      <Link to={`/stock/${f.symbol}`} className="font-mono font-semibold text-slate-100 hover:text-accent">
+                {sorted.map((f, i) => (
+                  <tr key={f.symbol} className="border-b border-border/60 transition hover:bg-bg-card">
+                    <td className="px-2 py-2 text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
+                    <td className="px-2 py-2">
+                      <Link to={`/stock/${f.symbol}`} className="font-mono text-sm font-bold text-slate-100 hover:text-accent">
                         {f.symbol}
                       </Link>
                     </td>
-                    <td className="px-2.5 py-1.5 text-slate-300 max-w-[280px] truncate" title={f.name}>{f.name}</td>
-                    <td className="px-2.5 py-1.5">
-                      <CategoryChip cat={f.category as BYFCategory} />
+                    <td className="hidden sm:table-cell px-2 py-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <CategoryChip cat={f.category as BYFCategory} />
+                        <span className="truncate text-[12px] text-slate-200 max-w-[260px]" title={f.name}>{f.name}</span>
+                        <span className="shrink-0 text-[10px] text-slate-500 truncate max-w-[140px]" title={f.issuer}>· {f.issuer}</span>
+                      </div>
                     </td>
-                    <td className="px-2.5 py-1.5 text-slate-400 text-[11px]">{f.issuer}</td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-200">
+                    <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-200 whitespace-nowrap">
                       {f.price != null ? `₺${f.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                     </td>
                     <ReturnCell v={f.changePct} />
@@ -326,12 +328,12 @@ function SortableTh({
 
 function ReturnCell({ v }: { v: number | null | undefined }) {
   if (v == null || !Number.isFinite(v)) {
-    return <td className="px-2.5 py-1.5 text-right text-slate-600 tabular-nums">—</td>;
+    return <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-500 whitespace-nowrap">—</td>;
   }
   const positive = v >= 0;
   return (
     <td className={cn(
-      'px-2.5 py-1.5 text-right tabular-nums font-semibold',
+      'px-2 py-2 text-right font-mono text-sm font-semibold tabular-nums whitespace-nowrap',
       positive ? 'text-success' : 'text-danger',
     )}>
       {positive ? '+' : ''}{v.toFixed(2)}%

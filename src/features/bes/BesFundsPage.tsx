@@ -562,13 +562,13 @@ export function BesFundsPage() {
             {founder !== 'Tümü' ? ` · Kurucu: ${founder}` : ''}
           </div>
           <DoubleScrollTable>
-            <table className="min-w-[1000px] w-full text-xs">
-              <thead className="bg-bg-soft/60 text-slate-400 uppercase text-[10px] tracking-wider">
+            <table className="min-w-[900px] w-full text-xs">
+              <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
-                  <th className="text-left px-2.5 py-2 w-[3rem]">#</th>
-                  <SortableTh label="Fon" k="code" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
-                  <th className="text-left px-2.5 py-2">Kategori</th>
-                  <th className="text-right px-2.5 py-2">Fiyat</th>
+                  <th className="px-2 py-2 text-left w-[2.5rem]">#</th>
+                  <SortableTh label="Kod" k="code" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
+                  <th className="hidden sm:table-cell px-2 py-2 text-left">Kurucu / Kategori</th>
+                  <th className="px-2 py-2 text-right">Fiyat</th>
                   <SortableTh label="1G" k="day" active={sortKey} dir={sortDir} onClick={handleSort} />
                   <SortableTh label="1H" k="week" active={sortKey} dir={sortDir} onClick={handleSort} />
                   <SortableTh label="1A" k="month" active={sortKey} dir={sortDir} onClick={handleSort} />
@@ -581,40 +581,37 @@ export function BesFundsPage() {
               </thead>
               <tbody>
                 {sorted.slice(0, 200).map((f, i) => (
-                  <tr key={f.code} className="border-t border-border/40 hover:bg-bg-soft/50">
-                    <td className="px-2.5 py-1.5 text-slate-500 tabular-nums">{i + 1}</td>
-                    <td className="px-2.5 py-1.5">
-                      <Link to={`/fund/${f.code}`} className="font-mono font-semibold text-slate-100 hover:text-accent">
+                  <tr key={f.code} className="border-b border-border/60 transition hover:bg-bg-card">
+                    <td className="px-2 py-2 text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
+                    <td className="px-2 py-2">
+                      <Link to={`/fund/${f.code}`} className="font-mono text-sm font-bold text-slate-100 hover:text-accent">
                         {f.code}
                       </Link>
-                      {f.name && (
-                        <div className="text-[10px] text-slate-500 truncate max-w-[280px]" title={f.name}>{f.name}</div>
-                      )}
-                      {f.founder && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setFounder(f.founder === founder ? 'Tümü' : (f.founder ?? 'Tümü'));
-                          }}
-                          className="mt-0.5 text-[9px] text-accent/70 hover:text-accent hover:underline truncate max-w-[280px] text-left block"
-                          title={`${f.founder} — bu kurucunun tum BES fonlarini goster`}
-                        >
-                          🏛 {f.founder}
-                        </button>
-                      )}
                     </td>
-                    <td className="px-2.5 py-1.5 text-slate-300">
-                      {(() => {
-                        // EGM/BEFAS alt kategori tercih; yoksa "Emeklilik" fallback
-                        const label = f.besKategori && f.besKategori.trim().length > 0
-                          ? f.besKategori
-                          : f.category;
-                        return <CategoryChip label={label} />;
-                      })()}
+                    <td className="hidden sm:table-cell px-2 py-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {(() => {
+                          const label = f.besKategori && f.besKategori.trim().length > 0 ? f.besKategori : f.category;
+                          return <CategoryChip label={label} />;
+                        })()}
+                        <span className="truncate text-[12px] text-slate-200 max-w-[260px]" title={f.name}>{f.name}</span>
+                        {f.founder && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setFounder(f.founder === founder ? 'Tümü' : (f.founder ?? 'Tümü'));
+                            }}
+                            className="shrink-0 text-[10px] text-accent/60 hover:text-accent hover:underline truncate max-w-[180px]"
+                            title={`${f.founder} — bu kurucunun tüm BES fonlarını göster`}
+                          >
+                            · {f.founder.replace(/ A\.Ş\.$/, '')}
+                          </button>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-200">
+                    <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-200 whitespace-nowrap">
                       {f.nav != null ? f.nav.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : '—'}
                     </td>
                     <ReturnCell v={f.day} />
@@ -696,12 +693,12 @@ function CategoryChip({ label }: { label: string }) {
 
 function ReturnCell({ v }: { v: number | null | undefined }) {
   if (v == null || !Number.isFinite(v)) {
-    return <td className="px-2.5 py-1.5 text-right text-slate-600 tabular-nums">—</td>;
+    return <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-500 whitespace-nowrap">—</td>;
   }
   const positive = v >= 0;
   return (
     <td className={cn(
-      'px-2.5 py-1.5 text-right tabular-nums',
+      'px-2 py-2 text-right font-mono text-sm font-semibold tabular-nums whitespace-nowrap',
       positive ? 'text-success' : 'text-danger',
     )}>
       {positive ? '+' : ''}{v.toFixed(2)}%

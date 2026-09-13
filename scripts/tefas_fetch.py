@@ -835,30 +835,62 @@ def main() -> int:
                 print(f"[bes] Takasbank curl_cffi fail: {e}", flush=True)
         if excel_content:
             try:
-                import io, openpyxl
+                import io, openpyxl, re as _re
                 wb = openpyxl.load_workbook(io.BytesIO(excel_content), read_only=True, data_only=True)
                 ws = wb.active
-                for i, row in enumerate(ws.iter_rows(values_only=True)):
-                    if i == 0:
-                        continue  # header
-                    if len(row) < 2:
+                # Header satirini oku ve kolon indexlerini tespit et
+                # Beklenen kolonlar (EGM BEFAS resmi format):
+                #   [Fon Kodu, TİP (BES/DK/OKS), Kurucu, Fon Adı]
+                # Ama sirasi degisebilir — header adiyla eslesme yapalim.
+                rows_iter = ws.iter_rows(values_only=True)
+                header = next(rows_iter, None)
+                if not header:
+                    raise ValueError("BEFAS Excel'de header satiri yok")
+
+                def _norm_hdr(h):
+                    return str(h or '').strip().lower().replace('ı', 'i').replace('ü', 'u').replace('ö', 'o')
+
+                headers_norm = [_norm_hdr(h) for h in header]
+                idx_code = idx_name = idx_founder = idx_type = -1
+                for i, h in enumerate(headers_norm):
+                    if idx_code < 0 and ('fon kodu' in h or h == 'kod' or h == 'kodu'):
+                        idx_code = i
+                    if idx_name < 0 and ('fon adi' in h or h == 'fon adı' or h == 'unvan' or 'unvani' in h):
+                        idx_name = i
+                    if idx_founder < 0 and ('kurucu' in h or 'sirket' in h or 'ihracci' in h):
+                        idx_founder = i
+                    if idx_type < 0 and (h == 'tip' or h == 'tıp' or 'segment' in h):
+                        idx_type = i
+
+                print(f"[bes] Excel header detect: code={idx_code} name={idx_name} founder={idx_founder} type={idx_type}", flush=True)
+
+                # Kolon tespit edilemezse pozisyon-bazli fallback:
+                # egm.org.tr sirasi: [kod, tip, kurucu, ad]
+                if idx_code < 0: idx_code = 0
+                if idx_type < 0: idx_type = 1
+                if idx_founder < 0: idx_founder = 2
+                if idx_name < 0: idx_name = 3
+
+                code_pat = _re.compile(r'^[A-ZÇĞİÖŞÜ0-9]{3,5}$')
+                for row in rows_iter:
+                    if not row or len(row) <= max(idx_code, idx_name):
                         continue
-                    # BEFAS Excel format: [Fon Adi, Fon Kodu, ...] veya [Fon Kodu, Fon Adi, ...]
-                    # Genelde row[1]=kod, row[0]=isim (TEFAS pattern ayni)
-                    fund_name = row[0]
-                    fund_code = row[1] if len(row) > 1 else None
-                    if not fund_code or not isinstance(fund_code, str):
-                        # bazen sirasi ters olabilir
-                        if isinstance(fund_name, str) and len(fund_name.strip()) == 3:
-                            fund_code = fund_name
-                            fund_name = row[1] if len(row) > 1 else fund_code
-                    if fund_code and isinstance(fund_code, str):
-                        code = fund_code.strip().upper()
-                        name = str(fund_name or code).strip()
-                        # Ihraccı: isimden cikar (genelde "AK EMEKLİLİK...", "AVIVASA EMEKLİLİK...")
-                        issuer = name.split(' ')[0].title() if name else ''
-                        bes_fund_list.append({'code': code, 'name': name, 'issuer': issuer})
-                print(f"[bes] Takasbank BEFAS Excel: {len(bes_fund_list)} fon", flush=True)
+                    raw_code = row[idx_code] if idx_code < len(row) else None
+                    raw_name = row[idx_name] if idx_name < len(row) else None
+                    raw_founder = row[idx_founder] if 0 <= idx_founder < len(row) else None
+                    if raw_code is None:
+                        continue
+                    code = str(raw_code).strip().upper()
+                    # Kod 3-5 karakter alfanumerik olmali (KEA, THYAO vs.)
+                    if not code_pat.match(code):
+                        continue
+                    # 'BES', 'DK', 'OKS' gibi tip degerleri kod degil - filter et
+                    if code in ('BES', 'DK', 'OKS', 'DKS', 'DKM'):
+                        continue
+                    name = str(raw_name or code).strip()
+                    founder = str(raw_founder or '').strip() if raw_founder else ''
+                    bes_fund_list.append({'code': code, 'name': name, 'issuer': founder, 'founder': founder})
+                print(f"[bes] Takasbank BEFAS Excel: {len(bes_fund_list)} gecerli fon", flush=True)
             except Exception as e:
                 print(f"[bes] Excel parse fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         else:
@@ -950,11 +982,18 @@ def main() -> int:
                         "ytd": get_ret('GETIRIYILBASI', 'getirivilbasi', 'GETIRI_YILBASI'),
                     }
                     kategori = str(item.get('KATEGORI') or item.get('kategori') or 'Emeklilik').strip() or 'Emeklilik'
+                    # Kurucu bilgisi Takasbank Excel'den gelen isimle eslesirse ekle
+                    bes_founder = ''
+                    for bf in bes_fund_list:
+                        if bf['code'] == code:
+                            bes_founder = bf.get('founder', '') or bf.get('issuer', '')
+                            break
                     funds.append({
                         "code": code,
                         "name": name,
                         "category": 'Emeklilik',  # frontend BES sayfasi bunu bekliyor
                         "besKategori": kategori,  # TEFAS'tan gelen alt kategori (Değişken/Hisse vs)
+                        "founder": bes_founder,
                         "tefasOpen": False,       # BES = TEFAS degil
                         "befasOpen": True,        # BEFAS'ta islem gorur
                         "nav": nav_f,
@@ -988,6 +1027,7 @@ def main() -> int:
             "name": bes_fund['name'],
             "category": 'Emeklilik',
             "besIssuer": bes_fund.get('issuer', ''),
+            "founder": bes_fund.get('founder', '') or bes_fund.get('issuer', ''),
             "tefasOpen": False,
             "befasOpen": True,
             "nav": None,

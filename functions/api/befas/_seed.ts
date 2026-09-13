@@ -19,19 +19,19 @@ export interface BesSeedFund {
 
 export const BES_SEED: BesSeedFund[] = [
   // ==== Kuveyt Türk Katılım Emeklilik (KUVEYT TÜRK PORTFÖY) ====
-  { code: 'KEA', name: 'ALTIN KATILIM EMEKLİLİK YATIRIM FONU',                          founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Altın' },
-  { code: 'KEB', name: 'BÜYÜME KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
-  { code: 'KEG', name: 'KATILIM DEĞİŞKEN GRUP EMEKLİLİK YATIRIM FONU',                  founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
-  { code: 'KEH', name: 'KATILIM HİSSE SENEDİ EMEKLİLİK YATIRIM FONU',                   founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Hisse Senedi' },
-  { code: 'KEI', name: 'KATILIM STANDART EMEKLİLİK YATIRIM FONU',                       founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Standart' },
-  { code: 'KEK', name: 'MUHAFAZAKAR KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',           founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
-  { code: 'KEO', name: 'KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                       founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
-  { code: 'KEP', name: 'KATILIM KATKI EMEKLİLİK YATIRIM FONU',                          founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Standart' },
-  { code: 'KTG', name: 'OKS KATILIM DEĞİŞKEN GRUP EMEKLİLİK YATIRIM FONU',              founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
-  { code: 'KTJ', name: 'OKS ATAK KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',              founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
-  { code: 'KTL', name: 'OKS BAŞLANGIÇ KATILIM EMEKLİLİK YATIRIM FONU',                  founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
-  { code: 'KTP', name: 'OKS KATILIM STANDART EMEKLİLİK YATIRIM FONU',                   founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
-  { code: 'KZH', name: 'ALTIN KATILIM EMEKLİLİK YATIRIM FONU (GRUP)',                   founder: 'Kuveyt Türk Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Altın' },
+  { code: 'KEA', name: 'ALTIN KATILIM EMEKLİLİK YATIRIM FONU',                          founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Altın' },
+  { code: 'KEB', name: 'BÜYÜME KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
+  { code: 'KEG', name: 'KATILIM DEĞİŞKEN GRUP EMEKLİLİK YATIRIM FONU',                  founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
+  { code: 'KEH', name: 'KATILIM HİSSE SENEDİ EMEKLİLİK YATIRIM FONU',                   founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Hisse Senedi' },
+  { code: 'KEI', name: 'KATILIM STANDART EMEKLİLİK YATIRIM FONU',                       founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Standart' },
+  { code: 'KEK', name: 'MUHAFAZAKAR KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',           founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
+  { code: 'KEO', name: 'KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                       founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Değişken' },
+  { code: 'KEP', name: 'KATILIM KATKI EMEKLİLİK YATIRIM FONU',                          founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Standart' },
+  { code: 'KTG', name: 'OKS KATILIM DEĞİŞKEN GRUP EMEKLİLİK YATIRIM FONU',              founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
+  { code: 'KTJ', name: 'OKS ATAK KATILIM DEĞİŞKEN EMEKLİLİK YATIRIM FONU',              founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
+  { code: 'KTL', name: 'OKS BAŞLANGIÇ KATILIM EMEKLİLİK YATIRIM FONU',                  founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
+  { code: 'KTP', name: 'OKS KATILIM STANDART EMEKLİLİK YATIRIM FONU',                   founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'OKS Standart' },
+  { code: 'KZH', name: 'ALTIN KATILIM EMEKLİLİK YATIRIM FONU (GRUP)',                   founder: 'Katılım Emeklilik ve Hayat A.Ş.', besKategori: 'Altın' },
 
   // ==== AVIVASA / Anadolu Hayat Emeklilik ====
   { code: 'AH1', name: 'ANADOLU HAYAT DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                  founder: 'Anadolu Hayat Emeklilik A.Ş.',                besKategori: 'Değişken' },
@@ -52,10 +52,10 @@ export const BES_SEED: BesSeedFund[] = [
   { code: 'GES', name: 'GARANTİ EMEKLİLİK ALTIN EMEKLİLİK YATIRIM FONU',                 founder: 'Garanti Emeklilik ve Hayat A.Ş.',             besKategori: 'Altın' },
 
   // ==== Ziraat Emeklilik / Ziraat Katılım Emeklilik ====
-  { code: 'ZKD', name: 'ZİRAAT KATILIM EMEKLİLİK DEĞİŞKEN EMEKLİLİK YATIRIM FONU',       founder: 'Ziraat Emeklilik ve Hayat A.Ş.',              besKategori: 'Değişken' },
-  { code: 'ZKH', name: 'ZİRAAT KATILIM EMEKLİLİK HİSSE SENEDİ EMEKLİLİK YATIRIM FONU',   founder: 'Ziraat Emeklilik ve Hayat A.Ş.',              besKategori: 'Hisse Senedi' },
-  { code: 'ZKI', name: 'ZİRAAT KATILIM EMEKLİLİK STANDART EMEKLİLİK YATIRIM FONU',       founder: 'Ziraat Emeklilik ve Hayat A.Ş.',              besKategori: 'Standart' },
-  { code: 'ZKA', name: 'ZİRAAT KATILIM EMEKLİLİK ALTIN EMEKLİLİK YATIRIM FONU',          founder: 'Ziraat Emeklilik ve Hayat A.Ş.',              besKategori: 'Altın' },
+  { code: 'ZKD', name: 'ZİRAAT KATILIM EMEKLİLİK DEĞİŞKEN EMEKLİLİK YATIRIM FONU',       founder: 'Ziraat Hayat ve Emeklilik A.Ş.',              besKategori: 'Değişken' },
+  { code: 'ZKH', name: 'ZİRAAT KATILIM EMEKLİLİK HİSSE SENEDİ EMEKLİLİK YATIRIM FONU',   founder: 'Ziraat Hayat ve Emeklilik A.Ş.',              besKategori: 'Hisse Senedi' },
+  { code: 'ZKI', name: 'ZİRAAT KATILIM EMEKLİLİK STANDART EMEKLİLİK YATIRIM FONU',       founder: 'Ziraat Hayat ve Emeklilik A.Ş.',              besKategori: 'Standart' },
+  { code: 'ZKA', name: 'ZİRAAT KATILIM EMEKLİLİK ALTIN EMEKLİLİK YATIRIM FONU',          founder: 'Ziraat Hayat ve Emeklilik A.Ş.',              besKategori: 'Altın' },
 
   // ==== Bereket Emeklilik (BER) ====
   { code: 'AGA', name: 'BEREKET ALTIN KATILIM EMEKLİLİK YATIRIM FONU',                   founder: 'Bereket Emeklilik ve Hayat A.Ş.',             besKategori: 'Altın' },
@@ -82,9 +82,9 @@ export const BES_SEED: BesSeedFund[] = [
   { code: 'NNK', name: 'NN KATILIM STANDART EMEKLİLİK YATIRIM FONU',                      founder: 'NN Hayat ve Emeklilik A.Ş.',                  besKategori: 'Katılım' },
 
   // ==== Allianz Hayat ve Emeklilik ====
-  { code: 'ALH', name: 'ALLIANZ HİSSE SENEDİ EMEKLİLİK YATIRIM FONU',                     founder: 'Allianz Hayat ve Emeklilik A.Ş.',             besKategori: 'Hisse Senedi' },
-  { code: 'ALD', name: 'ALLIANZ DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                         founder: 'Allianz Hayat ve Emeklilik A.Ş.',             besKategori: 'Değişken' },
-  { code: 'ALS', name: 'ALLIANZ STANDART EMEKLİLİK YATIRIM FONU',                         founder: 'Allianz Hayat ve Emeklilik A.Ş.',             besKategori: 'Standart' },
+  { code: 'ALH', name: 'ALLIANZ HİSSE SENEDİ EMEKLİLİK YATIRIM FONU',                     founder: 'Allianz Yaşam ve Emeklilik A.Ş.',             besKategori: 'Hisse Senedi' },
+  { code: 'ALD', name: 'ALLIANZ DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                         founder: 'Allianz Yaşam ve Emeklilik A.Ş.',             besKategori: 'Değişken' },
+  { code: 'ALS', name: 'ALLIANZ STANDART EMEKLİLİK YATIRIM FONU',                         founder: 'Allianz Yaşam ve Emeklilik A.Ş.',             besKategori: 'Standart' },
 
   // ==== Halk Hayat ve Emeklilik ====
   { code: 'HKD', name: 'HALK HAYAT DEĞİŞKEN EMEKLİLİK YATIRIM FONU',                      founder: 'Halk Hayat ve Emeklilik A.Ş.',                besKategori: 'Değişken' },

@@ -22,6 +22,27 @@ export interface TefasFundData {
    * Backend scraper Takasbank BEFAS Excel listesinden yazar.
    */
   befasOpen?: boolean;
+  // ==== BES (Emeklilik) fonlari icin ek metadata — EGM/BEFAS raporundaki alanlar ====
+  /** Kurucu emeklilik sirketi (ornek: "KATILIM EMEKLİLİK VE HAYAT A.Ş.") */
+  founder?: string;
+  /** Portfoy yoneticisi sirketi (ornek: "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.") */
+  manager?: string;
+  /** International Securities ID (ornek: "TRYKATE00065") */
+  isin?: string;
+  /** SPK Kodu — ornekte fon koduyla ayni olur ama bazen farkli */
+  spkCode?: string;
+  /** Risk degeri 1 (dusuk) - 7 (yuksek), TEFAS RISK_DEGERI */
+  riskValue?: number;
+  /** Karsilastirma olcutu tam string ("BIST KATILIM 100 %90 + BIST-KYD 1 AYLIK KAR PAYI TL %5 + ...") */
+  benchmark?: string;
+  /** Yillik yonetim ucreti % (ornek: 2.25) */
+  managementFeeYearly?: number;
+  /** Toplam gider kesintisi orani % (ornek: 2.28) */
+  totalExpenseRatio?: number;
+  /** Halka arz tarihi YYYY-MM-DD (ornek: "2014-07-16") */
+  publicOfferDate?: string;
+  /** Katilim endeksi uygun mu ("Faiz İçermez" ise true) */
+  isInterestFree?: boolean;
   nav: number;
   date: string;
   marketCap?: number;

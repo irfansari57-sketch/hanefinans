@@ -507,6 +507,11 @@ export function FundDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* ==== BES/BEFAS Enrichment — EGM raporu benzeri kurumsal + ucret + benchmark ==== */}
+        {isBesFund && (
+          <BesEnrichmentSection fund={githubData} />
+        )}
         </>
       ) : activeTab === 'ozet' && isTefasWorkerConfigured() ? (
         liveLoading ? (
@@ -890,6 +895,198 @@ function FundAllocationDonut({ fundCode, allocation, navReturn, category: _categ
           {' · Kaynak: TEFAS resmi varlık dağılımı'}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * BesEnrichmentSection — BES (Emeklilik) fonlari icin EGM/BEFAS raporu benzeri
+ * kurumsal + ucret + benchmark bilgi kartlari. TEFAS BindHistoryInfo endpoint'i
+ * scraper tarafinda per-fund cekilir ve TefasFundData'ya yazilir.
+ *
+ * Alanlar bos ise ilgili satir "—" veya kart hic gorunmez (bilgi kirlligi olmasin).
+ */
+function BesEnrichmentSection({ fund }: { fund: TefasFundData }) {
+  // Karsilastirma olcutunu parse et: "BIST KATILIM 100 %90 + BIST-KYD 1 AYLIK KAR PAYI TL %5"
+  const benchmarkItems: Array<{ label: string; pct: number | null }> = (() => {
+    if (!fund.benchmark) return [];
+    const parts = fund.benchmark.split(/\+|,/);
+    return parts.map((p) => {
+      const s = p.trim();
+      const m = s.match(/^(.+?)\s*[%\s]([\d.,]+)\s*%?$/);
+      if (m) return { label: m[1].trim(), pct: parseFloat(m[2].replace(',', '.')) };
+      return { label: s, pct: null };
+    }).filter((x) => x.label.length > 0);
+  })();
+
+  const hasCorporate = !!(fund.founder || fund.manager || fund.isin || fund.spkCode || fund.publicOfferDate || fund.riskValue);
+  const hasFees = !!(fund.managementFeeYearly != null || fund.totalExpenseRatio != null);
+  const hasBenchmark = benchmarkItems.length > 0;
+
+  if (!hasCorporate && !hasFees && !hasBenchmark) {
+    return (
+      <div className="mb-4 rounded-lg border border-border/50 bg-bg-soft/30 p-3 text-[11px] text-slate-500">
+        <Info className="mr-1 inline" size={12} />
+        Kurumsal detaylar TEFAS'tan senkronize ediliyor — bir sonraki güncellemede burada görünecek.
+        {' '}
+        <a
+          href={`https://www.egm.org.tr/befas/fon-listesi?fonKodu=${encodeURIComponent(fund.code)}`}
+          target="_blank" rel="noreferrer"
+          className="text-accent hover:underline"
+        >
+          EGM'de görüntüle →
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 grid gap-3 lg:grid-cols-3">
+      {/* Kurumsal Bilgi */}
+      {hasCorporate && (
+        <div className="card p-4">
+          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <Landmark size={12} /> Kurumsal Bilgi
+          </h3>
+          <dl className="space-y-1.5 text-[11px]">
+            {fund.founder && (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-slate-500 shrink-0">Kurucu</dt>
+                <dd className="text-right font-medium text-slate-200">{fund.founder}</dd>
+              </div>
+            )}
+            {fund.manager && (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-slate-500 shrink-0">Portföy Yöneticisi</dt>
+                <dd className="text-right font-medium text-slate-200">{fund.manager}</dd>
+              </div>
+            )}
+            {fund.spkCode && (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-slate-500">SPK Kodu</dt>
+                <dd className="font-mono text-slate-200">{fund.spkCode}</dd>
+              </div>
+            )}
+            {fund.isin && (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-slate-500">ISIN</dt>
+                <dd className="font-mono text-slate-200">{fund.isin}</dd>
+              </div>
+            )}
+            {fund.publicOfferDate && (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-slate-500">Halka Arz</dt>
+                <dd className="tabular-nums text-slate-200">
+                  {new Date(fund.publicOfferDate).toLocaleDateString('tr-TR')}
+                </dd>
+              </div>
+            )}
+            {typeof fund.riskValue === 'number' && (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-slate-500">Risk Değeri</dt>
+                <dd>
+                  <span className={cn(
+                    'font-bold tabular-nums',
+                    fund.riskValue <= 2 ? 'text-success'
+                    : fund.riskValue <= 4 ? 'text-warning'
+                    : fund.riskValue <= 5 ? 'text-orange-300'
+                    : 'text-danger',
+                  )}>
+                    {fund.riskValue}/7
+                  </span>
+                </dd>
+              </div>
+            )}
+            {typeof fund.isInterestFree === 'boolean' && (
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-slate-500">Faiz İçeriği</dt>
+                <dd className={cn('font-medium', fund.isInterestFree ? 'text-success' : 'text-slate-300')}>
+                  {fund.isInterestFree ? 'Faiz İçermez ✓' : 'Faiz İçerir'}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {/* Fon Ucretleri */}
+      {hasFees && (
+        <div className="card p-4">
+          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <Info size={12} /> Fon Ücretleri
+          </h3>
+          <dl className="space-y-2 text-[11px]">
+            {fund.managementFeeYearly != null && (
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <dt className="text-slate-500">Yönetim Ücreti (Yıllık)</dt>
+                  <dd className="text-lg font-bold tabular-nums text-slate-100">
+                    %{fund.managementFeeYearly.toFixed(2)}
+                  </dd>
+                </div>
+                <div className="mt-1 h-1 rounded-full bg-bg-soft overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full',
+                      fund.managementFeeYearly <= 1.5 ? 'bg-success'
+                      : fund.managementFeeYearly <= 2.5 ? 'bg-warning'
+                      : 'bg-danger',
+                    )}
+                    style={{ width: `${Math.min(100, (fund.managementFeeYearly / 3) * 100)}%` }}
+                  />
+                </div>
+                <div className="mt-1 text-[10px] text-slate-500">
+                  {fund.managementFeeYearly <= 1.5 ? 'Düşük ücretli — iyi'
+                    : fund.managementFeeYearly <= 2.5 ? 'Piyasa ortalaması'
+                    : 'Yüksek ücret — dikkat'}
+                </div>
+              </div>
+            )}
+            {fund.totalExpenseRatio != null && (
+              <div className="border-t border-border/40 pt-2">
+                <div className="flex items-baseline justify-between">
+                  <dt className="text-slate-500">Toplam Gider Kesintisi</dt>
+                  <dd className="font-semibold tabular-nums text-slate-200">
+                    %{fund.totalExpenseRatio.toFixed(2)}
+                  </dd>
+                </div>
+                <div className="mt-1 text-[10px] text-slate-500 leading-relaxed">
+                  Yıllık toplam yansıyan gider — yönetim + saklama + denetim vb.
+                </div>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {/* Karsilastirma Olcutu (Benchmark) */}
+      {hasBenchmark && (
+        <div className="card p-4">
+          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <BarChart3 size={12} /> Karşılaştırma Ölçütü
+          </h3>
+          <div className="space-y-2 text-[11px]">
+            {benchmarkItems.map((b, i) => (
+              <div key={`${b.label}-${i}`}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-slate-300 truncate">{b.label}</span>
+                  {b.pct != null && (
+                    <span className="font-semibold tabular-nums text-accent shrink-0">%{b.pct.toFixed(0)}</span>
+                  )}
+                </div>
+                {b.pct != null && (
+                  <div className="mt-1 h-1 rounded-full bg-bg-soft overflow-hidden">
+                    <div className="h-full bg-accent" style={{ width: `${Math.min(100, b.pct)}%` }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
+            Fon performansı bu ölçütle karşılaştırılır (aşarsa alfa üretmiş demektir).
+          </p>
+        </div>
+      )}
     </div>
   );
 }

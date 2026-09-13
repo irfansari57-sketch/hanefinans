@@ -996,6 +996,121 @@ def main() -> int:
     if takasbank_added > 0:
         print(f"[bes] Takasbank listesinden ek {takasbank_added} BES fonu (fiyat/getiri henuz yok)", flush=True)
 
+    # ---------- BES metadata enrichment (EGM/BEFAS raporu benzeri) ----------
+    # TEFAS BindHistoryInfo endpoint'i her BES fonu icin:
+    #   - Kurucu, Yonetici, ISIN, SPK Kodu
+    #   - Risk Degeri, Halka Arz Tarihi, Faiz Iceigi
+    #   - Yonetim Ucreti (yillik), Toplam Gider Kesintisi
+    #   - Karsilastirma Olcutu (BIST KATILIM 100 %90 + ...)
+    # Rate limit: her fon icin 400ms bekle → 300 fon ~2 dk
+    print(f"\n[bes-meta] Metadata enrichment (BindHistoryInfo)...", flush=True)
+    bes_target_indices = [i for i, f in enumerate(funds) if f.get('category') == 'Emeklilik']
+    print(f"[bes-meta] {len(bes_target_indices)} BES fonu icin metadata cekilecek", flush=True)
+
+    meta_url = 'https://www.tefas.gov.tr/api/DB/BindHistoryInfo'
+    meta_headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Referer': 'https://www.tefas.gov.tr/FonAnaliz.aspx',
+        'Origin': 'https://www.tefas.gov.tr',
+        'X-Requested-With': 'XMLHttpRequest',
+    }
+    meta_ok = 0
+    meta_fail = 0
+    meta_session = None
+    try:
+        from curl_cffi import requests as cr
+        meta_session = cr.Session(impersonate="chrome131")
+    except Exception:
+        meta_session = None
+
+    def _fetch_bes_meta(code: str) -> dict | None:
+        payload_m = {
+            'fonkod': code,
+            'fontip': 'EMK',
+            'bastarih': (anchors['last'] - timedelta(days=7)).strftime('%d.%m.%Y'),
+            'bittarih': anchors['last'].strftime('%d.%m.%Y'),
+        }
+        try:
+            if meta_session:
+                r_m = meta_session.post(meta_url, data=payload_m, headers=meta_headers, timeout=25)
+            else:
+                r_m = requests.post(meta_url, data=payload_m, headers=meta_headers, timeout=25)
+            if r_m.status_code != 200:
+                return None
+            j = r_m.json()
+            # Response yapisi: { fonInfo: [...], fonInfo2: [...], ... }
+            info_list = j.get('fonInfo') or j.get('fonInfoList') or j.get('data') or []
+            if isinstance(info_list, list) and info_list:
+                return info_list[0] if isinstance(info_list[0], dict) else None
+            if isinstance(j, dict) and any(k for k in j.keys() if 'KURUCU' in k.upper() or 'YONETICI' in k.upper()):
+                return j
+            return None
+        except Exception:
+            return None
+
+    def _first_str(d: dict, *keys) -> str | None:
+        for k in keys:
+            v = d.get(k)
+            if v is None:
+                continue
+            s = str(v).strip()
+            if s and s.lower() not in ('null', 'none', '-'):
+                return s
+        return None
+
+    def _first_float(d: dict, *keys) -> float | None:
+        for k in keys:
+            v = d.get(k)
+            if v is None:
+                continue
+            try:
+                return float(str(v).replace(',', '.'))
+            except (ValueError, TypeError):
+                continue
+        return None
+
+    def _parse_tefas_date(s: str | None) -> str | None:
+        if not s:
+            return None
+        # Tipik formatlar: "16.07.2014", "2014-07-16T00:00:00", "16/07/2014"
+        for fmt in ('%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y', '%Y-%m-%dT%H:%M:%S'):
+            try:
+                return datetime.strptime(s[:19] if 'T' in s else s, fmt).strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
+                continue
+        return None
+
+    for idx in bes_target_indices:
+        code = funds[idx]['code']
+        info = _fetch_bes_meta(code)
+        if info:
+            funds[idx]['founder']      = _first_str(info, 'KURUCU', 'FONKURUCU', 'kurucu')
+            funds[idx]['manager']      = _first_str(info, 'YONETICI', 'FONYONETICI', 'yonetici')
+            funds[idx]['isin']         = _first_str(info, 'ISIN', 'ISINKODU', 'isin')
+            funds[idx]['spkCode']      = _first_str(info, 'SPKKODU', 'SPK_KODU', 'spkkodu')
+            risk = _first_float(info, 'RISK_DEGERI', 'RISKDEGERI', 'RISK', 'riskdegeri')
+            if risk is not None and 1 <= risk <= 7:
+                funds[idx]['riskValue'] = int(risk)
+            funds[idx]['benchmark']    = _first_str(info, 'KARSILASTIRMA_OLCUTU', 'KARSILASTIRMAOLCUTU', 'benchmark')
+            funds[idx]['managementFeeYearly'] = _first_float(info, 'YONETIM_UCRETI_YILLIK', 'YONETIM_UCRETI', 'YIL_YONETIM_UCRETI')
+            funds[idx]['totalExpenseRatio']   = _first_float(info, 'TOPLAM_GIDER_KESINTISI', 'FONTOPLAMGIDER', 'TOPLAM_GIDER')
+            hat = _first_str(info, 'HALKA_ARZ_TARIHI', 'HALKAARZTARIHI', 'ILK_ISLEM_TARIHI')
+            po_date = _parse_tefas_date(hat)
+            if po_date:
+                funds[idx]['publicOfferDate'] = po_date
+            faiz = _first_str(info, 'FAIZ_ICERIGI', 'FAIZICERIK', 'FAIZ')
+            if faiz:
+                funds[idx]['isInterestFree'] = 'içermez' in faiz.lower() or 'icermez' in faiz.lower()
+            meta_ok += 1
+        else:
+            meta_fail += 1
+        time.sleep(0.4)
+        if (meta_ok + meta_fail) % 50 == 0:
+            print(f"  [bes-meta] {meta_ok + meta_fail}/{len(bes_target_indices)} — ok:{meta_ok} fail:{meta_fail}", flush=True)
+    print(f"[bes-meta] Tamamlandi: {meta_ok} basarili, {meta_fail} basarisiz", flush=True)
+
     payload = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "count": len(funds),

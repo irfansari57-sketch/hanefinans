@@ -260,8 +260,12 @@ export function BorsaYatirimFundsPage() {
             <table className="min-w-[720px] w-full text-xs">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
-                  <th className="px-2 py-2 text-left w-[2.5rem]">#</th>
-                  <SortableTh label="Sembol" k="symbol" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
+                  <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2 text-left w-[2.5rem]">#</th>
+                  <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2 text-left">
+                    <button type="button" onClick={() => handleSort('symbol')} className="flex items-center gap-1 hover:text-accent">
+                      Sembol {sortKey === 'symbol' && <span>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                    </button>
+                  </th>
                   <th className="hidden sm:table-cell px-2 py-2 text-left">Kategori / Fon Adı</th>
                   <SortableTh label="Fiyat" k="price" active={sortKey} dir={sortDir} onClick={handleSort} />
                   <SortableTh label="Değişim" k="changePct" active={sortKey} dir={sortDir} onClick={handleSort} />
@@ -270,8 +274,8 @@ export function BorsaYatirimFundsPage() {
               <tbody>
                 {sorted.map((f, i) => (
                   <tr key={f.symbol} className="border-b border-border/60 transition hover:bg-bg-card">
-                    <td className="px-2 py-2 text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
-                    <td className="px-2 py-2">
+                    <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
+                    <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
                       <Link to={`/stock/${f.symbol}`} className="font-mono text-sm font-bold text-slate-100 hover:text-accent">
                         {f.symbol}
                       </Link>

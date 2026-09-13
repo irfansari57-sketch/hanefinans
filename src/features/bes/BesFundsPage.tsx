@@ -565,8 +565,12 @@ export function BesFundsPage() {
             <table className="min-w-[900px] w-full text-xs">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
-                  <th className="px-2 py-2 text-left w-[2.5rem]">#</th>
-                  <SortableTh label="Kod" k="code" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
+                  <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2 text-left w-[2.5rem]">#</th>
+                  <th className="sticky left-8 z-20 bg-bg-soft px-2 py-2 text-left">
+                    <button type="button" onClick={() => handleSort('code')} className="flex items-center gap-1 hover:text-accent">
+                      Kod {sortKey === 'code' && <span>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                    </button>
+                  </th>
                   <th className="hidden sm:table-cell px-2 py-2 text-left">Kategori / Fon Adı</th>
                   <th className="px-2 py-2 text-right">Fiyat</th>
                   <SortableTh label="1G" k="day" active={sortKey} dir={sortDir} onClick={handleSort} />
@@ -582,8 +586,8 @@ export function BesFundsPage() {
               <tbody>
                 {sorted.slice(0, 200).map((f, i) => (
                   <tr key={f.code} className="border-b border-border/60 transition hover:bg-bg-card">
-                    <td className="px-2 py-2 text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
-                    <td className="px-2 py-2">
+                    <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{i + 1}</td>
+                    <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
                       <Link to={`/fund/${f.code}`} className="font-mono text-sm font-bold text-slate-100 hover:text-accent">
                         {f.code}
                       </Link>

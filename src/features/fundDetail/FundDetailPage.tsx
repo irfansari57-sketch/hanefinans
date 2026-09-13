@@ -93,12 +93,14 @@ export function FundDetailPage() {
   // EGM (Emeklilik Gozetim Merkezi) fonperformans.egm.org.tr fon detay sayfasini host eder.
   const befasUrl = `https://fonperformans.egm.org.tr/#/fonperformans/${encodeURIComponent(fundCode)}`;
   const befasHomeUrl = 'https://www.takasbank.com.tr/tr/urun-ve-hizmetler/faaliyet-alanlarimiz/bireysel-emeklilik-fon-alim-satim-platformu-befas';
-  // BES tespiti — kategori 'Emeklilik' VEYA isimde EMEKLİLİK gecen fonlar.
+  // BES tespiti — SIKI kaynak: backend befasOpen === true VEYA category === 'Emeklilik'.
+  // Isim substring "EMEKLİLİK" YAPILMAZ — Serbest kategorideki hayat sigortasi
+  // urunleri (ornek: IMH = "IS PORTFOY ANADOLU HAYAT EMEKLILIK SERBEST") BEFAS
+  // urunu degildir, TEFAS'ta ayri bir kategoridir.
   const isBesFund = (() => {
+    if (githubData?.befasOpen === true) return true;
     const cat = (githubData?.category ?? fund?.category ?? '').toString();
-    if (cat === 'Emeklilik') return true;
-    const nm = (githubData?.name ?? fund?.name ?? '').toLocaleUpperCase('tr-TR');
-    return nm.includes('EMEKLİLİK') || nm.includes('EMEKLILIK');
+    return cat === 'Emeklilik';
   })();
 
   if (fund === undefined) {

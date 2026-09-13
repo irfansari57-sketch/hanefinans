@@ -387,20 +387,27 @@ export function PanelPage() {
           Kullanici pill'lere tiklayarak grafik degistirebiliyor (FVT tarzi). Metal/Kripto
           detay listesi Panel dışında Emtia + Kripto nav linkleri altında ayrıca var. */}
 
-      {/* Top movers — hisseler (pin'lenebilir, her ekranda aç/kapa) */}
-      {/* GUNUN ENLERI — Tek karti icinde tab yapisi (FVT tarzi).
-          Tab'lar: Hisseler / Fonlar. Her tab kendi period toggle'ini gosterir. */}
-      <GununEnleriCard
-        stocks={stocksForTopMovers}
-        stocksPeriod={stocksPeriod}
-        setStocksPeriod={setStocksPeriod}
-        stocksSource={stocksSource}
-        stocksReturnsLoading={stocksReturnsLoading}
-        topFunds={topFunds}
-        fundsPeriod={fundsPeriod}
-        setFundsPeriod={setFundsPeriod}
-        cryptoQuotes={cryptoQuotes}
-      />
+      {/* Top movers — Fonlar / Hisseler / Kripto sekmeler, accordion icinde (Portfoyum ile ayni deneyim).
+          Kullanici pin'leyip default acik birakabilir. Default kapali — 13 Eyl 2026 UX degisikligi. */}
+      <PinnableAccordion
+        id="panel-top-movers"
+        title="Günün Enleri"
+        description="Fonlar, hisseler ve kripto — kazandiran ve kaybettiren enler"
+        icon={<TrendingUp size={16} />}
+        iconColorClass="bg-success/15 text-success"
+      >
+        <GununEnleriCard
+          stocks={stocksForTopMovers}
+          stocksPeriod={stocksPeriod}
+          setStocksPeriod={setStocksPeriod}
+          stocksSource={stocksSource}
+          stocksReturnsLoading={stocksReturnsLoading}
+          topFunds={topFunds}
+          fundsPeriod={fundsPeriod}
+          setFundsPeriod={setFundsPeriod}
+          cryptoQuotes={cryptoQuotes}
+        />
+      </PinnableAccordion>
 
       {/* Portfoyum Ozeti — auth'lu kullanici icin akordeon + yan yana Hisse + Fon karti.
           PortfolioHealthPanel kendi içinde mb-5 uyguluyor (boş portfolyoda null dönüyor,
@@ -482,7 +489,9 @@ function GununEnleriCard(props: {
   setFundsPeriod: (p: 'day' | 'week' | 'month') => void;
   cryptoQuotes: MacroIndicator[];
 }) {
-  const [tab, setTab] = useState<EnleriTab>('stocks');
+  // Default tab 'funds' — kullanici talebi 13 Eyl 2026: fonlar hisselerden onceki
+  // ana ilgi alaninda oldugu icin fon sekmesi acilir gelir.
+  const [tab, setTab] = useState<EnleriTab>('funds');
   const {
     stocks, stocksPeriod, setStocksPeriod, stocksSource, stocksReturnsLoading,
     topFunds, fundsPeriod, setFundsPeriod, cryptoQuotes,
@@ -499,25 +508,11 @@ function GununEnleriCard(props: {
   const setActivePeriod = tab === 'stocks' ? setStocksPeriod : tab === 'funds' ? setFundsPeriod : () => {};
 
   return (
-    <div className="mb-5 overflow-hidden rounded-xl border border-border bg-bg-soft/30">
-      {/* Baslik + tab sekmeleri + period toggle */}
+    <div className="overflow-hidden rounded-xl border border-border bg-bg-soft/30">
+      {/* Tab sekmeleri + period toggle (baslik accordion'da) */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-bg-card/40 px-4 py-2.5">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-          <TrendingUp size={15} className="text-success" /> Günün Enleri
-        </h2>
+        {/* Fonlar ilk sirada — kullanici talebi 13 Eyl 2026 */}
         <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => setTab('stocks')}
-            className={cn(
-              'rounded-md px-2.5 py-1 text-xs font-semibold transition',
-              tab === 'stocks'
-                ? 'bg-bg-card text-accent'
-                : 'text-slate-400 hover:bg-bg-soft/50 hover:text-slate-200',
-            )}
-          >
-            Hisseler
-          </button>
           <button
             type="button"
             onClick={() => setTab('funds')}
@@ -530,6 +525,18 @@ function GununEnleriCard(props: {
             )}
           >
             Fonlar
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('stocks')}
+            className={cn(
+              'rounded-md px-2.5 py-1 text-xs font-semibold transition',
+              tab === 'stocks'
+                ? 'bg-bg-card text-accent'
+                : 'text-slate-400 hover:bg-bg-soft/50 hover:text-slate-200',
+            )}
+          >
+            Hisseler
           </button>
           <button
             type="button"

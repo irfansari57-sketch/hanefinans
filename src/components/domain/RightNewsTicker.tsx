@@ -83,13 +83,44 @@ export function RightNewsTicker() {
 
   const repeated = useMemo(() => [...news, ...news], [news]);
 
+  // Collapsed durumda ince serit (10 rem) — sadece dikey acma butonu gorunur.
+  // Acikken normal 72/80 genislik. Kullanici talebi 13 Eyl 2026: ana ekran daha genis olsun.
+  if (collapsed) {
+    return (
+      <aside className="relative z-10 hidden lg:flex lg:w-10 xl:w-10 flex-col border-l border-border bg-bg-soft/80 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="group flex h-full w-full flex-col items-center justify-start gap-3 py-4 text-slate-400 transition hover:bg-bg-card/60 hover:text-accent"
+          aria-expanded={false}
+          aria-controls="right-news-content"
+          title="Gündem &amp; Haberler'i aç"
+        >
+          <span className="grid h-7 w-7 place-items-center rounded-md bg-accent/15 text-accent transition group-hover:bg-accent/25">
+            <Newspaper size={14} />
+          </span>
+          {/* Dikey yazi "GÜNDEM & HABERLER" */}
+          <span
+            className="mt-1 select-none text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-200"
+            style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+          >
+            Gündem &amp; Haberler
+          </span>
+          {news.length > 0 && (
+            <span className="mt-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-accent">
+              {news.length}
+            </span>
+          )}
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside className={cn(
       'relative z-10 hidden lg:flex lg:w-72 lg:flex-col xl:w-80 border-l border-border bg-bg-soft/80 backdrop-blur-md',
-      collapsed && 'lg:w-72 xl:w-80',
     )}>
-      {/* AdVideo + Sponsor bloklari sadece panel acikken. Kompakt UX icin
-          collapsed durumda tamamen gizlenir - kullanici sadece news header'i gorur. */}
+      {/* AdVideo + Sponsor bloklari sadece panel acikken. */}
       {!collapsed && (
         <>
           <div className="border-b border-border bg-bg-card/40 p-2">

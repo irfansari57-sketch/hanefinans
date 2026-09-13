@@ -786,6 +786,61 @@ def main() -> int:
             print(f"  {i+1}/{len(alloc_targets)} — ok:{alloc_ok} fail:{alloc_fail}", flush=True)
     print(f"[allocation] Tamamlandi: {alloc_ok} basarili, {alloc_fail} basarisiz", flush=True)
 
+    # ---------- BES (EMK fund_type) fetch — BEFAS'ta islem goren emeklilik fonlari ----------
+    # Ana YAT/SEC yaninda EMK fund_type'i ile BES fonlarini da cek. tefasfon paketi
+    # EMK'yi destekliyorsa (KEB, KED, KEF vs. gibi ~200 fon). Fail olursa ana feed
+    # etkilenmez, sessizce gec.
+    print(f"\n[bes] EMK fund_type ile BES fonlari cekiliyor...", flush=True)
+    try:
+        bes_df = fetch_snapshot('EMK', anchors['last'], max_back=5)
+        if bes_df is not None and not bes_df.empty:
+            print(f"[bes] EMK: {len(bes_df)} BES fonu bulundu", flush=True)
+            bes_cols = detect_columns(bes_df)
+            print(f"[bes] Kolonlar: {list(bes_df.columns)}", flush=True)
+            if bes_cols['code'] and bes_cols['price']:
+                # Optional: 1w/1m/1y anchor'lari da cek, sonra funds'e ekle
+                bes_added = 0
+                existing_codes = {f['code'] for f in funds}
+                for _, row in bes_df.iterrows():
+                    try:
+                        code = str(row[bes_cols['code']]).strip()
+                        if not code or code in existing_codes:
+                            continue
+                        latest_nav = float(row[bes_cols['price']]) if bes_cols['price'] else 0
+                        if latest_nav <= 0:
+                            continue
+                        name = str(row.get(bes_cols['name'], '') if bes_cols['name'] else '').strip() or code
+                        category = 'Emeklilik'
+                        try:
+                            iso_date = pd.to_datetime(row[bes_cols['date']]).strftime('%Y-%m-%d') if bes_cols['date'] else anchors['last'].strftime('%Y-%m-%d')
+                        except Exception:
+                            iso_date = anchors['last'].strftime('%Y-%m-%d')
+                        funds.append({
+                            "code": code,
+                            "name": name,
+                            "category": category,
+                            "tefasOpen": False,  # EMK = BEFAS'ta islem gorur, TEFAS'ta degil
+                            "befasOpen": True,   # yeni field: BES sayfasi bunu kullanir
+                            "nav": latest_nav,
+                            "date": iso_date,
+                            "marketCap": float(row.get(bes_cols['mcap'], 0) or 0) if bes_cols.get('mcap') else None,
+                            "investorCount": int(row.get(bes_cols['investors'], 0) or 0) if bes_cols.get('investors') else None,
+                            "shareCount": int(row.get(bes_cols['shares'], 0) or 0) if bes_cols.get('shares') else None,
+                            "returns": {},  # BES icin returns bu iterasyonda hesaplanmiyor
+                            "history": [],
+                            "allocation": None,
+                        })
+                        bes_added += 1
+                    except Exception as e:
+                        print(f"[bes] {code if 'code' in dir() else '?'} eklenemedi: {e}", flush=True)
+                print(f"[bes] Feed'e {bes_added} BES fonu eklendi", flush=True)
+            else:
+                print(f"[bes] Zorunlu kolonlar eksik (code/price)", flush=True)
+        else:
+            print(f"[bes] EMK fund_type destegi yok veya bos dondu", flush=True)
+    except Exception as e:
+        print(f"[bes] BES fetch fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
     payload = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "count": len(funds),

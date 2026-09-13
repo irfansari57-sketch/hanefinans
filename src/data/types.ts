@@ -114,6 +114,7 @@ export type FundCategory =
   | 'Döviz'
   | 'Emtia'
   | 'Kıymetli Maden'
+  | 'Emeklilik'
   | 'Diğer';
 
 export interface FundPerformance {

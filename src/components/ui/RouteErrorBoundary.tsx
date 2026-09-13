@@ -24,12 +24,28 @@ async function clearEverythingAndReload() {
     }
   } catch { /* ignore */ }
   try {
-    // 3) Reload sayacini resetle (lazyWithRetry 3-deneme sınırı)
-    // ÖNEMLİ: iq.autoRecover* key'lerini SILMEK YOK — silinirse infinite loop olur.
+    // 3) Reload sayaclarini resetle — MANUEL TIK sonsuz dongu riski tasimaz.
+    // Kullanici acik olarak "yeniden dene" istedi, tum lock'lari temizleyelim.
+    // (Auto-recovery lock'u sadece otomatik ilk denemede tutulur, manuel istekte
+    // bilincli olarak sifirlaniyor — aksi halde kullanici hicbir sekilde acamaz.)
     sessionStorage.removeItem('fa.chunkReloadHistory');
+    sessionStorage.removeItem('iq.autoRecoverAttempts');
   } catch { /* ignore */ }
-  // 4) Cache bypass ile sayfayı tekrar yükle
-  window.location.replace(window.location.pathname + '?_=' + Date.now());
+  try {
+    // 4) SWR persist cache'ini de temizle — bozuk snapshot render error'u tetikleyebilir.
+    // Sadece hf.cache.* prefix'ini sil (user prefs vs. korunur).
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('hf.cache.') || k.startsWith('fa.macro.cache'))) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+  // 5) ROOT'a git — /panel'de stale route param'i olabilir, root fresh baslatir.
+  // Cache bypass icin ?_v=timestamp
+  window.location.replace('/?_v=' + Date.now());
 }
 
 /**

@@ -220,6 +220,67 @@ export function BesFundsPage() {
           return;
         }
 
+        // ==== YENI: /api/befas/live — FVT public API proxy (canli, tam veri) ====
+        // 325+ BES fonu + NAV + 9 period getiri + risk metrikleri.
+        // Server-side proxy CF Function ediyor, browser CORS bypassed.
+        console.info('[bes] /api/befas/live deneniyor (FVT proxy)...');
+        try {
+          const rLive = await fetch(`/api/befas/live?t=${Date.now()}`);
+          console.info(`[bes] /api/befas/live status: ${rLive.status}`);
+          if (rLive.ok) {
+            const jLive = await rLive.json() as {
+              ok: boolean;
+              source: string;
+              updatedAt: string;
+              count: number;
+              funds: Array<{
+                code: string; name: string;
+                category: 'Emeklilik'; besKategori: string;
+                founder: string;
+                tefasOpen: false; befasOpen: true;
+                nav: number | null;
+                navDate: string;
+                returns: {
+                  '1d'?: number | null; '1w'?: number | null;
+                  '1m'?: number | null; '3m'?: number | null;
+                  '6m'?: number | null; ytd?: number | null;
+                  '1y'?: number | null; '3y'?: number | null; '5y'?: number | null;
+                };
+              }>;
+            };
+            if (jLive.ok && jLive.funds && jLive.funds.length > 0) {
+              console.info(`[bes] /api/befas/live BASARI: ${jLive.count} fon (${jLive.source})`);
+              const mapped: FundPerformance[] = jLive.funds.map((f) => ({
+                code: f.code,
+                name: f.name,
+                category: 'Emeklilik' as const,
+                tefas: false,
+                tefasOpen: false,
+                befasOpen: true,
+                founder: f.founder,
+                besKategori: f.besKategori,
+                nav: f.nav ?? undefined,
+                navDate: f.navDate,
+                day: f.returns['1d'] ?? NaN,
+                week: f.returns['1w'] ?? NaN,
+                month: f.returns['1m'] ?? NaN,
+                threeMonth: f.returns['3m'] ?? NaN,
+                sixMonth: f.returns['6m'] ?? NaN,
+                ytd: f.returns.ytd ?? NaN,
+                year: f.returns['1y'] ?? NaN,
+                threeYear: f.returns['3y'] ?? undefined,
+                fiveYear: f.returns['5y'] ?? undefined,
+              }));
+              setFunds(mapped);
+              setFeedUpdatedAt(jLive.updatedAt);
+              return;
+            }
+          }
+          console.warn('[bes] /api/befas/live boş veya fail — seed fallback');
+        } catch (e) {
+          console.warn('[bes] /api/befas/live exception:', e);
+        }
+
         // ==== Browser-side canli TEFAS fetch (CORS proxy uzerinden) ====
         // TEFAS server IP'lerinden (CF Workers + GitHub Actions) blokluyor.
         // Kullanicinin browseri gercek Chrome fingerprint'ine sahip, calisir.

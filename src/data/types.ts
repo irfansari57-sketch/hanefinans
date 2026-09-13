@@ -128,6 +128,11 @@ export interface FundPerformance {
    * Backend is_tefas_open() heuristic'i ile hesaplanir.
    */
   tefasOpen?: boolean;
+  /**
+   * BEFAS (Bireysel Emeklilik Fon Alim Satim Platformu) uzerinden alinip alinamayacagi.
+   * BES/Emeklilik fonlari icin geçerli — TEFAS'in emeklilik fonlari icin karsiligi.
+   */
+  befasOpen?: boolean;
   /** Anlik fiyat (NAV / pay degeri) - feed'den gelir, opsiyonel */
   nav?: number;
   /** NAV tarihi (YYYY-MM-DD) */

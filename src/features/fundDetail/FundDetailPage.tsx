@@ -89,6 +89,17 @@ export function FundDetailPage() {
   // Fintables link geri getirildi (kullanici talebi 12 Eyl 2026):
   // detayli portfoy analizi + risk skoru icin external kaynak, TEFAS'a bir alternatif.
   const fintablesUrl = `https://fintables.com/fonlar/${fundCode}`;
+  // BEFAS URLleri — BES (Emeklilik) fonlari icin. TEFAS'in emeklilik karsiligi.
+  // EGM (Emeklilik Gozetim Merkezi) fonperformans.egm.org.tr fon detay sayfasini host eder.
+  const befasUrl = `https://fonperformans.egm.org.tr/#/fonperformans/${encodeURIComponent(fundCode)}`;
+  const befasHomeUrl = 'https://www.takasbank.com.tr/tr/urun-ve-hizmetler/faaliyet-alanlarimiz/bireysel-emeklilik-fon-alim-satim-platformu-befas';
+  // BES tespiti — kategori 'Emeklilik' VEYA isimde EMEKLİLİK gecen fonlar.
+  const isBesFund = (() => {
+    const cat = (githubData?.category ?? fund?.category ?? '').toString();
+    if (cat === 'Emeklilik') return true;
+    const nm = (githubData?.name ?? fund?.name ?? '').toLocaleUpperCase('tr-TR');
+    return nm.includes('EMEKLİLİK') || nm.includes('EMEKLILIK');
+  })();
 
   if (fund === undefined) {
     return <div className="p-6 text-center text-sm text-slate-500">Yükleniyor…</div>;
@@ -152,6 +163,31 @@ export function FundDetailPage() {
                 </span>
               )}
               {(() => {
+                // BES fonlari: BEFAS acik/kapali rozeti (TEFAS'in emeklilik karsiligi)
+                if (isBesFund) {
+                  const befasOpen = githubData?.befasOpen;
+                  if (befasOpen === true) {
+                    return (
+                      <span
+                        className="rounded-md border border-success/40 bg-success/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-success"
+                        title="Bu fon BEFAS (Bireysel Emeklilik Fon Alim Satim Platformu) uzerinden islem gorur."
+                      >
+                        BEFAS'ta İşlem Görüyor
+                      </span>
+                    );
+                  }
+                  if (befasOpen === false) {
+                    return (
+                      <span
+                        className="rounded-md border border-danger/40 bg-danger/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-danger"
+                        title="Bu fon BEFAS'ta islem gormez. Sadece kurucu emeklilik sirketinin kendi kanallari uzerinden alinabilir."
+                      >
+                        BEFAS'ta Kapalı
+                      </span>
+                    );
+                  }
+                  return null;
+                }
                 // TEFAS Kapali rozet: backend tefasOpen false VEYA client heuristic false
                 const cat = githubData?.category ?? fund.category ?? '';
                 const name = githubData?.name ?? fund.name ?? '';
@@ -176,12 +212,12 @@ export function FundDetailPage() {
           </div>
           <div className="text-right">
             <a
-              href={tefasUrl}
+              href={isBesFund ? befasUrl : tefasUrl}
               target="_blank"
               rel="noreferrer"
               className="btn-primary"
             >
-              <ExternalLink size={14} /> TEFAS'ta canlı veri
+              <ExternalLink size={14} /> {isBesFund ? "BEFAS'ta canlı veri" : "TEFAS'ta canlı veri"}
             </a>
           </div>
         </div>
@@ -320,7 +356,7 @@ export function FundDetailPage() {
         <div className="mb-3 grid gap-3 lg:grid-cols-3">
           {/* Chart */}
           <div className="card p-3 lg:col-span-2">
-            <FundPerformanceChart fund={githubData} />
+            <FundPerformanceChart fund={githubData} isBes={isBesFund} />
           </div>
           {/* Sag column: Varlık Dağılımı + Meta bilgi kartlari */}
           <div className="space-y-3">
@@ -346,7 +382,7 @@ export function FundDetailPage() {
                     </div>
                   ) : (
                     <div className="text-[11px] text-slate-500 italic">
-                      Portföy Ağı tab'ında görselleştirilir.<br/>Detay TEFAS'ta.
+                      Portföy Ağı tab'ında görselleştirilir.<br/>Detay {isBesFund ? 'BEFAS' : 'TEFAS'}'ta.
                     </div>
                   )}
                 </div>
@@ -408,8 +444,14 @@ export function FundDetailPage() {
                 <span className="font-semibold text-slate-200">%17.5</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">TEFAS</span>
+                <span className="text-slate-500">{isBesFund ? 'BEFAS' : 'TEFAS'}</span>
                 {(() => {
+                  if (isBesFund) {
+                    const bo = githubData.befasOpen;
+                    if (bo === true) return <span className="font-semibold text-success">✓ Açık</span>;
+                    if (bo === false) return <span className="font-semibold text-danger">✗ Kapalı</span>;
+                    return <span className="font-semibold text-slate-400">—</span>;
+                  }
                   const backendOpen = githubData.tefasOpen;
                   const clientOpen = computeTefasOpenClient(githubData.category ?? '', githubData.name ?? '');
                   const isOpen = backendOpen !== false && clientOpen !== false;
@@ -564,7 +606,7 @@ export function FundDetailPage() {
               const alloc = githubData?.allocation ?? liveData?.allocation ?? [];
               return alloc.length > 0 ? (
                 <span className="text-[10px] text-slate-500">
-                  {alloc.length} varlık sınıfı · TEFAS
+                  {alloc.length} varlık sınıfı · {isBesFund ? 'BEFAS' : 'TEFAS'}
                 </span>
               ) : null;
             })()}
@@ -574,6 +616,7 @@ export function FundDetailPage() {
             allocation={githubData?.allocation ?? liveData?.allocation ?? []}
             navReturn={githubData?.returns?.['1y'] ?? null}
             category={githubData?.category ?? ''}
+            isBes={isBesFund}
           />
           <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
             Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
@@ -588,21 +631,43 @@ export function FundDetailPage() {
           <section className="mb-4 space-y-3">
             <h2 className="text-sm font-semibold text-slate-200">Detaylı Bilgi Kaynakları</h2>
             <div className="grid gap-2 sm:grid-cols-3">
-              <ExtLink
-                title="TEFAS — Fon Analizi"
-                description="Resmi: NAV, getiri, fon büyüklüğü, yatırımcı sayısı, varlık dağılımı"
-                url={tefasUrl}
-              />
-              <ExtLink
-                title="TEFAS — Karşılaştırma"
-                description="Benchmark karşılaştırma, getiri grafikleri"
-                url={tefasComp}
-              />
-              <ExtLink
-                title="Fintables (Premium)"
-                description="Detaylı portföy analizi, risk skoru, en büyük pozisyonlar"
-                url={fintablesUrl}
-              />
+              {isBesFund ? (
+                <>
+                  <ExtLink
+                    title="EGM — Fon Performansı"
+                    description="Emeklilik Gözetim Merkezi resmi: NAV, getiri, portföy dağılımı"
+                    url={befasUrl}
+                  />
+                  <ExtLink
+                    title="Takasbank — BEFAS"
+                    description="BEFAS platformu tanıtım, işlem gören fonlar listesi"
+                    url={befasHomeUrl}
+                  />
+                  <ExtLink
+                    title="Fintables (Premium)"
+                    description="Detaylı portföy analizi, risk skoru, en büyük pozisyonlar"
+                    url={fintablesUrl}
+                  />
+                </>
+              ) : (
+                <>
+                  <ExtLink
+                    title="TEFAS — Fon Analizi"
+                    description="Resmi: NAV, getiri, fon büyüklüğü, yatırımcı sayısı, varlık dağılımı"
+                    url={tefasUrl}
+                  />
+                  <ExtLink
+                    title="TEFAS — Karşılaştırma"
+                    description="Benchmark karşılaştırma, getiri grafikleri"
+                    url={tefasComp}
+                  />
+                  <ExtLink
+                    title="Fintables (Premium)"
+                    description="Detaylı portföy analizi, risk skoru, en büyük pozisyonlar"
+                    url={fintablesUrl}
+                  />
+                </>
+              )}
             </div>
           </section>
 
@@ -690,33 +755,38 @@ function allocationColor(label: string): string {
  * riski var. Data yoksa empty state gösterilir, kullanıcı TEFAS güncellemesi
  * bekler (cron her saat başı çalışır).
  */
-function FundAllocationDonut({ fundCode, allocation, navReturn, category: _category }: {
+function FundAllocationDonut({ fundCode, allocation, navReturn, category: _category, isBes }: {
   fundCode: string;
   allocation: Array<{ label: string; pct: number }>;
   navReturn: number | null;
   category?: string;
+  isBes?: boolean;
 }) {
-  // Sadece gerçek TEFAS datası — tahmini dağılım YANLIŞ BİLGİ riski nedeniyle
+  // Sadece gerçek TEFAS/BEFAS datası — tahmini dağılım YANLIŞ BİLGİ riski nedeniyle
   // devre dışı. Data yok = empty state, kullanıcıyı yanıltmıyoruz.
   if (allocation.length === 0) {
+    const platformName = isBes ? 'BEFAS' : 'TEFAS';
+    const platformUrl = isBes
+      ? `https://fonperformans.egm.org.tr/#/fonperformans/${encodeURIComponent(fundCode)}`
+      : `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fundCode}`;
     return (
       <div className="grid place-items-center py-16 text-xs text-slate-500">
         <div className="text-center max-w-sm">
           <div className="text-4xl mb-3">📊</div>
           <div className="text-slate-300 font-medium">
-            TEFAS varlık dağılımı bekleniyor
+            {platformName} varlık dağılımı bekleniyor
           </div>
           <div className="mt-2 text-[11px] leading-relaxed">
-            Bu fon için TEFAS'ın açıkladığı resmi varlık dağılımı henüz veri kaynağımıza yansımadı.
+            Bu fon için {platformName}'ın açıkladığı resmi varlık dağılımı henüz veri kaynağımıza yansımadı.
             Otomatik güncelleme her saat başı çalışır — kısa süre sonra bu ekran dolacaktır.
           </div>
           <div className="mt-3">
             <a
-              href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fundCode}`}
+              href={platformUrl}
               target="_blank" rel="noreferrer"
               className="text-accent hover:underline text-[11px]"
             >
-              TEFAS'ta görüntüle →
+              {platformName}'ta görüntüle →
             </a>
           </div>
         </div>
@@ -850,7 +920,7 @@ function ExtLink({ title, description, url }: { title: string; description: stri
  * Önce TEFAS sadece bu anchor return'leri verdiği için tam günlük history yok;
  * yine de eğilim ve büyüklük hakkında net bir görsel sağlar.
  */
-function FundPerformanceChart({ fund }: { fund: TefasFundData }) {
+function FundPerformanceChart({ fund, isBes }: { fund: TefasFundData; isBes?: boolean }) {
   // Hisse detay chart'in aynisi (PanelStyleChart tarzi) — period switcher + MiniAreaChart.
   // NAV history: TEFAS'in gunluk history feed'i yok, bu yuzden anchor noktalar
   // kullaniyoruz (7 noktadan interpolate). Kullanici period sec, o araligi gorur.
@@ -941,7 +1011,12 @@ function FundPerformanceChart({ fund }: { fund: TefasFundData }) {
       />
       <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
         ℹ️ Grafik anchor noktalardan interpolate edilir. Günlük NAV detayı için
-        {' '}<a href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fund.code}`} target="_blank" rel="noreferrer" className="text-accent hover:underline">TEFAS</a>.
+        {' '}<a
+          href={isBes
+            ? `https://fonperformans.egm.org.tr/#/fonperformans/${encodeURIComponent(fund.code)}`
+            : `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${fund.code}`}
+          target="_blank" rel="noreferrer" className="text-accent hover:underline"
+        >{isBes ? 'BEFAS' : 'TEFAS'}</a>.
       </p>
     </div>
   );

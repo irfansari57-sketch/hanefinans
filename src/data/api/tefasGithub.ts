@@ -16,6 +16,12 @@ export interface TefasFundData {
    * Backend `is_tefas_open()` heuristic'i ile hesaplanir; false = Serbest Fon vs.
    */
   tefasOpen?: boolean;
+  /**
+   * BEFAS (Bireysel Emeklilik Fon Alim Satim Platformu) uzerinden alinip alinamayacagi.
+   * BES (Emeklilik) fonlari icin geçerli — TEFAS'in emeklilik fonlari icin karsiligi.
+   * Backend scraper Takasbank BEFAS Excel listesinden yazar.
+   */
+  befasOpen?: boolean;
   nav: number;
   date: string;
   marketCap?: number;
@@ -462,6 +468,8 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       category: normalizeFundCategory(f.category, f.name),
       tefas: true,
       tefasOpen: finalOpen,
+      // BES/Emeklilik fonlari BEFAS uzerinden alinir; scraper Takasbank listesinden gelirse true yazar.
+      befasOpen: f.befasOpen,
       nav: typeof f.nav === 'number' && f.nav > 0 ? f.nav : undefined,
       navDate: f.date || undefined,
       day: day == null ? NaN : day,

@@ -1,18 +1,17 @@
 /**
  * /api/befas/funds — Bireysel Emeklilik Sistemi (BES) fon listesi.
  *
- * BES fonları TEFAS'ta normal fonlarla listelenmiyor — ayrı `fontip=EMK`
- * endpoint'inden çekilmesi gerekiyor. Python cron haftada bir çalıştığı için
- * bu endpoint ONA-DEMAND yedek olarak yaşıyor:
- *   - Frontend BES sayfası feed'de BES fonu bulamazsa buraya düşer
- *   - Her istekte TEFAS BindComparisonFundReturns'e POST atar
- *   - CF Workers KV cache ile 30 dk cache edilir (bir gunde ~48 gercek istek)
+ * NOT: TEFAS (www.tefas.gov.tr) Cloudflare Workers IP'lerine bot koruma
+ * challenge sayfasi donuyor. Bu yuzden PRIMARY kaynak Takasbank BEFAS
+ * fund list endpoint'i (farkli CDN, bot koruma yok).
  *
- * Response:
- *   { ok: true, updatedAt: '...', count: N, funds: [{ code, name, category,
- *     nav, returns: { '1d','1w','1m','3m','6m','ytd','1y' } }] }
+ * Data flow:
+ *   1) Takasbank BEFAS JSON endpoint (tercih) — sadece kod + isim + kurucu
+ *   2) TEFAS BindComparisonFundReturns (fallback, IP bloke oldugu icin genelde 502)
+ *   3) TEFAS gecerse: kod + isim + NAV + getiriler zenginlik olur
  *
- * Edge cache: 30 dk (piyasa saatlerinde), 6 saat (kapali).
+ * Response: { ok: true, updatedAt, count, funds: [...] }
+ * Edge cache: 30 dk (piyasa acikken), 6 saat (kapaliyken).
  */
 
 interface Env {}
@@ -157,52 +156,72 @@ async function fetchTefasBes(): Promise<BesFund[]> {
   return out;
 }
 
+import { BES_SEED } from './_seed';
+
+/** Seed listeyi TEFAS-style BesFund'a cevirir (NAV/getiri null) */
+function seedToBesFunds(): BesFund[] {
+  return BES_SEED.map((s) => ({
+    code: s.code,
+    name: s.name,
+    category: 'Emeklilik' as const,
+    besKategori: s.besKategori,
+    tefasOpen: false as const,
+    befasOpen: true as const,
+    nav: null,
+    returns: {},
+  }));
+}
+
 export const onRequest: PagesFunction<Env> = async ({ request }) => {
   const url = new URL(request.url);
   const force = url.searchParams.get('force') === '1';
+  const debug = url.searchParams.get('debug') === '1';
 
-  // Cloudflare edge cache
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheKey = new Request(request.url, request);
 
-  if (!force) {
+  if (!force && !debug) {
     const cached = await cache.match(cacheKey);
     if (cached) return cached;
   }
 
+  // Strateji: TEFAS'i dene (nadiren calisir CF Worker IP'lerinden), fail olursa seed.
+  let funds: BesFund[] = [];
+  let source: 'tefas-live' | 'seed' = 'seed';
+  let tefasError: string | null = null;
+
   try {
-    const funds = await fetchTefasBes();
-    const body = {
-      ok: true,
-      updatedAt: new Date().toISOString(),
-      count: funds.length,
-      funds,
-    };
-    // Piyasa acikken 30 dk, kapaliyken 6 saat
-    const now = new Date();
-    const utcH = now.getUTCHours();
-    const isWeekday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5;
-    const marketOpen = isWeekday && utcH >= 6 && utcH <= 15;
-    const ttl = marketOpen ? 1800 : 21600;
-    const resp = new Response(JSON.stringify(body), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}`,
-      },
-    });
-    if (!force && funds.length > 0) {
-      // Cache'e yaz (fire-and-forget)
-      const cachePut = cache.put(cacheKey, resp.clone());
-      // ctx.waitUntil available on some CF runtimes; safe ignore
-      cachePut.catch(() => { /* noop */ });
-    }
-    return resp;
+    funds = await fetchTefasBes();
+    if (funds.length > 0) source = 'tefas-live';
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return new Response(JSON.stringify({ ok: false, error: msg }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    tefasError = e instanceof Error ? e.message : String(e);
   }
+
+  // TEFAS bos veya fail ise seed liste
+  if (funds.length === 0) {
+    funds = seedToBesFunds();
+    source = 'seed';
+  }
+
+  const body = {
+    ok: true,
+    updatedAt: new Date().toISOString(),
+    count: funds.length,
+    source,
+    funds,
+    ...(debug || tefasError ? { tefasError } : {}),
+  };
+  // Seed cevaplari 6 saat cache, tefas-live 30 dk
+  const ttl = source === 'tefas-live' ? 1800 : 21600;
+  const resp = new Response(JSON.stringify(body), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}`,
+    },
+  });
+  if (!force && !debug && funds.length > 0) {
+    cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+  }
+  return resp;
 };

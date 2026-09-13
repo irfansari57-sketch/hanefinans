@@ -567,7 +567,7 @@ export function BesFundsPage() {
                 <tr>
                   <th className="px-2 py-2 text-left w-[2.5rem]">#</th>
                   <SortableTh label="Kod" k="code" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
-                  <th className="hidden sm:table-cell px-2 py-2 text-left">Kurucu / Kategori</th>
+                  <th className="hidden sm:table-cell px-2 py-2 text-left">Kategori / Fon Adı</th>
                   <th className="px-2 py-2 text-right">Fiyat</th>
                   <SortableTh label="1G" k="day" active={sortKey} dir={sortDir} onClick={handleSort} />
                   <SortableTh label="1H" k="week" active={sortKey} dir={sortDir} onClick={handleSort} />
@@ -592,23 +592,13 @@ export function BesFundsPage() {
                       <div className="flex items-center gap-1.5 min-w-0">
                         {(() => {
                           const label = f.besKategori && f.besKategori.trim().length > 0 ? f.besKategori : f.category;
-                          return <CategoryChip label={label} />;
+                          return (
+                            <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-300 whitespace-nowrap">
+                              {label}
+                            </span>
+                          );
                         })()}
-                        <span className="truncate text-[12px] text-slate-200 max-w-[260px]" title={f.name}>{f.name}</span>
-                        {f.founder && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setFounder(f.founder === founder ? 'Tümü' : (f.founder ?? 'Tümü'));
-                            }}
-                            className="shrink-0 text-[10px] text-accent/60 hover:text-accent hover:underline truncate max-w-[180px]"
-                            title={`${f.founder} — bu kurucunun tüm BES fonlarını göster`}
-                          >
-                            · {f.founder.replace(/ A\.Ş\.$/, '')}
-                          </button>
-                        )}
+                        <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[400px]" title={f.name}>{f.name}</span>
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-200 whitespace-nowrap">

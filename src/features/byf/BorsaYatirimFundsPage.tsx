@@ -262,7 +262,7 @@ export function BorsaYatirimFundsPage() {
                 <tr>
                   <th className="px-2 py-2 text-left w-[2.5rem]">#</th>
                   <SortableTh label="Sembol" k="symbol" active={sortKey} dir={sortDir} onClick={handleSort} align="left" />
-                  <th className="hidden sm:table-cell px-2 py-2 text-left">İhraççı / Kategori / Fon</th>
+                  <th className="hidden sm:table-cell px-2 py-2 text-left">Kategori / Fon Adı</th>
                   <SortableTh label="Fiyat" k="price" active={sortKey} dir={sortDir} onClick={handleSort} />
                   <SortableTh label="Değişim" k="changePct" active={sortKey} dir={sortDir} onClick={handleSort} />
                 </tr>
@@ -278,9 +278,10 @@ export function BorsaYatirimFundsPage() {
                     </td>
                     <td className="hidden sm:table-cell px-2 py-2">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <CategoryChip cat={f.category as BYFCategory} />
-                        <span className="truncate text-[12px] text-slate-200 max-w-[260px]" title={f.name}>{f.name}</span>
-                        <span className="shrink-0 text-[10px] text-slate-500 truncate max-w-[140px]" title={f.issuer}>· {f.issuer}</span>
+                        <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-300 whitespace-nowrap">
+                          {f.category}
+                        </span>
+                        <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[400px]" title={f.name}>{f.name}</span>
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right font-mono text-sm tabular-nums text-slate-200 whitespace-nowrap">

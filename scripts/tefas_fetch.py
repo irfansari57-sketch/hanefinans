@@ -794,13 +794,93 @@ def main() -> int:
             print(f"  {i+1}/{len(alloc_targets)} — ok:{alloc_ok} fail:{alloc_fail}", flush=True)
     print(f"[allocation] Tamamlandi: {alloc_ok} basarili, {alloc_fail} basarisiz", flush=True)
 
-    # ---------- BES (BEFAS) fetch — 3 strateji sirayla ----------
+    # ---------- BES (BEFAS) fetch — 4 strateji sirayla ----------
+    # 0. tefasfon get_funds(fund_type='EMK') — AYNI kutuphaneyi kullan (regular fonlarda calisiyor)
     # 1. TAKASBANK BEFAS Excel (fon listesi: kod + isim + ihraccı) — TEFAS Excel
-    #    ile ayni pattern, kesin calisir (biz TEFAS ac.k kodlari icin de kullaniyoruz)
     # 2. TEFAS BindComparisonFundReturns (calismatipi=2, fontip=EMK) — toplu fiyat+getiri
     # 3. Ikisi de fail -> statik empty
-    # Strateji 1 fon listesini garantiler; 2 fiyat/getirileri getirir. 2 fail olursa
-    # sadece kod+isim ile listelemis oluruz (kullanici en azindan fon adlarini gorur).
+    print(f"\n[bes] Adim 0: tefasfon get_funds(fund_type='EMK') deneniyor...", flush=True)
+    bes_from_tefasfon = 0
+    try:
+        emk_end = anchors['last']
+        emk_start = emk_end - timedelta(days=int(90 * 1.6))
+        emk_start = previous_business_day(emk_start)
+        emk_end = previous_business_day(emk_end)
+        emk_df = get_funds(
+            fund_type='EMK',
+            start_date=fmt_tr_date(emk_start),
+            end_date=fmt_tr_date(emk_end),
+        )
+        if emk_df is not None and not emk_df.empty:
+            print(f"[bes] tefasfon EMK: {len(emk_df)} satir DONDU", flush=True)
+            # Kod->latest_nav map + kod->history map
+            emk_cols = detect_columns(emk_df)
+            if emk_cols['code'] and emk_cols['price']:
+                # Latest NAV per code
+                emk_df_sorted = emk_df.copy()
+                if emk_cols['date']:
+                    emk_df_sorted = emk_df_sorted.sort_values(emk_cols['date'])
+                latest_by_code: dict[str, dict] = {}
+                history_by_code_emk: dict[str, list[tuple[str, float]]] = {}
+                for _, row in emk_df_sorted.iterrows():
+                    try:
+                        code = str(row[emk_cols['code']]).strip().upper()
+                        price = float(row[emk_cols['price']])
+                        if not code or price <= 0:
+                            continue
+                        name_v = row.get(emk_cols['name']) if emk_cols['name'] else code
+                        cat_v = row.get(emk_cols['category']) if emk_cols['category'] else 'Emeklilik'
+                        date_v = row.get(emk_cols['date']) if emk_cols['date'] else None
+                        try:
+                            iso = pd.to_datetime(date_v).strftime('%Y-%m-%d') if date_v is not None else None
+                        except Exception:
+                            iso = None
+                        latest_by_code[code] = {
+                            'code': code,
+                            'name': str(name_v).strip() if name_v is not None else code,
+                            'category_raw': str(cat_v).strip() if cat_v is not None else 'Emeklilik',
+                            'nav': price,
+                            'date': iso,
+                        }
+                        if iso:
+                            history_by_code_emk.setdefault(code, []).append((iso, price))
+                    except Exception:
+                        continue
+                # Fund entries olustur — safeguard: sadece BES niteligindeki kodlari ekle.
+                # Bir kod hem YAT hem EMK response'unda cikarsa (kutuphane hatasi) atlanir.
+                existing_codes_pre = {f['code'] for f in funds}
+                for code, info in latest_by_code.items():
+                    if code in existing_codes_pre:
+                        continue
+                    # Sanity: fon adinda EMEKLİLİK/BES ipucu olmali (yanlisligi engelle)
+                    name_upper = info['name'].upper().replace('İ', 'I').replace('Ü', 'U').replace('Ö', 'O')
+                    if 'EMEKLILIK' not in name_upper and 'EMEKLİLİK' not in info['name'].upper():
+                        # Fon adi BES gostermiyorsa atla — yanlis kategorizasyon riski
+                        continue
+                    hist_arr = [{'date': d, 'price': p} for d, p in sorted(history_by_code_emk.get(code, []))]
+                    funds.append({
+                        "code": code,
+                        "name": info['name'],
+                        "category": 'Emeklilik',
+                        "besKategori": info['category_raw'],
+                        "tefasOpen": False,
+                        "befasOpen": True,
+                        "nav": info['nav'],
+                        "date": info['date'] or emk_end.strftime('%Y-%m-%d'),
+                        "marketCap": None,
+                        "investorCount": None,
+                        "shareCount": None,
+                        "returns": {},
+                        "history": hist_arr,
+                        "allocation": None,
+                    })
+                    bes_from_tefasfon += 1
+                print(f"[bes] tefasfon EMK'dan {bes_from_tefasfon} BES fonu eklendi (NAV + history)", flush=True)
+        else:
+            print(f"[bes] tefasfon EMK bos DataFrame dondu — Adim 1'e geciliyor", flush=True)
+    except Exception as e:
+        print(f"[bes] tefasfon EMK fail: {type(e).__name__}: {e} — Adim 1'e geciliyor", file=sys.stderr, flush=True)
+
     print(f"\n[bes] Adim 1: TAKASBANK BEFAS Excel indiriliyor...", flush=True)
     bes_fund_list: list[dict] = []
     try:

@@ -85,16 +85,19 @@ async function tryBrowserTefasFetch(): Promise<FundPerformance[] | null> {
     fonunvantip: '',
   }).toString();
 
-  // Iki CORS proxy dene sirayla (biri fail olursa digerine gec)
-  const proxies = [
-    'https://corsproxy.io/?url=',
-    'https://api.allorigins.win/raw?url=',
-  ];
   const target = 'https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns';
+  // 3 stratejili try zinciri:
+  //   1. Direkt TEFAS (CORS izin veriyorsa)
+  //   2. corsproxy.io
+  //   3. allorigins.win
+  const attempts: Array<{ label: string; url: string }> = [
+    { label: 'direct', url: target },
+    { label: 'corsproxy.io', url: `https://corsproxy.io/?url=${encodeURIComponent(target)}` },
+    { label: 'allorigins.win', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}` },
+  ];
 
-  for (const proxy of proxies) {
+  for (const { label, url } of attempts) {
     try {
-      const url = `${proxy}${encodeURIComponent(target)}`;
       const r = await fetch(url, {
         method: 'POST',
         headers: {
@@ -104,13 +107,13 @@ async function tryBrowserTefasFetch(): Promise<FundPerformance[] | null> {
         body,
       });
       if (!r.ok) {
-        console.warn(`[bes] CORS proxy ${proxy} HTTP ${r.status}`);
+        console.warn(`[bes] ${label} HTTP ${r.status}`);
         continue;
       }
       const j = await r.json() as { data?: unknown[]; Data?: unknown[] };
       const items = j.data ?? j.Data ?? [];
       if (!Array.isArray(items) || items.length === 0) {
-        console.warn(`[bes] CORS proxy ${proxy} bos response`);
+        console.warn(`[bes] ${label} bos response`);
         continue;
       }
       const funds: FundPerformance[] = [];
@@ -147,9 +150,12 @@ async function tryBrowserTefasFetch(): Promise<FundPerformance[] | null> {
           year:       toNum(o.GETIRI1YIL ?? o.getiri1yil),
         });
       }
-      return funds;
+      if (funds.length > 0) {
+        console.info(`[bes] ${label} calisti: ${funds.length} BES fonu`);
+        return funds;
+      }
     } catch (e) {
-      console.warn(`[bes] CORS proxy ${proxy} exception:`, e);
+      console.warn(`[bes] ${label} exception:`, e);
       continue;
     }
   }

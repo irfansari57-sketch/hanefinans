@@ -7,6 +7,7 @@ import {
 import { FundsPanel } from './FundsPanel';
 import { TxnHistoryModal } from './TxnHistoryModal';
 import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
+import { PortfolioEquityCurve } from './PortfolioEquityCurve';
 import { useAuth, isElite } from '@/store/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -315,6 +316,10 @@ export function PortfolioPage() {
           ) : null
         }
       />
+
+      {/* Portföy Gelişim Grafiği — kullanicinin gerçek işlem geçmişinden equity curve,
+          BIST 100 / USD / Altın / TÜFE / Mevduat karsilastirmali (13 Eyl 2026). */}
+      <PortfolioEquityCurve />
 
       {/* Bugunku K/Z hero bar — sayfa acilir acilmaz "aha" momenti (11 Eyl 2026).
           Hisse pozisyonu varsa + gecerli veriler geldiyse gorunur; degilse gizlenir. */}

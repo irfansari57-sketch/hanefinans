@@ -89,6 +89,7 @@ const navGroups: NavGroup[] = [
       { to: '/bes', label: 'BES Fonları', icon: Landmark },
       { to: '/byf', label: 'Borsa Yatırım Fonları', icon: Landmark },
       { to: '/karsilastir', label: 'Fon Karşılaştır', icon: Landmark },
+      { to: '/simulator', label: 'Portföy Simülatörü', icon: Grid3x3 },
       { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/doviz', label: 'Döviz Kurları', icon: Coins },

@@ -73,6 +73,7 @@ const FundsPage             = lazyWithRetry(() => import('@/features/funds/Funds
 const BesFundsPage          = lazyWithRetry(() => import('@/features/bes/BesFundsPage').then((m) => ({ default: m.BesFundsPage })));
 const BorsaYatirimFundsPage = lazyWithRetry(() => import('@/features/byf/BorsaYatirimFundsPage').then((m) => ({ default: m.BorsaYatirimFundsPage })));
 const FundComparePage       = lazyWithRetry(() => import('@/features/fundCompare/FundComparePage').then((m) => ({ default: m.FundComparePage })));
+const PortfolioSimulatorPage = lazyWithRetry(() => import('@/features/simulator/PortfolioSimulatorPage').then((m) => ({ default: m.PortfolioSimulatorPage })));
 const AboutPage             = lazyWithRetry(() => import('@/features/about/AboutPage').then((m) => ({ default: m.AboutPage })));
 const StocksPage            = lazyWithRetry(() => import('@/features/stocks/StocksPage').then((m) => ({ default: m.StocksPage })));
 const CommoditiesPage       = lazyWithRetry(() => import('@/features/commodities/CommoditiesPage').then((m) => ({ default: m.CommoditiesPage })));
@@ -141,6 +142,7 @@ export const router = createBrowserRouter([
       { path: 'bes', element: withSuspense(<BesFundsPage />) },
       { path: 'byf', element: withSuspense(<BorsaYatirimFundsPage />) },
       { path: 'karsilastir', element: withSuspense(<FundComparePage />) },
+      { path: 'simulator', element: withSuspense(<PortfolioSimulatorPage />) },
       { path: 'hakkinda', element: withSuspense(<AboutPage />) },
       { path: 'stocks', element: withSuspense(<StocksPage />) },
       { path: 'emtia', element: withSuspense(<CommoditiesPage />) },

@@ -74,18 +74,85 @@ export function BesFundsPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    loadFundsAsPerformanceDetailed()
-      .then((r) => {
+
+    /**
+     * BES fonu yukleme stratejisi (2-adim):
+     *   1) Ana tefas.json feed'inden BES fonlarini filtrele
+     *   2) Feed'de BES fonu yoksa (Python cron henuz calismamis olabilir),
+     *      /api/befas/funds CF Function'undan on-demand cek (TEFAS live).
+     * Bu sayede BES sayfasi haftalik Python cron'una bagimli kalmaz.
+     */
+    (async () => {
+      try {
+        const feedRes = await loadFundsAsPerformanceDetailed();
         if (!alive) return;
-        if (r.ok && r.funds && r.feed) {
-          setFunds(r.funds.filter(isBesFund));
-          setFeedUpdatedAt(r.feed.updatedAt);
-        } else {
-          setFeedFailed(true);
+        let besFundsFromFeed: FundPerformance[] = [];
+        if (feedRes.ok && feedRes.funds && feedRes.feed) {
+          besFundsFromFeed = feedRes.funds.filter(isBesFund);
+          setFeedUpdatedAt(feedRes.feed.updatedAt);
         }
-      })
-      .catch(() => alive && setFeedFailed(true))
-      .finally(() => alive && setLoading(false));
+
+        if (besFundsFromFeed.length > 0) {
+          setFunds(besFundsFromFeed);
+          return;
+        }
+
+        // Fallback: CF Function on-demand fetch
+        try {
+          const r = await fetch('/api/befas/funds');
+          if (!r.ok) {
+            setFeedFailed(true);
+            return;
+          }
+          const data = await r.json() as {
+            ok: boolean;
+            updatedAt: string;
+            count: number;
+            funds: Array<{
+              code: string; name: string;
+              category: 'Emeklilik'; besKategori: string;
+              tefasOpen: false; befasOpen: true;
+              nav: number | null;
+              returns: {
+                '1d'?: number | null; '1w'?: number | null;
+                '1m'?: number | null; '3m'?: number | null;
+                '6m'?: number | null; ytd?: number | null; '1y'?: number | null;
+              };
+            }>;
+          };
+          if (!alive) return;
+          if (!data.ok || !Array.isArray(data.funds) || data.funds.length === 0) {
+            setFeedFailed(true);
+            return;
+          }
+          // BES fund → FundPerformance shape
+          const mapped: FundPerformance[] = data.funds.map((f) => ({
+            code: f.code,
+            name: f.name,
+            category: 'Emeklilik' as const,
+            tefas: false,
+            tefasOpen: false,
+            befasOpen: true,
+            nav: f.nav ?? undefined,
+            navDate: undefined,
+            day: f.returns['1d'] ?? NaN,
+            week: f.returns['1w'] ?? NaN,
+            month: f.returns['1m'] ?? NaN,
+            threeMonth: f.returns['3m'] ?? NaN,
+            sixMonth: f.returns['6m'] ?? NaN,
+            ytd: f.returns.ytd ?? NaN,
+            year: f.returns['1y'] ?? NaN,
+          }));
+          setFunds(mapped);
+          setFeedUpdatedAt(data.updatedAt);
+        } catch {
+          if (alive) setFeedFailed(true);
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
     return () => { alive = false; };
   }, []);
 
@@ -201,7 +268,7 @@ export function BesFundsPage() {
           title={funds.length === 0 ? 'BES fonları henüz veri feed\'inde yok' : 'Filtreye uyan fon bulunamadı'}
           description={
             funds.length === 0
-              ? 'TEFAS scraper şu an sadece Yatırım Fonlarını kapsıyor. BES (Bireysel Emeklilik) fonları için ayrı bir feed eklenmesi gerekiyor — sonraki güncellemede aktif olacak. BEFAS.org.tr\'den güncel BES verilerine erişebilirsiniz.'
+              ? 'BES fon listesi şu anda çekilemedi. Genellikle 1-2 dakika içinde CF cache tazelenir — sayfayı yenilemeyi deneyin. Sorun devam ederse egm.org.tr/befas/fon-listesi üzerinden erişebilirsiniz.'
               : 'Farklı bir kategori veya arama terimi deneyin.'
           }
         />

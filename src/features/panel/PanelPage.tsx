@@ -155,9 +155,11 @@ export function PanelPage() {
   const [cryptoQuotes, setCryptoQuotes] = useState<MacroIndicator[]>([]);
 
   // Kripto fetch — CRYPTOS listesindeki 13 sembolu Yahoo'dan al, MacroIndicator'a map et.
+  // Kripto sadece "Gunun Enleri" accordion (default kapali) icinde gorunur — first
+  // paint icin kritik degil. 1.5s defer ile kritik path'e yer aciyoruz.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const timer = setTimeout(async () => {
       try {
         const yahooSyms = CRYPTOS.map((c) => c.yahoo);
         const stocks = await fetchQuotesYahoo(yahooSyms);
@@ -180,8 +182,8 @@ export function PanelPage() {
       } catch {
         /* silent — Enler tab bos gozukur */
       }
-    })();
-    return () => { cancelled = true; };
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
   // Pin'lenebilir bölümler — kullanıcı isterse açık/kapalı durumunu kaydeder.
@@ -192,31 +194,45 @@ export function PanelPage() {
   const refresh = useCallback(async (force = false) => {
     if (force) clearServiceCaches();
     setRefreshing(true);
+
+    const priorityStockSyms = Array.from(new Set([...symbols, ...MOCK_STOCKS.slice(0, 30).map((s) => s.symbol)]));
+
+    // ===== WAVE 1 (KRITIK — first paint) =====
+    // Sadece macro + priority hisseler paralel — bunlar ust seridi acar.
+    // Diger 3 fetch (news/sentiment/funds) Wave 2'de non-blocking gider.
+    let s: Awaited<ReturnType<typeof loadStocks>> = { data: [], source: 'mock' };
     try {
-      // 1. Hızlı first paint: macro, news, sentiment, funds + watchlist hisseler
-      // (watchlist watchlist'teki sembollerden + diğer top movers'ı sonra ekle)
-      const priorityStockSyms = Array.from(new Set([...symbols, ...MOCK_STOCKS.slice(0, 30).map((s) => s.symbol)]));
-      const [s, m, n, se, fr] = await Promise.all([
+      const [stocksRes, macroRes] = await Promise.all([
         loadStocks(priorityStockSyms),
         loadMacroAll(),
-        loadNews({ max: 8 }),
-        loadSentiment(),
-        loadFundsAsPerformance(),
       ]);
-      setStocks(s.data);
-      setStocksSource(s.source);
-      setMacro(m.data);
-      setNews(n.data);
-      setSentiment(se.data);
-      setSentimentSource(se.source);
-      setTopFunds(fr ? fr.funds : []);
+      s = stocksRes;
+      setStocks(stocksRes.data);
+      setStocksSource(stocksRes.source);
+      setMacro(macroRes.data);
       setUpdatedAt(Date.now());
+    } catch { /* Wave 1 fail — SWR cache kaldi, uygulama calisir */ }
 
-      // 2. Background: kalan BIST sembollerini 50'lik batch'lerle çek.
-      // Kritik: Batch geldikce setStocks etmiyoruz — kullanici list sıralamasının
-      // "gidip gelmesini" göruyordu. Tum batch'ler bitince tek setStocks: liste
-      // stabil kalıyor, sadece final tam kapsamlı gainers/losers gösteriliyor.
+    // ===== WAVE 2 (SEKONDER — non-blocking) =====
+    // Below-fold ve accordion icerigi — refreshing state'ini kilitlemeden ilerlet.
+    Promise.all([
+      loadNews({ max: 8 }).catch(() => null),
+      loadSentiment().catch(() => null),
+      loadFundsAsPerformance().catch(() => null),
+    ]).then(([n, se, fr]) => {
+      if (n) setNews(n.data);
+      if (se) { setSentiment(se.data); setSentimentSource(se.source); }
+      if (fr) setTopFunds(fr.funds);
+    });
+
+    setRefreshing(false);
+
+    // ===== WAVE 3 (ARKA PLAN — 1.5s defer) =====
+    // Kalan ~220 BIST sembolu 50'lik batch'lerle. First paint bittikten sonra
+    // ki main thread + network free — kullanici fark etmez.
+    setTimeout(async () => {
       const remaining = allSymbols.filter((sym) => !priorityStockSyms.includes(sym));
+      if (remaining.length === 0) return;
       const BATCH_SIZE = 50;
       const accumulated: Stock[] = [...s.data];
       for (let i = 0; i < remaining.length; i += BATCH_SIZE) {
@@ -224,23 +240,22 @@ export function PanelPage() {
         const batchResult = await loadStocks(batch);
         accumulated.push(...batchResult.data);
       }
-      // Tek atomik update — sıralama flicker'ı biter
-      if (accumulated.length > s.data.length) {
-        setStocks(accumulated);
-      }
-    } finally {
-      setRefreshing(false);
-    }
+      if (accumulated.length > s.data.length) setStocks(accumulated);
+    }, 1500);
   }, [allSymbols, symbols]);
 
   useEffect(() => {
-    // İlk yüklemede daima cache'i atla → eski mock değer asla görünmesin
-    refresh(true);
+    // SWR: cache varsa (usePersistedState) instant render + arka planda taze veri.
+    // clearServiceCaches YOK — API cache de kullanilir, mock deger loadMacro/loadStocks
+    // icinde zaten filtreleniyor (kaynak dogru dondurulur).
+    refresh(false);
   }, [refresh]);
   // Polling: sekme arka planda iken durur, öne gelince tekrar başlar
   useVisibleInterval(() => refresh(true), AUTO_REFRESH_MS);
 
-  // Sparkline veri fetch — TTL icinde memo'dan, degilse Yahoo'dan
+  // Sparkline veri fetch — TTL icinde memo'dan, degilse Yahoo'dan.
+  // Mini sparkline'lar ust seritte gorunur ama first paint icin kritik degil —
+  // 12 Yahoo history endpoint'i kritik path'ten cikariliyor (2s defer).
   useEffect(() => {
     const now = Date.now();
     if (now - sparklineMemo.fetchedAt < SPARKLINE_TTL_MS && Object.keys(sparklineMemo.data).length > 0) {
@@ -248,7 +263,7 @@ export function PanelPage() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    const timer = setTimeout(async () => {
       const result: Record<string, number[]> = {};
       const keys = Object.keys(MACRO_TO_YAHOO);
       // 4'lu batchler halinde, 200ms aralikla — proxy rate-limit'i acmadan
@@ -270,8 +285,8 @@ export function PanelPage() {
       if (cancelled) return;
       sparklineMemo = { fetchedAt: Date.now(), data: result };
       setSparklineMap(result);
-    })();
-    return () => { cancelled = true; };
+    }, 2000);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
   const watchlistStocks = useMemo(

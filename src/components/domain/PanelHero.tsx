@@ -159,11 +159,13 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
     // /api/isyatirim/chart endpoint'inden son 2 close alalim — chart data
     // dogrulukla geliyor (kullanici testi), ticker value icin ayni kaynak.
     // Snapshot endpoint denemesi sırasında XBANK vs. mock kaliyordu.
+    // First paint icin kritik degil (XUTUM/XBANK pill'leri ust seritte gorunur
+    // ama tiklanmadikca chart cizmez) — 1s defer ile kritik path'i acalim.
     const targets: Array<[string, string]> = [
       ['XUTUM', 'XUTUM'],
       ['XBANK', 'XBANK'],
     ];
-    (async () => {
+    const timer = setTimeout(async () => {
       try {
         const results = await Promise.all(targets.map(async ([_, sym]) => {
           try {
@@ -179,8 +181,8 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
         targets.forEach(([key], i) => { const r = results[i]; if (r) map[key] = r; });
         if (Object.keys(map).length > 0) setExtraQuotes(map);
       } catch { /* extra quote fetch failed - macro mock degeri kalir, panel calisir */ }
-    })();
-    return () => { alive = false; };
+    }, 1000);
+    return () => { alive = false; clearTimeout(timer); };
   }, []);
 
   // Macro'yu extra quote'lar ile enrich et (XUTUM vs. icin canli deger)

@@ -280,9 +280,22 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
           Mobil: yatay kaydirmali tek satir chip strip (kompakt UX 11 Eyl 2026).
           Aktif chip'te accent border + subtle bg. */}
 
-      {/* MOBIL: yatay chip strip */}
+      {/* MOBIL: yatay chip strip
+          375px viewport'ta scroll performansi icin:
+          - overscroll-behavior-x: contain — pull-to-refresh tetiklemeyi engelle
+          - -webkit-overflow-scrolling: touch — iOS momentum scroll
+          - scroll-snap-type: proximity — chip'ler yumusakca hizalanir
+          - contain: layout paint — browser re-paint alanini kucultur, 60fps stabil */}
       <div className="mb-3 md:hidden -mx-1">
-        <div className="scrollbar-none flex gap-1.5 overflow-x-auto px-1 pb-1">
+        <div
+          className="scrollbar-none flex gap-1.5 overflow-x-auto px-1 pb-1"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorX: 'contain',
+            scrollSnapType: 'x proximity',
+            contain: 'layout paint',
+          }}
+        >
           {TICKER_GROUPS.flatMap((g) => g.keys).map((key) => {
             const m = enrichedMacro.find((mm) => mm.key === key);
             if (!m) return null;
@@ -299,6 +312,7 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
                     ? 'border-accent/50 bg-accent/15'
                     : 'border-border bg-bg-soft/40 hover:border-accent/30',
                 )}
+                style={{ scrollSnapAlign: 'start' }}
               >
                 <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 leading-none">
                   {m.key}
@@ -384,7 +398,7 @@ export function PanelHero({ macro, defaultSymbol = 'BIST 100' }: Props) {
       {/* Chart */}
       <div className="mb-4">
         {seriesLoading && series.length === 0 ? (
-          <div className="h-32 animate-pulse rounded bg-bg-soft/40" />
+          <div className="skeleton h-32 rounded" />
         ) : series.length >= 2 ? (
           <SharedMiniAreaChart
             data={series}

@@ -12,10 +12,27 @@ export default defineConfig(({ mode }) => {
   // loadEnv ile tüm değişkenleri al (VITE_ olmayanlar dahil — proxy config server-side)
   const env = loadEnv(mode, process.cwd(), '');
 
+  // Build-time version stamp — her build bu string'i uretir. index.html'deki
+  // %BUILD_VERSION% placeholder'i bu deger ile replace edilir. Client bu meta'yi
+  // localStorage'daki eski deger ile karsilastirip mismatch varsa SW'yi update eder.
+  // Sentry release tag'i olarak da kullaniliyor (VITE_APP_VERSION set edilmemisse).
+  const buildVersion = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
   return {
+    define: {
+      // Sentry release olarak auto-inject — env'de VITE_APP_VERSION set degilse.
+      // Deploy source-map + release track etmek icin production'da faydali.
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || buildVersion),
+    },
     plugins: [
       react(),
       basicSsl(),
+      {
+        name: 'html-build-version-inject',
+        transformIndexHtml(html) {
+          return html.replace(/%BUILD_VERSION%/g, buildVersion);
+        },
+      },
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'bg-finance.svg'],

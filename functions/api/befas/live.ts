@@ -161,7 +161,9 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
 
   if (!force) {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    // Sadece basarili cache hit'i servis et — 5xx cached response'lari atla
+    // (BYF Function'da yasadigimiz "cache poisoning" bug'inin ayni pattern'i).
+    if (cached && cached.ok) return cached;
   }
 
   // FVT'ye browser-like istek

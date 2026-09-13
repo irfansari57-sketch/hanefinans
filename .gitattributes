@@ -1,0 +1,29 @@
+# Bot-generated data snapshot'lari — GitHub Actions bot her gece push ediyor.
+# Local commit + bot commit ust uste geldiginde merge conflict marker'lari
+# (<<<<<<< / >>>>>>>) dosyaya yazilirsa jsDelivr CDN corrupted JSON servis eder
+# ve tum uygulama patlar. "merge=ours" strateji: local kopya kazanir, bot
+# push'u pull ederken conflict tetiklemez.
+#
+# Enable etmek icin bir kez calistirilmali:
+#   git config merge.ours.driver true
+data/tefas.json      merge=ours
+data/befas.json      merge=ours
+data/byf.json        merge=ours
+data/**/snapshot*.json merge=ours
+
+# Line ending normalization — Windows ↔ Linux karisik ekipte CRLF spam'ini onler
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary — text diff denemesin, karisim yapmasin
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.svg  text
+*.pdf  binary
+*.docx binary
+*.xlsx binary
+*.pptx binary

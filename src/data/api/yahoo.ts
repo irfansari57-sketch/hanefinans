@@ -1,4 +1,5 @@
 import type { Stock } from '../types';
+import { throttledFetch } from './_throttle';
 
 // Vite dev proxy üzerinden çağrılır. Production'da Hafta 2 backend agent'a değişecek.
 // /api/yahoo → query1.finance.yahoo.com
@@ -47,7 +48,7 @@ async function fetchOne(
     // stale fallback path'inden gelir).
     const noCacheParam = opts?.noCache ? '&nocache=1' : '';
     const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=10d${noCacheParam}`;
-    const res = await fetch(url);
+    const res = await throttledFetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as YahooChartResult;
     const result = json.chart.result?.[0];
@@ -248,7 +249,7 @@ export async function fetchHistoricalYahoo(
   const fetchPromise = (async (): Promise<HistoricalSeries | null> => {
   try {
     const url = `/api/yahoo/v8/finance/chart/${encodeURIComponent(ySym)}?range=${range}&interval=${interval}`;
-    const r = await fetch(url);
+    const r = await throttledFetch(url);
     if (!r.ok) return null;
     const j = (await r.json()) as YahooHistoricalRaw;
     const result = j.chart.result?.[0];

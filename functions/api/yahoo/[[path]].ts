@@ -263,7 +263,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const edgeKey = new Request(target, { method: 'GET' });
   if (!noCache) {
     const edgeHit = await cache.match(edgeKey);
-    if (edgeHit) {
+    // 5xx cache poisoning'e karsi guard — sadece basarili response'lari servis et.
+    // Yahoo 429/5xx her seferinde tekrar denenmeli, cached olmamalilar.
+    if (edgeHit && edgeHit.ok) {
       return new Response(edgeHit.body, {
         status: edgeHit.status,
         headers: {

@@ -170,6 +170,15 @@ export function RouteErrorBoundary() {
             </>
           )}
         </div>
+        {!is404 && (
+          <p className="mt-4 text-[11px] text-slate-500">
+            Sorun devam ederse:{' '}
+            <a href="/clear-cache.html" className="underline hover:text-accent">
+              nuclear temizleyici sayfasını
+            </a>{' '}
+            aç.
+          </p>
+        )}
       </div>
     </div>
   );

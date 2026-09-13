@@ -17,6 +17,40 @@ initTheme();
 // Sentry'yi olabildiğince erken init et
 initSentry();
 
+// Build version guard — stale chunk hatalarini onceden onle.
+// index.html'deki `<meta name="build-version">` her build farkli. Onceki ziyaret
+// farkli bir build-version kaydettiyse SW cache'i eski chunk'lari servis etmeye
+// devam edebilir → mismatch tespit edince SW zorla update + cache purge + reload.
+(function guardBuildVersion() {
+  try {
+    const meta = document.querySelector('meta[name="build-version"]');
+    const current = meta?.getAttribute('content') ?? '';
+    if (!current || current.includes('%')) return; // dev/preview: placeholder replace olmamis
+    const prev = localStorage.getItem('iq.buildVersion');
+    if (prev && prev !== current) {
+      // Mismatch: yeni build deploy edilmis, eski SW hala eski chunk'lari serveliyor.
+      // SW registrations'i unregister + cache purge → reload sonrasi fresh HTML gelir.
+      localStorage.setItem('iq.buildVersion', current); // guncel kaydet ki tekrar loop'a girmesin
+      (async () => {
+        try {
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
+          }
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+        } catch { /* ignore */ }
+        // Cache-bypass ile reload — CDN'den fresh index.html cek
+        window.location.replace(window.location.pathname + '?_v=' + current);
+      })();
+      return;
+    }
+    localStorage.setItem('iq.buildVersion', current);
+  } catch { /* ignore */ }
+})();
+
 // PWA service worker register — installable app olabilmek için
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

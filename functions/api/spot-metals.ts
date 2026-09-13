@@ -99,9 +99,11 @@ export const onRequest: PagesFunction<Env> = async ({ env }) => {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        // 60s edge cache — cron 30dk'da bir yazar, edge cache 60s ile kotayi
-        // yormaz ama panel auto-refresh de guncel gorur.
-        'Cache-Control': 'public, max-age=60, s-maxage=60',
+        // 60s max-age + stale-while-revalidate=1800: TTL bitince eski deger anlik
+        // servis edilir, arka planda yeni fetch baslar. Panel Wave 1 asla
+        // metal fetch'i icin beklemez — her zaman instant cached response gelir.
+        // Cron 30dk'da yazdigi icin 1800s stale-window kritik degil (veri hala guncel).
+        'Cache-Control': 'public, max-age=60, s-maxage=60, stale-while-revalidate=1800',
         'X-Source': 'd1-metals-spot',
       },
     });

@@ -84,11 +84,14 @@ const MACRO_TO_YAHOO: Record<string, string> = {
  * gercek MacroCard'lar dolar. Asla mock degeri (15.133, 6.890 vb.) gosterilmez.
  */
 function MarketSkeletonCard() {
+  // .skeleton class = shimmer gradient (sol→sag hareketli), animate-pulse'dan
+  // daha yumusak ve profesyonel algi verir. Card cercevesi durgun,
+  // sadece icerik bar'lari shimmer olur.
   return (
-    <div className="glass-card p-1.5 sm:p-2 animate-pulse">
-      <div className="h-2 w-10 rounded bg-slate-700/60 mb-1.5 sm:h-2.5 sm:w-14" />
-      <div className="h-4 w-16 rounded bg-slate-700/50 mb-1 sm:h-6 sm:w-24" />
-      <div className="h-2.5 w-8 rounded bg-slate-700/40 sm:h-3.5 sm:w-12" />
+    <div className="glass-card p-1.5 sm:p-2">
+      <div className="skeleton h-2 w-10 mb-1.5 sm:h-2.5 sm:w-14" />
+      <div className="skeleton h-4 w-16 mb-1 sm:h-6 sm:w-24" />
+      <div className="skeleton h-2.5 w-8 sm:h-3.5 sm:w-12" />
     </div>
   );
 }

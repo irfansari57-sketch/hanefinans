@@ -184,7 +184,8 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
 
   if (!force && !debug) {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    // 5xx cache poisoning'e karsi guard (BYF Function ile ayni fix).
+    if (cached && cached.ok) return cached;
   }
 
   // Strateji: TEFAS'i dene (nadiren calisir CF Worker IP'lerinden), fail olursa seed.

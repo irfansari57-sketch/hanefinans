@@ -91,8 +91,16 @@ export function BorsaYatirimFundsPage() {
     (async () => {
       try {
         // Adim 1: /api/byf/live
+        // Cloudflare edge cache bir noktada 502'yi cache'lediginden, once normal
+        // hit deniyoruz; olursa cache-bypass icin force=1 ile tekrar deniyoruz.
+        async function fetchByf(): Promise<Response> {
+          const first = await fetch(`/api/byf/live?t=${Date.now()}`);
+          if (first.ok) return first;
+          // 502 ise cache-bypass ile tekrar dene (yeni CF Function calisiyor)
+          return fetch(`/api/byf/live?force=1&t=${Date.now()}`);
+        }
         try {
-          const r = await fetch(`/api/byf/live?t=${Date.now()}`);
+          const r = await fetchByf();
           if (r.ok) {
             const j = await r.json() as {
               ok: boolean;

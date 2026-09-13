@@ -164,11 +164,16 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
   const debug = url.searchParams.get('debug') === '1';
 
   const cache = (caches as unknown as { default: Cache }).default;
-  const cacheKey = new Request(request.url, request);
+  // Cache key versioned — v2 bump ensures we never serve a stale 502 from
+  // the old cache key (Cloudflare Cache API cached a bad response earlier).
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set('cv', '2');
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
   if (!force && !debug) {
     const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    // Only serve cached hit if it's an OK response; ignore any cached errors.
+    if (cached && cached.ok) return cached;
   }
 
   try {
@@ -192,9 +197,12 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
     // Once RSC parse dene (Fintables Next.js RSC ile embed ediyor)
     let funds = parseFintablesRSC(html);
 
-    // Fallback: innerText parse (RSC bulunmazsa)
+    // Fallback: innerText parse (RSC bulunmazsa) — `textFallback` outer scope
+    // so the failure-branch below (`htmlPreview: textFallback.slice(...)`) can
+    // reference it safely.
+    let textFallback = '';
     if (funds.length === 0) {
-      const text = html
+      textFallback = html
         .replace(/<script[\s\S]*?<\/script>/gi, ' ')
         .replace(/<style[\s\S]*?<\/style>/gi, ' ')
         .replace(/<[^>]+>/g, '\n')
@@ -204,7 +212,7 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
         .replace(/&gt;/g, '>')
         .replace(/&#39;/g, "'")
         .replace(/&quot;/g, '"');
-      funds = parseFintablesText(text);
+      funds = parseFintablesText(textFallback);
     }
 
     if (debug) {
@@ -221,7 +229,7 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
       return new Response(JSON.stringify({
         ok: false,
         error: 'BYF parse basarisiz — HTML formati degismis olabilir',
-        htmlPreview: text.slice(0, 500),
+        htmlPreview: textFallback.slice(0, 500),
       }), { status: 502, headers: { 'Content-Type': 'application/json' } });
     }
 

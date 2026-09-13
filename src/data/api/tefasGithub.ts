@@ -491,6 +491,7 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       tefasOpen: finalOpen,
       // BES/Emeklilik fonlari BEFAS uzerinden alinir; scraper Takasbank listesinden gelirse true yazar.
       befasOpen: f.befasOpen,
+      founder: f.founder,
       nav: typeof f.nav === 'number' && f.nav > 0 ? f.nav : undefined,
       navDate: f.date || undefined,
       day: day == null ? NaN : day,

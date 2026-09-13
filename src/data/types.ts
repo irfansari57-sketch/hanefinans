@@ -133,6 +133,12 @@ export interface FundPerformance {
    * BES/Emeklilik fonlari icin geçerli — TEFAS'in emeklilik fonlari icin karsiligi.
    */
   befasOpen?: boolean;
+  /**
+   * Kurucu sirket (BES fonlari icin ozellikle onemli — kullanici BEFAS'ta
+   * "Kuveyt Türk Katılım Emeklilik" gibi kurucu adiyla filtrelemek istiyor).
+   * TEFAS/GitHub feed'den veya CF Function seed'inden gelir.
+   */
+  founder?: string;
   /** Anlik fiyat (NAV / pay degeri) - feed'den gelir, opsiyonel */
   nav?: number;
   /** NAV tarihi (YYYY-MM-DD) */

@@ -67,6 +67,7 @@ export function BesFundsPage() {
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<BesCategoryChip>('Tümü');
+  const [founder, setFounder] = useState<string>('Tümü'); // Kurucu filter
   const [tab, setTab] = useState<Tab>('getiri');
   const [sortKey, setSortKey] = useState<SortKey>('year');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -128,6 +129,7 @@ export function BesFundsPage() {
             funds: Array<{
               code: string; name: string;
               category: 'Emeklilik'; besKategori: string;
+              founder?: string;
               tefasOpen: false; befasOpen: true;
               nav: number | null;
               returns: {
@@ -151,6 +153,7 @@ export function BesFundsPage() {
             tefas: false,
             tefasOpen: false,
             befasOpen: true,
+            founder: f.founder,
             nav: f.nav ?? undefined,
             navDate: undefined,
             day: f.returns['1d'] ?? NaN,
@@ -178,17 +181,25 @@ export function BesFundsPage() {
     return () => { alive = false; };
   }, [retryTick]);
 
+  // Kurucu (founder) listesi — dropdown icin unique + alfabetik sirali
+  const founders = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of funds) if (f.founder) set.add(f.founder);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [funds]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
     return funds.filter((f) => {
       if (!matchBesCategory(f, category)) return false;
+      if (founder !== 'Tümü' && f.founder !== founder) return false;
       if (q) {
-        const hay = `${f.code} ${f.name ?? ''}`.toLocaleLowerCase('tr-TR');
+        const hay = `${f.code} ${f.name ?? ''} ${f.founder ?? ''}`.toLocaleLowerCase('tr-TR');
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [funds, search, category]);
+  }, [funds, search, category, founder]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -224,7 +235,7 @@ export function BesFundsPage() {
         actions={feedUpdatedAt ? <LiveBadge label={formatRelative(feedUpdatedAt)} /> : undefined}
       />
 
-      {/* Filtre satırı */}
+      {/* Filtre satırı: arama + kurucu dropdown */}
       <div className="mb-3 flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
@@ -232,10 +243,43 @@ export function BesFundsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Fon kodu veya adı ile ara..."
+            placeholder="Fon kodu, adı veya kurucu ile ara..."
             className="w-full h-8 pl-8 pr-3 rounded-md bg-bg-soft border border-border text-xs text-slate-100 placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
           />
         </div>
+        {founders.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Kurucu:
+            </label>
+            <select
+              value={founder}
+              onChange={(e) => setFounder(e.target.value)}
+              className="h-8 px-2 rounded-md bg-bg-soft border border-border text-xs text-slate-100 focus:border-accent/50 focus:outline-none max-w-[260px]"
+              title="Kurucu emeklilik sirketine gore filtrele"
+            >
+              <option value="Tümü">Tümü ({funds.length})</option>
+              {founders.map((fn) => {
+                const count = funds.filter((f) => f.founder === fn).length;
+                return (
+                  <option key={fn} value={fn}>
+                    {fn} ({count})
+                  </option>
+                );
+              })}
+            </select>
+            {founder !== 'Tümü' && (
+              <button
+                type="button"
+                onClick={() => setFounder('Tümü')}
+                className="text-[11px] text-slate-500 hover:text-danger"
+                title="Kurucu filtresini temizle"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Kategori chip'ler */}
@@ -327,7 +371,9 @@ export function BesFundsPage() {
       ) : (
         <>
           <div className="mb-2 text-[11px] text-slate-500">
-            {sorted.length} BES fonu {category !== 'Tümü' ? `· Kategori: ${category}` : ''}
+            {sorted.length} BES fonu
+            {category !== 'Tümü' ? ` · Kategori: ${category}` : ''}
+            {founder !== 'Tümü' ? ` · Kurucu: ${founder}` : ''}
           </div>
           <DoubleScrollTable>
             <table className="min-w-[1000px] w-full text-xs">
@@ -365,7 +411,21 @@ export function BesFundsPage() {
                         {f.code}
                       </Link>
                       {f.name && (
-                        <div className="text-[10px] text-slate-500 truncate max-w-[220px]" title={f.name}>{f.name}</div>
+                        <div className="text-[10px] text-slate-500 truncate max-w-[280px]" title={f.name}>{f.name}</div>
+                      )}
+                      {f.founder && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setFounder(f.founder === founder ? 'Tümü' : (f.founder ?? 'Tümü'));
+                          }}
+                          className="mt-0.5 text-[9px] text-accent/70 hover:text-accent hover:underline truncate max-w-[280px] text-left block"
+                          title={`${f.founder} — bu kurucunun tum BES fonlarini goster`}
+                        >
+                          🏛 {f.founder}
+                        </button>
                       )}
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-300">{f.category}</td>

@@ -39,6 +39,7 @@ interface BesFund {
   name: string;
   category: 'Emeklilik';
   besKategori: string; // TEFAS alt kategori (Değişken, Hisse Senedi, Katılım Standart, Altın vs.)
+  founder?: string;    // Kurucu emeklilik sirketi (BEFAS filter icin)
   tefasOpen: false;
   befasOpen: true;
   nav: number | null;
@@ -158,13 +159,14 @@ async function fetchTefasBes(): Promise<BesFund[]> {
 
 import { BES_SEED } from './_seed';
 
-/** Seed listeyi TEFAS-style BesFund'a cevirir (NAV/getiri null) */
+/** Seed listeyi TEFAS-style BesFund'a cevirir (NAV/getiri null; founder mevcut) */
 function seedToBesFunds(): BesFund[] {
   return BES_SEED.map((s) => ({
     code: s.code,
     name: s.name,
     category: 'Emeklilik' as const,
     besKategori: s.besKategori,
+    founder: s.founder,
     tefasOpen: false as const,
     befasOpen: true as const,
     nav: null,

@@ -105,8 +105,39 @@ async function fetchOne(
 
 export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | null> {
   if (symbols.length === 0) return null;
-  // Bu fonksiyon loadStocks'ta snapshot filter'a takılan (stale/outlier) sembolleri
-  // fallback olarak çeker. Cache stale olabileceği için `nocache=1` ile bypass yapıyoruz.
+  // BATCH endpoint kullan — Panel'de 13 kripto tek tek yerine tek istekle geliyor.
+  // /api/yahoo/snapshot?symbols=BTC-USD,ETH-USD,... virgul ayrilmis liste kabul ediyor.
+  // Eskiden 13 x ~600ms = 7.8s (throttle queue'da sirali). Simdi 1 fetch x ~500ms.
+  const yahooSyms = symbols.map(toBISTSymbol);
+  try {
+    const r = await throttledFetch(
+      `/api/yahoo/snapshot?symbols=${encodeURIComponent(yahooSyms.join(','))}&nocache=1`,
+    );
+    if (r.ok) {
+      const j = (await r.json()) as Record<
+        string,
+        { price?: number; changePct?: number; source?: string; asOf?: string; name?: string }
+      >;
+      const stocks: Stock[] = [];
+      symbols.forEach((sym, i) => {
+        const ySym = yahooSyms[i];
+        const q = j[ySym];
+        if (q && Number.isFinite(q.price) && (q.price as number) > 0 && Number.isFinite(q.changePct)) {
+          stocks.push({
+            symbol: sym.toUpperCase(),
+            name: q.name ?? sym,
+            sector: undefined,
+            price: q.price as number,
+            changePct: q.changePct as number,
+            updatedAt: q.asOf ?? new Date().toISOString(),
+          });
+        }
+      });
+      if (stocks.length) return stocks;
+    }
+  } catch { /* fallback altta */ }
+
+  // Snapshot fail olursa tek tek dene (eski davranis, geriye donuk uyum)
   const results = await Promise.all(symbols.map((s) => fetchOne(toBISTSymbol(s), { noCache: true })));
   const stocks: Stock[] = [];
   symbols.forEach((s, i) => {

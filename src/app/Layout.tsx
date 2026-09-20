@@ -230,13 +230,16 @@ export function Layout() {
   // endpoint'ini paralel olarak fetch et. Cloudflare edge cache'e girer, Panel
   // yuklendigi zaman edge hit ~50ms olur (miss ~800ms yerine).
   // 13 Eyl 2026 optimizasyonu: ilk yukleme hissedilir sekilde hizlansin.
+  // 20 Eyl 2026 duzeltmesi: /api/yahoo/snapshot preload'i cikarildi — Panel'in
+  // kendi fetchSnapshot cagrisi ile YARISIYORDU (in-flight dedup yoktu),
+  // 2× 4.5s duplicate fetch tetikliyordu. Snapshot artik in-flight dedup'la
+  // korunuyor, tek fetch yeter. BIST 100 chart preload duruyor cunku bu
+  // PanelHero'daki default chart, ayri endpoint.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // 100ms bekle - critical rendering path'i engellemesin, arka planda calis.
     const timer = setTimeout(() => {
       const priorityCharts = [
-        '/api/yahoo/v8/finance/chart/%5EXU100?range=ytd&interval=1d', // BIST 100 default
-        '/api/yahoo/snapshot',                                          // Panel ticker snapshot
+        '/api/yahoo/v8/finance/chart/%5EXU100?range=ytd&interval=1d', // BIST 100 default chart
       ];
       priorityCharts.forEach((url) => {
         fetch(url, { priority: 'low' } as RequestInit).catch(() => { /* prefetch fail sessiz */ });

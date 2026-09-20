@@ -122,13 +122,20 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
   // idx değişimini ref ile takip et — closure dependency kirletmeden
   useEffect(() => { idxRef.current = idx; }, [idx]);
 
-  // Player'ı tek seferde mount et
+  // Player'ı tek seferde mount et.
+  // ONEMLI: YouTube iframe API 1.7s'lik network cost + iframe render blocking. Panel
+  // first paint icin kritik degil — 3sn defer + IntersectionObserver ile gorunur
+  // olduktan sonra yukleyip render engelini kaldiriyoruz.
   useEffect(() => {
     if (!hasVideos || !containerRef.current) return;
     let cancelled = false;
+    let startTimer: number | null = null;
+    let observer: IntersectionObserver | null = null;
 
-    loadYouTubeApi().then(() => {
+    const startPlayer = () => {
       if (cancelled || !containerRef.current) return;
+      loadYouTubeApi().then(() => {
+        if (cancelled || !containerRef.current) return;
       try {
         playerRef.current = new window.YT.Player(containerRef.current, {
           videoId: FEATURED_VIDEOS[0].id,
@@ -167,10 +174,37 @@ export function HaneModAdBanner({ variant = 'compact', className }: Props) {
       } catch {
         /* ignore */
       }
-    });
+      });
+    };
+
+    // Strateji: IntersectionObserver ile widget viewport'a gorunur olduktan
+    // SONRA + 3sn defer + first paint bitince YT API yukle. Boylece Panel'in
+    // ilk 3-5 saniyesinde YouTube network cost'u sifir.
+    const scheduleStart = () => {
+      startTimer = window.setTimeout(startPlayer, 3000);
+    };
+
+    if (typeof IntersectionObserver !== 'undefined' && containerRef.current) {
+      observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            observer?.disconnect();
+            observer = null;
+            scheduleStart();
+            break;
+          }
+        }
+      }, { rootMargin: '200px' });
+      observer.observe(containerRef.current);
+    } else {
+      // IntersectionObserver yoksa direkt 3sn defer
+      scheduleStart();
+    }
 
     return () => {
       cancelled = true;
+      if (startTimer) clearTimeout(startTimer);
+      observer?.disconnect();
       try { playerRef.current?.destroy?.(); } catch { /* ignore */ }
       playerRef.current = null;
     };

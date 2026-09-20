@@ -135,22 +135,32 @@ interface SnapshotApi {
   }>;
 }
 let snapshotMemo: { fetchedAt: number; data: SnapshotApi } | null = null;
+let snapshotInFlight: Promise<SnapshotApi | null> | null = null;
 const SNAPSHOT_TTL_MS = 60_000;
 
 async function fetchSnapshot(): Promise<SnapshotApi | null> {
   if (snapshotMemo && Date.now() - snapshotMemo.fetchedAt < SNAPSHOT_TTL_MS) {
     return snapshotMemo.data;
   }
-  try {
-    const r = await fetch('/api/yahoo/snapshot');
-    if (!r.ok) return null;
-    const j = (await r.json()) as SnapshotApi;
-    if (!j.ok) return null;
-    snapshotMemo = { fetchedAt: Date.now(), data: j };
-    return j;
-  } catch {
-    return null;
-  }
+  // In-flight dedup: Panel + PortfolioPanelSummary + Layout preload es zamanli
+  // cagirdiginda 3 farkli 4.5s fetch atiyorduk. Simdi tek fetch, herkes ayni
+  // Promise'i paylasir → 1 network round-trip.
+  if (snapshotInFlight) return snapshotInFlight;
+  snapshotInFlight = (async () => {
+    try {
+      const r = await fetch('/api/yahoo/snapshot');
+      if (!r.ok) return null;
+      const j = (await r.json()) as SnapshotApi;
+      if (!j.ok) return null;
+      snapshotMemo = { fetchedAt: Date.now(), data: j };
+      return j;
+    } catch {
+      return null;
+    } finally {
+      snapshotInFlight = null;
+    }
+  })();
+  return snapshotInFlight;
 }
 
 export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; source: 'live' | 'mock' | 'mixed' }> {
@@ -253,42 +263,72 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
   return result;
 }
 
+/**
+ * In-flight dedup — ayni cache key icin es zamanli cagrilar tek fetch paylasir.
+ * Panel'de BreakingNewsTicker + PanelPage refresh + NewsWatcher + RightNewsTicker
+ * hepsi mount'ta paralel loadNews cagirdiginda 1 network round-trip yeter.
+ */
+const LOAD_NEWS_INFLIGHT = new Map<string, Promise<{ data: NewsItem[]; source: 'live' | 'mock' }>>();
+
 export async function loadNews(opts: { query?: string; symbols?: string[]; max?: number } = {}): Promise<{
   data: NewsItem[];
   source: 'live' | 'mock';
 }> {
-  const cacheKey = `news-${opts.query ?? 'default'}-${opts.max ?? 25}`;
-  const cached = readCache<{ data: NewsItem[]; source: 'live' | 'mock' }>(cacheKey, NEWS_TTL_MS);
-  if (cached) return cached;
+  // Unified fetch strategy — query yoksa daima max=30 cek, caller max=8/20/25 istese
+  // de ayni cache'ten slice. Boylece Panel'deki 4 farkli loadNews cagrisi
+  // (max 8/20/25/30) 4 fetch degil, 1 fetch atar.
+  const requestedMax = opts.max ?? 25;
+  const effectiveMax = opts.query ? requestedMax : 30; // query-specific fetches ayri kalir
+  const cacheKey = `news-${opts.query ?? 'default'}-${effectiveMax}`;
 
-  try {
-    const params = new URLSearchParams();
-    params.set('max', String(opts.max ?? 30));
-    if (opts.query) params.set('q', opts.query);
-    const r = await fetch(`/api/news?${params.toString()}`);
-    if (r.ok) {
-      const json = (await r.json()) as { ok: boolean; data: NewsItem[] };
-      if (json.ok && json.data.length > 0) {
+  const slice = (r: { data: NewsItem[]; source: 'live' | 'mock' }) =>
+    r.data.length > requestedMax ? { ...r, data: r.data.slice(0, requestedMax) } : r;
+
+  const cached = readCache<{ data: NewsItem[]; source: 'live' | 'mock' }>(cacheKey, NEWS_TTL_MS);
+  if (cached) return slice(cached);
+
+  // In-flight dedup — es zamanli 4 cagriden 1 network fetch cikacak
+  const existing = LOAD_NEWS_INFLIGHT.get(cacheKey);
+  if (existing) return existing.then(slice);
+
+  const fetchPromise = (async (): Promise<{ data: NewsItem[]; source: 'live' | 'mock' }> => {
+    try {
+      const params = new URLSearchParams();
+      params.set('max', String(effectiveMax));
+      if (opts.query) params.set('q', opts.query);
+      const r = await fetch(`/api/news?${params.toString()}`);
+      if (r.ok) {
+        const json = (await r.json()) as { ok: boolean; data: NewsItem[] };
+        if (json.ok && json.data.length > 0) {
+          useAgents.getState().setState('news', 'live');
+          const result = { data: json.data, source: 'live' as const };
+          writeCache(cacheKey, result);
+          return result;
+        }
+      }
+    } catch { /* devam */ }
+
+    if (API_KEYS.gnews) {
+      const knownSymbols = opts.symbols ?? MOCK_STOCKS.map((s) => s.symbol);
+      const live = await fetchNewsGNews({ query: opts.query, symbols: knownSymbols, max: effectiveMax });
+      if (live && live.length > 0) {
         useAgents.getState().setState('news', 'live');
-        const result = { data: json.data, source: 'live' as const };
+        const result = { data: live, source: 'live' as const };
         writeCache(cacheKey, result);
         return result;
       }
     }
-  } catch { /* devam */ }
+    useAgents.getState().setState('news', 'mock');
+    return { data: [], source: 'mock' };
+  })();
 
-  if (API_KEYS.gnews) {
-    const knownSymbols = opts.symbols ?? MOCK_STOCKS.map((s) => s.symbol);
-    const live = await fetchNewsGNews({ query: opts.query, symbols: knownSymbols, max: opts.max });
-    if (live && live.length > 0) {
-      useAgents.getState().setState('news', 'live');
-      const result = { data: live, source: 'live' as const };
-      writeCache(cacheKey, result);
-      return result;
-    }
+  LOAD_NEWS_INFLIGHT.set(cacheKey, fetchPromise);
+  try {
+    const r = await fetchPromise;
+    return slice(r);
+  } finally {
+    LOAD_NEWS_INFLIGHT.delete(cacheKey);
   }
-  useAgents.getState().setState('news', 'mock');
-  return { data: [], source: 'mock' };
 }
 
 export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 'live' | 'mock' | 'mixed' }> {
@@ -356,36 +396,44 @@ export async function loadMacroAll(): Promise<{ data: MacroIndicator[]; source: 
   // ek bir guvenlik katmani — snapshot endpoint'i, asOf + source field'larini
   // direkt sunar (Yahoo proxy override format'inda bunlar yok).
   type BistSnapshotQuote = { value: number; changePct: number; asOf?: string; feedSource?: string };
-  const fetchBistFromSnapshot = async (
-    sym: 'XU100.IS' | 'XU030.IS',
-  ): Promise<BistSnapshotQuote | null> => {
+
+  // BATCH: XU100 + XU030 tek istekte cek — Yahoo snapshot endpoint 'symbols='
+  // parametresi virgul-ayrilmis list kabul ediyor. Eskiden 2 ayri fetch x 3.5sn = 7sn.
+  // Simdi 1 fetch x ~500ms.
+  const fetchBistBatchFromSnapshot = async (): Promise<{ xu100: BistSnapshotQuote | null; xu030: BistSnapshotQuote | null }> => {
     try {
-      const r = await fetch(`/api/yahoo/snapshot?symbols=${sym}`, { cache: 'no-store' });
-      if (!r.ok) return null;
+      const r = await fetch(`/api/yahoo/snapshot?symbols=XU100.IS,XU030.IS`, { cache: 'no-store' });
+      if (!r.ok) return { xu100: null, xu030: null };
       const j = (await r.json()) as Record<
         string,
         { price?: number; changePct?: number; source?: string; asOf?: string }
       >;
-      const q = j[sym];
-      if (!q || !Number.isFinite(q.price) || !Number.isFinite(q.changePct)) return null;
-      if ((q.price as number) <= 0) return null;
-      return {
-        value: q.price as number,
-        changePct: q.changePct as number,
-        asOf: q.asOf,
-        feedSource: q.source,
+      const toQuote = (sym: string): BistSnapshotQuote | null => {
+        const q = j[sym];
+        if (!q || !Number.isFinite(q.price) || !Number.isFinite(q.changePct)) return null;
+        if ((q.price as number) <= 0) return null;
+        return {
+          value: q.price as number,
+          changePct: q.changePct as number,
+          asOf: q.asOf,
+          feedSource: q.source,
+        };
       };
-    } catch { return null; }
+      return { xu100: toQuote('XU100.IS'), xu030: toQuote('XU030.IS') };
+    } catch { return { xu100: null, xu030: null }; }
   };
+
+  // Batch snapshot'i once cek — Promise.all icinde alt promise'lere bolusturur.
+  const bistBatchPromise = fetchBistBatchFromSnapshot();
   const fetchBist100 = async (): Promise<BistSnapshotQuote | null> => {
-    const fromSnap = await fetchBistFromSnapshot('XU100.IS');
-    if (fromSnap) return fromSnap;
+    const { xu100 } = await bistBatchPromise;
+    if (xu100) return xu100;
     const fromYahoo = await fetchIndexYahoo(YAHOO_SYMBOLS.bist100);
     return fromYahoo ? { ...fromYahoo, feedSource: 'yahoo' } : null;
   };
   const fetchBist30 = async (): Promise<BistSnapshotQuote | null> => {
-    const fromSnap = await fetchBistFromSnapshot('XU030.IS');
-    if (fromSnap) return fromSnap;
+    const { xu030 } = await bistBatchPromise;
+    if (xu030) return xu030;
     const fromYahoo = await fetchIndexYahoo(YAHOO_SYMBOLS.bist30);
     return fromYahoo ? { ...fromYahoo, feedSource: 'yahoo' } : null;
   };

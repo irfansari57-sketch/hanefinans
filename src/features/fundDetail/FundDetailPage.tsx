@@ -34,6 +34,24 @@ export function FundDetailPage() {
   const [liveData, setLiveData] = useState<TefasFundDetail | null>(null);
   const [githubData, setGithubData] = useState<TefasFundData | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
+  // Portföy Ağı tab için detaylı FVT distribution verisi (hisse bazli breakdown).
+  // TEFAS allocation yetersiz kalirsa (sadece varlık sınıfı yüzdesi veriyor),
+  // FVT /api/funds/{code}/distribution tam portfoy icerigi veriyor.
+  interface DistributionItem {
+    kod: string; ad: string; sektor: string;
+    agirlik: number; eskiAgirlik: number; fark: number;
+    etf: boolean; yabanci: boolean;
+  }
+  interface DistributionPayload {
+    ok: boolean;
+    aciklamaTarihi: string | null;
+    oncekiAy: number | null; oncekiYil: number | null;
+    itemCount: number;
+    items: DistributionItem[];
+    sektorler: Array<{ ad: string; pct: number }>;
+  }
+  const [distribution, setDistribution] = useState<DistributionPayload | null>(null);
+  const [distributionLoading, setDistributionLoading] = useState(false);
   // Tab yapisi — A+B hibrit (kullanici talebi 12 Eyl 2026):
   // Ozet (kapsamli) + Portfoy Agi (network diagram bize ozgu) + Getiri + Bilgi
   type FundTab = 'ozet' | 'agi' | 'getiri' | 'bilgi';
@@ -137,6 +155,31 @@ export function FundDetailPage() {
         setLiveLoading(false);
       }
     })();
+  }, [fundCode]);
+
+  // Portföy Ağı tab için FVT distribution verisi (hisse-bazli breakdown).
+  // CF Function /api/funds/:code/distribution 1h edge cache, SPK aylik aciklama.
+  useEffect(() => {
+    if (!fundCode) return;
+    let cancelled = false;
+    setDistribution(null);
+    setDistributionLoading(true);
+    (async () => {
+      try {
+        const r = await fetch(`/api/funds/${encodeURIComponent(fundCode)}/distribution`);
+        if (!r.ok) return;
+        const j = (await r.json()) as DistributionPayload;
+        if (cancelled) return;
+        if (j.ok && j.items && j.items.length > 0) {
+          setDistribution(j);
+        }
+      } catch {
+        /* FVT yok veya fon fon_tipi degil - silent, Portföy Ağı donut'u korur */
+      } finally {
+        if (!cancelled) setDistributionLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [fundCode]);
 
   const tefasUrl = `https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(fundCode)}`;
@@ -684,6 +727,12 @@ export function FundDetailPage() {
             Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
             Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
           </p>
+
+          {/* FVT distribution — hisse-bazli detayli breakdown (SPK aylik aciklama) */}
+          <FundDistributionDetails
+            loading={distributionLoading}
+            data={distribution}
+          />
         </div>
       )}
 
@@ -1299,5 +1348,135 @@ function FundLineSvg({
       positive={isPositive}
       formatValue={(v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
     />
+  );
+}
+
+/**
+ * FundDistributionDetails — FVT distribution verisinden detayli hisse-bazli
+ * portfoy icerigi. SPK aylik aciklamadan derlendigi icin genel-amac fonlar icin
+ * guncel 1-30 gun gerililer olabilir, intraday revize olmaz.
+ *
+ * Gosterir: TOP-20 hisse (ad, sektor, mevcut agirlik %, onceki ay %, fark)
+ *           + sektorel dagilim ozeti.
+ */
+function FundDistributionDetails({ loading, data }: {
+  loading: boolean;
+  data: {
+    aciklamaTarihi: string | null;
+    oncekiAy: number | null; oncekiYil: number | null;
+    itemCount: number;
+    items: Array<{ kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean; }>;
+    sektorler: Array<{ ad: string; pct: number }>;
+  } | null;
+}) {
+  if (loading) {
+    return (
+      <div className="mt-5 border-t border-border pt-5">
+        <div className="h-32 skeleton rounded" />
+      </div>
+    );
+  }
+  if (!data || data.items.length === 0) return null;
+
+  const topItems = data.items.slice(0, 20);
+  const toplam = data.items.reduce((s, x) => s + x.agirlik, 0);
+  const AY_ADI = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const oncekiAyLabel = data.oncekiAy && data.oncekiYil
+    ? `${AY_ADI[data.oncekiAy] ?? ''} ${data.oncekiYil}`
+    : 'önceki ay';
+
+  return (
+    <div className="mt-5 border-t border-border pt-5">
+      <div className="mb-3 flex items-baseline justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-200">Portföy İçeriği (Hisse Bazlı)</h3>
+          <p className="text-[10px] text-slate-500">
+            SPK aylık açıklama · {data.itemCount} varlık · toplam %{toplam.toFixed(2)}
+            {data.aciklamaTarihi && ' · ' + new Date(data.aciklamaTarihi).toLocaleDateString('tr-TR')}
+          </p>
+        </div>
+      </div>
+
+      {/* Sektörel özet chip'ler */}
+      {data.sektorler.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {data.sektorler.slice(0, 10).map((s) => (
+            <span
+              key={s.ad}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-soft px-2 py-0.5 text-[10px] text-slate-300"
+              title={`${s.ad}: %${s.pct.toFixed(2)}`}
+            >
+              <span className="font-medium">{s.ad}</span>
+              <span className="font-mono tabular-nums text-slate-400">%{s.pct.toFixed(1)}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Detaylı hisse tablosu */}
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <table className="w-full min-w-[640px] text-xs">
+          <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-2 py-2 text-left">#</th>
+              <th className="px-2 py-2 text-left">Kod</th>
+              <th className="px-2 py-2 text-left">Şirket / Sektör</th>
+              <th className="px-2 py-2 text-right">Ağırlık</th>
+              <th className="px-2 py-2 text-right">Önceki Ay</th>
+              <th className="px-2 py-2 text-right">Fark</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topItems.map((it, i) => {
+              const positive = it.fark > 0;
+              const negative = it.fark < 0;
+              return (
+                <tr key={it.kod + i} className="border-b border-border/60 hover:bg-bg-card/40">
+                  <td className="px-2 py-2 text-[10px] text-slate-500 tabular-nums">{i + 1}</td>
+                  <td className="px-2 py-2">
+                    <Link
+                      to={`/stock/${it.kod}`}
+                      className="font-mono text-xs font-bold text-slate-100 hover:text-accent"
+                    >
+                      {it.kod}
+                    </Link>
+                    {it.etf && <span className="ml-1 text-[9px] text-accent">ETF</span>}
+                    {it.yabanci === true && <span className="ml-1 text-[9px] text-slate-500">YAB</span>}
+                  </td>
+                  <td className="px-2 py-2">
+                    <div className="truncate max-w-[280px] text-[11px] text-slate-200" title={it.ad}>{it.ad}</div>
+                    {it.sektor && <div className="text-[9px] text-slate-500">{it.sektor}</div>}
+                  </td>
+                  <td className="px-2 py-2 text-right font-mono text-xs font-semibold tabular-nums text-slate-100">
+                    %{it.agirlik.toFixed(2)}
+                  </td>
+                  <td className="px-2 py-2 text-right font-mono text-[11px] tabular-nums text-slate-500">
+                    %{it.eskiAgirlik.toFixed(2)}
+                  </td>
+                  <td className={cn(
+                    'px-2 py-2 text-right font-mono text-[11px] font-semibold tabular-nums whitespace-nowrap',
+                    positive ? 'text-success' : negative ? 'text-danger' : 'text-slate-500',
+                  )}>
+                    {positive ? '+' : ''}{it.fark.toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {data.items.length > 20 && (
+        <p className="mt-2 text-[10px] text-slate-500 text-center">
+          İlk 20 varlık gösteriliyor · Toplam {data.items.length} varlık
+        </p>
+      )}
+
+      <p className="mt-3 text-[9px] text-slate-500 leading-relaxed">
+        Önceki Ay = {oncekiAyLabel} dönemi portföy ağırlıkları. Fark pozitif ise fon o hissedeki pozisyonunu artırmış, negatif ise azaltmıştır.
+        Veri kaynağı: fvt.com.tr (SPK aylik portföy açıklamaları).
+      </p>
+    </div>
   );
 }

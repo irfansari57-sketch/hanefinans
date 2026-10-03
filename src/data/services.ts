@@ -594,6 +594,31 @@ export async function loadSentiment(): Promise<{ data: SentimentMention[]; sourc
   return { data: MOCK_SENTIMENT, source: 'mock' };
 }
 
+/**
+ * PanelSnapshot aggregator'dan gelen RAW endpoint cevaplarini modul-level
+ * memo'lara enjekte eder. Boylece sonraki loadStocks/loadNews cagrilari
+ * network atmaz, in-memory veriyi doner → Panel first paint instant.
+ */
+export function primePanelCaches(payload: {
+  snapshot?: unknown;
+  news?: unknown;
+}): void {
+  try {
+    const snap = payload.snapshot as SnapshotApi | undefined;
+    if (snap && snap.ok && snap.quotes) {
+      snapshotMemo = { fetchedAt: Date.now(), data: snap };
+    }
+  } catch { /* ignore malformed snapshot */ }
+  try {
+    const n = payload.news as { ok?: boolean; data?: NewsItem[] } | undefined;
+    if (n && n.ok && Array.isArray(n.data) && n.data.length > 0) {
+      // Her boyuttaki news caller'ini doyur — loadNews cacheKey'leri icin yaz
+      writeCache('news-default-30', { data: n.data, source: 'live' as const });
+      useAgents.getState().setState('news', 'live');
+    }
+  } catch { /* ignore malformed news */ }
+}
+
 export function clearServiceCaches() {
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {

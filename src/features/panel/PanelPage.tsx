@@ -33,7 +33,8 @@ import { BIST_UNIQUE } from '@/data/bistAll';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { fetchHistoricalYahoo, computePeriodReturns, fetchQuotesYahoo } from '@/data/api/yahoo';
 import { CRYPTOS } from '@/data/cryptoSymbols';
-import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches } from '@/data/services';
+import { loadStocks, loadNews, loadMacroAll, loadSentiment, clearServiceCaches, primePanelCaches } from '@/data/services';
+import { loadPanelSnapshot } from '@/data/api/panelSnapshot';
 import type { MacroIndicator, NewsItem, Stock, SentimentMention, FundPerformance } from '@/data/types';
 import { usePersistedState } from '@/lib/usePersistedState';
 import { useVisibleInterval } from '@/hooks/useVisibleInterval';
@@ -200,9 +201,20 @@ export function PanelPage() {
 
     const priorityStockSyms = Array.from(new Set([...symbols, ...MOCK_STOCKS.slice(0, 30).map((s) => s.symbol)]));
 
+    // ===== WAVE 0 (AGGREGATOR — in-flight prime) =====
+    // /api/panel/snapshot CF Function tek fetch'te snapshot+news'i doner,
+    // edge cache 30sn → genelde ~150ms. Veriyi downstream memo'lara enjekte
+    // ederek sonraki loadStocks/loadNews cagrilari ag atmasin.
+    try {
+      const panel = await loadPanelSnapshot({ force });
+      if (panel) {
+        primePanelCaches({ snapshot: panel.snapshot, news: panel.news });
+      }
+    } catch { /* aggregator fail → Wave 1'e dus */ }
+
     // ===== WAVE 1 (KRITIK — first paint) =====
-    // Sadece macro + priority hisseler paralel — bunlar ust seridi acar.
-    // Diger 3 fetch (news/sentiment/funds) Wave 2'de non-blocking gider.
+    // Aggregator veri cachelediyse bu paralel fetch'ler INSTANT doner.
+    // Fail'daysa network'e cikar.
     let s: Awaited<ReturnType<typeof loadStocks>> = { data: [], source: 'mock' };
     try {
       const [stocksRes, macroRes] = await Promise.all([

@@ -73,7 +73,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '1');
+  cacheUrl.searchParams.set('cv', '2'); // bump: Fon Sepeti ad field fallback fix
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
   if (!force) {
@@ -114,19 +114,25 @@ export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
       });
     }
 
-    // Normalize + agirlik > 0 olanlari al, agirlik desc sirala
+    // Normalize + agirlik > 0 olanlari al, agirlik desc sirala.
+    // ONEMLI: sirketAdi "" (empty string) olabilir (Fon Sepeti fonlarinda),
+    // `??` empty string'de fallback yapmaz. Trim sonrasi truthy check yapıyoruz.
     const items = j.data.items
-      .map((it) => ({
-        kod: it.hisseKodu ?? '',
-        ad: (it.sirketAdi ?? it.fonAdi2 ?? '').trim(),
-        sektor: (it.sektorAdi ?? '').trim(),
-        agirlik: toNum(it.agirlik),
-        eskiAgirlik: toNum(it.eskiAgirlik),
-        fark: toNum(it.fark),
-        kategori: it.hisseKategori,
-        etf: it.etf === 1,
-        yabanci: it.yabanci === 1,
-      }))
+      .map((it) => {
+        const sirket = (it.sirketAdi ?? '').trim();
+        const fonAd  = (it.fonAdi2 ?? '').trim();
+        return {
+          kod: it.hisseKodu ?? '',
+          ad: sirket || fonAd || '',
+          sektor: (it.sektorAdi ?? '').trim(),
+          agirlik: toNum(it.agirlik),
+          eskiAgirlik: toNum(it.eskiAgirlik),
+          fark: toNum(it.fark),
+          kategori: it.hisseKategori,
+          etf: it.etf === 1,
+          yabanci: it.yabanci === 1,
+        };
+      })
       .filter((it) => it.kod && it.agirlik > 0)
       .sort((a, b) => b.agirlik - a.agirlik);
 

@@ -528,6 +528,7 @@ export function mapTefasToPerformance(funds: TefasFundData[]): FundPerformance[]
       sixMonth: sixMonth == null ? NaN : sixMonth,
       ytd: ytdReturn == null ? NaN : ytdReturn,
       year: year == null ? NaN : year,
+      riskValue: f.riskValue,
     };
   });
 }

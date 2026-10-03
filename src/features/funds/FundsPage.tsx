@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
-import { Landmark, Search, Star, AlertCircle, ArrowUpDown, Check, X } from 'lucide-react';
+import { Landmark, Search, Star, AlertCircle, ArrowUpDown, X } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { PremiumCard } from '@/components/ui/PremiumCard';
@@ -450,7 +450,7 @@ export function FundsPage() {
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <SortableHeader label="Kod" sortKey="code" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />
                   <th className="px-2 py-2.5 text-left hidden sm:table-cell">Şemsiye / Kategori</th>
-                  <th className="px-2 py-2.5 text-center">TEFAS</th>
+                  <th className="px-2 py-2.5 text-center" title="Risk Seviyesi 1-7 (1=en düşük, 7=en yüksek)">Risk</th>
                   <SortableHeader label="Gün %" sortKey="day" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="1 Hafta %" sortKey="week" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="1 Ay %" sortKey="month" activeKey={sortKey} dir={sortDir} onClick={setSort} />
@@ -573,15 +573,7 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
         </div>
       </td>
       <td className="px-2 py-2 text-center">
-        {fund.tefasOpen === false ? (
-          <span title="TEFAS'ta islem gormez" className="inline-grid h-5 w-5 place-items-center rounded-full bg-danger/15 text-danger">
-            <X size={12} strokeWidth={3} />
-          </span>
-        ) : (
-          <span title="TEFAS'ta islem gorur" className="inline-grid h-5 w-5 place-items-center rounded-full bg-success/15 text-success">
-            <Check size={12} strokeWidth={3} />
-          </span>
-        )}
+        <RiskBadge value={fund.riskValue} />
       </td>
       <PerfCell value={fund.day} />
       <PerfCell value={fund.week} />
@@ -603,5 +595,37 @@ function PerfCell({ value }: { value: number | undefined }) {
     <td className={cn('px-2 py-2.5 text-right font-mono text-sm font-semibold tabular-nums whitespace-nowrap', tone)}>
       {value >= 0 ? '+' : ''}{value.toFixed(2)}%
     </td>
+  );
+}
+
+/**
+ * RiskBadge — Fon risk seviyesi (1-7 skala).
+ * SPK zorunlu: her TEFAS fonu 1 (en dusuk / para piyasasi gibi) ile 7 (en yuksek /
+ * kaldiracli serbest fon) arasinda bir risk degeri bildirir. Renk kodu:
+ *   1-2 yesil (dusuk)  |  3-4 sari (orta)  |  5-7 kirmizi (yuksek)
+ */
+function RiskBadge({ value }: { value: number | undefined }) {
+  if (value == null || !Number.isFinite(value)) {
+    return <span className="text-[11px] text-slate-500">—</span>;
+  }
+  const v = Math.max(1, Math.min(7, Math.round(value)));
+  const tone =
+    v <= 2 ? 'bg-success/15 text-success ring-success/30'
+    : v <= 4 ? 'bg-warning/15 text-warning ring-warning/30'
+    : 'bg-danger/15 text-danger ring-danger/30';
+  const label =
+    v <= 2 ? 'Düşük risk'
+    : v <= 4 ? 'Orta risk'
+    : 'Yüksek risk';
+  return (
+    <span
+      title={`${label} (${v}/7)`}
+      className={cn(
+        'inline-flex items-center justify-center min-w-[36px] rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ring-1',
+        tone,
+      )}
+    >
+      {v}/7
+    </span>
   );
 }

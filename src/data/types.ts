@@ -157,6 +157,11 @@ export interface FundPerformance {
   ytd: number;
   year: number;
   threeYear?: number;
+  /**
+   * Risk degeri 1 (dusuk) - 7 (yuksek). TEFAS/FVT RISK_DEGERI field'i.
+   * UI'da "1/7" formatinda renk kodlu badge olarak gosterilir.
+   */
+  riskValue?: number;
   fiveYear?: number;
 }
 

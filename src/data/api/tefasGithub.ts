@@ -188,11 +188,35 @@ function fallbackToLastGood(error: TefasFeedFetchResult): TefasFeedFetchResult {
 }
 
 export async function fetchTefasFeedDetailed(): Promise<TefasFeedFetchResult> {
-  if (!FEED_URL) {
-    return { ok: false, error: 'VITE_TEFAS_GITHUB_URL ayarlanmamış' };
-  }
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
-    return { ok: true, feed: cache.data, url: FEED_URL };
+    return { ok: true, feed: cache.data, url: '/api/funds/live' };
+  }
+
+  // STRATEJI (3 Eki 2026): TEFAS scraper'in period returns bos (1d hariç null,
+  // history=[]) dondurdugu icin FVT API'ye gecildi. Oncelik:
+  //   1. /api/funds/live — FVT public endpoint (3278 fon + tum period getirileri)
+  //   2. jsdelivr CDN /data/tefas.json — scraper çıktısı (fallback)
+  //
+  // FVT uzerinden periyot getirileri + risk metrikleri eksiksiz geliyor.
+  try {
+    const liveR = await fetch('/api/funds/live', { cache: 'no-store' });
+    if (liveR.ok) {
+      const data = (await liveR.json()) as TefasFeed;
+      if (data.funds && Array.isArray(data.funds) && data.funds.length > 0) {
+        cache = { fetchedAt: Date.now(), data };
+        writeLastGood(data);
+        lastError = null;
+        return { ok: true, feed: data, url: '/api/funds/live' };
+      }
+    }
+    console.warn('[tefasFeed] /api/funds/live bos veya fail, jsdelivr CDN fallback...');
+  } catch (err) {
+    console.warn('[tefasFeed] /api/funds/live exception:', err);
+  }
+
+  // Fallback: jsdelivr CDN scraper çıktısı
+  if (!FEED_URL) {
+    return { ok: false, error: '/api/funds/live fail + VITE_TEFAS_GITHUB_URL ayarlanmamış' };
   }
   try {
     const r = await fetch(FEED_URL, { cache: 'no-store' });

@@ -334,7 +334,13 @@ export async function fetchHistoricalYahoo(
   HIST_IN_FLIGHT.set(cacheKey, fetchPromise);
   try {
     const data = await fetchPromise;
-    HIST_CACHE.set(cacheKey, { at: Date.now(), data });
+    // KRITIK: null sonuclari CACHE'LEME. Eskiden fetch bir kere 429/network blip
+    // alirsa null 3 dk cache'leniyordu → Fon Karsilastirma'da BIST 100 / BIST 30 /
+    // Altın / EUR/TRY / USD/TRY sutunlari sureli bos goruyordu. Sadece basarili
+    // sonuclari cache'le, hatalar bir sonraki cagriya kadar beklesin.
+    if (data !== null) {
+      HIST_CACHE.set(cacheKey, { at: Date.now(), data });
+    }
     return data;
   } finally {
     HIST_IN_FLIGHT.delete(cacheKey);
@@ -384,6 +390,11 @@ export function computePeriodReturns(closes: { date: number; close: number }[]):
   const d30 = findNearest(30, 10); if (d30) r['1a'] = pct(d30.close);
   const d90 = findNearest(90, 20); if (d90) r['3a'] = pct(d90.close);
   const d180 = findNearest(180, 30); if (d180) r['6a'] = pct(d180.close);
-  if (closes.length > 1) r['1y'] = pct(closes[0].close);
+  // 1 yillik: findNearest(365) ile tam 1 yil onceki kapanis — eskiden
+  // closes[0] (en eski) kullaniliyordu ki 2y+ range'de 1y degil 2y getiri
+  // doniyordu. Fon Karsilastirma'da BIST 100 1y degeri yanlis geliyordu.
+  const d365 = findNearest(365, 30);
+  if (d365) r['1y'] = pct(d365.close);
+  else if (closes.length > 1) r['1y'] = pct(closes[0].close); // fallback: eski davranis
   return r;
 }

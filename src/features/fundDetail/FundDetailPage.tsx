@@ -705,9 +705,11 @@ export function FundDetailPage() {
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-semibold text-slate-200">
               Portföy Ağı
-              <span className="ml-2 text-[10px] font-normal text-slate-500">varlık dağılımı</span>
+              <span className="ml-2 text-[10px] font-normal text-slate-500">
+                {distribution ? `${distribution.itemCount} varlık · hisse-bazli ağırlık ve değişim` : 'varlık dağılımı'}
+              </span>
             </h2>
-            {(() => {
+            {!distribution && (() => {
               const alloc = githubData?.allocation ?? liveData?.allocation ?? [];
               return alloc.length > 0 ? (
                 <span className="text-[10px] text-slate-500">
@@ -716,19 +718,39 @@ export function FundDetailPage() {
               ) : null;
             })()}
           </div>
-          <FundAllocationDonut
-            fundCode={fundCode}
-            allocation={githubData?.allocation ?? liveData?.allocation ?? []}
-            navReturn={githubData?.returns?.['1y'] ?? null}
-            category={githubData?.category ?? ''}
-            isBes={isBesFund}
-          />
-          <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-            Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
-            Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
-          </p>
 
-          {/* FVT distribution — hisse-bazli detayli breakdown (SPK aylik aciklama) */}
+          {/* Yeni görsel: distribution verisi varsa Radial Bubble Network goster;
+              yoksa (BES/eski fonlar) donut chart fallback. */}
+          {distribution && distribution.items.length > 0 ? (
+            <>
+              <FundDistributionBubbleChart
+                fundCode={fundCode}
+                oneYearReturn={githubData?.returns?.['1y'] ?? null}
+                items={distribution.items}
+              />
+              <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
+                Her baloncuğun büyüklüğü hissenin fondaki ağırlığıyla orantılı.
+                Yeşil = önceki aya göre fon pozisyonunu arttırdı, kırmızı = azalttı.
+                Merkezdeki değer = fonun 1 yıllık getirisi.
+              </p>
+            </>
+          ) : (
+            <>
+              <FundAllocationDonut
+                fundCode={fundCode}
+                allocation={githubData?.allocation ?? liveData?.allocation ?? []}
+                navReturn={githubData?.returns?.['1y'] ?? null}
+                category={githubData?.category ?? ''}
+                isBes={isBesFund}
+              />
+              <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+                Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
+                Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
+              </p>
+            </>
+          )}
+
+          {/* Detayli hisse tablosu — bubble chart'in altina gelsin */}
           <FundDistributionDetails
             loading={distributionLoading}
             data={distribution}
@@ -1348,6 +1370,156 @@ function FundLineSvg({
       positive={isPositive}
       formatValue={(v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
     />
+  );
+}
+
+/**
+ * FundDistributionBubbleChart — Radial network/bubble görsel.
+ *
+ * Üstteki ağ görseli:
+ *   - Merkez: fon kodu + 1 yıllık getiri
+ *   - Çevre: her hisse için bir baloncuk, büyüklük=ağırlık %, renk=fark yönü
+ *     (yeşil=arttırıldı, kırmızı=azaltıldı, gri=değişmedi)
+ *   - Baloncukların içinde: hisse kodu + fark % (±X.XX)
+ *   - Merkeze bağlı ince çizgiler (ağ hissi)
+ *
+ * TOP-N (default 25) hisse — kalanlar tabloda detayli listelenir.
+ */
+function FundDistributionBubbleChart({
+  fundCode, oneYearReturn, items,
+}: {
+  fundCode: string;
+  oneYearReturn: number | null | undefined;
+  items: Array<{ kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean; }>;
+}) {
+  const TOP_N = 25;
+  const sorted = [...items].sort((a, b) => b.agirlik - a.agirlik).slice(0, TOP_N);
+  if (sorted.length === 0) return null;
+
+  // SVG viewport
+  const SIZE = 600;
+  const CX = SIZE / 2;
+  const CY = SIZE / 2;
+  const CENTER_R = 72;
+  const RING_R = 230;
+
+  // Ağırlıklara göre bubble büyüklük ölçekle (min 20, max 55 px)
+  const maxW = Math.max(...sorted.map((x) => x.agirlik));
+  const minW = Math.min(...sorted.map((x) => x.agirlik));
+  const scaleR = (w: number) => {
+    if (maxW === minW) return 32;
+    const t = (w - minW) / (maxW - minW);
+    return 22 + t * 32; // 22..54
+  };
+
+  // Fark yönüne göre renk (yesil = arttırıldı, kırmızı = azaltıldı)
+  const colorFor = (fark: number): { fill: string; stroke: string; text: string } => {
+    if (fark > 0.05) return { fill: '#065f4620', stroke: '#10b981', text: '#10b981' };
+    if (fark < -0.05) return { fill: '#991b1b20', stroke: '#ef4444', text: '#ef4444' };
+    return { fill: '#64748b20', stroke: '#94a3b8', text: '#cbd5e1' };
+  };
+
+  const centerIsPositive = (oneYearReturn ?? 0) >= 0;
+  const centerColor = centerIsPositive ? '#10b981' : '#ef4444';
+
+  // Her baloncuk için polar pozisyon — eşit açı
+  const n = sorted.length;
+
+  return (
+    <div className="flex justify-center">
+      <svg
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        className="w-full max-w-[560px] h-auto"
+        role="img"
+        aria-label={`${fundCode} portföy ağı — ${sorted.length} hisse`}
+      >
+        {/* Bağlantı çizgileri (merkez → bubble) */}
+        {sorted.map((it, i) => {
+          const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+          const r = scaleR(it.agirlik);
+          const bx = CX + RING_R * Math.cos(angle);
+          const by = CY + RING_R * Math.sin(angle);
+          const edgeDx = (bx - CX);
+          const edgeDy = (by - CY);
+          const edgeLen = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy);
+          const nx = edgeDx / edgeLen;
+          const ny = edgeDy / edgeLen;
+          const startX = CX + nx * (CENTER_R + 2);
+          const startY = CY + ny * (CENTER_R + 2);
+          const endX = bx - nx * (r + 2);
+          const endY = by - ny * (r + 2);
+          const c = colorFor(it.fark);
+          return (
+            <line
+              key={`e-${it.kod}-${i}`}
+              x1={startX} y1={startY} x2={endX} y2={endY}
+              stroke={c.stroke}
+              strokeOpacity="0.25"
+              strokeWidth="1"
+            />
+          );
+        })}
+
+        {/* Merkez balon — fon kodu + 1Y getiri */}
+        <circle cx={CX} cy={CY} r={CENTER_R + 8} fill={centerColor} fillOpacity="0.08" />
+        <circle cx={CX} cy={CY} r={CENTER_R} fill={centerColor} fillOpacity="0.15" stroke={centerColor} strokeWidth="2" />
+        <text x={CX} y={CY - 6} textAnchor="middle" fill="#f1f5f9" fontSize="16" fontWeight="700" fontFamily="Inter, system-ui">
+          {fundCode}
+        </text>
+        {Number.isFinite(oneYearReturn ?? NaN) ? (
+          <>
+            <text x={CX} y={CY + 14} textAnchor="middle" fill={centerColor} fontSize="18" fontWeight="800" fontFamily="Inter, system-ui">
+              {centerIsPositive ? '+' : ''}{(oneYearReturn ?? 0).toFixed(2)}%
+            </text>
+            <text x={CX} y={CY + 30} textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="Inter, system-ui">
+              1Y getiri
+            </text>
+          </>
+        ) : (
+          <text x={CX} y={CY + 14} textAnchor="middle" fill="#94a3b8" fontSize="11" fontFamily="Inter, system-ui">
+            {sorted.length} varlık
+          </text>
+        )}
+
+        {/* Her hisse için baloncuk */}
+        {sorted.map((it, i) => {
+          const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+          const r = scaleR(it.agirlik);
+          const bx = CX + RING_R * Math.cos(angle);
+          const by = CY + RING_R * Math.sin(angle);
+          const c = colorFor(it.fark);
+          const kodFontSize = r > 40 ? 11 : r > 30 ? 10 : 9;
+          const farkFontSize = r > 40 ? 10 : r > 30 ? 9 : 8;
+          const sign = it.fark > 0 ? '+' : '';
+          return (
+            <g key={`b-${it.kod}-${i}`}>
+              <title>{`${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}\nÖnceki ay: %${it.eskiAgirlik.toFixed(2)}\nFark: ${sign}${it.fark.toFixed(2)}`}</title>
+              <circle cx={bx} cy={by} r={r} fill={c.fill} stroke={c.stroke} strokeWidth="1.5" />
+              <text
+                x={bx} y={by - 1}
+                textAnchor="middle"
+                fill="#f8fafc"
+                fontSize={kodFontSize}
+                fontWeight="700"
+                fontFamily="Inter, system-ui"
+              >
+                {it.kod}
+              </text>
+              <text
+                x={bx} y={by + kodFontSize + 1}
+                textAnchor="middle"
+                fill={c.text}
+                fontSize={farkFontSize}
+                fontWeight="600"
+                fontFamily="Inter, system-ui"
+              >
+                {sign}{it.fark.toFixed(2)}%
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 

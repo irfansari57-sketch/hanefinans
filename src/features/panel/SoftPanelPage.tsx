@@ -15,7 +15,10 @@
  */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { TrendingUp, Newspaper, Briefcase, Zap } from 'lucide-react';
+import { db } from '@/data/db';
+import { useAuth } from '@/store/auth';
 import { MiniAreaChart } from '@/components/domain/PanelStyleChart';
 import { usePersistedState } from '@/lib/usePersistedState';
 import { useVisibleInterval } from '@/hooks/useVisibleInterval';
@@ -86,6 +89,8 @@ function fmtValue(v: number | null | undefined, maxFrac = 2): string {
 
 export function SoftPanelPage() {
   const symbols = useWatchlist((s) => s.symbols);
+  const user = useAuth((s) => s.user);
+  const positions = useLiveQuery(() => db.portfolio.toArray(), []) ?? [];
 
   // SWR cache — ilk render ANINDA (localStorage'dan)
   const [macro, setMacro] = usePersistedState<MacroIndicator[]>('hf.cache.macro', SWR_TTL_MS, []);
@@ -203,6 +208,89 @@ export function SoftPanelPage() {
     cryptoQuotes.filter((c) => Number.isFinite(c.changePct)),
     (c) => c.changePct,
   ).slice(0, 5), [cryptoQuotes, enlerDir]);
+
+  // Portföy özet — fiyat haritası + maliyet üzerinden hesapla
+  const [fundMap, setFundMap] = useState<Map<string, FundPerformance>>(new Map());
+  useEffect(() => {
+    const fundPositions = positions.filter((p) => p.kind === 'fund');
+    if (fundPositions.length === 0) { setFundMap(new Map()); return; }
+    let alive = true;
+    loadFundsAsPerformance().then((r) => {
+      if (!alive || !r?.funds) return;
+      const m = new Map<string, FundPerformance>();
+      for (const f of r.funds) m.set(f.code, f);
+      setFundMap(m);
+    });
+    return () => { alive = false; };
+  }, [positions.length]);
+
+  // Portföyde olup priority listede olmayan hisseleri de ayrıca fetchle —
+  // böylece panel'deki Portföyüm kartı her sembole fiyat bulur.
+  const [portfolioStockMap, setPortfolioStockMap] = useState<Map<string, Stock>>(new Map());
+  useEffect(() => {
+    const stockPositions = positions.filter((p) => p.kind !== 'fund');
+    if (stockPositions.length === 0) { setPortfolioStockMap(new Map()); return; }
+    let alive = true;
+    const syms = Array.from(new Set(stockPositions.map((p) => p.symbol)));
+    loadStocks(syms).then(({ data }) => {
+      if (!alive) return;
+      const m = new Map<string, Stock>();
+      for (const s of data) m.set(s.symbol, s);
+      setPortfolioStockMap(m);
+    });
+    return () => { alive = false; };
+  }, [positions.length, positions.map((p) => p.symbol).join(',')]);
+
+  const stockMap = useMemo(() => {
+    // Önce portföy-özel fetch, sonra genel stocks list fallback
+    const m = new Map<string, Stock>(portfolioStockMap);
+    for (const s of stocks) if (!m.has(s.symbol)) m.set(s.symbol, s);
+    return m;
+  }, [stocks, portfolioStockMap]);
+
+  const portfolio = useMemo(() => {
+    let totalValue = 0;
+    let totalCost = 0;
+    let dailyPnl = 0;
+    for (const p of positions) {
+      const qty = p.quantity ?? 0;
+      const cost = (p.avgPrice ?? 0) * qty;
+      let currentPrice: number | undefined;
+      let dayChangePct: number | undefined;
+      if (p.kind === 'fund') {
+        const f = fundMap.get(p.symbol);
+        currentPrice = f?.nav;
+        dayChangePct = f?.day;
+      } else {
+        const s = stockMap.get(p.symbol);
+        currentPrice = s?.price;
+        dayChangePct = s?.changePct;
+      }
+      if (currentPrice && currentPrice > 0) {
+        const value = currentPrice * qty;
+        totalValue += value;
+        totalCost += cost;
+        if (dayChangePct != null && Number.isFinite(dayChangePct)) {
+          // Günlük değişim = bugünkü_değer - dünkü_değer; dayChangePct yüzdeyle
+          const prevValue = value / (1 + dayChangePct / 100);
+          dailyPnl += (value - prevValue);
+        }
+      }
+    }
+    const totalPnl = totalValue - totalCost;
+    const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+    const dailyPct = totalValue > 0 ? (dailyPnl / (totalValue - dailyPnl)) * 100 : 0;
+    return {
+      totalValue,
+      totalCost,
+      totalPnl,
+      totalPnlPct,
+      dailyPnl,
+      dailyPct,
+      count: positions.length,
+      hasData: positions.length > 0 && totalValue > 0,
+    };
+  }, [positions, stockMap, fundMap]);
 
   // Son dakika — ilk 4 haber
   const topNews = useMemo(() => news.slice(0, 4), [news]);
@@ -334,11 +422,22 @@ export function SoftPanelPage() {
 
           {/* 4 MİNİ KART */}
           <div className="grid grid-cols-2 gap-2">
-            {/* Portföyüm (dinamik) */}
+            {/* Portföyüm — dinamik: pozisyon varsa toplam değer + günlük P/L; yoksa CTA */}
             <Link to="/portfolio" className="mini-card block">
               <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Portföyüm</div>
-              <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">Takibe git →</div>
-              <div className="mt-0.5 text-[11px] text-slate-500">Pozisyonlar + performans</div>
+              {user && portfolio.hasData ? (
+                <>
+                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">
+                    ₺{portfolio.totalValue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </div>
+                  <Delta v={portfolio.dailyPct} prefix="Bugün " />
+                </>
+              ) : (
+                <>
+                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">Takibe git →</div>
+                  <div className="mt-0.5 text-[11px] text-slate-500">Pozisyon ekle, canlı takip</div>
+                </>
+              )}
             </Link>
             {MINI_KEYS.map((mk) => {
               const m = macroMap.get(mk.key);
@@ -504,18 +603,57 @@ export function SoftPanelPage() {
             )}
           </div>
 
-          {/* Portföy Hızlı Erişim */}
+          {/* Portföyüm — pozisyon varsa 4-metrik ozet, yoksa CTA */}
           <Link to="/portfolio" className="side-card block hover:border-success/30 transition">
-            <div className="flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                 <Briefcase size={14} className="text-success" />
                 Portföyüm
               </div>
-              <Zap size={14} className="text-slate-500" />
+              {user && portfolio.hasData ? (
+                <span className="text-[10px] text-slate-500">{portfolio.count} pozisyon</span>
+              ) : (
+                <Zap size={14} className="text-slate-500" />
+              )}
             </div>
-            <div className="mt-2 text-[11px] text-slate-400 leading-relaxed">
-              Pozisyonlarını takip et, performans grafiğini gör, benchmark karşılaştır.
-            </div>
+            {user && portfolio.hasData ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="text-[10px] text-slate-500">Toplam Değer</div>
+                  <div className="text-sm font-semibold tabular-nums text-slate-100">
+                    ₺{portfolio.totalValue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500">Toplam K/Z</div>
+                  <div className={cn('text-sm font-semibold tabular-nums', portfolio.totalPnl >= 0 ? 'text-success' : 'text-danger')}>
+                    {portfolio.totalPnl >= 0 ? '+' : ''}₺{Math.abs(portfolio.totalPnl).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </div>
+                  <div className={cn('text-[10px] tabular-nums', portfolio.totalPnlPct >= 0 ? 'text-success' : 'text-danger')}>
+                    {portfolio.totalPnlPct >= 0 ? '+' : ''}{portfolio.totalPnlPct.toFixed(2)}%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500">Bugünkü K/Z</div>
+                  <div className={cn('text-sm font-semibold tabular-nums', portfolio.dailyPnl >= 0 ? 'text-success' : 'text-danger')}>
+                    {portfolio.dailyPnl >= 0 ? '+' : ''}₺{Math.abs(portfolio.dailyPnl).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </div>
+                  <div className={cn('text-[10px] tabular-nums', portfolio.dailyPct >= 0 ? 'text-success' : 'text-danger')}>
+                    {portfolio.dailyPct >= 0 ? '+' : ''}{portfolio.dailyPct.toFixed(2)}%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500">Maliyet</div>
+                  <div className="text-sm font-semibold tabular-nums text-slate-300">
+                    ₺{portfolio.totalCost.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-[11px] text-slate-400 leading-relaxed">
+                {user ? 'Henüz pozisyon yok. Hisse/fon ekle, canlı takip et.' : 'Pozisyonlarını takip et, performans grafiğini gör, benchmark karşılaştır.'}
+              </div>
+            )}
           </Link>
         </div>
       </div>

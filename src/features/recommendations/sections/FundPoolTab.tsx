@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Layers, Sparkles, ExternalLink, Lock, Crown } from 'lucide-react';
+import { Layers, Sparkles, Lock, Crown } from 'lucide-react';
 import type { FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SortableHeader } from '@/components/ui/SortableHeader';
@@ -249,7 +249,7 @@ export function FundPoolTab({ allFunds }: FundPoolTabProps) {
                 <SortableHeader label="6 Ay %" sortKey="sixMonth" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden lg:table-cell" />
                 <SortableHeader label="YTD %" sortKey="ytd" activeKey={sortKey} dir={sortDir} onClick={setSort} className="hidden xl:table-cell" />
                 <SortableHeader label="1 Yıl %" sortKey="year" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                <th className="px-2 py-2.5 text-center w-24">İşlem</th>
+                <th className="px-2 py-2.5 text-center w-16" title="Risk Seviyesi 1-7 (1=en düşük, 7=en yüksek)">Risk</th>
               </tr>
             </thead>
             <tbody>
@@ -343,18 +343,40 @@ function PoolFundRow({ fund, rank, sortKey }: PoolFundRowProps) {
       <td className={cn('px-2 py-2 text-right tabular-nums hidden lg:table-cell', tone(fund.sixMonth), hl('sixMonth'))}>{fmt(fund.sixMonth)}</td>
       <td className={cn('px-2 py-2 text-right tabular-nums hidden xl:table-cell', tone(fund.ytd), hl('ytd'))}>{fmt(fund.ytd)}</td>
       <td className={cn('px-2 py-2 text-right tabular-nums font-semibold', tone(fund.year), hl('year'))}>{fmt(fund.year)}</td>
-      <td className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-        <a
-          href={`https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(fund.code)}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-0.5 rounded-md border border-success/30 bg-success/10 px-1.5 py-0.5 text-[9px] font-medium text-success hover:bg-success/20"
-          title="TEFAS'ta aç"
-        >
-          TEFAS <ExternalLink size={8} />
-        </a>
+      <td className="px-2 py-2 text-center">
+        <PoolRiskBadge value={fund.riskValue} />
       </td>
     </tr>
+  );
+}
+
+/**
+ * PoolRiskBadge — Fon risk seviyesi badge (FundsPage ile ayni stil).
+ * 1-2 yesil (dusuk) | 3-4 sari (orta) | 5-7 kirmizi (yuksek)
+ */
+function PoolRiskBadge({ value }: { value: number | undefined }) {
+  if (value == null || !Number.isFinite(value)) {
+    return <span className="text-[11px] text-slate-500">—</span>;
+  }
+  const v = Math.max(1, Math.min(7, Math.round(value)));
+  const tone =
+    v <= 2 ? 'bg-success/15 text-success ring-success/30'
+    : v <= 4 ? 'bg-warning/15 text-warning ring-warning/30'
+    : 'bg-danger/15 text-danger ring-danger/30';
+  const label =
+    v <= 2 ? 'Düşük risk'
+    : v <= 4 ? 'Orta risk'
+    : 'Yüksek risk';
+  return (
+    <span
+      title={`${label} (${v}/7)`}
+      className={cn(
+        'inline-flex items-center justify-center min-w-[32px] rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1',
+        tone,
+      )}
+    >
+      {v}/7
+    </span>
   );
 }
 

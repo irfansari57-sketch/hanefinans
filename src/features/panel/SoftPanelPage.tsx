@@ -23,9 +23,11 @@ import { useVisibleInterval } from '@/hooks/useVisibleInterval';
 import { useWatchlist } from '@/store/watchlist';
 import { loadStocks, loadNews, loadMacroAll, primePanelCaches } from '@/data/services';
 import { loadPanelSnapshot } from '@/data/api/panelSnapshot';
-import { fetchHistoricalYahoo } from '@/data/api/yahoo';
+import { fetchHistoricalYahoo, fetchQuotesYahoo } from '@/data/api/yahoo';
+import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
+import { CRYPTOS } from '@/data/cryptoSymbols';
 import { MOCK_STOCKS } from '@/data/mock';
-import type { MacroIndicator, NewsItem, Stock } from '@/data/types';
+import type { MacroIndicator, NewsItem, Stock, FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 
@@ -88,6 +90,11 @@ export function SoftPanelPage() {
   const [macro, setMacro] = usePersistedState<MacroIndicator[]>('hf.cache.macro', SWR_TTL_MS, []);
   const [stocks, setStocks] = usePersistedState<Stock[]>('hf.cache.stocks', SWR_TTL_MS, []);
   const [news, setNews] = usePersistedState<NewsItem[]>('hf.cache.news', SWR_TTL_MS, []);
+  const [topFunds, setTopFunds] = usePersistedState<FundPerformance[]>('hf.cache.topFunds', SWR_TTL_MS, []);
+  const [cryptoQuotes, setCryptoQuotes] = useState<Array<{ symbol: string; price: number; changePct: number }>>([]);
+
+  // Günün Enleri aktif sekme (default: fonlar, kullanıcı en çok ilgilendiği alan)
+  const [enlerTab, setEnlerTab] = useState<'funds' | 'stocks' | 'crypto'>('funds');
 
   // BIST 100 hero chart serisi
   const [heroSeries, setHeroSeries] = useState<Array<{ date: number; close: number }>>([]);
@@ -117,12 +124,35 @@ export function SoftPanelPage() {
         setUpdatedAt(Date.now());
       } catch { /* devam */ }
 
-      // WAVE 2: News non-blocking
+      // WAVE 2: News + Top funds non-blocking
       loadNews({ max: 8 }).then((n) => n && setNews(n.data)).catch(() => {});
+      loadFundsAsPerformance().then((f) => f && setTopFunds(f.funds)).catch(() => {});
     } finally {
       setRefreshing(false);
     }
   }, [symbols]);
+
+  // Kripto quote fetch — 1.5sn defer (kritik path dışı)
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const syms = CRYPTOS.map((c) => c.yahoo);
+        const quotes = await fetchQuotesYahoo(syms);
+        if (cancelled || !quotes) return;
+        const items = quotes.map((q) => {
+          const meta = CRYPTOS.find((c) => c.yahoo === q.symbol);
+          return {
+            symbol: meta ? `${meta.symbol}/USD` : q.symbol,
+            price: q.price,
+            changePct: q.changePct,
+          };
+        }).filter((x) => Number.isFinite(x.changePct));
+        setCryptoQuotes(items);
+      } catch { /* silent */ }
+    }, 1500);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
   useVisibleInterval(() => refresh(), AUTO_REFRESH_MS);
@@ -149,13 +179,23 @@ export function SoftPanelPage() {
   const bist100 = macroMap.get('BIST 100');
   const bist100Positive = (bist100?.changePct ?? 0) >= 0;
 
-  // Günün Enleri — en çok kazandıran 4 hisse
-  const topGainers = useMemo(() => {
-    return stocks
-      .filter((s) => s.price > 0 && Number.isFinite(s.changePct) && Math.abs(s.changePct) <= 11)
-      .sort((a, b) => b.changePct - a.changePct)
-      .slice(0, 4);
-  }, [stocks]);
+  // Günün Enleri — her tab için en çok kazandıran 5 satır
+  const topStocks = useMemo(() => stocks
+    .filter((s) => s.price > 0 && Number.isFinite(s.changePct) && Math.abs(s.changePct) <= 11)
+    .sort((a, b) => b.changePct - a.changePct)
+    .slice(0, 5),
+    [stocks]);
+
+  const topFundsSorted = useMemo(() => topFunds
+    .filter((f) => Number.isFinite(f.day))
+    .sort((a, b) => b.day - a.day)
+    .slice(0, 5),
+    [topFunds]);
+
+  const topCrypto = useMemo(() => [...cryptoQuotes]
+    .sort((a, b) => b.changePct - a.changePct)
+    .slice(0, 5),
+    [cryptoQuotes]);
 
   // Son dakika — ilk 4 haber
   const topNews = useMemo(() => news.slice(0, 4), [news]);
@@ -336,30 +376,108 @@ export function SoftPanelPage() {
             )}
           </div>
 
-          {/* Günün Enleri */}
+          {/* Günün Enleri — Fonlar / Hisseler / Kripto tab'lı */}
           <div className="side-card">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                 <TrendingUp size={14} className="text-success" />
-                Günün Enleri · Hisse
+                Günün Enleri
               </div>
               <span className="text-[10px] text-slate-500">Kazandıran</span>
             </div>
-            {topGainers.length === 0 ? (
-              <div className="py-6 text-center text-[11px] text-slate-500">Veri yükleniyor…</div>
-            ) : (
-              <div className="divide-y divide-slate-700/20">
-                {topGainers.map((s) => (
-                  <Link
-                    key={s.symbol}
-                    to={`/stock/${s.symbol}`}
-                    className="flex items-center justify-between py-2 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
-                  >
-                    <div className="font-mono font-bold text-slate-100">{s.symbol}</div>
-                    <Delta v={s.changePct} />
-                  </Link>
-                ))}
-              </div>
+
+            {/* Tab seçici — compact pills */}
+            <div className="mb-2 flex gap-1">
+              {([
+                { k: 'funds',  label: 'Fonlar',  disabled: topFundsSorted.length === 0 },
+                { k: 'stocks', label: 'Hisseler', disabled: topStocks.length === 0 },
+                { k: 'crypto', label: 'Kripto',   disabled: topCrypto.length === 0 },
+              ] as const).map((t) => (
+                <button
+                  key={t.k}
+                  type="button"
+                  onClick={() => setEnlerTab(t.k)}
+                  disabled={t.disabled}
+                  className={cn(
+                    'flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40',
+                    enlerTab === t.k
+                      ? 'bg-success/15 text-success'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/20',
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Aktif tab içeriği */}
+            {enlerTab === 'funds' && (
+              topFundsSorted.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-slate-500">Fon verisi yükleniyor…</div>
+              ) : (
+                <div className="divide-y divide-slate-700/20">
+                  {topFundsSorted.map((f) => (
+                    <Link
+                      key={f.code}
+                      to={`/fund/${f.code}`}
+                      className="flex items-center justify-between py-2 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono font-bold text-slate-100">{f.code}</div>
+                        {f.name && (
+                          <div className="truncate text-[10px] text-slate-500" title={f.name}>{f.name}</div>
+                        )}
+                      </div>
+                      <Delta v={f.day} />
+                    </Link>
+                  ))}
+                </div>
+              )
+            )}
+
+            {enlerTab === 'stocks' && (
+              topStocks.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-slate-500">Hisse verisi yükleniyor…</div>
+              ) : (
+                <div className="divide-y divide-slate-700/20">
+                  {topStocks.map((s) => (
+                    <Link
+                      key={s.symbol}
+                      to={`/stock/${s.symbol}`}
+                      className="flex items-center justify-between py-2 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono font-bold text-slate-100">{s.symbol}</div>
+                        {s.name && s.name !== s.symbol && (
+                          <div className="truncate text-[10px] text-slate-500" title={s.name}>{s.name}</div>
+                        )}
+                      </div>
+                      <Delta v={s.changePct} />
+                    </Link>
+                  ))}
+                </div>
+              )
+            )}
+
+            {enlerTab === 'crypto' && (
+              topCrypto.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-slate-500">Kripto verisi yükleniyor…</div>
+              ) : (
+                <div className="divide-y divide-slate-700/20">
+                  {topCrypto.map((c) => (
+                    <Link
+                      key={c.symbol}
+                      to={`/kripto/${encodeURIComponent(c.symbol.split('/')[0])}`}
+                      className="flex items-center justify-between py-2 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono font-bold text-slate-100">{c.symbol}</div>
+                      </div>
+                      <Delta v={c.changePct} />
+                    </Link>
+                  ))}
+                </div>
+              )
             )}
           </div>
 

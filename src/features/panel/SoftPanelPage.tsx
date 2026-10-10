@@ -27,6 +27,7 @@ import { fetchHistoricalYahoo, fetchQuotesYahoo } from '@/data/api/yahoo';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { CRYPTOS } from '@/data/cryptoSymbols';
 import { MOCK_STOCKS } from '@/data/mock';
+import { macroKeyToRoute } from '@/lib/macroRoutes';
 import type { MacroIndicator, NewsItem, Stock, FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
@@ -270,10 +271,11 @@ export function SoftPanelPage() {
         {TICKER_KEYS.map((t) => {
           const m = macroMap.get(t.key);
           const positive = (m?.changePct ?? 0) >= 0;
+          const route = macroKeyToRoute(t.key) ?? '/panel';
           return (
             <Link
               key={t.key}
-              to={`/macro/${encodeURIComponent(t.key)}`}
+              to={route}
               className="ticker-chip block"
             >
               <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t.label}</div>
@@ -338,9 +340,9 @@ export function SoftPanelPage() {
             </Link>
             {MINI_KEYS.map((mk) => {
               const m = macroMap.get(mk.key);
-              const positive = (m?.changePct ?? 0) >= 0;
+              const route = macroKeyToRoute(mk.key) ?? '/panel';
               return (
-                <Link key={mk.key} to={`/macro/${encodeURIComponent(mk.key)}`} className="mini-card block">
+                <Link key={mk.key} to={route} className="mini-card block">
                   <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{mk.label}</div>
                   <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">{fmtValue(m?.value)}</div>
                   <Delta v={m?.changePct} />
@@ -488,7 +490,7 @@ export function SoftPanelPage() {
                   {topCrypto.map((c) => (
                     <Link
                       key={c.symbol}
-                      to={`/kripto/${encodeURIComponent(c.symbol.split('/')[0])}`}
+                      to={`/crypto/${encodeURIComponent(c.symbol.split('/')[0])}`}
                       className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
                     >
                       <div className="font-mono font-bold text-slate-100">{c.symbol}</div>

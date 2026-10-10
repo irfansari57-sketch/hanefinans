@@ -190,8 +190,11 @@ export function SoftPanelPage() {
     (s) => s.changePct,
   ).slice(0, 5), [stocks, enlerDir]);
 
+  // Fon outlier filtresi: TEFAS feed'inde bazı serbest fonlar fon-kapanısı
+  // sonrası -100% veya absürt değerler döndürüyor (kurucu değişimi, likidasyon).
+  // ±%50 üstü günlük değişim mantıksız — veri hatası, filtreliyoruz.
   const topFundsSorted = useMemo(() => sortByDir(
-    topFunds.filter((f) => Number.isFinite(f.day)),
+    topFunds.filter((f) => Number.isFinite(f.day) && Math.abs(f.day) <= 50),
     (f) => f.day,
   ).slice(0, 5), [topFunds, enlerDir]);
 
@@ -445,14 +448,10 @@ export function SoftPanelPage() {
                     <Link
                       key={f.code}
                       to={`/fund/${f.code}`}
-                      className="flex items-center justify-between py-2 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                      title={f.name || f.code}
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="font-mono font-bold text-slate-100">{f.code}</div>
-                        {f.name && (
-                          <div className="truncate text-[10px] text-slate-500" title={f.name}>{f.name}</div>
-                        )}
-                      </div>
+                      <div className="font-mono font-bold text-slate-100">{f.code}</div>
                       <Delta v={f.day} />
                     </Link>
                   ))}
@@ -469,14 +468,10 @@ export function SoftPanelPage() {
                     <Link
                       key={s.symbol}
                       to={`/stock/${s.symbol}`}
-                      className="flex items-center justify-between py-2 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                      title={s.name || s.symbol}
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="font-mono font-bold text-slate-100">{s.symbol}</div>
-                        {s.name && s.name !== s.symbol && (
-                          <div className="truncate text-[10px] text-slate-500" title={s.name}>{s.name}</div>
-                        )}
-                      </div>
+                      <div className="font-mono font-bold text-slate-100">{s.symbol}</div>
                       <Delta v={s.changePct} />
                     </Link>
                   ))}
@@ -493,11 +488,9 @@ export function SoftPanelPage() {
                     <Link
                       key={c.symbol}
                       to={`/kripto/${encodeURIComponent(c.symbol.split('/')[0])}`}
-                      className="flex items-center justify-between py-2 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="font-mono font-bold text-slate-100">{c.symbol}</div>
-                      </div>
+                      <div className="font-mono font-bold text-slate-100">{c.symbol}</div>
                       <Delta v={c.changePct} />
                     </Link>
                   ))}

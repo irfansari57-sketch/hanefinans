@@ -34,14 +34,15 @@ import { SeoHead } from '@/components/seo/SeoHead';
 const SWR_TTL_MS = 24 * 60 * 60 * 1000;
 const AUTO_REFRESH_MS = 30_000;
 
-// Üst ticker için gösterilen 6 kritik gösterge (sabit sıra, kullanıcı hep aynı yerde bulur)
+// Üst ticker için gösterilen 7 kritik gösterge (sabit sıra, kullanıcı hep aynı yerde bulur)
 const TICKER_KEYS: Array<{ key: string; label: string; unit?: string }> = [
-  { key: 'BIST 100',   label: 'BIST 100' },
-  { key: 'USD/TRY',    label: 'USD/TRY' },
-  { key: 'EUR/TRY',    label: 'EUR/TRY' },
-  { key: 'Gram Altın', label: 'Gram Altın' },
-  { key: 'BTC/USD',    label: 'BTC/USD' },
-  { key: 'Brent',      label: 'Brent' },
+  { key: 'BIST 100',    label: 'BIST 100' },
+  { key: 'USD/TRY',     label: 'USD/TRY' },
+  { key: 'EUR/TRY',     label: 'EUR/TRY' },
+  { key: 'Gram Altın',  label: 'Gram Altın' },
+  { key: 'Gram Gümüş',  label: 'Gram Gümüş' },
+  { key: 'BTC/USD',     label: 'BTC/USD' },
+  { key: 'Brent',       label: 'Brent' },
 ];
 
 // Mini kart (4 adet) için sabit gösterge seti
@@ -264,8 +265,8 @@ export function SoftPanelPage() {
         actions={<RefreshDot active={refreshing} />}
       />
 
-      {/* ============ ÜST TICKER STRIP (6 chip) ============ */}
-      <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+      {/* ============ ÜST TICKER STRIP (7 chip) ============ */}
+      <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {TICKER_KEYS.map((t) => {
           const m = macroMap.get(t.key);
           const positive = (m?.changePct ?? 0) >= 0;

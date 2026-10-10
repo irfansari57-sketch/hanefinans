@@ -458,36 +458,10 @@ export function FundDetailPage() {
           <div className="card p-3 lg:col-span-2">
             <FundPerformanceChart fund={githubData} isBes={isBesFund} />
           </div>
-          {/* Sag column: Varlık Dağılımı + Meta bilgi kartlari */}
+          {/* Sag column: Meta bilgi kartlari
+              (Varlık Dağılımı mini kart kaldirildi — Portföy Ağı tab'inda detayli radial
+              bubble + hisse-bazli tablo zaten var, burada placeholder'a gerek yok.) */}
           <div className="space-y-3">
-            {/* Varlık Dağılımı — GitHub feed birinci (top 500 fonda var), Worker fallback */}
-            {(() => {
-              const alloc = githubData.allocation ?? liveData?.allocation ?? [];
-              return (
-                <div className="card p-3">
-                  <div className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">Varlık Dağılımı</div>
-                  {alloc && alloc.length > 0 ? (
-                    <div className="space-y-1.5 text-xs">
-                      {alloc.slice(0, 5).map((a) => (
-                        <div key={a.label}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-300 truncate">{a.label}</span>
-                            <span className="tabular-nums text-accent">%{a.pct.toFixed(1)}</span>
-                          </div>
-                          <div className="mt-0.5 h-1 rounded-full bg-bg-soft overflow-hidden">
-                            <div className="h-full bg-accent" style={{ width: `${Math.min(100, a.pct)}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-slate-500 italic">
-                      Portföy Ağı tab'ında görselleştirilir.<br/>Detay {isBesFund ? 'BEFAS' : 'TEFAS'}'ta.
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
             {/* Kategori + Yönetim + Stopaj */}
             <div className="card p-3 space-y-2 text-[11px]">
               <div className="flex items-center justify-between">

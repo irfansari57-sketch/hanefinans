@@ -427,7 +427,7 @@ export function SoftPanelPage() {
       {/* ============ ANA GRID (sol: chart+mini, sağ: haber+enler+portföy) ============ */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
         {/* SOL SÜTUN */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {/* HERO CHART — BIST 100 */}
           <div className="hero-card">
             <div className="mb-3 flex items-start justify-between">
@@ -457,7 +457,10 @@ export function SoftPanelPage() {
                 ))}
               </div>
             </div>
-            <div style={{ height: 200 }}>
+            {/* Chart container 240px — altındaki tarih etiketleri + Y-axis
+                "10.208,76" gibi değerler için nefes alacak alan. Önceden 200px
+                idi, mini kartlarla iç içe geçiyordu. */}
+            <div style={{ height: 240 }} className="pb-2">
               {heroSeries.length > 1 ? (
                 <MiniAreaChart data={heroSeries} positive={bist100Positive} />
               ) : (
@@ -534,7 +537,7 @@ export function SoftPanelPage() {
         </div>
 
         {/* SAĞ SÜTUN */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {/* Son Dakika */}
           <div className="side-card">
             <div className="mb-3 flex items-center justify-between">

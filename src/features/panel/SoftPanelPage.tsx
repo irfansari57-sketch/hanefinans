@@ -95,6 +95,8 @@ export function SoftPanelPage() {
 
   // Günün Enleri aktif sekme (default: fonlar, kullanıcı en çok ilgilendiği alan)
   const [enlerTab, setEnlerTab] = useState<'funds' | 'stocks' | 'crypto'>('funds');
+  // Yön: kazandıran (up) veya kaybettiren (down)
+  const [enlerDir, setEnlerDir] = useState<'up' | 'down'>('up');
 
   // BIST 100 hero chart serisi
   const [heroSeries, setHeroSeries] = useState<Array<{ date: number; close: number }>>([]);
@@ -179,23 +181,24 @@ export function SoftPanelPage() {
   const bist100 = macroMap.get('BIST 100');
   const bist100Positive = (bist100?.changePct ?? 0) >= 0;
 
-  // Günün Enleri — her tab için en çok kazandıran 5 satır
-  const topStocks = useMemo(() => stocks
-    .filter((s) => s.price > 0 && Number.isFinite(s.changePct) && Math.abs(s.changePct) <= 11)
-    .sort((a, b) => b.changePct - a.changePct)
-    .slice(0, 5),
-    [stocks]);
+  // Günün Enleri — enlerDir ('up' kazandıran | 'down' kaybettiren) yönüne göre sırala
+  const sortByDir = <T,>(arr: T[], getVal: (x: T) => number) =>
+    [...arr].sort((a, b) => enlerDir === 'up' ? getVal(b) - getVal(a) : getVal(a) - getVal(b));
 
-  const topFundsSorted = useMemo(() => topFunds
-    .filter((f) => Number.isFinite(f.day))
-    .sort((a, b) => b.day - a.day)
-    .slice(0, 5),
-    [topFunds]);
+  const topStocks = useMemo(() => sortByDir(
+    stocks.filter((s) => s.price > 0 && Number.isFinite(s.changePct) && Math.abs(s.changePct) <= 11),
+    (s) => s.changePct,
+  ).slice(0, 5), [stocks, enlerDir]);
 
-  const topCrypto = useMemo(() => [...cryptoQuotes]
-    .sort((a, b) => b.changePct - a.changePct)
-    .slice(0, 5),
-    [cryptoQuotes]);
+  const topFundsSorted = useMemo(() => sortByDir(
+    topFunds.filter((f) => Number.isFinite(f.day)),
+    (f) => f.day,
+  ).slice(0, 5), [topFunds, enlerDir]);
+
+  const topCrypto = useMemo(() => sortByDir(
+    cryptoQuotes.filter((c) => Number.isFinite(c.changePct)),
+    (c) => c.changePct,
+  ).slice(0, 5), [cryptoQuotes, enlerDir]);
 
   // Son dakika — ilk 4 haber
   const topNews = useMemo(() => news.slice(0, 4), [news]);
@@ -376,14 +379,36 @@ export function SoftPanelPage() {
             )}
           </div>
 
-          {/* Günün Enleri — Fonlar / Hisseler / Kripto tab'lı */}
+          {/* Günün Enleri — Fonlar / Hisseler / Kripto tab'lı + Kazandıran/Kaybettiren toggle */}
           <div className="side-card">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <TrendingUp size={14} className="text-success" />
+                <TrendingUp size={14} className={enlerDir === 'up' ? 'text-success' : 'text-danger'} />
                 Günün Enleri
               </div>
-              <span className="text-[10px] text-slate-500">Kazandıran</span>
+              {/* Kazandıran / Kaybettiren toggle — compact */}
+              <div className="inline-flex rounded-md border border-slate-700/40 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setEnlerDir('up')}
+                  className={cn(
+                    'rounded px-2 py-0.5 text-[10px] font-medium transition',
+                    enlerDir === 'up' ? 'bg-success/15 text-success' : 'text-slate-500 hover:text-slate-300',
+                  )}
+                >
+                  ↑ Kazandıran
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEnlerDir('down')}
+                  className={cn(
+                    'rounded px-2 py-0.5 text-[10px] font-medium transition',
+                    enlerDir === 'down' ? 'bg-danger/15 text-danger' : 'text-slate-500 hover:text-slate-300',
+                  )}
+                >
+                  ↓ Kaybettiren
+                </button>
+              </div>
             </div>
 
             {/* Tab seçici — compact pills */}

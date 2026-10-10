@@ -517,8 +517,8 @@ export function SoftPanelPage() {
       </div>
 
       <div className="mt-6 text-center text-[10px] text-slate-500">
-        <strong className="text-slate-400">Soft Panel v2</strong> — klasik görünüm için{' '}
-        <Link to="/panel" className="text-accent hover:underline">eski Panel</Link>'e dön
+        Klasik görünüme dönmek için{' '}
+        <Link to="/panel-eski" className="text-accent hover:underline">eski Panel</Link>
       </div>
     </>
   );

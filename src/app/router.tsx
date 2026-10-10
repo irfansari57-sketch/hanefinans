@@ -126,8 +126,12 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Navigate to="/panel" replace /> },
-      { path: 'panel', element: withSuspense(<PanelPage />) },
+      // 10 Eki 2026: Soft Panel (Varyant A) ana /panel oldu.
+      // Eski klasik panel /panel-eski olarak erişilebilir (acil geri dönüş için).
+      // /panel-v2 preview alias olarak kaldı (eski link'ler kırılmasın).
+      { path: 'panel', element: withSuspense(<SoftPanelPage />) },
       { path: 'panel-v2', element: withSuspense(<SoftPanelPage />) },
+      { path: 'panel-eski', element: withSuspense(<PanelPage />) },
       { path: 'morning', element: withSuspense(<MorningReportPage />) },
       { path: 'recommendations', element: withSuspense(<RecommendationsPage />) },
       { path: 'egitim', element: withSuspense(<FinancialLiteracyPage />) },

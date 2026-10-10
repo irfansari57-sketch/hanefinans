@@ -253,7 +253,7 @@ export function SoftPanelPage() {
     let totalCost = 0;
     let dailyPnl = 0;
     for (const p of positions) {
-      const qty = p.quantity ?? 0;
+      const qty = p.lot ?? 0;
       const cost = (p.avgPrice ?? 0) * qty;
       let currentPrice: number | undefined;
       let dayChangePct: number | undefined;

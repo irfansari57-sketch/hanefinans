@@ -105,40 +105,37 @@ export function SoftPanelPage() {
   // Günün Enleri aktif sekme (default: hisseler, 10 Eki UX güncellemesi)
   const [enlerTab, setEnlerTab] = useState<'stocks' | 'funds' | 'crypto'>('stocks');
 
-  // Günün Enleri için TÜM BIST evreni (500+ sembol). Direkt /api/yahoo/snapshot
-  // çağrılır; loadStocks'un staleness/isMockLike filtresi uygulanmaz çünkü:
-  // - Cuma akşam cron fail ederse Cumartesi veriyi hiç göremiyoruz (eski asOf
-  //   stale sayılıyordu, 588/588 BIST filtre dışında kalıyordu)
-  // - Panel'de "en son bilinen" veriyi göstermek > hiç göstermemek
-  const [allBistStocks, setAllBistStocks] = useState<Stock[]>([]);
+  // Günün Enleri Hisseler tab için FVT bazlı pre-sorted gainers/losers.
+  // Server-side CF Function /api/panel/top-stocks:
+  //   - FVT'den tam BIST evreni (hisseUrl .IS/ olanlar = sadece BIST filtre)
+  //   - gunlukKapanis/dunkuKapanis'ten pct hesaplar (gunlukYuzde null olabilir)
+  //   - ±%10.5 cap (BIST tavan + rounding tolerans)
+  //   - Edge cache 60sn market open — FVT ile ANINDA tutarlı
+  const [fvtGainers, setFvtGainers] = useState<Stock[]>([]);
+  const [fvtLosers, setFvtLosers] = useState<Stock[]>([]);
   useEffect(() => {
     let alive = true;
     const t = setTimeout(async () => {
       try {
-        const r = await fetch('/api/yahoo/snapshot');
+        const r = await fetch('/api/panel/top-stocks');
         if (!r.ok) return;
-        const j = (await r.json()) as { ok: boolean; quotes: Record<string, { price: number; changePct: number; updatedAt: number; asOf?: string; name?: string }> };
-        if (!alive || !j.ok || !j.quotes) return;
-        const bist: Stock[] = [];
-        for (const [ySym, q] of Object.entries(j.quotes)) {
-          if (!ySym.endsWith('.IS')) continue;
-          if (!Number.isFinite(q.price) || !Number.isFinite(q.changePct)) continue;
-          if (q.price <= 0) continue;
-          // BIST günlük tavan/taban kesin ±%10. %10'un ÜSTÜ veri hatası
-          // (yanlış previousClose, bölünme/temettü hesaba katılmamış, Yahoo stale).
-          // Strict filter: >%10 ya da <-%10 olanlar listede olmasin.
-          if (Math.abs(q.changePct) > 10) continue;
-          bist.push({
-            symbol: ySym.replace('.IS', ''),
-            name: q.name ?? ySym.replace('.IS', ''),
-            price: q.price,
-            changePct: q.changePct,
-            updatedAt: new Date(q.updatedAt).toISOString(),
-          });
-        }
-        setAllBistStocks(bist);
-      } catch { /* silent — ana stocks state fallback olur */ }
-    }, 1500);
+        const j = (await r.json()) as {
+          ok: boolean;
+          gainers: Array<{ kod: string; ad: string; pct: number; fiyat: number }>;
+          losers: Array<{ kod: string; ad: string; pct: number; fiyat: number }>;
+        };
+        if (!alive || !j.ok) return;
+        const toStock = (x: { kod: string; ad: string; pct: number; fiyat: number }): Stock => ({
+          symbol: x.kod,
+          name: x.ad || x.kod,
+          price: x.fiyat,
+          changePct: x.pct,
+          updatedAt: new Date().toISOString(),
+        });
+        setFvtGainers((j.gainers ?? []).map(toStock));
+        setFvtLosers((j.losers ?? []).map(toStock));
+      } catch { /* silent */ }
+    }, 800);
     return () => { alive = false; clearTimeout(t); };
   }, []);
 
@@ -245,13 +242,14 @@ export function SoftPanelPage() {
   const sortByDir = <T,>(arr: T[], getVal: (x: T) => number) =>
     [...arr].sort((a, b) => enlerDir === 'up' ? getVal(b) - getVal(a) : getVal(a) - getVal(b));
 
-  // allBistStocks (TÜM evren) hazırsa onu kullan, değilse priority stocks fallback.
-  // Böylece Wave 3 yüklenmeden önce de bir şey gösterilir.
-  // Strict ±%10 filter: BIST günlük tavan/taban max ±%10, üstü veri hatası.
+  // FVT CF Function'dan gelen pre-sorted gainers/losers. Yoksa priority stocks fallback.
+  // enlerDir === 'up' ise gainers, 'down' ise losers.
   const topStocks = useMemo(() => {
-    const source = allBistStocks.length >= 100 ? allBistStocks : stocks;
+    const fvtList = enlerDir === 'up' ? fvtGainers : fvtLosers;
+    if (fvtList.length > 0) return fvtList.slice(0, 10);
+    // Fallback: priority stocks (FVT fetch gelmeden önce bir şey göster)
     return sortByDir(
-      source.filter((s) =>
+      stocks.filter((s) =>
         s.price > 0 &&
         Number.isFinite(s.changePct) &&
         s.changePct !== 0 &&
@@ -259,7 +257,7 @@ export function SoftPanelPage() {
       ),
       (s) => s.changePct,
     ).slice(0, 10);
-  }, [stocks, allBistStocks, enlerDir]);
+  }, [stocks, fvtGainers, fvtLosers, enlerDir]);
 
   // Fon filtre kuralları (10 Eki: FVT doğruluğuna hizalandı):
   //   1. TEFAS'ta açık olmalı (tasfiye/kapalı fonlar listede olmasın) — tefasOpen=true

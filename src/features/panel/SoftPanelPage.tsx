@@ -29,6 +29,7 @@ import { fetchHistoricalYahoo, fetchQuotesYahoo } from '@/data/api/yahoo';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { CRYPTOS } from '@/data/cryptoSymbols';
 import { MOCK_STOCKS } from '@/data/mock';
+import { BIST_UNIQUE } from '@/data/bistAll';
 import { macroKeyToRoute } from '@/lib/macroRoutes';
 import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
 import { fetchTr10y, type Tr10yData } from '@/data/api/tr10y';
@@ -103,6 +104,25 @@ export function SoftPanelPage() {
 
   // Günün Enleri aktif sekme (default: hisseler, 10 Eki UX güncellemesi)
   const [enlerTab, setEnlerTab] = useState<'stocks' | 'funds' | 'crypto'>('stocks');
+
+  // Günün Enleri için TÜM BIST evreni (500+ sembol) — priority list sadece 30 sembol
+  // olduğundan tavan/taban hisseleri kaçırıyorduk. Snapshot endpoint tek fetch'te
+  // tam universe'i veriyor, FVT paritesinde doğru top gainer/loser hesaplanır.
+  const [allBistStocks, setAllBistStocks] = useState<Stock[]>([]);
+  useEffect(() => {
+    let alive = true;
+    // 1.5sn defer — kritik path'ten sonra arka planda yüklesin
+    const t = setTimeout(async () => {
+      try {
+        // BIST_UNIQUE 270+ sembol. loadStocks snapshot endpoint ile tek fetch yapar.
+        const allSyms = BIST_UNIQUE.map((s) => s.symbol);
+        const { data } = await loadStocks(allSyms);
+        if (!alive) return;
+        setAllBistStocks(data);
+      } catch { /* silent — ana stocks state fallback olur */ }
+    }, 1500);
+    return () => { alive = false; clearTimeout(t); };
+  }, []);
 
   // Türkiye risk göstergeleri — mini kart içeriği
   const [trCds, setTrCds] = useState<TrCdsData | null>(null);
@@ -207,10 +227,20 @@ export function SoftPanelPage() {
   const sortByDir = <T,>(arr: T[], getVal: (x: T) => number) =>
     [...arr].sort((a, b) => enlerDir === 'up' ? getVal(b) - getVal(a) : getVal(a) - getVal(b));
 
-  const topStocks = useMemo(() => sortByDir(
-    stocks.filter((s) => s.price > 0 && Number.isFinite(s.changePct) && Math.abs(s.changePct) <= 11),
-    (s) => s.changePct,
-  ).slice(0, 5), [stocks, enlerDir]);
+  // allBistStocks (TÜM evren) hazırsa onu kullan, değilse priority stocks fallback.
+  // Böylece Wave 3 yüklenmeden önce de bir şey gösterilir.
+  const topStocks = useMemo(() => {
+    const source = allBistStocks.length >= 100 ? allBistStocks : stocks;
+    return sortByDir(
+      source.filter((s) =>
+        s.price > 0 &&
+        Number.isFinite(s.changePct) &&
+        s.changePct !== 0 &&
+        Math.abs(s.changePct) <= 11
+      ),
+      (s) => s.changePct,
+    ).slice(0, 5);
+  }, [stocks, allBistStocks, enlerDir]);
 
   // Fon filtre kuralları (10 Eki: FVT doğruluğuna hizalandı):
   //   1. TEFAS'ta açık olmalı (tasfiye/kapalı fonlar listede olmasın) — tefasOpen=true
@@ -709,10 +739,6 @@ export function SoftPanelPage() {
         </div>
       </div>
 
-      <div className="mt-6 text-center text-[10px] text-slate-500">
-        Klasik görünüme dönmek için{' '}
-        <Link to="/panel-eski" className="text-accent hover:underline">eski Panel</Link>
-      </div>
     </>
   );
 }

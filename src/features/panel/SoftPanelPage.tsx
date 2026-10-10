@@ -99,8 +99,8 @@ export function SoftPanelPage() {
   const [topFunds, setTopFunds] = usePersistedState<FundPerformance[]>('hf.cache.topFunds', SWR_TTL_MS, []);
   const [cryptoQuotes, setCryptoQuotes] = useState<Array<{ symbol: string; price: number; changePct: number }>>([]);
 
-  // Günün Enleri aktif sekme (default: fonlar, kullanıcı en çok ilgilendiği alan)
-  const [enlerTab, setEnlerTab] = useState<'funds' | 'stocks' | 'crypto'>('funds');
+  // Günün Enleri aktif sekme (default: hisseler, 10 Eki UX güncellemesi)
+  const [enlerTab, setEnlerTab] = useState<'stocks' | 'funds' | 'crypto'>('stocks');
   // Yön: kazandıran (up) veya kaybettiren (down)
   const [enlerDir, setEnlerDir] = useState<'up' | 'down'>('up');
 
@@ -196,11 +196,17 @@ export function SoftPanelPage() {
     (s) => s.changePct,
   ).slice(0, 5), [stocks, enlerDir]);
 
-  // Fon outlier filtresi: TEFAS feed'inde bazı serbest fonlar fon-kapanısı
-  // sonrası -100% veya absürt değerler döndürüyor (kurucu değişimi, likidasyon).
-  // ±%50 üstü günlük değişim mantıksız — veri hatası, filtreliyoruz.
+  // Fon filtre kuralları:
+  //   1. TEFAS'ta açık olmalı (tasfiye/kapalı fonlar listede olmasın) — tefasOpen=true
+  //   2. Günlük getiri outlier filtresi (±%50 üstü = veri hatası / likidasyon)
+  //   3. Fon adı "TASFIYE" içermemeli (yedek sağlamlık — scraper flag'i kaçırabilir)
   const topFundsSorted = useMemo(() => sortByDir(
-    topFunds.filter((f) => Number.isFinite(f.day) && Math.abs(f.day) <= 50),
+    topFunds.filter((f) =>
+      Number.isFinite(f.day) &&
+      Math.abs(f.day) <= 50 &&
+      f.tefasOpen !== false &&
+      !/TASFIYE|TASFİYE|KAPALI/i.test(f.name ?? '')
+    ),
     (f) => f.day,
   ).slice(0, 5), [topFunds, enlerDir]);
 
@@ -486,12 +492,13 @@ export function SoftPanelPage() {
             )}
           </div>
 
-          {/* Günün Enleri — Fonlar / Hisseler / Kripto tab'lı + Kazandıran/Kaybettiren toggle */}
+          {/* Günün Enleri — Hisseler / Fonlar / Kripto tab'lı + Kazandıran/Kaybettiren toggle */}
           <div className="side-card">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                 <TrendingUp size={14} className={enlerDir === 'up' ? 'text-success' : 'text-danger'} />
                 Günün Enleri
+                <span className="text-[9px] font-normal text-slate-500 uppercase tracking-wider">· Günlük %</span>
               </div>
               {/* Kazandıran / Kaybettiren toggle — compact */}
               <div className="inline-flex rounded-md border border-slate-700/40 p-0.5">
@@ -518,11 +525,11 @@ export function SoftPanelPage() {
               </div>
             </div>
 
-            {/* Tab seçici — compact pills */}
+            {/* Tab seçici — compact pills (10 Eki: Hisseler ilk, kullanıcı talebi) */}
             <div className="mb-2 flex gap-1">
               {([
-                { k: 'funds',  label: 'Fonlar',  disabled: topFundsSorted.length === 0 },
                 { k: 'stocks', label: 'Hisseler', disabled: topStocks.length === 0 },
+                { k: 'funds',  label: 'Fonlar',   disabled: topFundsSorted.length === 0 },
                 { k: 'crypto', label: 'Kripto',   disabled: topCrypto.length === 0 },
               ] as const).map((t) => (
                 <button

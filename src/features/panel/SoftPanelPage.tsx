@@ -30,7 +30,6 @@ import { fetchHistoricalYahoo, fetchQuotesYahoo } from '@/data/api/yahoo';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { CRYPTOS } from '@/data/cryptoSymbols';
 import { MOCK_STOCKS } from '@/data/mock';
-import { BIST_UNIQUE } from '@/data/bistAll';
 import { macroKeyToRoute } from '@/lib/macroRoutes';
 import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
 import { fetchTr10y, type Tr10yData } from '@/data/api/tr10y';
@@ -106,20 +105,37 @@ export function SoftPanelPage() {
   // Günün Enleri aktif sekme (default: hisseler, 10 Eki UX güncellemesi)
   const [enlerTab, setEnlerTab] = useState<'stocks' | 'funds' | 'crypto'>('stocks');
 
-  // Günün Enleri için TÜM BIST evreni (500+ sembol) — priority list sadece 30 sembol
-  // olduğundan tavan/taban hisseleri kaçırıyorduk. Snapshot endpoint tek fetch'te
-  // tam universe'i veriyor, FVT paritesinde doğru top gainer/loser hesaplanır.
+  // Günün Enleri için TÜM BIST evreni (500+ sembol). Direkt /api/yahoo/snapshot
+  // çağrılır; loadStocks'un staleness/isMockLike filtresi uygulanmaz çünkü:
+  // - Cuma akşam cron fail ederse Cumartesi veriyi hiç göremiyoruz (eski asOf
+  //   stale sayılıyordu, 588/588 BIST filtre dışında kalıyordu)
+  // - Panel'de "en son bilinen" veriyi göstermek > hiç göstermemek
   const [allBistStocks, setAllBistStocks] = useState<Stock[]>([]);
   useEffect(() => {
     let alive = true;
-    // 1.5sn defer — kritik path'ten sonra arka planda yüklesin
     const t = setTimeout(async () => {
       try {
-        // BIST_UNIQUE 270+ sembol. loadStocks snapshot endpoint ile tek fetch yapar.
-        const allSyms = BIST_UNIQUE.map((s) => s.symbol);
-        const { data } = await loadStocks(allSyms);
-        if (!alive) return;
-        setAllBistStocks(data);
+        const r = await fetch('/api/yahoo/snapshot');
+        if (!r.ok) return;
+        const j = (await r.json()) as { ok: boolean; quotes: Record<string, { price: number; changePct: number; updatedAt: number; asOf?: string; name?: string }> };
+        if (!alive || !j.ok || !j.quotes) return;
+        const bist: Stock[] = [];
+        for (const [ySym, q] of Object.entries(j.quotes)) {
+          if (!ySym.endsWith('.IS')) continue;
+          if (!Number.isFinite(q.price) || !Number.isFinite(q.changePct)) continue;
+          if (q.price <= 0) continue;
+          // Sadece outlier filtresi (±%11 BIST tavan/taban + marj) — asOf stale
+          // filtresi UYGULAMA (data eski olabilir ama değer gerçek)
+          if (Math.abs(q.changePct) > 11) continue;
+          bist.push({
+            symbol: ySym.replace('.IS', ''),
+            name: q.name ?? ySym.replace('.IS', ''),
+            price: q.price,
+            changePct: q.changePct,
+            updatedAt: new Date(q.updatedAt).toISOString(),
+          });
+        }
+        setAllBistStocks(bist);
       } catch { /* silent — ana stocks state fallback olur */ }
     }, 1500);
     return () => { alive = false; clearTimeout(t); };

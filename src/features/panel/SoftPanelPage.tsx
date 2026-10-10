@@ -16,7 +16,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { TrendingUp, Newspaper, Briefcase, Zap } from 'lucide-react';
+import { TrendingUp, Newspaper, Briefcase, Zap, CalendarClock } from 'lucide-react';
+import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { db } from '@/data/db';
 import { useAuth } from '@/store/auth';
 import { MiniAreaChart } from '@/components/domain/PanelStyleChart';
@@ -239,7 +240,7 @@ export function SoftPanelPage() {
         Math.abs(s.changePct) <= 11
       ),
       (s) => s.changePct,
-    ).slice(0, 5);
+    ).slice(0, 10);
   }, [stocks, allBistStocks, enlerDir]);
 
   // Fon filtre kuralları (10 Eki: FVT doğruluğuna hizalandı):
@@ -256,12 +257,12 @@ export function SoftPanelPage() {
       !/TASFIYE|TASFİYE|KAPALI|KURUCU DEVR|BİRLEŞ|SONA ER/i.test(f.name ?? '')
     ),
     (f) => f.day,
-  ).slice(0, 5), [topFunds, enlerDir]);
+  ).slice(0, 10), [topFunds, enlerDir]);
 
   const topCrypto = useMemo(() => sortByDir(
     cryptoQuotes.filter((c) => Number.isFinite(c.changePct)),
     (c) => c.changePct,
-  ).slice(0, 5), [cryptoQuotes, enlerDir]);
+  ).slice(0, 10), [cryptoQuotes, enlerDir]);
 
   // Portföy özet — fiyat haritası + maliyet üzerinden hesapla
   const [fundMap, setFundMap] = useState<Map<string, FundPerformance>>(new Map());
@@ -533,6 +534,19 @@ export function SoftPanelPage() {
                 </span>
               ) : <span className="text-slate-500 text-[11px]">—</span>}
             </Link>
+          </div>
+
+          {/* EKONOMİK TAKVİM — CDS/Tahvil kartlarının altında, Panel'in ekonomi odak alanı.
+              Mini-grid dışında ayrı bölüm — tam genişlikte, aşağıda ekstra görünürlük. */}
+          <div className="side-card">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+                <CalendarClock size={14} className="text-success" />
+                Ekonomik Takvim
+              </div>
+              <Link to="/takvim" className="text-[10px] text-slate-500 hover:text-accent">Tümü →</Link>
+            </div>
+            <EconomicCalendarWidget compact maxItems={8} daysAhead={14} collapsible={false} />
           </div>
         </div>
 

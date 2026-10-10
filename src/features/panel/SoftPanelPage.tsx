@@ -212,16 +212,18 @@ export function SoftPanelPage() {
     (s) => s.changePct,
   ).slice(0, 5), [stocks, enlerDir]);
 
-  // Fon filtre kuralları:
+  // Fon filtre kuralları (10 Eki: FVT doğruluğuna hizalandı):
   //   1. TEFAS'ta açık olmalı (tasfiye/kapalı fonlar listede olmasın) — tefasOpen=true
-  //   2. Günlük getiri outlier filtresi (±%50 üstü = veri hatası / likidasyon)
-  //   3. Fon adı "TASFIYE" içermemeli (yedek sağlamlık — scraper flag'i kaçırabilir)
+  //   2. Günlük getiri outlier: TEFAS'ta fon günlük limit ±%7 (SPK), ±%10 üstü = veri hatası
+  //   3. Fon adı TASFIYE/KAPALI/KURUCU DEVRİ içermemeli (yedek koruma)
+  //   4. Günlük değer 0.00% ise atla (data henüz güncellenmemiş)
   const topFundsSorted = useMemo(() => sortByDir(
     topFunds.filter((f) =>
       Number.isFinite(f.day) &&
-      Math.abs(f.day) <= 50 &&
+      f.day !== 0 &&
+      Math.abs(f.day) <= 10 &&
       f.tefasOpen !== false &&
-      !/TASFIYE|TASFİYE|KAPALI/i.test(f.name ?? '')
+      !/TASFIYE|TASFİYE|KAPALI|KURUCU DEVR|BİRLEŞ|SONA ER/i.test(f.name ?? '')
     ),
     (f) => f.day,
   ).slice(0, 5), [topFunds, enlerDir]);

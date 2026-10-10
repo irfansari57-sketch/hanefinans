@@ -64,7 +64,12 @@ export function PanelStyleChart({
   priceTransform,
 }: Props) {
   const [period, setPeriod] = useState<Period>(defaultPeriod);
-  const [series, setSeries] = useState<Array<{ date: number; close: number }>>([]);
+  // ONEMLI: rawSeries HER ZAMAN ham fiyat (ONS USD gibi). priceTransform
+  // ayri bir useMemo'da uygulanir — boylece unit değiştiğinde (Ons/Gram)
+  // chart ANINDA yeni değerle re-render olur, tekrar fetch gerekmez.
+  // Eskiden transform fetch icinde uygulanıyor ve useEffect deps'e dahil
+  // olmadığı için Gram'a geçince grafik Ons değerinde kalıyordu.
+  const [rawSeries, setRawSeries] = useState<Array<{ date: number; close: number }>>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -74,10 +79,9 @@ export function PanelStyleChart({
       try {
         // 1) Yahoo birincil — BIST icin .IS otomatik eklenir
         const data = await fetchHistoricalYahoo(symbol, PERIOD_RANGE[period], '1d', { bistSuffix: isBist });
-        let pairs = (data?.closes ?? []).filter((c) => Number.isFinite(c.close) && c.close > 0);
+        const pairs = (data?.closes ?? []).filter((c) => Number.isFinite(c.close) && c.close > 0);
         if (pairs.length >= 2) {
-          if (priceTransform) pairs = pairs.map((p) => ({ date: p.date, close: priceTransform(p.close) }));
-          if (alive) setSeries(pairs);
+          if (alive) setRawSeries(pairs);
           return;
         }
         // 2) BIST icin Is Yatirim fallback
@@ -85,22 +89,26 @@ export function PanelStyleChart({
           const cleanSym = symbol.replace(/\.IS$/i, '');
           const raw = await fetchIsYatirimChart(cleanSym, PERIOD_IS[period]);
           if (raw && raw.length >= 2 && alive) {
-            const bars = priceTransform
-              ? raw.map((b) => ({ date: b.date, close: priceTransform(b.close) }))
-              : raw;
-            setSeries(bars);
+            setRawSeries(raw);
             return;
           }
         }
-        if (alive) setSeries([]);
+        if (alive) setRawSeries([]);
       } catch {
-        if (alive) setSeries([]);
+        if (alive) setRawSeries([]);
       } finally {
         if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
   }, [symbol, period, isBist]);
+
+  // Transform her render'da uygulanır — priceTransform değişince (örn: Ons → Gram
+  // TL toggle) chart ANINDA yeni değerle görünür.
+  const series = useMemo(() => {
+    if (!priceTransform) return rawSeries;
+    return rawSeries.map((p) => ({ date: p.date, close: priceTransform(p.close) }));
+  }, [rawSeries, priceTransform]);
 
   const changePct = useMemo(() => {
     if (series.length < 2) return 0;

@@ -124,9 +124,10 @@ export function SoftPanelPage() {
           if (!ySym.endsWith('.IS')) continue;
           if (!Number.isFinite(q.price) || !Number.isFinite(q.changePct)) continue;
           if (q.price <= 0) continue;
-          // Sadece outlier filtresi (±%11 BIST tavan/taban + marj) — asOf stale
-          // filtresi UYGULAMA (data eski olabilir ama değer gerçek)
-          if (Math.abs(q.changePct) > 11) continue;
+          // BIST günlük tavan/taban kesin ±%10. %10'un ÜSTÜ veri hatası
+          // (yanlış previousClose, bölünme/temettü hesaba katılmamış, Yahoo stale).
+          // Strict filter: >%10 ya da <-%10 olanlar listede olmasin.
+          if (Math.abs(q.changePct) > 10) continue;
           bist.push({
             symbol: ySym.replace('.IS', ''),
             name: q.name ?? ySym.replace('.IS', ''),
@@ -246,6 +247,7 @@ export function SoftPanelPage() {
 
   // allBistStocks (TÜM evren) hazırsa onu kullan, değilse priority stocks fallback.
   // Böylece Wave 3 yüklenmeden önce de bir şey gösterilir.
+  // Strict ±%10 filter: BIST günlük tavan/taban max ±%10, üstü veri hatası.
   const topStocks = useMemo(() => {
     const source = allBistStocks.length >= 100 ? allBistStocks : stocks;
     return sortByDir(
@@ -253,7 +255,7 @@ export function SoftPanelPage() {
         s.price > 0 &&
         Number.isFinite(s.changePct) &&
         s.changePct !== 0 &&
-        Math.abs(s.changePct) <= 11
+        Math.abs(s.changePct) <= 10
       ),
       (s) => s.changePct,
     ).slice(0, 10);

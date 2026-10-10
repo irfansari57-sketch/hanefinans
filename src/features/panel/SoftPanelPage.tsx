@@ -16,7 +16,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, Newspaper, Briefcase, Zap } from 'lucide-react';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { MiniAreaChart } from '@/components/domain/PanelStyleChart';
 import { usePersistedState } from '@/lib/usePersistedState';
 import { useVisibleInterval } from '@/hooks/useVisibleInterval';
@@ -260,13 +259,16 @@ export function SoftPanelPage() {
         }
       `}</style>
 
-      <PageHeader
-        title="Panel"
-        subtitle={updatedAt ? `Güncel · ${new Date(updatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}` : 'Yükleniyor...'}
-        actions={<RefreshDot active={refreshing} />}
-      />
+      {/* PageHeader kaldırıldı — kullanıcı daha fazla dikey alan istiyor.
+          Güncel saat + refresh indicator ticker strip'in sağ üstünde göze çarpmayacak. */}
 
-      {/* ============ ÜST TICKER STRIP (7 chip) ============ */}
+      {/* ============ ÜST TICKER STRIP (7 chip) + mini durum ============ */}
+      {updatedAt && (
+        <div className="mb-2 flex items-center justify-end gap-2 text-[10px] text-slate-500">
+          <RefreshDot active={refreshing} />
+          <span>Güncel · {new Date(updatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      )}
       <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {TICKER_KEYS.map((t) => {
           const m = macroMap.get(t.key);

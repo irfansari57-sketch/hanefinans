@@ -30,6 +30,8 @@ import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { CRYPTOS } from '@/data/cryptoSymbols';
 import { MOCK_STOCKS } from '@/data/mock';
 import { macroKeyToRoute } from '@/lib/macroRoutes';
+import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
+import { fetchTr10y, type Tr10yData } from '@/data/api/tr10y';
 import type { MacroIndicator, NewsItem, Stock, FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
@@ -48,12 +50,12 @@ const TICKER_KEYS: Array<{ key: string; label: string; unit?: string }> = [
   { key: 'Brent',       label: 'Brent' },
 ];
 
-// Mini kart (4 adet) için sabit gösterge seti
+// Mini kart (4 adet) için sabit gösterge seti.
+// 10 Eki: VIX + Ons Altın kaldırıldı — VIX yerine TR risk göstergeleri (CDS + 10Y Tahvil),
+// Ons Altın top ticker'daki Gram Altın ile duplicate oluyordu. Final grid 2×2:
+// [Portföyüm · BIST 30] / [TR CDS · TR 10Y Tahvil]
 const MINI_KEYS: Array<{ key: string; label: string }> = [
-  { key: 'BIST 30',    label: 'BIST 30' },
-  { key: 'Ons Altın',  label: 'Ons Altın' },
-  { key: 'VIX',        label: 'VIX' },
-  { key: 'ETH/USD',    label: 'ETH/USD' },
+  { key: 'BIST 30', label: 'BIST 30' },
 ];
 
 /** Soft pulse yeşil nokta — sadece aktif refresh anında görünür */
@@ -101,6 +103,20 @@ export function SoftPanelPage() {
 
   // Günün Enleri aktif sekme (default: hisseler, 10 Eki UX güncellemesi)
   const [enlerTab, setEnlerTab] = useState<'stocks' | 'funds' | 'crypto'>('stocks');
+
+  // Türkiye risk göstergeleri — mini kart içeriği
+  const [trCds, setTrCds] = useState<TrCdsData | null>(null);
+  const [tr10y, setTr10y] = useState<Tr10yData | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const t = setTimeout(async () => {
+      const [c, y] = await Promise.all([fetchTrCds().catch(() => null), fetchTr10y().catch(() => null)]);
+      if (!alive) return;
+      if (c) setTrCds(c);
+      if (y) setTr10y(y);
+    }, 800);
+    return () => { alive = false; clearTimeout(t); };
+  }, []);
   // Yön: kazandıran (up) veya kaybettiren (down)
   const [enlerDir, setEnlerDir] = useState<'up' | 'down'>('up');
 
@@ -353,16 +369,8 @@ export function SoftPanelPage() {
         }
       `}</style>
 
-      {/* PageHeader kaldırıldı — kullanıcı daha fazla dikey alan istiyor.
-          Güncel saat + refresh indicator ticker strip'in sağ üstünde göze çarpmayacak. */}
-
-      {/* ============ ÜST TICKER STRIP (7 chip) + mini durum ============ */}
-      {updatedAt && (
-        <div className="mb-2 flex items-center justify-end gap-2 text-[10px] text-slate-500">
-          <RefreshDot active={refreshing} />
-          <span>Güncel · {new Date(updatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-      )}
+      {/* PageHeader + "Güncel · HH:MM" strip tamamen kaldırıldı
+          (10 Eki UX: sol nav zaten saati/tarihi gösteriyor, tekrar yer kaplamasın). */}
       <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {TICKER_KEYS.map((t) => {
           const m = macroMap.get(t.key);
@@ -456,6 +464,40 @@ export function SoftPanelPage() {
                 </Link>
               );
             })}
+
+            {/* TR 5Y CDS — Türkiye ülke risk primi (bps).
+                CDS DÜŞMESİ olumlu (risk azalıyor), ARTMASI olumsuz → renk ters. */}
+            <Link to="/global" className="mini-card block">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">TR 5Y CDS</div>
+              <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">
+                {trCds?.value != null ? `${trCds.value.toFixed(0)} bps` : '—'}
+              </div>
+              {trCds?.changePct != null && Number.isFinite(trCds.changePct) ? (
+                <span className={cn(
+                  'text-[11px] font-medium tabular-nums',
+                  // Ters renk: CDS düşerse yeşil (iyi), yükselirse kırmızı (kötü)
+                  trCds.changePct <= 0 ? 'text-success' : 'text-danger',
+                )}>
+                  {trCds.changePct >= 0 ? '+' : ''}{trCds.changePct.toFixed(2)}%
+                </span>
+              ) : <span className="text-slate-500 text-[11px]">—</span>}
+            </Link>
+
+            {/* TR 10Y Tahvil Getirisi (%) */}
+            <Link to="/global" className="mini-card block">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">TR 10Y Tahvil</div>
+              <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">
+                {tr10y?.value != null ? `%${tr10y.value.toFixed(2)}` : '—'}
+              </div>
+              {tr10y?.changePct != null && Number.isFinite(tr10y.changePct) ? (
+                <span className={cn(
+                  'text-[11px] font-medium tabular-nums',
+                  tr10y.changePct <= 0 ? 'text-success' : 'text-danger',
+                )}>
+                  {tr10y.changePct >= 0 ? '+' : ''}{tr10y.changePct.toFixed(2)}%
+                </span>
+              ) : <span className="text-slate-500 text-[11px]">—</span>}
+            </Link>
           </div>
         </div>
 

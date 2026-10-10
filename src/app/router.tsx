@@ -67,6 +67,7 @@ function lazyWithRetry<T extends ComponentType<unknown>>(factory: () => Promise<
 // Route-level code splitting — her sayfa ayrı chunk
 // İlk açılış JS bundle'ı ~%70 küçülür
 const PanelPage             = lazyWithRetry(() => import('@/features/panel/PanelPage').then((m) => ({ default: m.PanelPage })));
+const SoftPanelPage         = lazyWithRetry(() => import('@/features/panel/SoftPanelPage').then((m) => ({ default: m.SoftPanelPage })));
 const NewsPage              = lazyWithRetry(() => import('@/features/news/NewsPage').then((m) => ({ default: m.NewsPage })));
 const WatchlistPage         = lazyWithRetry(() => import('@/features/watchlist/WatchlistPage').then((m) => ({ default: m.WatchlistPage })));
 const FundsPage             = lazyWithRetry(() => import('@/features/funds/FundsPage').then((m) => ({ default: m.FundsPage })));
@@ -126,6 +127,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/panel" replace /> },
       { path: 'panel', element: withSuspense(<PanelPage />) },
+      { path: 'panel-v2', element: withSuspense(<SoftPanelPage />) },
       { path: 'morning', element: withSuspense(<MorningReportPage />) },
       { path: 'recommendations', element: withSuspense(<RecommendationsPage />) },
       { path: 'egitim', element: withSuspense(<FinancialLiteracyPage />) },

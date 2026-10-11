@@ -942,6 +942,7 @@ function todayDateStr(): string {
 }
 
 function AddPositionForm({ onClose }: { onClose: () => void }) {
+  const [kind, setKind] = useState<'stock' | 'fund'>('stock');
   const [symbol, setSymbol] = useState('');
   const [lot, setLot] = useState('');
   const [avgPrice, setAvgPrice] = useState('');
@@ -949,12 +950,34 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const suggestions = symbol.trim()
-    ? MOCK_STOCKS.filter((s) =>
-        s.symbol.toLowerCase().includes(symbol.toLowerCase()) ||
-        s.name.toLowerCase().includes(symbol.toLowerCase()),
-      ).slice(0, 6)
-    : [];
+  // Hisse için local MOCK_STOCKS suggestion; Fon için TEFAS feed'den (lazy loaded)
+  const [fundOptions, setFundOptions] = useState<Array<{ code: string; name: string; nav?: number }>>([]);
+  useEffect(() => {
+    if (kind !== 'fund' || fundOptions.length > 0) return;
+    (async () => {
+      try {
+        const { loadFundsAsPerformance } = await import('@/data/api/tefasGithub');
+        const r = await loadFundsAsPerformance();
+        if (r?.funds) {
+          setFundOptions(r.funds.map((f) => ({ code: f.code, name: f.name ?? f.code, nav: f.nav })));
+        }
+      } catch { /* feed yok, kullanici manuel kod yazsin */ }
+    })();
+  }, [kind, fundOptions.length]);
+
+  const suggestions = kind === 'fund'
+    ? (symbol.trim()
+        ? fundOptions.filter((f) =>
+            f.code.toLowerCase().includes(symbol.toLowerCase()) ||
+            f.name.toLowerCase().includes(symbol.toLowerCase()),
+          ).slice(0, 6)
+        : [])
+    : (symbol.trim()
+        ? MOCK_STOCKS.filter((s) =>
+            s.symbol.toLowerCase().includes(symbol.toLowerCase()) ||
+            s.name.toLowerCase().includes(symbol.toLowerCase()),
+          ).slice(0, 6)
+        : []);
 
   const save = async () => {
     const sym = symbol.trim().toUpperCase();
@@ -974,7 +997,7 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
       if (shouldUseCloud()) {
         try {
           await cloudAddPosition({
-            kind: 'stock',
+            kind,
             symbol: sym,
             lot: lotNum,
             avgPrice: priceNum,
@@ -982,7 +1005,7 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
             executedAt,
           });
           await syncFromCloud();
-          toast.success(`${sym} kaydedildi (bulutta)`, `${lotNum} lot @ ${priceNum}₺`);
+          toast.success(`${sym} kaydedildi (bulutta)`, `${lotNum} ${kind === 'fund' ? 'pay' : 'lot'} @ ${priceNum}₺`);
           onClose();
           return;
         } catch (e) {
@@ -991,9 +1014,9 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
         }
       }
 
-      // Ayni sembol icin mevcut hisse pozisyonu var mi? (kind=fund haric)
+      // Ayni sembol icin mevcut pozisyon var mi? (ayni kind'da aggregate)
       const existing = await db.portfolio
-        .filter((p) => p.symbol === sym && p.kind !== 'fund')
+        .filter((p) => p.symbol === sym && (p.kind ?? 'stock') === kind)
         .first();
 
       let positionId: number;
@@ -1011,18 +1034,19 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
           `Toplam ${totalLot} lot · Yeni ort. maliyet ${weightedAvg.toFixed(2)}₺`);
       } else {
         positionId = (await db.portfolio.add({
+          kind,
           symbol: sym,
           lot: lotNum,
           avgPrice: priceNum,
           addedAt: now,
           note: note.trim() || undefined,
         })) as number;
-        toast.success(`${sym} eklendi`, `${lotNum} lot @ ${priceNum}₺`);
+        toast.success(`${sym} eklendi`, `${lotNum} ${kind === 'fund' ? 'pay' : 'lot'} @ ${priceNum}₺`);
       }
       // Islem gecmisine yeni alim kaydi (her durumda)
       await db.portfolioTxns.add({
         positionId,
-        kind: 'stock',
+        kind,
         symbol: sym,
         lot: lotNum,
         price: priceNum,
@@ -1038,12 +1062,41 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="space-y-3">
-      <Field label="Hisse Sembolü" hint="ör. THYAO, GARAN, ASELS">
+      {/* HİSSE / FON toggle — ilk alan, pozisyon tipini belirler */}
+      <Field label="Pozisyon Türü">
+        <div className="inline-flex rounded-lg border border-border p-1 w-full">
+          <button
+            type="button"
+            onClick={() => { setKind('stock'); setSymbol(''); setAvgPrice(''); }}
+            className={cn(
+              'flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition',
+              kind === 'stock' ? 'bg-accent/15 text-accent' : 'text-slate-400 hover:text-slate-200',
+            )}
+          >
+            Hisse
+          </button>
+          <button
+            type="button"
+            onClick={() => { setKind('fund'); setSymbol(''); setAvgPrice(''); }}
+            className={cn(
+              'flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition',
+              kind === 'fund' ? 'bg-accent/15 text-accent' : 'text-slate-400 hover:text-slate-200',
+            )}
+          >
+            Fon
+          </button>
+        </div>
+      </Field>
+
+      <Field
+        label={kind === 'fund' ? 'Fon Kodu' : 'Hisse Sembolü'}
+        hint={kind === 'fund' ? 'ör. TLY, DFI, AES — TEFAS fon kodu' : 'ör. THYAO, GARAN, ASELS'}
+      >
         <div className="relative">
           <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             className="input pl-8 uppercase"
-            placeholder="THYAO"
+            placeholder={kind === 'fund' ? 'TLY' : 'THYAO'}
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
             autoFocus
@@ -1051,60 +1104,67 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
           />
           {suggestions.length > 0 && symbol.length >= 2 && (
             <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-bg-card shadow-xl max-h-60 overflow-y-auto">
-              {suggestions.map((s) => (
-                <button
-                  key={s.symbol}
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setSymbol(s.symbol);
-                    if (s.price > 0 && !avgPrice) {
-                      // TR format: "285,50" (virgul ondalik). English decimal
-                      // TRTextNumberInput'ta parseTRNumber ile yanlis okunur.
-                      setAvgPrice(s.price.toLocaleString('tr-TR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }));
-                    }
-                  }}
-                  className="flex w-full items-start justify-between gap-2 px-3 py-2 text-xs hover:bg-bg-soft"
-                >
-                  <div className="min-w-0 flex-1 text-left">
-                    <span className="font-mono font-semibold text-accent">{s.symbol}</span>
-                    <div className="text-slate-400 text-[10px] truncate">{s.name}</div>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className="font-mono text-[11px] font-bold text-slate-100 tabular-nums">
-                      {s.price > 0 ? `${s.price.toFixed(2)}₺` : '—'}
+              {suggestions.map((s) => {
+                // Normalize: fund has {code, name, nav}, stock has {symbol, name, price, changePct}
+                const code = (s as { code?: string; symbol?: string }).code ?? (s as { symbol: string }).symbol;
+                const name = s.name;
+                const price = (s as { nav?: number; price?: number }).nav ?? (s as { price?: number }).price;
+                const changePct = (s as { changePct?: number }).changePct;
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSymbol(code);
+                      if (price && price > 0 && !avgPrice) {
+                        setAvgPrice(price.toLocaleString('tr-TR', {
+                          minimumFractionDigits: kind === 'fund' ? 4 : 2,
+                          maximumFractionDigits: kind === 'fund' ? 6 : 2,
+                        }));
+                      }
+                    }}
+                    className="flex w-full items-start justify-between gap-2 px-3 py-2 text-xs hover:bg-bg-soft"
+                  >
+                    <div className="min-w-0 flex-1 text-left">
+                      <span className="font-mono font-semibold text-accent">{code}</span>
+                      <div className="text-slate-400 text-[10px] truncate">{name}</div>
                     </div>
-                    <div className={cn(
-                      'text-[10px] font-bold tabular-nums',
-                      (s.changePct ?? 0) >= 0 ? 'text-success' : 'text-danger',
-                    )}>
-                      {Number.isFinite(s.changePct) ? `${(s.changePct as number) >= 0 ? '+' : ''}${(s.changePct as number).toFixed(2)}%` : ''}
+                    <div className="shrink-0 text-right">
+                      <div className="font-mono text-[11px] font-bold text-slate-100 tabular-nums">
+                        {price && price > 0 ? `${kind === 'fund' ? price.toFixed(4) : price.toFixed(2)}₺` : '—'}
+                      </div>
+                      {Number.isFinite(changePct) && (
+                        <div className={cn(
+                          'text-[10px] font-bold tabular-nums',
+                          (changePct ?? 0) >= 0 ? 'text-success' : 'text-danger',
+                        )}>
+                          {(changePct as number) >= 0 ? '+' : ''}{(changePct as number).toFixed(2)}%
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Lot Adedi">
+        <Field label={kind === 'fund' ? 'Pay Adedi' : 'Lot Adedi'}>
           <TRTextNumberInput
             className="input"
             value={lot}
             onChange={setLot}
-            placeholder="100"
+            placeholder={kind === 'fund' ? '1250,5' : '100'}
           />
         </Field>
-        <Field label="Ortalama Maliyet (₺)">
+        <Field label={kind === 'fund' ? 'Ortalama Pay Fiyatı (₺)' : 'Ortalama Maliyet (₺)'}>
           <TRTextNumberInput
             className="input"
             value={avgPrice}
             onChange={setAvgPrice}
-            placeholder="285,50"
+            placeholder={kind === 'fund' ? '0,8542' : '285,50'}
           />
         </Field>
       </div>

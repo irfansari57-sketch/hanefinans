@@ -94,6 +94,8 @@ export function FinancialStatementsCard({ symbol }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [metric, setMetric] = useState<MetricKey>('netSatis');
   const [view, setView] = useState<'ozet' | 'bilanco' | 'gelir' | 'nakit'>('ozet');
+  const [periodAIdx, setPeriodAIdx] = useState(0);
+  const [periodBIdx, setPeriodBIdx] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,19 +200,50 @@ export function FinancialStatementsCard({ symbol }: Props) {
         ))}
       </div>
 
-      {/* Detaylı tablo görünümleri */}
-      {view !== 'ozet' && latest && (
-        <div className="px-5 py-4">
+      {/* Detaylı tablo görünümleri — FVT-style: dönem selector + multi-series chart + oranlar + ağaç */}
+      {view !== 'ozet' && data.periods && data.periods.length > 0 && (
+        <div className="px-5 py-4 space-y-4">
+          {/* Dönem seçicisi */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-slate-500">Dönem:</span>
+            <select
+              value={periodAIdx}
+              onChange={(e) => setPeriodAIdx(Number(e.target.value))}
+              className="rounded-md border border-border bg-bg-soft px-2 py-1 text-slate-200 focus:border-accent focus:outline-none"
+            >
+              {data.periods.map((p, i) => (
+                <option key={i} value={i}>{p.donem}</option>
+              ))}
+            </select>
+            <span className="text-slate-500">vs</span>
+            <select
+              value={periodBIdx}
+              onChange={(e) => setPeriodBIdx(Number(e.target.value))}
+              className="rounded-md border border-border bg-bg-soft px-2 py-1 text-slate-200 focus:border-accent focus:outline-none"
+            >
+              {data.periods.map((p, i) => (
+                <option key={i} value={i}>{p.donem}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Multi-series bar chart — view'a göre */}
+          <MultiSeriesChart periods={data.periods} view={view} />
+
+          {/* Finansal Oranlar — mevcut dönem */}
+          <FinansalOranlar period={data.periods[periodAIdx]} />
+
+          {/* Ağaç tablo */}
           <StatementTable
             tree={
               view === 'bilanco'
-                ? latest.bilanco ?? null
+                ? data.periods[periodAIdx]?.bilanco ?? null
                 : view === 'gelir'
-                ? latest.gelirTablosu ?? null
-                : latest.nakitAkis ?? null
+                ? data.periods[periodAIdx]?.gelirTablosu ?? null
+                : data.periods[periodAIdx]?.nakitAkis ?? null
             }
-            currentPeriod={latest}
-            prevPeriod={prev ?? null}
+            currentPeriod={data.periods[periodAIdx]}
+            prevPeriod={data.periods[periodBIdx] ?? null}
             section={view}
           />
         </div>
@@ -458,6 +491,161 @@ function TreeRow({
         <TreeRow key={child.key} node={child} depth={depth + 1} path={myPath} prevMap={prevMap} defaultOpen={defaultOpen} />
       ))}
     </>
+  );
+}
+
+/**
+ * MultiSeriesChart — FVT-style çeyreklik stacked bar grafiği.
+ * Bilanço: Toplam Varlıklar / Yükümlülükler / Özkaynaklar
+ * Gelir: Net Satış / Brüt Kar / Net Kar
+ * Nakit: İşletme / Yatırım / Finansman akışları
+ */
+function MultiSeriesChart({ periods, view }: { periods: Period[]; view: 'bilanco' | 'gelir' | 'nakit' }) {
+  // Son 11 çeyreği eski → yeni sırada
+  const chartData = useMemo(() => [...periods].reverse(), [periods]);
+
+  // Her view için ekstrat fonksiyonu
+  type Series = { label: string; color: string; getValue: (p: Period) => number | null };
+  const seriesList: Series[] = useMemo(() => {
+    if (view === 'bilanco') {
+      return [
+        { label: 'Toplam Varlıklar', color: '#3b82f6', getValue: (p) => p.toplamVarliklar },
+        {
+          label: 'Yükümlülükler',
+          color: '#ef4444',
+          getValue: (p) =>
+            p.toplamVarliklar != null && p.ozsermaye != null
+              ? p.toplamVarliklar - p.ozsermaye
+              : null,
+        },
+        { label: 'Özkaynaklar', color: '#10b981', getValue: (p) => p.ozsermaye },
+      ];
+    }
+    if (view === 'gelir') {
+      return [
+        { label: 'Net Satış', color: '#3b82f6', getValue: (p) => p.netSatis },
+        { label: 'Brüt Kar', color: '#10b981', getValue: (p) => p.brutKar },
+        { label: 'Net Kar', color: '#f59e0b', getValue: (p) => p.netKar },
+      ];
+    }
+    // Nakit: tree içinden işletme/yatırım/finansman nakit akışlarını çek
+    const extract = (p: Period, keyRegex: RegExp): number | null => {
+      const tree = p.nakitAkis;
+      if (!tree) return null;
+      for (const root of tree) {
+        for (const child of root.children ?? []) {
+          if (keyRegex.test(child.key)) return child.value;
+        }
+      }
+      return null;
+    };
+    return [
+      { label: 'İşletme', color: '#10b981', getValue: (p) => extract(p, /isletme_faaliyetlerinden/i) },
+      { label: 'Yatırım', color: '#f59e0b', getValue: (p) => extract(p, /yatirim_faaliyetlerinden/i) },
+      { label: 'Finansman', color: '#8b5cf6', getValue: (p) => extract(p, /finansman_faaliyetlerinden/i) },
+    ];
+  }, [view]);
+
+  const chartMax = useMemo(() => {
+    let max = 0;
+    for (const p of chartData) {
+      for (const s of seriesList) {
+        const v = s.getValue(p);
+        if (v != null) max = Math.max(max, Math.abs(v));
+      }
+    }
+    return max;
+  }, [chartData, seriesList]);
+
+  const MAX_BAR_PX = 110;
+
+  return (
+    <div className="rounded-md bg-bg-soft/30 p-3">
+      <div className="mb-2 flex flex-wrap items-center gap-3 text-[10px]">
+        {seriesList.map((s) => (
+          <div key={s.label} className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: s.color }} />
+            <span className="text-slate-400">{s.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-end justify-between gap-2" style={{ minHeight: '140px' }}>
+        {chartData.map((p) => (
+          <div key={p.donem} className="flex flex-1 flex-col items-center gap-1">
+            <div className="flex w-full items-end justify-center gap-0.5" style={{ height: `${MAX_BAR_PX}px` }}>
+              {seriesList.map((s) => {
+                const v = s.getValue(p);
+                const abs = v != null ? Math.abs(v) : 0;
+                const h = chartMax > 0 ? Math.max(2, (abs / chartMax) * MAX_BAR_PX) : 0;
+                const negative = v != null && v < 0;
+                return (
+                  <div
+                    key={s.label}
+                    className="flex-1 min-w-[4px] rounded-t transition-opacity hover:opacity-70"
+                    style={{
+                      height: `${h}px`,
+                      backgroundColor: s.color,
+                      opacity: negative ? 0.5 : 1,
+                    }}
+                    title={`${p.donem} · ${s.label}: ${v != null ? formatCompact(v) : '—'}`}
+                  />
+                );
+              })}
+            </div>
+            <div className="text-[9px] tabular-nums text-slate-500 whitespace-nowrap">{p.donem}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * FinansalOranlar — tek dönemden hesaplanan temel oranlar.
+ * FVT'nin "Finansal Oranlar" bölümüne benzer.
+ */
+function FinansalOranlar({ period }: { period: Period | undefined }) {
+  if (!period) return null;
+
+  const borcOzsermaye = period.netBorc != null && period.ozsermaye && period.ozsermaye > 0
+    ? period.netBorc / period.ozsermaye
+    : null;
+  const netKarMarji = period.netKar != null && period.netSatis && period.netSatis > 0
+    ? (period.netKar / period.netSatis) * 100
+    : null;
+  const brutKarMarji = period.brutKar != null && period.netSatis && period.netSatis > 0
+    ? (period.brutKar / period.netSatis) * 100
+    : null;
+  const roe = period.netKar != null && period.ozsermaye && period.ozsermaye > 0
+    ? (period.netKar / period.ozsermaye) * 100
+    : null;
+  const roa = period.netKar != null && period.toplamVarliklar && period.toplamVarliklar > 0
+    ? (period.netKar / period.toplamVarliklar) * 100
+    : null;
+
+  return (
+    <div className="rounded-md border border-border/50 bg-bg-soft/30 p-3">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        Finansal Oranlar · {period.donem}
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
+        <OranItem label="Borç / Özsermaye" value={borcOzsermaye != null ? `${borcOzsermaye.toFixed(2)}x` : '—'} />
+        <OranItem label="Net Kar Marjı" value={netKarMarji != null ? `${netKarMarji.toFixed(2)}%` : '—'} tone={netKarMarji != null && netKarMarji > 0 ? 'pos' : 'neg'} />
+        <OranItem label="Brüt Kar Marjı" value={brutKarMarji != null ? `${brutKarMarji.toFixed(2)}%` : '—'} />
+        <OranItem label="ROE" value={roe != null ? `${roe.toFixed(2)}%` : '—'} tone={roe != null && roe > 0 ? 'pos' : 'neg'} />
+        <OranItem label="ROA" value={roa != null ? `${roa.toFixed(2)}%` : '—'} tone={roa != null && roa > 0 ? 'pos' : 'neg'} />
+      </div>
+    </div>
+  );
+}
+
+function OranItem({ label, value, tone }: { label: string; value: string; tone?: 'pos' | 'neg' }) {
+  const toneClass = tone === 'pos' ? 'text-success' : tone === 'neg' ? 'text-danger' : 'text-slate-100';
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={cn('text-base font-bold tabular-nums', toneClass)}>{value}</div>
+    </div>
   );
 }
 

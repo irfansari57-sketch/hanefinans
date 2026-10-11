@@ -351,21 +351,14 @@ function StatementTable({
   prevPeriod: Period | null;
   section: 'bilanco' | 'gelir' | 'nakit';
 }) {
-  if (!tree || tree.length === 0) {
-    return (
-      <div className="flex items-start gap-2 rounded-md bg-bg-soft/50 p-3 text-xs text-slate-500">
-        <AlertCircle size={12} className="mt-0.5 shrink-0 text-amber-500/70" />
-        <span>Bu bölüm için detaylı veri henüz yok.</span>
-      </div>
-    );
-  }
-
   // Önceki dönemin aynı tree'sini bul (eşlemeli % değişim için)
   const prevTree: TreeNode[] | null = prevPeriod
     ? (section === 'bilanco' ? prevPeriod.bilanco : section === 'gelir' ? prevPeriod.gelirTablosu : prevPeriod.nakitAkis) ?? null
     : null;
 
   // Önceki dönemdeki key → value lookup (recursive flatten)
+  // NOT: useMemo HER zaman çağrılmalı — early return'den ÖNCE olmalı yoksa
+  // React "rendered more hooks" hatası verir, component crash eder.
   const prevMap = useMemo(() => {
     const m = new Map<string, number | null>();
     const walk = (nodes: TreeNode[], path: string) => {
@@ -378,6 +371,15 @@ function StatementTable({
     if (prevTree) walk(prevTree, '');
     return m;
   }, [prevTree]);
+
+  if (!tree || tree.length === 0) {
+    return (
+      <div className="flex items-start gap-2 rounded-md bg-bg-soft/50 p-3 text-xs text-slate-500">
+        <AlertCircle size={12} className="mt-0.5 shrink-0 text-amber-500/70" />
+        <span>Bu bölüm için detaylı veri henüz yok.</span>
+      </div>
+    );
+  }
 
   return (
     <div>

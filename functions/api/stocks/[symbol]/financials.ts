@@ -93,7 +93,8 @@ export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '1');
+  // cv=2: tam ağaç tablolar (bilanco/gelirTablosu/nakitAkis) eklendi
+  cacheUrl.searchParams.set('cv', '2');
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
   if (!force) {

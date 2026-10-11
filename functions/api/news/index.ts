@@ -472,9 +472,21 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
   // 11 Eki 2026: Kritik haberleri (konkordato/iflas/SPK vs.) HER ZAMAN üstte
   // pinle, slice öncesi — böylece max=8 ile çağrılan panel'de de konkordato
   // haberi en üstte görünür, tarih kuyruğunun dışına düşmez.
-  const critical = combined.filter((n) => n.critical);
+  //
+  // DEDUPE: Aynı criticalReason için sadece 1 bildirim göster. Google News
+  // aynı olayı 5+ farklı kaynaktan getirebiliyor; kullanıcı tek rozet yeter.
+  // En yeni (publishedAt desc sırada ilk gelen) tutulur.
+  const seenReasons = new Set<string>();
+  const criticalDedup: NewsItem[] = [];
+  for (const n of combined) {
+    if (!n.critical) continue;
+    const key = n.criticalReason ?? 'critical';
+    if (seenReasons.has(key)) continue;
+    seenReasons.add(key);
+    criticalDedup.push(n);
+  }
   const rest = combined.filter((n) => !n.critical);
-  const pinned = [...critical, ...rest];
+  const pinned = [...criticalDedup, ...rest];
 
   // İlk N tane
   const data = pinned.slice(0, max);

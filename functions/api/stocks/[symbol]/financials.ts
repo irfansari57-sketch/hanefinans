@@ -13,6 +13,13 @@
 
 interface Env {}
 
+interface FvtTreeNode {
+  key: string;
+  label: string;
+  value: number | null;
+  children: FvtTreeNode[];
+}
+
 interface FvtBilancoPeriod {
   hisseKodu: string;
   donem: string;
@@ -28,6 +35,10 @@ interface FvtBilancoPeriod {
   favok: string | number | null;
   nakitNakitBenzerleri: string | number | null;
   gonderimTarihi: string;
+  bilanco?: FvtTreeNode[] | null;
+  gelirTablosu?: FvtTreeNode[] | null;
+  nakitAkis?: FvtTreeNode[] | null;
+  kapsamliGelir?: FvtTreeNode[] | null;
 }
 
 interface FvtBilancoResp {
@@ -126,6 +137,10 @@ export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
       netKar: toNum(p.netKar),
       nakitNakitBenzerleri: toNum(p.nakitNakitBenzerleri),
       gonderimTarihi: p.gonderimTarihi,
+      // Tam ağaç tablolar (bilanço + gelir + nakit akış) — UI detay tabında render edilir
+      bilanco: p.bilanco ?? null,
+      gelirTablosu: p.gelirTablosu ?? null,
+      nakitAkis: p.nakitAkis ?? null,
     }));
 
     const carpanlar = carpanlarJ?.data

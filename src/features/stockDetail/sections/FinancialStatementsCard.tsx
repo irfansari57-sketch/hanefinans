@@ -10,9 +10,16 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, RefreshCw, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { BarChart3, RefreshCw, AlertCircle, TrendingUp, TrendingDown, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCompact } from '@/lib/format';
+
+interface TreeNode {
+  key: string;
+  label: string;
+  value: number | null;
+  children: TreeNode[];
+}
 
 interface Period {
   donem: string;
@@ -27,6 +34,9 @@ interface Period {
   netKar: number | null;
   nakitNakitBenzerleri: number | null;
   gonderimTarihi: string;
+  bilanco?: TreeNode[] | null;
+  gelirTablosu?: TreeNode[] | null;
+  nakitAkis?: TreeNode[] | null;
 }
 
 interface Carpanlar {
@@ -83,6 +93,7 @@ export function FinancialStatementsCard({ symbol }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [metric, setMetric] = useState<MetricKey>('netSatis');
+  const [view, setView] = useState<'ozet' | 'bilanco' | 'gelir' | 'nakit'>('ozet');
 
   useEffect(() => {
     let cancelled = false;
@@ -164,8 +175,49 @@ export function FinancialStatementsCard({ symbol }: Props) {
         </div>
       </div>
 
-      {/* Çarpanlar strip */}
-      {c && (
+      {/* View tabs */}
+      <div className="flex flex-wrap gap-1 border-b border-border px-5 py-2">
+        {([
+          ['ozet', 'Özet'],
+          ['bilanco', 'Bilanço'],
+          ['gelir', 'Gelir Tablosu'],
+          ['nakit', 'Nakit Akışı'],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setView(key)}
+            className={cn(
+              'rounded-md px-3 py-1 text-[11px] font-medium transition-colors',
+              view === key
+                ? 'bg-accent text-white'
+                : 'text-slate-400 hover:bg-bg-soft hover:text-slate-200',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Detaylı tablo görünümleri */}
+      {view !== 'ozet' && latest && (
+        <div className="px-5 py-4">
+          <StatementTable
+            tree={
+              view === 'bilanco'
+                ? latest.bilanco ?? null
+                : view === 'gelir'
+                ? latest.gelirTablosu ?? null
+                : latest.nakitAkis ?? null
+            }
+            currentPeriod={latest}
+            prevPeriod={prev ?? null}
+            section={view}
+          />
+        </div>
+      )}
+
+      {/* --- ÖZET görünümü (önceki içerik) --- */}
+      {view === 'ozet' && c && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-border bg-bg-soft/40 px-5 py-3 sm:grid-cols-3 lg:grid-cols-6">
           <RatioItem label="F/K" value={formatRatio(c.fk)} />
           <RatioItem label="PD/DD" value={formatRatio(c.pddd)} />
@@ -177,7 +229,7 @@ export function FinancialStatementsCard({ symbol }: Props) {
       )}
 
       {/* Son çeyrek özeti + YoY karşılaştırma */}
-      {latest && (
+      {view === 'ozet' && latest && (
         <div className="grid grid-cols-2 gap-3 border-b border-border px-5 py-4 sm:grid-cols-4">
           <SummaryCard
             label="Net Satış"
@@ -208,6 +260,7 @@ export function FinancialStatementsCard({ symbol }: Props) {
       )}
 
       {/* Metrik seçici + çeyreklik bar grafiği */}
+      {view === 'ozet' && (
       <div className="px-5 py-4">
         <div className="mb-3 flex flex-wrap gap-1.5">
           {(Object.keys(METRIC_LABELS) as MetricKey[]).map((k) => (
@@ -263,9 +316,10 @@ export function FinancialStatementsCard({ symbol }: Props) {
           </div>
         )}
       </div>
+      )}
 
       {/* Bilanço özeti */}
-      {latest && (
+      {view === 'ozet' && latest && (
         <div className="border-t border-border bg-bg-soft/30 px-5 py-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Bilanço · {latest.donem}
@@ -279,6 +333,126 @@ export function FinancialStatementsCard({ symbol }: Props) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * StatementTable — Bilanço / Gelir Tablosu / Nakit Akış ağaç görünümü.
+ * FVT'deki gibi expand/collapse + 2 dönem + % değişim kolonu.
+ */
+function StatementTable({
+  tree,
+  currentPeriod,
+  prevPeriod,
+  section,
+}: {
+  tree: TreeNode[] | null;
+  currentPeriod: Period;
+  prevPeriod: Period | null;
+  section: 'bilanco' | 'gelir' | 'nakit';
+}) {
+  if (!tree || tree.length === 0) {
+    return (
+      <div className="flex items-start gap-2 rounded-md bg-bg-soft/50 p-3 text-xs text-slate-500">
+        <AlertCircle size={12} className="mt-0.5 shrink-0 text-amber-500/70" />
+        <span>Bu bölüm için detaylı veri henüz yok.</span>
+      </div>
+    );
+  }
+
+  // Önceki dönemin aynı tree'sini bul (eşlemeli % değişim için)
+  const prevTree: TreeNode[] | null = prevPeriod
+    ? (section === 'bilanco' ? prevPeriod.bilanco : section === 'gelir' ? prevPeriod.gelirTablosu : prevPeriod.nakitAkis) ?? null
+    : null;
+
+  // Önceki dönemdeki key → value lookup (recursive flatten)
+  const prevMap = useMemo(() => {
+    const m = new Map<string, number | null>();
+    const walk = (nodes: TreeNode[], path: string) => {
+      for (const n of nodes) {
+        const p = `${path}/${n.key}`;
+        m.set(p, n.value);
+        if (n.children?.length) walk(n.children, p);
+      }
+    };
+    if (prevTree) walk(prevTree, '');
+    return m;
+  }, [prevTree]);
+
+  return (
+    <div>
+      <div className="mb-2 grid grid-cols-[1fr_120px_120px_80px] gap-2 border-b border-border pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+        <div>Kalem</div>
+        <div className="text-right">{currentPeriod.donem}</div>
+        <div className="text-right">{prevPeriod?.donem ?? '—'}</div>
+        <div className="text-right">% Değ.</div>
+      </div>
+      <div className="divide-y divide-border/30">
+        {tree.map((node) => (
+          <TreeRow key={node.key} node={node} depth={0} path="" prevMap={prevMap} defaultOpen />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TreeRow({
+  node,
+  depth,
+  path,
+  prevMap,
+  defaultOpen = false,
+}: {
+  node: TreeNode;
+  depth: number;
+  path: string;
+  prevMap: Map<string, number | null>;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState<boolean>(defaultOpen && depth < 2);
+  const hasChildren = (node.children?.length ?? 0) > 0;
+  const myPath = `${path}/${node.key}`;
+  const prevVal = prevMap.get(myPath) ?? null;
+  const change = pctChange(node.value, prevVal);
+  const isTotal = /toplam|ara_toplam|gross|net/i.test(node.key) || /TOPLAM|ARA/.test(node.label);
+
+  return (
+    <>
+      <div
+        className={cn(
+          'grid grid-cols-[1fr_120px_120px_80px] items-center gap-2 py-1.5 text-[11px] tabular-nums',
+          isTotal ? 'font-semibold text-slate-100' : 'text-slate-300',
+          depth === 0 && 'bg-bg-soft/40',
+        )}
+        style={{ paddingLeft: `${depth * 14 + 4}px` }}
+      >
+        <div className="flex items-center gap-1 overflow-hidden">
+          {hasChildren ? (
+            <button
+              onClick={() => setOpen((o) => !o)}
+              className="shrink-0 rounded p-0.5 text-slate-500 hover:bg-bg-card hover:text-slate-200"
+              aria-label={open ? 'Daralt' : 'Genişlet'}
+            >
+              {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+            </button>
+          ) : (
+            <span className="w-4 shrink-0" />
+          )}
+          <span className="truncate" title={node.label}>{node.label}</span>
+        </div>
+        <div className="text-right">{node.value != null ? formatCompact(node.value) : '—'}</div>
+        <div className="text-right text-slate-500">{prevVal != null ? formatCompact(prevVal) : '—'}</div>
+        <div className={cn(
+          'text-right',
+          change == null ? 'text-slate-600' : change > 0 ? 'text-success' : change < 0 ? 'text-danger' : 'text-slate-500',
+        )}>
+          {change == null ? '—' : `${change > 0 ? '+' : ''}${change.toFixed(1)}%`}
+        </div>
+      </div>
+      {open && hasChildren && node.children.map((child) => (
+        <TreeRow key={child.key} node={child} depth={depth + 1} path={myPath} prevMap={prevMap} defaultOpen={defaultOpen} />
+      ))}
+    </>
   );
 }
 

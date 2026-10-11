@@ -1065,13 +1065,103 @@ const ASSET_TYPES: Record<AssetKind, AssetTypeConfig> = {
 
 /**
  * OtherAssetsPanel — Altın/Gümüş/Döviz/Kripto pozisyonlarını listeler.
- * Hisse ve fon dışındaki tüm kayıtlar burada. Live price feed yok (manuel giriş),
- * sadece toplam maliyet gösterilir.
+ * Live price feed:
+ *   - gold variants: Gram Altın × ayar katsayısı (çeyrek ×1.6, cumhuriyet ×6.61 vb.)
+ *   - silver variants: Gram Gümüş veya Ons Gümüş
+ *   - forex: macro USD/TRY, EUR/TRY, GBP/TRY vb.
+ *   - crypto: Yahoo {COIN}-USD × USDTRY (TL cinsinden)
  */
 function OtherAssetsPanel({ positions }: { positions: PortfolioPosition[] }) {
   const KIND_LABELS: Record<string, string> = {
     gold: 'Altın', silver: 'Gümüş', forex: 'Döviz', crypto: 'Kripto',
   };
+
+  // Altın türü → Gram Altın (24 ayar) katsayıları (yaklaşık, işçilik hariç)
+  const GOLD_MULT: Record<string, number> = {
+    'GRAM-ALTIN': 1,
+    'CEYREK-ALTIN': 1.6,         // 1.75g × 22/24 ayar
+    'YARIM-ALTIN': 3.2,
+    'TAM-ALTIN': 6.42,
+    'CUMHURIYET-ALTINI': 6.61,   // 7.2g × 22/24
+    'RESAT-ALTINI': 6.61,
+    'ATA-ALTINI': 6.61,
+    'ZIYNET-14AYAR': 0.583,
+    'ZIYNET-22AYAR': 0.916,
+  };
+
+  // Macro + crypto live prices fetch
+  const [macroMap, setMacroMap] = useState<Map<string, number>>(new Map());
+  const [cryptoMap, setCryptoMap] = useState<Map<string, number>>(new Map());
+  const [usdTry, setUsdTry] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (positions.length === 0) { setLoading(false); return; }
+    let alive = true;
+    (async () => {
+      try {
+        // Macro — gram altın, gram gümüş, ons gümüş, döviz kurları
+        const { loadMacroAll } = await import('@/data/services');
+        const m = await loadMacroAll();
+        if (!alive) return;
+        const mm = new Map<string, number>();
+        for (const x of m.data) {
+          if (Number.isFinite(x.value) && x.value > 0) mm.set(x.key, x.value);
+        }
+        setMacroMap(mm);
+        setUsdTry(mm.get('USD/TRY') ?? null);
+
+        // Crypto — Yahoo quote USD, sonra USDTRY ile TL'ye çevir
+        const cryptoKinds = positions.filter((p) => p.kind === 'crypto');
+        if (cryptoKinds.length > 0) {
+          const { fetchQuotesYahoo } = await import('@/data/api/yahoo');
+          const syms = Array.from(new Set(cryptoKinds.map((p) => `${p.symbol}-USD`)));
+          const quotes = await fetchQuotesYahoo(syms);
+          if (!alive || !quotes) return;
+          const cm = new Map<string, number>();
+          for (const q of quotes) {
+            const code = q.symbol.replace('-USD', '').toUpperCase();
+            cm.set(code, q.price);
+          }
+          setCryptoMap(cm);
+        }
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [positions.length, positions.map((p) => `${p.kind}:${p.symbol}`).join(',')]);
+
+  // Live fiyat hesapla (TL cinsinden)
+  const livePriceTRY = (p: PortfolioPosition): number | null => {
+    if (p.kind === 'gold') {
+      const gram = macroMap.get('Gram Altın');
+      if (!gram) return null;
+      const mult = GOLD_MULT[p.symbol] ?? 1;
+      return gram * mult;
+    }
+    if (p.kind === 'silver') {
+      if (p.symbol === 'GRAM-GUMUS') return macroMap.get('Gram Gümüş') ?? null;
+      if (p.symbol === 'ONS-GUMUS') {
+        const onsUsd = macroMap.get('Ons Gümüş');
+        if (!onsUsd || !usdTry) return null;
+        return onsUsd * usdTry;
+      }
+      return macroMap.get('Gram Gümüş') ?? null;
+    }
+    if (p.kind === 'forex') {
+      // USD/TRY, EUR/TRY, GBP/TRY vb.
+      const key = `${p.symbol}/TRY`;
+      return macroMap.get(key) ?? null;
+    }
+    if (p.kind === 'crypto') {
+      const usd = cryptoMap.get(p.symbol);
+      if (!usd || !usdTry) return null;
+      return usd * usdTry;
+    }
+    return null;
+  };
+
   if (positions.length === 0) {
     return (
       <EmptyState
@@ -1081,16 +1171,51 @@ function OtherAssetsPanel({ positions }: { positions: PortfolioPosition[] }) {
       />
     );
   }
-  const totalCost = positions.reduce((s, p) => s + (p.lot * p.avgPrice), 0);
+
+  // avgPrice crypto için USD, diğerleri TL — PnL hesabı için her ikisini TL'ye normalize et
+  const avgPriceTRY = (p: PortfolioPosition): number => {
+    if (p.kind === 'crypto' && usdTry) return p.avgPrice * usdTry;
+    return p.avgPrice;
+  };
+
+  const totalCost = positions.reduce((s, p) => s + (p.lot * avgPriceTRY(p)), 0);
+  const totalValue = positions.reduce((s, p) => {
+    const lp = livePriceTRY(p);
+    if (lp == null) return s + (p.lot * avgPriceTRY(p));
+    return s + (p.lot * lp);
+  }, 0);
+  const totalPnl = totalValue - totalCost;
+  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-border bg-bg-soft/50 p-3">
-        <div className="text-[10px] uppercase tracking-wider text-slate-500">Toplam Maliyet</div>
-        <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
-          ₺{totalCost.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="rounded-lg border border-border bg-bg-soft/50 p-3">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500">Toplam Değer</div>
+          <div className="mt-1 text-base font-bold tabular-nums text-slate-100">
+            ₺{totalValue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+          </div>
         </div>
-        <div className="mt-1 text-[10px] text-slate-500">{positions.length} pozisyon</div>
+        <div className="rounded-lg border border-border bg-bg-soft/50 p-3">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500">Maliyet</div>
+          <div className="mt-1 text-base font-bold tabular-nums text-slate-300">
+            ₺{totalCost.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+          </div>
+        </div>
+        <div className={cn('rounded-lg border p-3', totalPnl >= 0 ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5')}>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500">Toplam K/Z</div>
+          <div className={cn('mt-1 text-base font-bold tabular-nums', totalPnl >= 0 ? 'text-success' : 'text-danger')}>
+            {totalPnl >= 0 ? '+' : ''}₺{Math.abs(totalPnl).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+          </div>
+        </div>
+        <div className={cn('rounded-lg border p-3', totalPnlPct >= 0 ? 'border-success/30 bg-success/5' : 'border-danger/30 bg-danger/5')}>
+          <div className="text-[10px] uppercase tracking-wider text-slate-500">% Getiri</div>
+          <div className={cn('mt-1 text-base font-bold tabular-nums', totalPnlPct >= 0 ? 'text-success' : 'text-danger')}>
+            {totalPnlPct >= 0 ? '+' : ''}{totalPnlPct.toFixed(2)}%
+          </div>
+        </div>
       </div>
+
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-xs">
           <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-400">
@@ -1099,12 +1224,19 @@ function OtherAssetsPanel({ positions }: { positions: PortfolioPosition[] }) {
               <th className="px-3 py-2 text-left">Tür</th>
               <th className="px-3 py-2 text-right">Miktar</th>
               <th className="px-3 py-2 text-right">Ort. Maliyet</th>
-              <th className="px-3 py-2 text-right">Toplam</th>
+              <th className="px-3 py-2 text-right">Güncel Fiyat</th>
+              <th className="px-3 py-2 text-right">Değer</th>
+              <th className="px-3 py-2 text-right">K/Z</th>
             </tr>
           </thead>
           <tbody>
             {positions.map((p) => {
-              const total = p.lot * p.avgPrice;
+              const avgTry = avgPriceTRY(p);
+              const liveTry = livePriceTRY(p);
+              const value = liveTry ? p.lot * liveTry : p.lot * avgTry;
+              const cost = p.lot * avgTry;
+              const pnl = value - cost;
+              const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
               return (
                 <tr key={p.id} className="border-b border-border/60 hover:bg-bg-card">
                   <td className="px-3 py-2 font-mono font-semibold text-slate-100">{p.symbol}</td>
@@ -1116,11 +1248,24 @@ function OtherAssetsPanel({ positions }: { positions: PortfolioPosition[] }) {
                   <td className="px-3 py-2 text-right tabular-nums text-slate-200">
                     {p.lot.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
                   </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-400">
+                    ₺{avgTry.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums text-slate-200">
-                    ₺{p.avgPrice.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                    {liveTry ? `₺${liveTry.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : (loading ? '…' : '—')}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-100">
-                    ₺{total.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+                    ₺{value.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                  </td>
+                  <td className={cn('px-3 py-2 text-right tabular-nums font-semibold', pnl >= 0 ? 'text-success' : 'text-danger')}>
+                    {liveTry ? (
+                      <>
+                        {pnl >= 0 ? '+' : ''}₺{Math.abs(pnl).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                        <div className={cn('text-[10px]', pnlPct >= 0 ? 'text-success' : 'text-danger')}>
+                          {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
+                        </div>
+                      </>
+                    ) : '—'}
                   </td>
                 </tr>
               );
@@ -1129,8 +1274,9 @@ function OtherAssetsPanel({ positions }: { positions: PortfolioPosition[] }) {
         </table>
       </div>
       <p className="text-[10px] text-slate-500 leading-relaxed">
-        Not: Altın, gümüş, döviz ve kripto pozisyonları için live price feed henüz entegre
-        değil. Maliyet manuel giriştir. Live değer karşılaştırması yakında eklenecek.
+        Not: Altın fiyatları Gram Altın bazından türetilir (çeyrek/cumhuriyet için 22 ayar
+        × piece-weight katsayısı, işçilik hariç). Kripto fiyatları Yahoo'dan USD olarak çekilip
+        USD/TRY ile TL'ye çevrilir.
       </p>
     </div>
   );

@@ -50,11 +50,21 @@ const STEPS: Step[] = [
 ];
 
 export function OnboardingTour() {
+  // Kullanıcı talebi (11 Eki 2026): tanıtım pop-up'ı tamamen devre dışı.
+  // Component iskelet olarak kalıyor — resetOnboarding() hâlâ çağrılabilir
+  // ve ileride tekrar aktifleştirilebilsin diye STEPS/UI korundu.
+  const DISABLED = true;
+
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (DISABLED) {
+      // Mevcut kullanıcılarda bir daha açılmasın diye flag'i de yaz.
+      try { localStorage.setItem(STORAGE_KEY, String(Date.now())); } catch { /* */ }
+      return;
+    }
     // Disclaimer modal sonrasında onboarding'i göster — kullanıcı yasal onayı verdikten sonra
     const completed = localStorage.getItem(STORAGE_KEY);
     if (completed) return;

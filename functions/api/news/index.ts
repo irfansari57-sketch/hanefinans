@@ -23,6 +23,36 @@ interface NewsItem {
   publishedAt: string; // ISO
   symbols: string[];
   importance: number;
+  critical?: boolean;
+  criticalReason?: string;
+}
+
+/**
+ * Kritik finansal bildirim tespiti — yatırımcıyı birebir ilgilendiren,
+ * fiyatı anında etkileyen olaylar. Eşleşme bulunursa importance=10, critical=true.
+ */
+const CRITICAL_PATTERNS: Array<{ re: RegExp; reason: string }> = [
+  { re: /\b(konkordato)\b/i, reason: 'Konkordato' },
+  { re: /\b(iflas(?:\s+erteleme)?|iflas\s+istedi|iflas\s+basvurusu|iflas\s+başvuru|iflas\s+kararı|iflas\s+karari)\b/i, reason: 'İflas' },
+  { re: /\b(kayy[ıi]m|kayyum\s+atan)\b/i, reason: 'Kayyım' },
+  { re: /\b(tedbir\s+karar|ihtiyati\s+tedbir|tedbirli\s+pazar)\b/i, reason: 'Tedbir' },
+  { re: /\b(haciz\s+karar|haczedild)\b/i, reason: 'Haciz' },
+  { re: /\b(delisting|borsadan\s+çıkar|kottan\s+çıkar|borsadan\s+cikar|kottan\s+cikar)\b/i, reason: 'Borsadan Çıkarma' },
+  { re: /\b(spk\s+(?:ceza|para\s+cezas|idari\s+para)|sermaye\s+piyasası\s+kurulu\s+ceza)\b/i, reason: 'SPK Cezası' },
+  { re: /\b(muvazaa|manip[üu]lasyon\s+iddia|insider\s+trading|içeriden\s+öğrenen|iceriden\s+ogrenen)\b/i, reason: 'Manipülasyon' },
+  { re: /\b(bedelsiz\s+sermaye\s+artırım|bedelsiz\s+sermaye\s+artirim)\b/i, reason: 'Bedelsiz Sermaye' },
+  { re: /\b(pay\s+geri\s+alım|pay\s+geri\s+alim|buyback)\b/i, reason: 'Pay Geri Alımı' },
+  { re: /\b(halka\s+arz\s+(?:başvuru|basvuru|izahname|onay))\b/i, reason: 'Halka Arz' },
+  { re: /\b(profit\s+warning|kar\s+uyarı|kar\s+uyari|rekor\s+zarar|dönem\s+zararı|donem\s+zarari)\b/i, reason: 'Kar Uyarısı' },
+  { re: /\b(önemli\s+nitelikte\s+işlem|onemli\s+nitelikte\s+islem)\b/i, reason: 'Önemli Nitelikte İşlem' },
+];
+
+function detectCritical(title: string, summary: string): { critical: boolean; reason?: string } {
+  const text = `${title} ${summary}`;
+  for (const { re, reason } of CRITICAL_PATTERNS) {
+    if (re.test(text)) return { critical: true, reason };
+  }
+  return { critical: false };
 }
 
 interface RssSource {
@@ -171,6 +201,58 @@ const COMPANY_TO_SYMBOL: Record<string, string[]> = {
   'bist 100': ['XU100'],
   'bist100': ['XU100'],
   'borsa istanbul': ['XU100'],
+  // --- Mid-cap / konkordato riskli isimler (11 Eki 2026 geniş liste) ---
+  'alves kablo': ['ALVES'],
+  'alves ': ['ALVES'],
+  'alvs': ['ALVES'],
+  'turk traktor': ['TTRAK'],
+  'anadolu efes': ['AEFES'],
+  'coca cola icecek': ['CCOLA'],
+  'cocacola icecek': ['CCOLA'],
+  'logo yazilim': ['LOGO'],
+  'netas telekom': ['NETAS'],
+  'kordsa': ['KORDS'],
+  'brisa': ['BRISA'],
+  'goodyear': ['GOODY'],
+  'otokar otomotiv': ['OTKAR'],
+  'temapol': ['TMPOL'],
+  'yunsa': ['YUNSA'],
+  'yesil yapi': ['YYAPI'],
+  'yesil gyo': ['YGGYO'],
+  'ihlas ev aletleri': ['IHEVA'],
+  'ihlas holding': ['IHLAS'],
+  'ihlas yayin': ['IHYAY'],
+  'desa deri': ['DESA'],
+  'ersu gida': ['ERSU'],
+  'avod kurutulmus': ['AVOD'],
+  'adese alisveris': ['ADESE'],
+  'martı otel': ['MAALT'],
+  'marti otel': ['MAALT'],
+  'metemtur': ['METUR'],
+  'alarko carrier': ['ALCAR'],
+  'emek elektrik': ['EMKEL'],
+  'altinyag': ['ALYAG'],
+  'bagfas': ['BAGFS'],
+  'gersan elektrik': ['GEREL'],
+  'is yatirim': ['ISMEN'],
+  'yapi kredi yatirim': ['YKBNK'],
+  'ziraat yatirim': ['ZRGYO'],
+  'turkiye sinai kalkinma': ['TSKB'],
+  'tsk': ['TSKB'],
+  'albaraka turk': ['ALBRK'],
+  'kuveyt turk': ['KUVVA'],
+  'odea bank': ['ODAS'],
+  'odas elektrik': ['ODAS'],
+  'ayen enerji': ['AYEN'],
+  'margun enerji': ['MAGEN'],
+  'goldas kuyumculuk': ['GOLDS'],
+  'altin yapi': ['ALYAG'],
+  'quagen tasarim': ['QUAGR'],
+  'quagen': ['QUAGR'],
+  'penguen gida': ['PENGD'],
+  'penguen': ['PENGD'],
+  'orcay': ['ORCAY'],
+  'orcay cay': ['ORCAY'],
 };
 
 /** Türkçe karakterleri ASCII'ye normalize et + küçük harfe çevir. */
@@ -280,6 +362,8 @@ function parseRss(xml: string, sourceName: string): NewsItem[] {
       } catch { return new Date().toISOString(); }
     })();
     const summary = description.slice(0, 280);
+    const crit = detectCritical(title, summary);
+    const baseImportance = scoreImportance(title, summary);
     items.push({
       id: `${sourceName}-${publishedAt}-${title.slice(0, 30)}`,
       title,
@@ -288,7 +372,9 @@ function parseRss(xml: string, sourceName: string): NewsItem[] {
       source: sourceName,
       publishedAt,
       symbols: detectSymbols(`${title} ${summary}`),
-      importance: scoreImportance(title, summary),
+      importance: crit.critical ? 10 : baseImportance,
+      critical: crit.critical,
+      criticalReason: crit.reason,
     });
   }
   return items;

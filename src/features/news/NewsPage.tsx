@@ -98,7 +98,12 @@ export function NewsPage() {
         }
         return true;
       })
-      .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+      .sort((a, b) => {
+        // Kritik bildirimler her zaman üstte
+        if (a.critical && !b.critical) return -1;
+        if (!a.critical && b.critical) return 1;
+        return b.publishedAt.localeCompare(a.publishedAt);
+      });
   }, [items, search, sourceFilter, symbol, minImportance, onlyWatchlist, watchlist]);
 
   return (

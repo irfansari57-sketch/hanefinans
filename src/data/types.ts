@@ -27,6 +27,10 @@ export interface NewsItem {
   summary: string;
   publishedAt: string;
   url?: string;
+  /** Kritik finansal bildirim (konkordato, iflas, tedbir, kayyum, SPK ceza, delisting vb.) */
+  critical?: boolean;
+  /** Kritik etiket için gerekçe (ör. "Konkordato", "SPK Ceza", "Tedbir Kararı") */
+  criticalReason?: string;
 }
 
 export type MacroKey =

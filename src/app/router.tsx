@@ -125,11 +125,10 @@ export const router = createBrowserRouter([
     element: <Layout />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      { index: true, element: <Navigate to="/panel" replace /> },
-      // 10 Eki 2026: Soft Panel (Varyant A) ana /panel oldu.
-      // Eski klasik panel /panel-eski olarak erişilebilir (acil geri dönüş için).
-      // /panel-v2 preview alias olarak kaldı (eski link'ler kırılmasın).
-      { path: 'panel', element: withSuspense(<SoftPanelPage />) },
+      // 11 Eki 2026: Ana sayfa artık direkt panel. / yolu paneli render eder,
+      // /panel URL'si geriye dönük uyumluluk için / köküne yönlendirilir.
+      { index: true, element: withSuspense(<SoftPanelPage />) },
+      { path: 'panel', element: <Navigate to="/" replace /> },
       { path: 'panel-v2', element: withSuspense(<SoftPanelPage />) },
       { path: 'panel-eski', element: withSuspense(<PanelPage />) },
       { path: 'morning', element: withSuspense(<MorningReportPage />) },
@@ -181,7 +180,7 @@ export const router = createBrowserRouter([
       { path: 'auth/signup', element: withSuspense(<SignupPage />) },
       { path: 'auth/forgot-password', element: withSuspense(<ForgotPasswordPage />) },
       { path: 'auth/reset-password', element: withSuspense(<ResetPasswordPage />) },
-      { path: '*', element: <Navigate to="/panel" replace /> },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
 ]);

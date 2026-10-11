@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, AlertTriangle } from 'lucide-react';
 import type { NewsItem } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { formatRelative } from '@/lib/date';
@@ -32,8 +32,28 @@ export function NewsCard({ item }: NewsCardProps) {
       .catch(() => {});
   };
 
+  const isCritical = item.critical === true;
+
   return (
-    <article className="rounded-xl border border-border bg-bg-soft p-4 transition-colors hover:border-slate-500/40">
+    <article
+      className={cn(
+        'rounded-xl border p-4 transition-colors',
+        isCritical
+          ? 'border-danger/60 bg-danger/5 shadow-[0_0_0_1px_rgba(239,68,68,0.25)] hover:border-danger'
+          : 'border-border bg-bg-soft hover:border-slate-500/40',
+      )}
+    >
+      {isCritical && (
+        <div className="mb-2 flex items-center gap-1.5 rounded-md bg-danger/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-danger">
+          <AlertTriangle size={12} className="animate-pulse" />
+          <span>Kritik Bildirim</span>
+          {item.criticalReason && (
+            <span className="ml-1 rounded bg-danger/20 px-1.5 py-0.5 text-[10px] font-semibold">
+              {item.criticalReason}
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex flex-wrap items-center gap-1.5">
           {item.symbols.map((s) => (

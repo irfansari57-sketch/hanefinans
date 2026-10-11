@@ -384,11 +384,16 @@ export function SoftPanelPage() {
   }, [positions, stockMap, fundMap]);
 
   // Son dakika — ilk 4 haber
-  const topNews = useMemo(() => news.slice(0, 4), [news]);
+  // Kritik bildirimler (konkordato, iflas, tedbir vb.) her zaman üstte.
+  const topNews = useMemo(() => {
+    const critical = news.filter((n) => n.critical);
+    const rest = news.filter((n) => !n.critical);
+    return [...critical, ...rest].slice(0, 4);
+  }, [news]);
 
   return (
     <>
-      <SeoHead title="Panel" description="InvestliQ ana panel — BIST, döviz, altın, kripto ve portföy özeti." path="/panel-v2" />
+      <SeoHead title="Panel" description="InvestliQ ana panel — BIST, döviz, altın, kripto ve portföy özeti." path="/" />
 
       {/* Soft pulse animasyonu + hero gradient — tek sefer tanım */}
       <style>{`

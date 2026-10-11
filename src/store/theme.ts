@@ -10,15 +10,15 @@ export type Theme = 'dark' | 'light';
 const STORAGE_KEY = 'fa.theme';
 
 function readInitial(): Theme {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === 'light' || saved === 'dark') return saved;
   } catch {
     /* sessizce */
   }
-  // Default: light (kullanici talebi)
-  return 'light';
+  // Default: dark (kullanici talebi, 11 Eki 2026)
+  return 'dark';
 }
 
 function applyClass(theme: Theme) {

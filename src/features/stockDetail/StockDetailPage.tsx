@@ -26,6 +26,7 @@ import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabe
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { DeepAnalysisCard } from './sections/DeepAnalysisCard';
+import { FinancialStatementsCard } from './sections/FinancialStatementsCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { Sparkles as SparklesIcon } from 'lucide-react';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
@@ -680,6 +681,13 @@ export function StockDetailPage() {
             label="Ort. Hacim (3A)"
             value={historical.meta.averageDailyVolume3Month ? formatCompact(historical.meta.averageDailyVolume3Month) : '—'}
           />
+        </div>
+      )}
+
+      {/* Şirket Finansalları — sadece BIST hisseleri için (US/endeks hariç) */}
+      {!isUs && !bistIndexMeta[sym] && (
+        <div className="mb-4">
+          <FinancialStatementsCard symbol={sym} />
         </div>
       )}
 

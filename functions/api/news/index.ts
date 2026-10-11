@@ -469,8 +469,15 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
   // Tarih → yeniden eskiye
   combined.sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
 
+  // 11 Eki 2026: Kritik haberleri (konkordato/iflas/SPK vs.) HER ZAMAN üstte
+  // pinle, slice öncesi — böylece max=8 ile çağrılan panel'de de konkordato
+  // haberi en üstte görünür, tarih kuyruğunun dışına düşmez.
+  const critical = combined.filter((n) => n.critical);
+  const rest = combined.filter((n) => !n.critical);
+  const pinned = [...critical, ...rest];
+
   // İlk N tane
-  const data = combined.slice(0, max);
+  const data = pinned.slice(0, max);
 
   return new Response(JSON.stringify({ ok: true, count: data.length, data }), {
     headers: {

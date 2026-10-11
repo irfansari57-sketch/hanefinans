@@ -233,12 +233,44 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
       }), { status: 502, headers: { 'Content-Type': 'application/json' } });
     }
 
+    // Yahoo Finance enrichment — bazi BYF'ler Yahoo'da da listeli (GLDTR.IS vb.).
+    // Fintables sadece getirileri veriyor, Yahoo'dan fiyat + 1d change ekliyoruz.
+    // Yahoo'da olmayan BYF'ler price=null kalir (frontend "—" gosterir).
+    await Promise.all(funds.map(async (f) => {
+      try {
+        const yahooSym = `${f.code}.IS`; // GLDTR → GLDTR.IS
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSym)}?interval=1d&range=5d`;
+        const yr = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+          },
+        });
+        if (!yr.ok) return;
+        const yj = (await yr.json()) as {
+          chart?: { result?: Array<{ meta?: { regularMarketPrice?: number; chartPreviousClose?: number }; indicators?: { quote?: Array<{ close?: Array<number | null> }> } }> };
+        };
+        const result = yj.chart?.result?.[0];
+        const meta = result?.meta;
+        const closes = (result?.indicators?.quote?.[0]?.close ?? []).filter((c): c is number => c != null && c > 0);
+        if (closes.length < 1) return;
+        const price = meta?.regularMarketPrice ?? closes[closes.length - 1];
+        const prev = closes.length >= 2 ? closes[closes.length - 2] : meta?.chartPreviousClose;
+        if (!price || !prev || prev <= 0) return;
+        f.price = price;
+        f.changePct = ((price - prev) / prev) * 100;
+      } catch { /* bu BYF Yahoo'da yok, sessiz atla */ }
+    }));
+
+    const enrichedCount = funds.filter((f) => f.price != null).length;
+
     const body = {
       ok: true,
-      source: 'fintables.com',
-      attribution: 'Veri kaynağı: fintables.com — bilgilendirme amaçlıdır.',
+      source: 'fintables.com + yahoo',
+      attribution: 'Veri kaynağı: fintables.com (getiriler) + yahoo (fiyat) — bilgilendirme amaçlıdır.',
       updatedAt: new Date().toISOString(),
       count: funds.length,
+      priceEnrichedCount: enrichedCount,
       funds,
     };
 

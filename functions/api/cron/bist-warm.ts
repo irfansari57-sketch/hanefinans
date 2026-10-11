@@ -146,29 +146,66 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const startTime = Date.now();
   const symbols = Array.from(new Set(BIST_100_UNIVERSE));
 
-  // Paralel fetch — 20'lik batch, 200ms delay
   const results: Array<{ symbol: string; price: number; prev: number; changePct: number; asOf: string; updatedAt: number }> = [];
   let success = 0;
   let fail = 0;
-  const BATCH_SIZE = 20;
+  let primarySource = 'isyatirim';
 
-  for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
-    const batch = symbols.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(batch.map(async (sym) => {
-      const data = await fetchIsYatirimStock(sym);
-      return { symbol: sym, data };
-    }));
-    for (const { symbol, data } of batchResults) {
-      if (data) {
-        results.push({ symbol, ...data });
-        success++;
-      } else {
-        fail++;
+  // STRATEJI (11 Eki 2026 revizyon):
+  // 1. FVT batch endpoint deneme (tek fetch, 500+ hisse, hizli + guvenilir)
+  // 2. Fail olursa Is Yatirim per-symbol fallback (eski davranis)
+  // Boylece 9 Eki Cuma gibi Is Yatirim CF'den bloklanirsa snapshot yine guncellenir.
+  try {
+    const fvtResp = await fetch('https://fvt.com.tr/api/stocks?limit=5000&hissePazar=2', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://fvt.com.tr/',
+      },
+    });
+    if (fvtResp.ok) {
+      const fvtJson = (await fvtResp.json()) as { success?: boolean; data?: { data?: Array<Record<string, unknown>> } };
+      const items = fvtJson?.data?.data ?? [];
+      if (items.length > 0) {
+        primarySource = 'fvt';
+        const now = Date.now();
+        const todayISO = new Date().toISOString().slice(0, 10);
+        for (const row of items) {
+          if (!(row.hisseUrl as string)?.includes('.IS/')) continue;
+          const symbol = (row.hisseKodu as string)?.toUpperCase();
+          if (!symbol || !symbols.includes(symbol)) continue;
+          const son = parseFloat(String(row.gunlukKapanis ?? ''));
+          const dun = parseFloat(String(row.dunkuKapanis ?? ''));
+          if (!Number.isFinite(son) || !Number.isFinite(dun) || son <= 0 || dun <= 0) continue;
+          const changePct = ((son - dun) / dun) * 100;
+          if (Math.abs(changePct) > 15) continue; // outlier (BIST ±%10 limit + marj)
+          results.push({ symbol, price: son, prev: dun, changePct, asOf: todayISO, updatedAt: now });
+          success++;
+        }
       }
     }
-    // Rate limit koruma - son batch degilse 200ms bekle
-    if (i + BATCH_SIZE < symbols.length) {
-      await new Promise((r) => setTimeout(r, 200));
+  } catch { /* FVT fail — fallback'e dus */ }
+
+  // FVT yetersizse veya fail oluysa — Is Yatirim per-symbol fallback
+  if (results.length < symbols.length / 2) {
+    primarySource = results.length > 0 ? 'fvt+isyatirim' : 'isyatirim';
+    const missing = symbols.filter((s) => !results.find((r) => r.symbol === s));
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+      const batch = missing.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(async (sym) => {
+        const data = await fetchIsYatirimStock(sym);
+        return { symbol: sym, data };
+      }));
+      for (const { symbol, data } of batchResults) {
+        if (data) {
+          results.push({ symbol, ...data });
+          success++;
+        } else {
+          fail++;
+        }
+      }
+      if (i + BATCH_SIZE < missing.length) await new Promise((r) => setTimeout(r, 200));
     }
   }
 
@@ -192,6 +229,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     success,
     fail,
     totalTried: symbols.length,
+    primarySource,
     elapsedMs: Date.now() - startTime,
   }), {
     status: 200,

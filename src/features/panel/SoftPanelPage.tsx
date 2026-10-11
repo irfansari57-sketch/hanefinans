@@ -102,38 +102,28 @@ export function SoftPanelPage() {
   const [topFunds, setTopFunds] = usePersistedState<FundPerformance[]>('hf.cache.topFunds', SWR_TTL_MS, []);
   const [cryptoQuotes, setCryptoQuotes] = useState<Array<{ symbol: string; price: number; changePct: number }>>([]);
 
-  // Günün Enleri aktif sekme (default: hisseler, 10 Eki UX güncellemesi)
-  const [enlerTab, setEnlerTab] = useState<'stocks' | 'funds' | 'crypto'>('stocks');
+  // Günün Enleri aktif sekme — BES tab'ı eklendi (11 Eki)
+  const [enlerTab, setEnlerTab] = useState<'stocks' | 'funds' | 'bes' | 'crypto'>('stocks');
 
-  // Günün Enleri Hisseler tab için FVT bazlı pre-sorted gainers/losers.
-  // Server-side CF Function /api/panel/top-stocks:
-  //   - FVT'den tam BIST evreni (hisseUrl .IS/ olanlar = sadece BIST filtre)
-  //   - gunlukKapanis/dunkuKapanis'ten pct hesaplar (gunlukYuzde null olabilir)
-  //   - ±%10.5 cap (BIST tavan + rounding tolerans)
-  //   - Edge cache 60sn market open — FVT ile ANINDA tutarlı
-  const [fvtGainers, setFvtGainers] = useState<Stock[]>([]);
-  const [fvtLosers, setFvtLosers] = useState<Stock[]>([]);
+  // Günün Enleri — unified CF Function /api/panel/top-movers 4 kategori birden döner.
+  // Her kategori: pre-sorted top 10 gainers + top 10 losers. FVT paritesi, edge cache 60sn.
+  interface Mover { kod: string; ad: string; pct: number; fiyat: number }
+  interface TopMoversPayload {
+    stocks: { gainers: Mover[]; losers: Mover[] };
+    funds:  { gainers: Mover[]; losers: Mover[] };
+    bes:    { gainers: Mover[]; losers: Mover[] };
+    crypto: { gainers: Mover[]; losers: Mover[] };
+  }
+  const [topMovers, setTopMovers] = useState<TopMoversPayload | null>(null);
   useEffect(() => {
     let alive = true;
     const t = setTimeout(async () => {
       try {
-        const r = await fetch('/api/panel/top-stocks');
+        const r = await fetch('/api/panel/top-movers');
         if (!r.ok) return;
-        const j = (await r.json()) as {
-          ok: boolean;
-          gainers: Array<{ kod: string; ad: string; pct: number; fiyat: number }>;
-          losers: Array<{ kod: string; ad: string; pct: number; fiyat: number }>;
-        };
+        const j = (await r.json()) as { ok: boolean } & TopMoversPayload;
         if (!alive || !j.ok) return;
-        const toStock = (x: { kod: string; ad: string; pct: number; fiyat: number }): Stock => ({
-          symbol: x.kod,
-          name: x.ad || x.kod,
-          price: x.fiyat,
-          changePct: x.pct,
-          updatedAt: new Date().toISOString(),
-        });
-        setFvtGainers((j.gainers ?? []).map(toStock));
-        setFvtLosers((j.losers ?? []).map(toStock));
+        setTopMovers({ stocks: j.stocks, funds: j.funds, bes: j.bes, crypto: j.crypto });
       } catch { /* silent */ }
     }, 800);
     return () => { alive = false; clearTimeout(t); };
@@ -185,7 +175,10 @@ export function SoftPanelPage() {
 
       // WAVE 2: News + Top funds non-blocking
       loadNews({ max: 8 }).then((n) => n && setNews(n.data)).catch(() => {});
-      loadFundsAsPerformance().then((f) => f && setTopFunds(f.funds)).catch(() => {});
+      // loadFundsAsPerformance() KALDIRILDI (11 Eki): /api/funds/live 1.4s + 235KB
+      // critical path'ten çıktı. Günün Enleri Fonlar tab'ı artık /api/panel/top-movers
+      // FVT endpoint'inden geliyor (daha güvenilir + tek fetch unified). Fallback
+      // olarak sadece portfolio'da fon pozisyonu varsa fundMap effect'i yüklüyor.
     } finally {
       setRefreshing(false);
     }
@@ -242,43 +235,70 @@ export function SoftPanelPage() {
   const sortByDir = <T,>(arr: T[], getVal: (x: T) => number) =>
     [...arr].sort((a, b) => enlerDir === 'up' ? getVal(b) - getVal(a) : getVal(a) - getVal(b));
 
-  // FVT CF Function'dan gelen pre-sorted gainers/losers. Yoksa priority stocks fallback.
-  // enlerDir === 'up' ise gainers, 'down' ise losers.
+  // 4 kategori için FVT paritesi — topMovers payload'ından enlerDir'e göre seç.
+  const moverToStock = (x: Mover): Stock => ({
+    symbol: x.kod,
+    name: x.ad || x.kod,
+    price: x.fiyat,
+    changePct: x.pct,
+    updatedAt: new Date().toISOString(),
+  });
+
   const topStocks = useMemo(() => {
-    const fvtList = enlerDir === 'up' ? fvtGainers : fvtLosers;
-    if (fvtList.length > 0) return fvtList.slice(0, 10);
-    // Fallback: priority stocks (FVT fetch gelmeden önce bir şey göster)
+    if (topMovers) {
+      const list = enlerDir === 'up' ? topMovers.stocks.gainers : topMovers.stocks.losers;
+      if (list.length > 0) return list.map(moverToStock);
+    }
+    // Fallback: priority stocks
     return sortByDir(
-      stocks.filter((s) =>
-        s.price > 0 &&
-        Number.isFinite(s.changePct) &&
-        s.changePct !== 0 &&
-        Math.abs(s.changePct) <= 10
-      ),
+      stocks.filter((s) => s.price > 0 && Number.isFinite(s.changePct) && s.changePct !== 0 && Math.abs(s.changePct) <= 10),
       (s) => s.changePct,
     ).slice(0, 10);
-  }, [stocks, fvtGainers, fvtLosers, enlerDir]);
+  }, [stocks, topMovers, enlerDir]);
 
-  // Fon filtre kuralları (10 Eki: FVT doğruluğuna hizalandı):
-  //   1. TEFAS'ta açık olmalı (tasfiye/kapalı fonlar listede olmasın) — tefasOpen=true
-  //   2. Günlük getiri outlier: TEFAS'ta fon günlük limit ±%7 (SPK), ±%10 üstü = veri hatası
-  //   3. Fon adı TASFIYE/KAPALI/KURUCU DEVRİ içermemeli (yedek koruma)
-  //   4. Günlük değer 0.00% ise atla (data henüz güncellenmemiş)
-  const topFundsSorted = useMemo(() => sortByDir(
-    topFunds.filter((f) =>
-      Number.isFinite(f.day) &&
-      f.day !== 0 &&
-      Math.abs(f.day) <= 10 &&
-      f.tefasOpen !== false &&
-      !/TASFIYE|TASFİYE|KAPALI|KURUCU DEVR|BİRLEŞ|SONA ER/i.test(f.name ?? '')
-    ),
-    (f) => f.day,
-  ).slice(0, 10), [topFunds, enlerDir]);
+  // Fonlar — FVT top-movers endpoint'inden pre-sorted + outlier filtered
+  const topFundsSorted = useMemo(() => {
+    if (topMovers) {
+      const list = enlerDir === 'up' ? topMovers.funds.gainers : topMovers.funds.losers;
+      // FundPerformance shape — kod + day sırası için yeterli
+      return list.map((f) => ({
+        code: f.kod,
+        name: f.ad || f.kod,
+        day: f.pct,
+        week: NaN, month: NaN, threeMonth: NaN, sixMonth: NaN, ytd: NaN, year: NaN,
+        tefas: true,
+        tefasOpen: true,
+        category: 'Diğer' as const,
+      }) as FundPerformance);
+    }
+    // Fallback: old loadFundsAsPerformance data
+    return sortByDir(
+      topFunds.filter((f) =>
+        Number.isFinite(f.day) && f.day !== 0 && Math.abs(f.day) <= 10 && f.tefasOpen !== false &&
+        !/TASFIYE|TASFİYE|KAPALI|KURUCU DEVR|BİRLEŞ|SONA ER/i.test(f.name ?? '')
+      ),
+      (f) => f.day,
+    ).slice(0, 10);
+  }, [topFunds, topMovers, enlerDir]);
 
-  const topCrypto = useMemo(() => sortByDir(
-    cryptoQuotes.filter((c) => Number.isFinite(c.changePct)),
-    (c) => c.changePct,
-  ).slice(0, 10), [cryptoQuotes, enlerDir]);
+  // BES fonları — FVT top-movers
+  const topBes = useMemo(() => {
+    if (!topMovers) return [];
+    const list = enlerDir === 'up' ? topMovers.bes.gainers : topMovers.bes.losers;
+    return list.map((f) => ({ kod: f.kod, ad: f.ad, pct: f.pct, fiyat: f.fiyat }));
+  }, [topMovers, enlerDir]);
+
+  const topCrypto = useMemo(() => {
+    if (topMovers) {
+      const list = enlerDir === 'up' ? topMovers.crypto.gainers : topMovers.crypto.losers;
+      return list.map((c) => ({ symbol: c.kod + '/USD', price: c.fiyat, changePct: c.pct }));
+    }
+    // Fallback: Yahoo-based crypto quotes
+    return sortByDir(
+      cryptoQuotes.filter((c) => Number.isFinite(c.changePct)),
+      (c) => c.changePct,
+    ).slice(0, 10);
+  }, [cryptoQuotes, topMovers, enlerDir]);
 
   // Portföy özet — fiyat haritası + maliyet üzerinden hesapla
   const [fundMap, setFundMap] = useState<Map<string, FundPerformance>>(new Map());
@@ -632,11 +652,12 @@ export function SoftPanelPage() {
               </div>
             </div>
 
-            {/* Tab seçici — compact pills (10 Eki: Hisseler ilk, kullanıcı talebi) */}
+            {/* Tab seçici — compact pills (Hisseler/Fonlar/BES/Kripto) */}
             <div className="mb-2 flex gap-1">
               {([
                 { k: 'stocks', label: 'Hisseler', disabled: topStocks.length === 0 },
                 { k: 'funds',  label: 'Fonlar',   disabled: topFundsSorted.length === 0 },
+                { k: 'bes',    label: 'BES',      disabled: topBes.length === 0 },
                 { k: 'crypto', label: 'Kripto',   disabled: topCrypto.length === 0 },
               ] as const).map((t) => (
                 <button
@@ -691,6 +712,26 @@ export function SoftPanelPage() {
                     >
                       <div className="font-mono font-bold text-slate-100">{s.symbol}</div>
                       <Delta v={s.changePct} />
+                    </Link>
+                  ))}
+                </div>
+              )
+            )}
+
+            {enlerTab === 'bes' && (
+              topBes.length === 0 ? (
+                <div className="py-6 text-center text-[11px] text-slate-500">BES verisi yükleniyor…</div>
+              ) : (
+                <div className="divide-y divide-slate-700/20">
+                  {topBes.map((f) => (
+                    <Link
+                      key={f.kod}
+                      to={`/fund/${f.kod}`}
+                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
+                      title={f.ad || f.kod}
+                    >
+                      <div className="font-mono font-bold text-slate-100">{f.kod}</div>
+                      <Delta v={f.pct} />
                     </Link>
                   ))}
                 </div>

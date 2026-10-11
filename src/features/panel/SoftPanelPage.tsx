@@ -489,7 +489,7 @@ export function SoftPanelPage() {
           {/* 4 MİNİ KART */}
           <div className="grid grid-cols-2 gap-2">
             {/* Portföyüm — dinamik: pozisyon varsa toplam değer + günlük P/L; yoksa CTA */}
-            <Link to="/portfolio" className="mini-card block">
+            <Link to="/portfoy" className="mini-card block">
               <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Portföyüm</div>
               {user && portfolio.hasData ? (
                 <>
@@ -718,7 +718,7 @@ export function SoftPanelPage() {
           </div>
 
           {/* Portföyüm — pozisyon varsa 4-metrik ozet, yoksa CTA */}
-          <Link to="/portfolio" className="side-card block hover:border-success/30 transition">
+          <Link to="/portfoy" className="side-card block hover:border-success/30 transition">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                 <Briefcase size={14} className="text-success" />

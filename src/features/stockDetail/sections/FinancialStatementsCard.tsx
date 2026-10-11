@@ -160,7 +160,7 @@ export function FinancialStatementsCard({ symbol }: Props) {
           <BarChart3 size={14} /> Şirket Finansalları
         </h3>
         <div className="text-[10px] text-slate-500">
-          {data.lastReport ? `Son rapor: ${data.lastReport}` : ''} · fvt.com.tr
+          {data.lastReport ? `Son rapor: ${data.lastReport}` : ''}
         </div>
       </div>
 
@@ -226,11 +226,12 @@ export function FinancialStatementsCard({ symbol }: Props) {
           ))}
         </div>
 
-        <div className="flex items-end justify-between gap-1 h-32">
+        <div className="flex items-end justify-between gap-1" style={{ minHeight: '140px' }}>
           {chartPeriods.map((p) => {
             const v = p[metric];
             const abs = v != null ? Math.abs(v) : 0;
-            const h = chartMax > 0 ? Math.max(2, (abs / chartMax) * 100) : 0;
+            const MAX_BAR_PX = 110;
+            const h = chartMax > 0 ? Math.max(3, (abs / chartMax) * MAX_BAR_PX) : 0;
             const negative = v != null && v < 0;
             return (
               <div key={p.donem} className="group flex flex-1 flex-col items-center gap-1">
@@ -239,10 +240,10 @@ export function FinancialStatementsCard({ symbol }: Props) {
                     'w-full min-w-[12px] rounded-t transition-opacity hover:opacity-80',
                     negative ? 'bg-danger' : 'bg-accent',
                   )}
-                  style={{ height: `${h}%` }}
+                  style={{ height: `${h}px` }}
                   title={`${p.donem} · ${formatTRY(v)}`}
                 />
-                <div className="text-[9px] tabular-nums text-slate-500">{p.donem}</div>
+                <div className="text-[9px] tabular-nums text-slate-500 whitespace-nowrap">{p.donem}</div>
               </div>
             );
           })}

@@ -76,14 +76,15 @@ export function PortfolioPage() {
   // Oncelik: URL query param (?tab=stocks|funds) > localStorage > 'stocks'.
   // Panel sayfasindaki PortfolioPanelSummary kartlari /portfoy?tab=stocks veya
   // /portfoy?tab=funds linkleriyle hangi tab'a gidilecegini belirtir.
-  const [tab, setTab] = useState<'stocks' | 'funds'>(() => {
+  const [tab, setTab] = useState<'stocks' | 'funds' | 'other'>(() => {
     try {
       if (typeof window !== 'undefined') {
         const fromUrl = new URLSearchParams(window.location.search).get('tab');
-        if (fromUrl === 'stocks' || fromUrl === 'funds') return fromUrl;
+        if (fromUrl === 'stocks' || fromUrl === 'funds' || fromUrl === 'other') return fromUrl;
       }
       const saved = localStorage.getItem('fa.portfolio.tab');
-      return saved === 'funds' ? 'funds' : 'stocks';
+      if (saved === 'funds' || saved === 'other') return saved;
+      return 'stocks';
     } catch { return 'stocks'; }
   });
   useEffect(() => {
@@ -92,9 +93,13 @@ export function PortfolioPage() {
 
   // Tum kayitlar — sayac icin
   const allPositions = useLiveQuery(() => db.portfolio.toArray(), []) ?? [];
-  // Bu sayfa hisse listesi mantigi calistirir; fon kayitlari ayri panel'de gosterilir.
-  const positions = useMemo(() => allPositions.filter((p) => p.kind !== 'fund'), [allPositions]);
+  // Hisseler: sadece hisse (eski undefined kind da hisse kabul edilir)
+  // Fonlar: kind === 'fund' (ayri tab)
+  // Diger: altin/gumus/doviz/kripto — hepsi "Diger" tab'inda birlesik
+  const OTHER_KINDS = ['gold', 'silver', 'forex', 'crypto'] as const;
+  const positions = useMemo(() => allPositions.filter((p) => !p.kind || p.kind === 'stock'), [allPositions]);
   const fundCount = useMemo(() => allPositions.filter((p) => p.kind === 'fund').length, [allPositions]);
+  const otherCount = useMemo(() => allPositions.filter((p) => OTHER_KINDS.includes(p.kind as typeof OTHER_KINDS[number])).length, [allPositions]);
 
   const [stockMap, setStockMap] = useState<Map<string, Stock>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -403,9 +408,25 @@ export function PortfolioPage() {
             {fundCount}
           </span>
         </button>
+        <button
+          type="button"
+          onClick={() => setTab('other')}
+          className={cn(
+            'flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition',
+            tab === 'other'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-slate-400 hover:text-slate-200',
+          )}
+        >
+          Diğer
+          <span className="rounded-full bg-bg-card px-1.5 py-0.5 text-[10px] tabular-nums">
+            {otherCount}
+          </span>
+        </button>
       </div>
 
       {tab === 'funds' && <FundsPanel />}
+      {tab === 'other' && <OtherAssetsPanel positions={allPositions.filter((p) => OTHER_KINDS.includes(p.kind as typeof OTHER_KINDS[number]))} />}
 
       {tab === 'stocks' && (<>
 
@@ -941,8 +962,183 @@ function todayDateStr(): string {
   return `${y}-${m}-${day}`;
 }
 
+// Portföy pozisyon türleri — DB kind field'ı ile birebir
+type AssetKind = 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
+
+interface AssetTypeConfig {
+  kind: AssetKind;
+  label: string;
+  codeLabel: string;
+  codeHint: string;
+  codePlaceholder: string;
+  lotLabel: string;
+  lotPlaceholder: string;
+  priceLabel: string;
+  pricePlaceholder: string;
+  pricePrecision: number; // kaç ondalık fiyat için
+  presets?: Array<{ code: string; name: string }>; // gold/silver/forex/crypto için ön tanımlı
+}
+
+const ASSET_TYPES: Record<AssetKind, AssetTypeConfig> = {
+  stock: {
+    kind: 'stock', label: 'Hisse',
+    codeLabel: 'Hisse Sembolü', codeHint: 'ör. THYAO, GARAN, ASELS', codePlaceholder: 'THYAO',
+    lotLabel: 'Lot Adedi', lotPlaceholder: '100',
+    priceLabel: 'Ortalama Maliyet (₺)', pricePlaceholder: '285,50',
+    pricePrecision: 2,
+  },
+  fund: {
+    kind: 'fund', label: 'Fon',
+    codeLabel: 'Fon Kodu', codeHint: 'ör. TLY, DFI, AES — TEFAS fon kodu', codePlaceholder: 'TLY',
+    lotLabel: 'Pay Adedi', lotPlaceholder: '1250,5',
+    priceLabel: 'Ortalama Pay Fiyatı (₺)', pricePlaceholder: '0,8542',
+    pricePrecision: 4,
+  },
+  gold: {
+    kind: 'gold', label: 'Altın',
+    codeLabel: 'Altın Türü', codeHint: 'Gram, çeyrek, cumhuriyet vs.', codePlaceholder: 'GRAM-ALTIN',
+    lotLabel: 'Gram / Adet', lotPlaceholder: '10',
+    priceLabel: 'Ortalama Maliyet (₺)', pricePlaceholder: '6.700,00',
+    pricePrecision: 2,
+    presets: [
+      { code: 'GRAM-ALTIN', name: 'Gram Altın' },
+      { code: 'CEYREK-ALTIN', name: 'Çeyrek Altın' },
+      { code: 'YARIM-ALTIN', name: 'Yarım Altın' },
+      { code: 'TAM-ALTIN', name: 'Tam Altın' },
+      { code: 'CUMHURIYET-ALTINI', name: 'Cumhuriyet Altını' },
+      { code: 'RESAT-ALTINI', name: 'Reşat Altını' },
+      { code: 'ATA-ALTINI', name: 'Ata Altını' },
+      { code: 'ZIYNET-14AYAR', name: 'Ziynet 14 Ayar' },
+      { code: 'ZIYNET-22AYAR', name: 'Ziynet 22 Ayar' },
+    ],
+  },
+  silver: {
+    kind: 'silver', label: 'Gümüş',
+    codeLabel: 'Gümüş Türü', codeHint: 'Gram gümüş', codePlaceholder: 'GRAM-GUMUS',
+    lotLabel: 'Gram', lotPlaceholder: '500',
+    priceLabel: 'Ortalama Maliyet (₺)', pricePlaceholder: '95,00',
+    pricePrecision: 2,
+    presets: [
+      { code: 'GRAM-GUMUS', name: 'Gram Gümüş' },
+      { code: 'ONS-GUMUS', name: 'Ons Gümüş' },
+    ],
+  },
+  forex: {
+    kind: 'forex', label: 'Döviz',
+    codeLabel: 'Para Birimi', codeHint: 'USD, EUR, GBP, CHF', codePlaceholder: 'USD',
+    lotLabel: 'Birim Adedi', lotPlaceholder: '1000',
+    priceLabel: 'Ortalama Alış Kuru (₺)', pricePlaceholder: '42,50',
+    pricePrecision: 4,
+    presets: [
+      { code: 'USD', name: 'Amerikan Doları' },
+      { code: 'EUR', name: 'Euro' },
+      { code: 'GBP', name: 'İngiliz Sterlini' },
+      { code: 'CHF', name: 'İsviçre Frangı' },
+      { code: 'JPY', name: 'Japon Yeni' },
+      { code: 'RUB', name: 'Rus Rublesi' },
+      { code: 'AED', name: 'BAE Dirhemi' },
+      { code: 'SAR', name: 'Suudi Riyali' },
+    ],
+  },
+  crypto: {
+    kind: 'crypto', label: 'Kripto',
+    codeLabel: 'Kripto Para', codeHint: 'BTC, ETH, XRP, DOGE', codePlaceholder: 'BTC',
+    lotLabel: 'Adet', lotPlaceholder: '0,05',
+    priceLabel: 'Ortalama Alış (USD)', pricePlaceholder: '82.500,00',
+    pricePrecision: 2,
+    presets: [
+      { code: 'BTC', name: 'Bitcoin' },
+      { code: 'ETH', name: 'Ethereum' },
+      { code: 'XRP', name: 'Ripple' },
+      { code: 'DOGE', name: 'Dogecoin' },
+      { code: 'SOL', name: 'Solana' },
+      { code: 'ADA', name: 'Cardano' },
+      { code: 'BNB', name: 'Binance Coin' },
+      { code: 'AVAX', name: 'Avalanche' },
+      { code: 'DOT', name: 'Polkadot' },
+      { code: 'TRX', name: 'TRON' },
+      { code: 'LINK', name: 'Chainlink' },
+      { code: 'LTC', name: 'Litecoin' },
+    ],
+  },
+};
+
+/**
+ * OtherAssetsPanel — Altın/Gümüş/Döviz/Kripto pozisyonlarını listeler.
+ * Hisse ve fon dışındaki tüm kayıtlar burada. Live price feed yok (manuel giriş),
+ * sadece toplam maliyet gösterilir.
+ */
+function OtherAssetsPanel({ positions }: { positions: PortfolioPosition[] }) {
+  const KIND_LABELS: Record<string, string> = {
+    gold: 'Altın', silver: 'Gümüş', forex: 'Döviz', crypto: 'Kripto',
+  };
+  if (positions.length === 0) {
+    return (
+      <EmptyState
+        icon={<Landmark size={28} />}
+        title="Diğer varlık yok"
+        description={'"+ Pozisyon Ekle" butonundan Altın, Gümüş, Döviz veya Kripto ekleyebilirsin.'}
+      />
+    );
+  }
+  const totalCost = positions.reduce((s, p) => s + (p.lot * p.avgPrice), 0);
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-border bg-bg-soft/50 p-3">
+        <div className="text-[10px] uppercase tracking-wider text-slate-500">Toplam Maliyet</div>
+        <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">
+          ₺{totalCost.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+        </div>
+        <div className="mt-1 text-[10px] text-slate-500">{positions.length} pozisyon</div>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-border">
+        <table className="w-full text-xs">
+          <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-3 py-2 text-left">Kod</th>
+              <th className="px-3 py-2 text-left">Tür</th>
+              <th className="px-3 py-2 text-right">Miktar</th>
+              <th className="px-3 py-2 text-right">Ort. Maliyet</th>
+              <th className="px-3 py-2 text-right">Toplam</th>
+            </tr>
+          </thead>
+          <tbody>
+            {positions.map((p) => {
+              const total = p.lot * p.avgPrice;
+              return (
+                <tr key={p.id} className="border-b border-border/60 hover:bg-bg-card">
+                  <td className="px-3 py-2 font-mono font-semibold text-slate-100">{p.symbol}</td>
+                  <td className="px-3 py-2 text-slate-400">
+                    <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 text-[10px]">
+                      {KIND_LABELS[p.kind ?? ''] ?? p.kind}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-200">
+                    {p.lot.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-slate-200">
+                    ₺{p.avgPrice.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-slate-100">
+                    ₺{total.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-slate-500 leading-relaxed">
+        Not: Altın, gümüş, döviz ve kripto pozisyonları için live price feed henüz entegre
+        değil. Maliyet manuel giriştir. Live değer karşılaştırması yakında eklenecek.
+      </p>
+    </div>
+  );
+}
+
 function AddPositionForm({ onClose }: { onClose: () => void }) {
-  const [kind, setKind] = useState<'stock' | 'fund'>('stock');
+  const [kind, setKind] = useState<AssetKind>('stock');
+  const cfg = ASSET_TYPES[kind];
   const [symbol, setSymbol] = useState('');
   const [lot, setLot] = useState('');
   const [avgPrice, setAvgPrice] = useState('');
@@ -965,19 +1161,31 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
     })();
   }, [kind, fundOptions.length]);
 
-  const suggestions = kind === 'fund'
-    ? (symbol.trim()
-        ? fundOptions.filter((f) =>
-            f.code.toLowerCase().includes(symbol.toLowerCase()) ||
-            f.name.toLowerCase().includes(symbol.toLowerCase()),
-          ).slice(0, 6)
-        : [])
-    : (symbol.trim()
-        ? MOCK_STOCKS.filter((s) =>
-            s.symbol.toLowerCase().includes(symbol.toLowerCase()) ||
-            s.name.toLowerCase().includes(symbol.toLowerCase()),
-          ).slice(0, 6)
-        : []);
+  // Suggestions kaynağı türe göre:
+  //   stock → MOCK_STOCKS (BIST)
+  //   fund  → fundOptions (TEFAS feed, lazy-loaded)
+  //   gold/silver/forex/crypto → cfg.presets (sabit liste)
+  const suggestions = (() => {
+    const q = symbol.toLowerCase().trim();
+    if (kind === 'stock') {
+      if (!q) return [];
+      return MOCK_STOCKS.filter((s) =>
+        s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q),
+      ).slice(0, 6);
+    }
+    if (kind === 'fund') {
+      if (!q) return [];
+      return fundOptions.filter((f) =>
+        f.code.toLowerCase().includes(q) || f.name.toLowerCase().includes(q),
+      ).slice(0, 6);
+    }
+    // gold/silver/forex/crypto — preset list, boşken bile ilk 10'u göster
+    const presets = cfg.presets ?? [];
+    if (!q) return presets.slice(0, 10);
+    return presets.filter((p) =>
+      p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q),
+    ).slice(0, 10);
+  })();
 
   const save = async () => {
     const sym = symbol.trim().toUpperCase();
@@ -1062,50 +1270,40 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="space-y-3">
-      {/* HİSSE / FON toggle — ilk alan, pozisyon tipini belirler */}
+      {/* Pozisyon Türü — 6 asset type (Hisse/Fon/Altın/Gümüş/Döviz/Kripto) */}
       <Field label="Pozisyon Türü">
-        <div className="inline-flex rounded-lg border border-border p-1 w-full">
-          <button
-            type="button"
-            onClick={() => { setKind('stock'); setSymbol(''); setAvgPrice(''); }}
-            className={cn(
-              'flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition',
-              kind === 'stock' ? 'bg-accent/15 text-accent' : 'text-slate-400 hover:text-slate-200',
-            )}
-          >
-            Hisse
-          </button>
-          <button
-            type="button"
-            onClick={() => { setKind('fund'); setSymbol(''); setAvgPrice(''); }}
-            className={cn(
-              'flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition',
-              kind === 'fund' ? 'bg-accent/15 text-accent' : 'text-slate-400 hover:text-slate-200',
-            )}
-          >
-            Fon
-          </button>
+        <div className="grid grid-cols-3 gap-1 rounded-lg border border-border p-1">
+          {(Object.values(ASSET_TYPES)).map((t) => (
+            <button
+              key={t.kind}
+              type="button"
+              onClick={() => { setKind(t.kind); setSymbol(''); setAvgPrice(''); }}
+              className={cn(
+                'rounded-md px-2 py-1.5 text-xs font-semibold transition',
+                kind === t.kind ? 'bg-accent/15 text-accent' : 'text-slate-400 hover:text-slate-200 hover:bg-bg-soft',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </Field>
 
-      <Field
-        label={kind === 'fund' ? 'Fon Kodu' : 'Hisse Sembolü'}
-        hint={kind === 'fund' ? 'ör. TLY, DFI, AES — TEFAS fon kodu' : 'ör. THYAO, GARAN, ASELS'}
-      >
+      <Field label={cfg.codeLabel} hint={cfg.codeHint}>
         <div className="relative">
           <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             className="input pl-8 uppercase"
-            placeholder={kind === 'fund' ? 'TLY' : 'THYAO'}
+            placeholder={cfg.codePlaceholder}
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
             autoFocus
-            maxLength={6}
+            maxLength={25}
           />
-          {suggestions.length > 0 && symbol.length >= 2 && (
+          {/* Suggestions: stock/fund 2+ karakter sonrası; gold/silver/forex/crypto odakta hemen açılır */}
+          {suggestions.length > 0 && (symbol.length >= 2 || (kind !== 'stock' && kind !== 'fund')) && (
             <div className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-border bg-bg-card shadow-xl max-h-60 overflow-y-auto">
               {suggestions.map((s) => {
-                // Normalize: fund has {code, name, nav}, stock has {symbol, name, price, changePct}
                 const code = (s as { code?: string; symbol?: string }).code ?? (s as { symbol: string }).symbol;
                 const name = s.name;
                 const price = (s as { nav?: number; price?: number }).nav ?? (s as { price?: number }).price;
@@ -1119,8 +1317,8 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
                       setSymbol(code);
                       if (price && price > 0 && !avgPrice) {
                         setAvgPrice(price.toLocaleString('tr-TR', {
-                          minimumFractionDigits: kind === 'fund' ? 4 : 2,
-                          maximumFractionDigits: kind === 'fund' ? 6 : 2,
+                          minimumFractionDigits: cfg.pricePrecision,
+                          maximumFractionDigits: cfg.pricePrecision,
                         }));
                       }
                     }}
@@ -1130,19 +1328,21 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
                       <span className="font-mono font-semibold text-accent">{code}</span>
                       <div className="text-slate-400 text-[10px] truncate">{name}</div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <div className="font-mono text-[11px] font-bold text-slate-100 tabular-nums">
-                        {price && price > 0 ? `${kind === 'fund' ? price.toFixed(4) : price.toFixed(2)}₺` : '—'}
-                      </div>
-                      {Number.isFinite(changePct) && (
-                        <div className={cn(
-                          'text-[10px] font-bold tabular-nums',
-                          (changePct ?? 0) >= 0 ? 'text-success' : 'text-danger',
-                        )}>
-                          {(changePct as number) >= 0 ? '+' : ''}{(changePct as number).toFixed(2)}%
+                    {price && price > 0 && (
+                      <div className="shrink-0 text-right">
+                        <div className="font-mono text-[11px] font-bold text-slate-100 tabular-nums">
+                          {price.toFixed(cfg.pricePrecision)}₺
                         </div>
-                      )}
-                    </div>
+                        {Number.isFinite(changePct) && (
+                          <div className={cn(
+                            'text-[10px] font-bold tabular-nums',
+                            (changePct ?? 0) >= 0 ? 'text-success' : 'text-danger',
+                          )}>
+                            {(changePct as number) >= 0 ? '+' : ''}{(changePct as number).toFixed(2)}%
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -1151,20 +1351,20 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
         </div>
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={kind === 'fund' ? 'Pay Adedi' : 'Lot Adedi'}>
+        <Field label={cfg.lotLabel}>
           <TRTextNumberInput
             className="input"
             value={lot}
             onChange={setLot}
-            placeholder={kind === 'fund' ? '1250,5' : '100'}
+            placeholder={cfg.lotPlaceholder}
           />
         </Field>
-        <Field label={kind === 'fund' ? 'Ortalama Pay Fiyatı (₺)' : 'Ortalama Maliyet (₺)'}>
+        <Field label={cfg.priceLabel}>
           <TRTextNumberInput
             className="input"
             value={avgPrice}
             onChange={setAvgPrice}
-            placeholder={kind === 'fund' ? '0,8542' : '285,50'}
+            placeholder={cfg.pricePlaceholder}
           />
         </Field>
       </div>

@@ -26,7 +26,7 @@ interface Env extends AuthEnv {
 interface PositionRow {
   id: number;
   user_id: number;
-  kind: 'stock' | 'fund';
+  kind: 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
   symbol: string;
   lot: number;
   avg_price: number;
@@ -39,7 +39,7 @@ interface TxnRow {
   id: number;
   position_id: number;
   user_id: number;
-  kind: 'stock' | 'fund';
+  kind: 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
   symbol: string;
   lot: number;
   price: number;
@@ -115,8 +115,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     ? body.executedAt
     : Date.now();
 
-  if (kind !== 'stock' && kind !== 'fund') {
-    return jsonResponse({ ok: false, error: "kind 'stock' veya 'fund' olmalı" }, 400);
+  const VALID_KINDS = ['stock', 'fund', 'gold', 'silver', 'forex', 'crypto'] as const;
+  if (!VALID_KINDS.includes(kind as typeof VALID_KINDS[number])) {
+    return jsonResponse({ ok: false, error: `kind şu değerlerden biri olmalı: ${VALID_KINDS.join(', ')}` }, 400);
   }
   if (!symbol || symbol.length > 20) {
     return jsonResponse({ ok: false, error: 'symbol zorunlu (max 20 karakter)' }, 400);

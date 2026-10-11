@@ -96,7 +96,7 @@ export interface UserAccount {
 export interface PortfolioPosition {
   id?: number;
   /** Yatirim turu — eski kayitlar icin undefined = 'stock' kabul edilir. */
-  kind?: 'stock' | 'fund';
+  kind?: 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
   /** BIST hisse kodu VEYA TEFAS fon kodu (örn. THYAO, KFZ, CPU) */
   symbol: string;
   /** Hisse: lot adedi · Fon: pay adedi (fraksiyonel olabilir, ondalik kabul) */
@@ -119,7 +119,7 @@ export interface PortfolioTxn {
   /** Iliskili pozisyonun id'si - opsiyonel (eski kayitlar yok) */
   positionId?: number;
   /** 'stock' | 'fund' — pozisyonun tipiyle ayni */
-  kind?: 'stock' | 'fund';
+  kind?: 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
   /** BIST sembolü veya TEFAS fon kodu */
   symbol: string;
   /** Lot/pay sayisi (pozitif=alim, negatif=satim) */

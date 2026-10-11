@@ -20,7 +20,7 @@ import { db, type PortfolioPosition, type PortfolioTxn } from './db';
 export interface CloudPosition {
   id: number;
   user_id: number;
-  kind: 'stock' | 'fund';
+  kind: 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
   symbol: string;
   lot: number;
   avg_price: number;
@@ -33,7 +33,7 @@ export interface CloudTxn {
   id: number;
   position_id: number;
   user_id: number;
-  kind: 'stock' | 'fund';
+  kind: 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
   symbol: string;
   lot: number;
   price: number;
@@ -72,7 +72,7 @@ export async function cloudFetch(): Promise<{ positions: CloudPosition[]; txns: 
 
 /** Cloud'a yeni pozisyon ekle (server agirlikli ortalama yapar) */
 export async function cloudAddPosition(input: {
-  kind: 'stock' | 'fund';
+  kind: 'stock' | 'fund' | 'gold' | 'silver' | 'forex' | 'crypto';
   symbol: string;
   lot: number;
   avgPrice: number;

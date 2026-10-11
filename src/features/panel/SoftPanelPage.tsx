@@ -386,10 +386,11 @@ export function SoftPanelPage() {
 
   // Son dakika — ilk 4 haber
   // Kritik bildirimler (konkordato, iflas, tedbir vb.) her zaman üstte.
+  // 11 Eki 2026: 4 → 6 — kritik haberler normal haberleri ezmesin
   const topNews = useMemo(() => {
     const critical = news.filter((n) => n.critical);
     const rest = news.filter((n) => !n.critical);
-    return [...critical, ...rest].slice(0, 4);
+    return [...critical, ...rest].slice(0, 6);
   }, [news]);
 
   return (
@@ -607,20 +608,34 @@ export function SoftPanelPage() {
               <div className="py-6 text-center text-[11px] text-slate-500">Haberler yükleniyor…</div>
             ) : (
               <div className="divide-y divide-slate-700/20">
-                {topNews.map((n) => (
-                  <a
-                    key={n.id ?? n.url}
-                    href={n.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block py-2 text-[12px] text-slate-300 hover:text-slate-100 leading-relaxed"
-                  >
-                    <div className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-success" />
-                      <span className="flex-1 line-clamp-2">{n.title}</span>
-                    </div>
-                  </a>
-                ))}
+                {topNews.map((n) => {
+                  const isCritical = n.critical === true;
+                  return (
+                    <a
+                      key={n.id ?? n.url}
+                      href={n.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        'block py-2 text-[12px] leading-relaxed',
+                        isCritical
+                          ? '-mx-2 my-0.5 rounded-md border-l-2 border-danger bg-danger/10 px-2 text-slate-100 hover:bg-danger/15'
+                          : 'text-slate-300 hover:text-slate-100',
+                      )}
+                    >
+                      {isCritical && (
+                        <div className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-danger">
+                          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+                          Kritik{n.criticalReason ? ` · ${n.criticalReason}` : ''}
+                        </div>
+                      )}
+                      <div className="flex items-start gap-2">
+                        {!isCritical && <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-success" />}
+                        <span className="flex-1 line-clamp-2">{n.title}</span>
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             )}
           </div>

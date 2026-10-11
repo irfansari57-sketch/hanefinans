@@ -89,9 +89,17 @@ const SOURCES: RssSource[] = [
   { name: 'Paratic',        url: 'https://paratic.com/feed/' },
   { name: 'BorsaGundem',    url: 'https://www.borsagundem.com.tr/rss/haberler.xml' },
   { name: 'UzmanPara',      url: 'https://uzmanpara.milliyet.com.tr/rss/hisse-haberleri-tum' },
-  { name: 'Hisse.net',      url: 'https://www.hisse.net/rss/haberler.xml' },
-  { name: 'Investiz',       url: 'https://www.investiz.com/rss' },
-  { name: 'FinansGundem',   url: 'https://www.finansgundem.com/rss' },
+
+  // === Google News kritik event aramaları — RSS feed'leri saat/gün rotasyonu
+  // yaparken Google News 2 hafta geriye dönük sonuç verir. Konkordato,
+  // iflas, kayyım, SPK ceza gibi yatırımcı için kritik olayları garantili
+  // yakalar — kaynağı site önemsiz, haber yakalanır.
+  { name: 'Google News · Konkordato',
+    url: 'https://news.google.com/rss/search?q=konkordato+(KAP+OR+borsa+OR+hisse)&hl=tr&gl=TR&ceid=TR:tr' },
+  { name: 'Google News · İflas/Kayyım',
+    url: 'https://news.google.com/rss/search?q=(iflas+OR+kayy%C4%B1m)+(borsa+OR+KAP+OR+hisse)&hl=tr&gl=TR&ceid=TR:tr' },
+  { name: 'Google News · SPK/Tedbir',
+    url: 'https://news.google.com/rss/search?q=(SPK+ceza+OR+tedbirli+pazar+OR+%22borsadan+%C3%A7%C4%B1kar%22)&hl=tr&gl=TR&ceid=TR:tr' },
 
   // NOT: Investing.com, Reuters, FT, CNBC, WSJ, Bloomberg (EN) gibi INGILIZCE
   // kaynaklar TR kitlemize uygun degil — kullanici talebiyle whitelistten

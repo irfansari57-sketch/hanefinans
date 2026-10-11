@@ -136,7 +136,15 @@ const OFFTOPIC_PATTERNS: RegExp[] = [
   // Magazin/dizi/reyting
   /\b(magazin|dizi\s?reyting|reyting|kısmetse\s?olur|survivor|yarışma|dedikodu|paparazzi|sevgili|nişan|nisan\s?töreni|boşanma|bosanma|düğün|dugun|kırmızı\s?halı|kirmizi\s?hali|sansasyon)\b/i,
   // Spor (futbol maçı, transfer vs.) — ekonomik değil
+  // 11 Eki 2026 güçlendirildi: BJKAS/FENER/GSRAY BIST sembolleri olduğundan takım
+  // adlarını doğrudan değil, futbol-özel verblerle birlikte eşle.
   /\b(gol\s?dakikaları|maç\s?sonucu|derbi|transfer\s?bombası|fikstür|puan\s?durumu|kupa\s?maçı|penaltı\s?atıcı|penalti|liglerde\s?bugün|milli\s?takım\s?maçı)\b/i,
+  /\b(S[üu]per\s?Lig|Trendyol\s?S[üu]per|1\.\s?Lig|TFF\s?[12]\.\s?Lig|UEFA|[ŞS]ampiyonlar\s?Ligi|Avrupa\s?Ligi|Konferans\s?Ligi)\b/i,
+  /\b(ligde\s+(?:ilk|son|ikinci|birinci|[üu]ç[üu]nc[üu]|d[öo]rd[üu]nc[üu])\s*s[ıi]ra)\b/i,
+  /\b(evinde|deplasmanda|sahas[ıi]nda)\s+[A-ZÇŞĞİÖÜ][a-zÀ-ɏ]+(spor|FK|SK)\b/,
+  /\b(Kocaelispor|Trabzonspor|Ba[şs]ak[şs]ehir|G[öo]ztepe|Antalyaspor|Konyaspor|Alanyaspor|Samsunspor|Adanaspor|Gaziantep\s?FK|Kayserispor|Rizespor|Sivasspor|Ankarag[üu]c[üu]|Malatyaspor|Pendikspor|Bodrum\s?FK|Hatayspor|Eyüpspor|Çaykur\s?Rize)\b/i,
+  /\b(teknik\s+direkt[öo]r|kalecisi|golc[üu]s[üu]|forma\s+giy|hat.?trick|sar[ıi]\s?k[ıi]rm[ıi]z[ıi]|siyah\s?beyazl[ıi]|lacivert\s?beyaz)\b/i,
+  /\b(hata\s+yapmad[ıi]|galip\s+gel|ma[ğg]lup\s+ol|beraberlik(?:le|\s+ayr[ıi]ld)|golle\s+kazand|skor\s+\d)\b/i,
   // Astroloji/burç
   /\b(burç\s?yorum|burc\s?yorum|astroloji|yıldıznamesi|yildiznamesi|günlük\s?burç|gunluk\s?burc|haftalık\s?burç|haftalik\s?burc|aylık\s?burç|aylik\s?burc)\b/i,
   // Diğer OFF-topic (yemek tarifi, sağlık öneri, çocuk isim vs.)

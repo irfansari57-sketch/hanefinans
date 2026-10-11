@@ -83,6 +83,16 @@ const SOURCES: RssSource[] = [
   // Sözcü ekonomi
   { name: 'Sozcu',          url: 'https://www.sozcu.com.tr/feed/?cat=ekonomi' },
 
+  // === KAP / BIST-özel kaynaklar (11 Eki 2026 eklendi) ===
+  // Yatırımcıyı birebir ilgilendiren konkordato/iflas/tedbir gibi
+  // KAP bildirimlerini en hızlı yakalayan Türkçe borsa haberleri.
+  { name: 'Paratic',        url: 'https://paratic.com/feed/' },
+  { name: 'BorsaGundem',    url: 'https://www.borsagundem.com.tr/rss/haberler.xml' },
+  { name: 'UzmanPara',      url: 'https://uzmanpara.milliyet.com.tr/rss/hisse-haberleri-tum' },
+  { name: 'Hisse.net',      url: 'https://www.hisse.net/rss/haberler.xml' },
+  { name: 'Investiz',       url: 'https://www.investiz.com/rss' },
+  { name: 'FinansGundem',   url: 'https://www.finansgundem.com/rss' },
+
   // NOT: Investing.com, Reuters, FT, CNBC, WSJ, Bloomberg (EN) gibi INGILIZCE
   // kaynaklar TR kitlemize uygun degil — kullanici talebiyle whitelistten
   // cikarildi. Sadece TR finans kaynaklari tutuluyor.

@@ -174,7 +174,8 @@ export function SoftPanelPage() {
       } catch { /* devam */ }
 
       // WAVE 2: News + Top funds non-blocking
-      loadNews({ max: 8 }).then((n) => n && setNews(n.data)).catch(() => {});
+      // 11 Eki 2026: 8 → 30 — kritik haber (konkordato vb.) ilk 8'in dışında kalıyordu
+      loadNews({ max: 30 }).then((n) => n && setNews(n.data)).catch(() => {});
       // loadFundsAsPerformance() KALDIRILDI (11 Eki): /api/funds/live 1.4s + 235KB
       // critical path'ten çıktı. Günün Enleri Fonlar tab'ı artık /api/panel/top-movers
       // FVT endpoint'inden geliyor (daha güvenilir + tek fetch unified). Fallback

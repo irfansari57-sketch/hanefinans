@@ -464,40 +464,9 @@ export function StockDetailPage() {
         </div>
       )}
 
-      {/* Multi-Timeframe Trend Analizi — accordion, default kapali */}
-      {mtResult && (
-        <PinnableAccordion
-          id={`mtf-${stock.symbol}`}
-          title="Çoklu Zaman Dilimi Yön Analizi"
-          description="1H · 4H · 1D trend özeti"
-          icon={<Activity size={14} />}
-          iconColorClass="bg-accent/15 text-accent"
-        >
-          <MultiTimeframeCard r={mtResult} currency={isUs ? '$' : '₺'} hideHeader />
-        </PinnableAccordion>
-      )}
-
-      {/* AI Derin Analiz — accordion (default kapali, ag istek/AI maliyet) */}
-      {!isUs && (
-        <PinnableAccordion
-          id={`deep-${stock.symbol}`}
-          title="AI Derin Analiz"
-          description="Pro 2/ay · Elite limitsiz · 24h cache"
-          icon={<SparklesIcon size={14} />}
-          iconColorClass="bg-accent/15 text-accent"
-        >
-          <DeepAnalysisCard
-            symbol={stock.symbol}
-            name={stock.name}
-            price={stock.price}
-            changePct={stock.changePct}
-            sector={stock.sector}
-            rsi={technicalAnalysis?.rsi ?? undefined}
-            macd={technicalAnalysis?.macdBullish ? 'bullish' : technicalAnalysis?.macdBearish ? 'bearish' : 'neutral'}
-            ema={technicalAnalysis?.emas?.map((e) => ({ period: e.period, above: e.abovePct >= 0 })) ?? undefined}
-          />
-        </PinnableAccordion>
-      )}
+      {/* 11 Eki 2026: Çoklu Zaman Dilimi + AI Derin Analiz + AI Hisse Analizi
+          kullanıcı talebiyle kaldırıldı — hisse detayında sadece Teknik Analiz Detayı
+          + Şirket Finansalları kalsın. Komponentler korundu (yeniden açılabilir). */}
 
       {/* Teknik Analiz — accordion, kompakt UX: kullanici isterse acar */}
       {technicalAnalysis && (
@@ -597,64 +566,7 @@ export function StockDetailPage() {
 
       {/* Pozisyon Hesaplayıcı kaldırıldı — kullanıcı talebi */}
 
-      {/* AI Hisse Analizi — accordion */}
-      <PinnableAccordion
-        id={`ai-${stock.symbol}`}
-        title="AI Hisse Analizi"
-        description="Claude Haiku ile teknik + haber özet · PRO"
-        icon={<Sparkles size={14} />}
-        iconColorClass="bg-warning/15 text-warning"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
-            PRO / ELITE
-          </span>
-          {!aiAnalysis && (
-            <button
-              className="btn-primary"
-              onClick={generateAiAnalysis}
-              disabled={aiLoading || (!proUser && !!user)}
-              title={!proUser && user ? 'Sadece ELITE üyelere özel' : 'AI analiz üret'}
-            >
-              {aiLoading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              {aiLoading ? 'Analiz üretiliyor…' : 'AI Analizi Üret'}
-            </button>
-          )}
-          {aiAnalysis && (
-            <button className="btn-secondary" onClick={generateAiAnalysis} disabled={aiLoading}>
-              <RefreshCw size={14} className={aiLoading ? 'animate-spin' : ''} /> Yenile
-            </button>
-          )}
-        </div>
-
-        {!proUser && user && !aiAnalysis && (
-          <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
-            🔒 AI analiz Sadece ELITE üyelere özel.{' '}
-            <Link to="/uyelik" className="underline">PRO'ya yükselt →</Link>
-          </div>
-        )}
-
-        {!user && !aiAnalysis && (
-          <p className="mt-3 text-xs text-slate-400">
-            Bu hisse için Claude AI ile teknik göstergeler + son haberlerden üretilen Türkçe analiz almak için PRO üyeliğe geç.
-          </p>
-        )}
-
-        {aiAnalysis && (
-          <div className="mt-3 rounded-lg border border-accent/30 bg-accent/5 p-4">
-            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-200">{aiAnalysis}</p>
-            <p className="mt-3 text-[10px] text-slate-500">
-              AI tarafından üretildi (Claude Haiku 4.5). Yatırım tavsiyesi değildir; bilgi amaçlıdır. 1 saat cache'lenir.
-            </p>
-          </div>
-        )}
-
-        {aiError && (
-          <div className="mt-3 rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs text-danger">
-            ⚠️ {aiError}
-          </div>
-        )}
-      </PinnableAccordion>
+      {/* AI Hisse Analizi — kullanıcı talebi (11 Eki 2026) ile kaldırıldı. */}
 
       {/* Stats grid */}
       {historical && (

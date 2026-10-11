@@ -398,14 +398,22 @@ function parseRss(xml: string, sourceName: string): NewsItem[] {
   return items;
 }
 
-async function fetchSource(src: RssSource, timeoutMs = 6000): Promise<NewsItem[]> {
+async function fetchSource(src: RssSource, timeoutMs?: number): Promise<NewsItem[]> {
+  // Google News RSS feed'leri 3-8sn alabilir, local kaynaklar 2-3sn.
+  // Google News için 15sn, diğerleri için 6sn timeout.
+  const isGoogleNews = src.url.includes('news.google.com');
+  const actualTimeout = timeoutMs ?? (isGoogleNews ? 15000 : 6000);
+  // Google News bot UA'yı bloklar — gerçek browser UA kullan
+  const userAgent = isGoogleNews
+    ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+    : 'Mozilla/5.0 (compatible; HaneFinansBot/1.0)';
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    const t = setTimeout(() => ctrl.abort(), actualTimeout);
     const r = await fetch(src.url, {
       signal: ctrl.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; HaneFinansBot/1.0)',
+        'User-Agent': userAgent,
         Accept: 'application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
       },
       cf: { cacheTtl: 60, cacheEverything: true },

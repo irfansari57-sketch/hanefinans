@@ -411,7 +411,10 @@ function TreeRow({
   prevMap: Map<string, number | null>;
   defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState<boolean>(defaultOpen && depth < 2);
+  // Default: ilk 4 seviye açık gelir — kullanıcı tüm kalemleri (Nakit,
+  // Ticari Alacaklar, Stoklar vb.) tek bakışta görsün. Parent satırları
+  // value=null olduğu için "—" görünür; alt kalemler değer taşır.
+  const [open, setOpen] = useState<boolean>(defaultOpen && depth < 4);
   const hasChildren = (node.children?.length ?? 0) > 0;
   const myPath = `${path}/${node.key}`;
   const prevVal = prevMap.get(myPath) ?? null;

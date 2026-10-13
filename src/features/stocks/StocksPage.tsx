@@ -13,7 +13,7 @@ import type { KatilimIndex } from '@/data/katilim';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
-import { BIST_INDICES, INDEX_TO_SECTORS, BIST_SCOPES, isInBistScope, type BistScopeCode } from '@/data/bistIndices';
+import { BIST_GROUPS, BIST_GROUP_BY_SLUG, BIST_GROUP_KIND_LABELS, type BistGroupKind } from '@/data/bistGroups';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
@@ -117,20 +117,25 @@ export function StocksPage() {
   const [sortKey, setSortKey] = useState<SortKey>('changePct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [tab, setTab] = useState<'all' | 'watched'>('all');
-  const [indexFilter, setIndexFilter] = useState<string>('all');
-  // BIST kapsamı — default BIST 100 (kullanıcı "Tüm Hisseler" sekmesinde de
-  // önce ana endeks görsün; çöp hisse sayısı 4-5 katına düşer, listede odak artar)
-  const [scopeFilter, setScopeFilter] = useState<BistScopeCode>(() => {
-    // localStorage'dan son tercih — kullanici BIST Tum sectiyse bir sonraki ziyarette de Tum acik gelsin
+  // Grup filtresi (13 Eki 2026): BIST endeks/tema/sektör grupları (bistGroups.ts).
+  // 'all' = BIST Tüm. Son tercih localStorage'da.
+  const [groupFilter, setGroupFilter] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem('fa.stocks.scopeFilter');
-      if (saved === 'XU100' || saved === 'XU030' || saved === 'BISTTUM') return saved;
+      const saved = localStorage.getItem('fa.stocks.groupFilter');
+      if (saved && (saved === 'all' || BIST_GROUP_BY_SLUG.has(saved))) return saved;
     } catch { /* */ }
-    return 'XU100';
+    return 'all';
   });
   useEffect(() => {
-    try { localStorage.setItem('fa.stocks.scopeFilter', scopeFilter); } catch { /* */ }
-  }, [scopeFilter]);
+    try { localStorage.setItem('fa.stocks.groupFilter', groupFilter); } catch { /* */ }
+  }, [groupFilter]);
+  /** Grup üyelik kümesi — katılım grubu canlı/statik katılım haritasından. */
+  const groupSymbolSet = useMemo<ReadonlySet<string> | null>(() => {
+    if (groupFilter === 'all') return null;
+    if (groupFilter === 'katilim') return new Set(Object.keys(katilimMap));
+    const g = BIST_GROUP_BY_SLUG.get(groupFilter);
+    return g ? new Set(g.symbols) : null;
+  }, [groupFilter, katilimMap]);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 50;
 
@@ -335,7 +340,6 @@ export function StocksPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const sectorAllowList = indexFilter === 'all' ? null : new Set(INDEX_TO_SECTORS.get(indexFilter) ?? []);
     return rows.filter((s) => {
       // Çöp / delisted / suspended hisseleri "Tüm Hisseler" sekmesinde ele.
       // Watchlist'te bilerek tutulanları göster.
@@ -356,16 +360,15 @@ export function StocksPage() {
         // B) Fiyatlı ama hareket de yok, getiri de yok → delisted
         if (hasPrice && !hasDailyMove && !hasReturns) return false;
       }
-      if (sectorAllowList && !sectorAllowList.has(s.sector ?? '')) return false;
       // BIST kapsamı filtresi (XU100 / XU030 / BISTTUM) — sektör endeksinden ayrı
-      if (!isInBistScope(s.symbol, scopeFilter)) return false;
+      if (groupSymbolSet && !groupSymbolSet.has(s.symbol)) return false;
       if (q) {
         const blob = `${s.symbol} ${s.name}`.toLowerCase();
         if (!blob.includes(q)) return false;
       }
       return true;
     });
-  }, [rows, search, indexFilter, tab, scopeFilter]);
+  }, [rows, search, tab, groupSymbolSet]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -397,26 +400,32 @@ export function StocksPage() {
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, indexFilter, scopeFilter]);
+  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, groupFilter]);
 
   // BIST scope sayaçları (chip rozetleri için)
-  const scopeCounts = useMemo(() => {
-    const result: Record<BistScopeCode, number> = { XU100: 0, XU030: 0, BISTTUM: 0 };
+  const groupCounts = useMemo(() => {
+    const alive: string[] = [];
     for (const r of rows) {
-      // Sadece "alive" (delisted olmayan) hisseleri say — tab=all filtreleme mantığı
       const hasReturns = r.returns && Object.values(r.returns).some((v) => v != null && Number.isFinite(v));
       const hasPrice = r.price > 0;
       const hasDailyMove = Number.isFinite(r.changePct) && r.changePct !== 0;
       if (tab === 'all') {
+        if (r.symbol.length > 5) continue;
         if (!hasPrice && !hasReturns) continue;
         if (hasPrice && !hasDailyMove && !hasReturns) continue;
       }
-      for (const sc of BIST_SCOPES) {
-        if (isInBistScope(r.symbol, sc.code)) result[sc.code] += 1;
-      }
+      alive.push(r.symbol);
+    }
+    const aliveSet = new Set(alive);
+    const result: Record<string, number> = { all: alive.length };
+    for (const g of BIST_GROUPS) {
+      const members = g.slug === 'katilim' ? Object.keys(katilimMap) : g.symbols;
+      let n = 0;
+      for (const sym of members) if (aliveSet.has(sym)) n++;
+      result[g.slug] = n;
     }
     return result;
-  }, [rows, tab]);
+  }, [rows, tab, katilimMap]);
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -430,32 +439,27 @@ export function StocksPage() {
     <>
       <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat ve dönem getirileri." path="/stocks" />
 
-      {/* BIST kapsam chip'leri — BIST 100 / BIST 30 / BIST Tüm */}
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kapsam:</span>
-        {BIST_SCOPES.map((sc) => {
-          const isActive = scopeFilter === sc.code;
-          const count = scopeCounts[sc.code];
-          return (
-            <button
-              key={sc.code}
-              type="button"
-              onClick={() => setScopeFilter(sc.code)}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium transition',
-                isActive
-                  ? 'border-accent/50 bg-accent/15 text-accent shadow-sm shadow-accent/10'
-                  : 'border-border bg-bg-soft text-slate-400 hover:border-accent/30 hover:text-slate-200',
-              )}
-              aria-pressed={isActive}
-            >
-              <span>{sc.label}</span>
-              <span className={cn('rounded px-1 py-0.5 text-[9px] font-bold tabular-nums', isActive ? 'bg-accent/20' : 'bg-bg-card text-slate-500')}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+      {/* Grup chip'leri — BIST resmî endeks/tema/sektör kapsamları (bistGroups.ts) */}
+      <div className="mb-3 space-y-2">
+        {(['index', 'main', 'sector'] as BistGroupKind[]).map((kind) => (
+          <div key={kind} className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 w-full text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:w-auto">
+              {BIST_GROUP_KIND_LABELS[kind]}
+            </span>
+            {kind === 'index' && (
+              <GroupChip label="BIST Tüm" count={groupCounts.all} active={groupFilter === 'all'} onClick={() => setGroupFilter('all')} />
+            )}
+            {BIST_GROUPS.filter((g) => g.kind === kind).map((g) => (
+              <GroupChip
+                key={g.slug}
+                label={g.label}
+                count={groupCounts[g.slug] ?? 0}
+                active={groupFilter === g.slug}
+                onClick={() => setGroupFilter(groupFilter === g.slug ? 'all' : g.slug)}
+              />
+            ))}
+          </div>
+        ))}
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -476,17 +480,6 @@ export function StocksPage() {
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <LiveBadge updatedAt={updatedAt} refreshing={loading || returnsLoading} />
-          <select
-            value={indexFilter}
-            onChange={(e) => setIndexFilter(e.target.value)}
-            className="input h-9 cursor-pointer text-xs"
-            title="Sektör/endeks filtresi"
-          >
-            <option value="all">Tüm Sektörler</option>
-            {BIST_INDICES.map((idx) => (
-              <option key={idx.code} value={idx.code}>{idx.code} · {idx.label}</option>
-            ))}
-          </select>
           <div className="relative">
             <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -505,11 +498,11 @@ export function StocksPage() {
         </div>
       )}
 
-      {sortKey === 'changePct' && scopeFilter !== 'BISTTUM' && tab === 'all' && (
+      {sortKey === 'changePct' && groupFilter !== 'all' && tab === 'all' && (
         <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
-          Günlük sıralama yalnızca <span className="text-slate-200">{BIST_SCOPES.find((s) => s.code === scopeFilter)?.label}</span> kapsamında.
-          Tavan/taban yapan küçük hisseler için{' '}
-          <button type="button" className="text-accent underline-offset-2 hover:underline" onClick={() => { setScopeFilter('BISTTUM'); setCurrentPage(1); }}>
+          Günlük sıralama yalnızca <span className="text-slate-200">{BIST_GROUP_BY_SLUG.get(groupFilter)?.label ?? groupFilter}</span> kapsamında.
+          Tavan/taban yapan tüm hisseler için{' '}
+          <button type="button" className="text-accent underline-offset-2 hover:underline" onClick={() => { setGroupFilter('all'); setCurrentPage(1); }}>
             BIST Tüm
           </button>{' '}
           seçin — Panel'deki "Günün Enleri" tüm BIST'e bakar.
@@ -535,18 +528,17 @@ export function StocksPage() {
           </div>
 
           {loading && stocks.length === 0 ? (
-            <TableSkeleton rows={12} cols={9} />
+            <TableSkeleton rows={12} cols={8} />
           ) : (
           <DoubleScrollTable className="rounded-xl border border-border bg-bg-soft">
             {/* Font boyutu artirildi: text-sm (14px) -> text-base (16px) — okunmayi kolaylastirir.
                 Baslik text-[10px] -> text-[11px] + tracking artirildi.
                 DoubleScrollTable: ust + alt yatay scroll (kullanici talebi). */}
-            <table className="w-full min-w-[820px] text-base">
+            <table className="w-full min-w-[720px] text-base">
               <thead className="border-b border-border bg-bg-soft text-[11px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <SortableHeader label="Sembol" sortKey="symbol" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />
-                  <th className="px-2 py-2.5 text-left hidden sm:table-cell">Ad / Sektör</th>
                   <SortableHeader label="Fiyat" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="Gün %" sortKey="changePct" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="1 Hafta %" sortKey="r1h" activeKey={sortKey} dir={sortDir} onClick={setSort} />
@@ -626,6 +618,25 @@ function SortableHeader({ label, sortKey, activeKey, dir, onClick, align = 'righ
   );
 }
 
+function GroupChip({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition',
+        active
+          ? 'border-accent/50 bg-accent/15 text-accent shadow-sm shadow-accent/10'
+          : 'border-border bg-bg-soft text-slate-400 hover:border-accent/30 hover:text-slate-200',
+      )}
+    >
+      <span>{label}</span>
+      <span className={cn('rounded px-1 py-0.5 text-[9px] font-bold tabular-nums', active ? 'bg-accent/20' : 'bg-bg-card text-slate-500')}>{count}</span>
+    </button>
+  );
+}
+
 interface StockTableRowProps {
   stock: StockRow;
   rank: number;
@@ -648,18 +659,10 @@ function StockTableRow({ stock, rank, isWatched, onToggle, katilim }: StockTable
           >
             <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
           </button>
-          <Link to={`/stock/${stock.symbol}`} className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-accent">
+          <Link to={`/stock/${stock.symbol}`} title={stock.sector ? `${stock.name} · ${stock.sector}` : stock.name} className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-accent">
             {stock.symbol}
           </Link>
           <KatilimBadge indices={katilim} />
-        </div>
-      </td>
-      <td className="hidden sm:table-cell px-2 py-2.5">
-        <div className="flex items-center gap-1.5">
-          {stock.sector && stock.sector !== 'Diger' && stock.sector !== 'Diğer' && (
-            <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-300 whitespace-nowrap">{stock.sector}</span>
-          )}
-          <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[200px]">{stock.name}</span>
         </div>
       </td>
       <td className="px-2 py-2.5 text-right font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 whitespace-nowrap">

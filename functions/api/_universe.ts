@@ -4,19 +4,20 @@ import { isFvtBistRow } from './_fvt';
  * 13 Eki 2026: bist-warm.ts içindeki liste buraya taşındı.
  */
 
+// 13 Eki 2026: BIST 100 resmî bileşimi (Ekim 2026 dönemi, 100 sembol; kaynak BIST
+// endeks kapsamı — src/data/bistGroups.ts ile aynı anlık görüntü). KOZAA/KOZAL
+// (işlem görmüyor) çıkarıldı; bileşim çeyreklik revize edilir, birlikte güncelle.
 export const BIST_100_UNIVERSE: string[] = Array.from(new Set([
   'AEFES','AGHOL','AHGAZ','AKBNK','AKCNS','AKFYE','AKSA','AKSEN','ALARK','ALBRK',
-  'ALFAS','ARCLK','ASELS','ASTOR','BERA','BFREN','BIMAS','BINHO','BRSAN','BRYAT',
-  'CANTE','CIMSA','CWENE','DOAS','DOHOL','ECILC','ECZYT','EGEEN','EKGYO','ENERY',
-  'ENJSA','ENKAI','EREGL','FROTO','GARAN','GESAN','GLYHO','GUBRF','GWIND','HALKB',
-  'HEKTS','ISCTR','ISDMR','ISFIN','ISMEN','IZMDC','KARSN','KAYSE','KCAER','KCHOL',
-  'KLKIM','KMPUR','KONTR','KONYA','KOZAA','KOZAL','KRDMD','MAVI','MGROS','MIATK',
-  'ODAS','OTKAR','OYAKC','PETKM','PGSUS','SAHOL','SASA','SISE','SKBNK','SMRTG',
-  'SOKM','TAVHL','TCELL','THYAO','TKFEN','TKNSA','TOASO','TRGYO','TSKB','TTKOM',
-  'TTRAK','TUPRS','TUREX','ULKER','VAKBN','VESBE','VESTL','YATAS','YKBNK','ZOREN',
-  // BIST 30 dışı ama yaygın
-  'AKGRT','ALTNY','ANHYT','BRISA','CCOLA','GENIL','ICBCT','LOGO','NETAS','NTHOL',
-  'PARSN','PENTA','QUAGR','SNGYO','TATGD','TSPOR','TURSG','ULUUN',
+  'ALTNY','ANHYT','ANSGR','ARCLK','ASELS','ASTOR','AYGAZ','BERA','BIMAS','BINHO',
+  'BRSAN','BRYAT','BTCIM','CANTE','CCOLA','CIMSA','CVKMD','CWENE','DOAS','DOHOL',
+  'ECILC','ECZYT','EGEEN','EGGUB','EKGYO','ENERY','ENJSA','ENKAI','ENTRA','EREGL',
+  'EUREN','FENER','FROTO','GARAN','GLRMK','GLYHO','GRSEL','GUBRF','GWIND','HALKB',
+  'HEKTS','ISCTR','ISDMR','ISMEN','KARSN','KATMR','KCAER','KCHOL','KORDS','KRDMD',
+  'LMKDC','MAVI','MGROS','MPARK','OBAMS','ODAS','OTKAR','OYAKC','PAHOL','PETKM',
+  'PGSUS','RGYAS','RYSAS','SAHOL','SASA','SISE','SNGYO','SOKM','TABGD','TAVHL',
+  'TCELL','TCKRC','THYAO','TKFEN','TOASO','TRALT','TRENJ','TRGYO','TRMET','TSKB',
+  'TTKOM','TTRAK','TUKAS','TUPRS','TURSG','ULKER','VAKBN','VESTL','YKBNK','ZOREN',
 ]));
 
 /** Endeksler — İş Yatırım/Yahoo sembolleri (Yahoo: XU100.IS). */

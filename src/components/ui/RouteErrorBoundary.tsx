@@ -84,11 +84,23 @@ export function RouteErrorBoundary() {
   useEffect(() => {
     if (is404 || !looksLikeChunkError) return;
     const KEY = 'iq.autoRecoverAttempts';
+    // 13 Eki 2026: pencereli sayaç. Art arda deploy'larda (dakikalar içinde iki
+    // kez chunk hash değişimi) tek denemelik sınır kullanıcıyı elle butona
+    // düşürüyordu. 90 sn içinde en fazla 2 otomatik deneme; pencere dolunca sıfır.
+    const WINDOW_MS = 90_000;
+    const MAX_ATTEMPTS = 2;
     try {
       const raw = sessionStorage.getItem(KEY);
-      const count = raw ? parseInt(raw, 10) : 0;
-      if (count >= 1) return; // Zaten bir kez denendi, kullanıcı manuel devam etsin
-      sessionStorage.setItem(KEY, String(count + 1));
+      let count = 0;
+      let first = Date.now();
+      if (raw) {
+        const parsed = raw.includes(':') ? raw.split(':') : [raw, '0'];
+        count = parseInt(parsed[0], 10) || 0;
+        first = parseInt(parsed[1], 10) || 0;
+        if (Date.now() - first > WINDOW_MS) { count = 0; first = Date.now(); }
+      }
+      if (count >= MAX_ATTEMPTS) return; // Pencere içinde deneme hakkı bitti → manuel
+      sessionStorage.setItem(KEY, `${count + 1}:${first}`);
     } catch {
       return;
     }

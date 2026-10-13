@@ -12,9 +12,9 @@
  * Edge cache 30 dk. Mock haberde Claude çağırmaz.
  */
 
-interface Env {
-  ANTHROPIC_API_KEY?: string;
-}
+import { guardAgent, withAgentCache, cacheKey, type AgentEnv } from './_guard';
+
+type Env = AgentEnv;
 
 interface NewsItem {
   id: string;
@@ -51,13 +51,13 @@ interface AnthropicResponse {
   content: Array<{ text: string; type: string }>;
 }
 
-function jsonResponse(data: unknown, status = 200, ttlSec = 1800): Response {
+// 13 Eki 2026: ACAO:* kaldırıldı (same-origin), HTTP cache yerine D1 agent_cache.
+function jsonResponse(data: unknown, status = 200, _ttlSec = 0): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': `public, max-age=${ttlSec}`,
+      'Cache-Control': 'no-store',
     },
   });
 }
@@ -93,6 +93,9 @@ interface ClaudeNewsRow {
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  const denied = await guardAgent(request, env);
+  if (denied) return denied;
+
   if (!env.ANTHROPIC_API_KEY) {
     return jsonResponse({ ok: false, error: 'ANTHROPIC_API_KEY env not set' }, 503, 60);
   }
@@ -103,9 +106,23 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const maxNews = Math.min(60, Math.max(20, body.maxNews ?? 40));
   const maxStories = Math.min(10, Math.max(3, body.maxStories ?? 5));
 
+  // D1 cache: 30 dk — haber akışı saatlik değişir, agent özeti bu kadar taze yeter.
+  const key = await cacheKey('news', { maxNews, maxStories });
+  const { data, cached } = await withAgentCache(env, key, 1800, () => computeNews(request, env, maxNews, maxStories));
+  return jsonResponse({ ...data, cached });
+};
+
+async function computeNews(
+  request: Request,
+  env: Env,
+  maxNews: number,
+  maxStories: number,
+): Promise<{ ok: boolean; [k: string]: unknown }> {
+  const fail = (error: string, extra: Record<string, unknown> = {}) => ({ ok: false, error, ...extra });
+
   const news = await fetchInternalNews(request, maxNews);
   if (news.length === 0) {
-    return jsonResponse({ ok: false, error: '/api/news boş döndü' }, 502, 60);
+    return fail('/api/news boş döndü');
   }
 
   // Önemli olanlardan başla — importance + recency
@@ -166,21 +183,17 @@ Markdown yok, açıklama yok. Sadece JSON dizi.`;
     });
     if (!r.ok) {
       const errText = await r.text();
-      return jsonResponse({ ok: false, error: `Anthropic API ${r.status}: ${errText.slice(0, 200)}` }, 502, 60);
+      return fail(`Anthropic API ${r.status}: ${errText.slice(0, 200)}`);
     }
     const json = (await r.json()) as AnthropicResponse;
     claudeText = json.content?.[0]?.text ?? '';
   } catch (e) {
-    return jsonResponse({ ok: false, error: `Anthropic fetch: ${(e as Error).message}` }, 500, 30);
+    return fail(`Anthropic fetch: ${(e as Error).message}`);
   }
 
   const parsed = parseClaudeJson<ClaudeNewsRow[]>(claudeText);
   if (!parsed || !Array.isArray(parsed)) {
-    return jsonResponse({
-      ok: false,
-      error: 'Claude JSON parse edilemedi',
-      rawSnippet: claudeText.slice(0, 300),
-    }, 502, 60);
+    return fail('Claude JSON parse edilemedi', { rawSnippet: claudeText.slice(0, 300) });
   }
 
   const stories: NewsStory[] = parsed
@@ -201,21 +214,15 @@ Markdown yok, açıklama yok. Sadece JSON dizi.`;
     })
     .slice(0, maxStories);
 
-  return jsonResponse({
+  return {
     ok: true,
     generatedAt: new Date().toISOString(),
     model: 'claude-3-5-haiku-latest',
     sourceNewsCount: news.length,
     stories,
-  }, 200, 1800);
-};
+  };
+}
 
 export const onRequestOptions: PagesFunction = async () => {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  return new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
 };

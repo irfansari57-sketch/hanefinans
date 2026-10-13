@@ -10,7 +10,9 @@
  * Kullanım: fiyat alarmı tetiklendiğinde, AI analiz hazır olduğunda, vs.
  */
 
-interface Env {
+import { getAuthedUser, type Env as AuthEnv } from '../auth/_utils';
+
+interface Env extends AuthEnv {
   TELEGRAM_BOT_TOKEN?: string;
 }
 
@@ -26,6 +28,13 @@ interface TelegramApiResponse {
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  // 13 Eki 2026 (P1): açık relay kapatıldı — oturum zorunlu.
+  if (!env.AUTH_TOKEN_SECRET || !env.DB) {
+    return json({ ok: false, error: 'Auth yapılandırması eksik' }, 503);
+  }
+  const auth = await getAuthedUser(request, env);
+  if (!auth) return json({ ok: false, error: 'Giriş gerekli' }, 401);
+
   if (!env.TELEGRAM_BOT_TOKEN) {
     return json({ ok: false, error: 'TELEGRAM_BOT_TOKEN env not set' }, 503);
   }
@@ -69,20 +78,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 };
 
 export const onRequestOptions: PagesFunction = async () =>
-  new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-store',
     },
   });

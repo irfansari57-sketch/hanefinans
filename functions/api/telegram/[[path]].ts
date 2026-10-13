@@ -9,9 +9,9 @@
  *  - Path traversal blok.
  */
 
-import { jsonResponse } from '../auth/_utils';
+import { jsonResponse, getAuthedUser, type Env as AuthEnv } from '../auth/_utils';
 
-interface Env {
+interface Env extends AuthEnv {
   TELEGRAM_BOT_TOKEN?: string;
 }
 
@@ -33,6 +33,13 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, env }) =>
   if (!ALLOWED_METHODS.has(rawPath)) {
     return jsonResponse({ ok: false, error: `Telegram method '${rawPath}' bu proxy üzerinden çağrılamaz` }, 403);
   }
+
+  // 13 Eki 2026 (P1): oturumsuz relay kapatıldı.
+  if (!env.AUTH_TOKEN_SECRET || !env.DB) {
+    return jsonResponse({ ok: false, error: 'Auth yapılandırması eksik' }, 503);
+  }
+  const auth = await getAuthedUser(request, env);
+  if (!auth) return jsonResponse({ ok: false, error: 'Giriş gerekli' }, 401);
 
   if (!env.TELEGRAM_BOT_TOKEN) {
     return jsonResponse({ ok: false, error: 'TELEGRAM_BOT_TOKEN env not set' }, 503);

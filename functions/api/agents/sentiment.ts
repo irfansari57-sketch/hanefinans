@@ -13,9 +13,9 @@
  * Edge cache 1 saat — agent her sayfada tetiklendiğinde tekrar tekrar çağrılmasın.
  */
 
-interface Env {
-  ANTHROPIC_API_KEY?: string;
-}
+import { guardAgent, withAgentCache, cacheKey, type AgentEnv } from './_guard';
+
+type Env = AgentEnv;
 
 interface NewsItem {
   id: string;
@@ -44,13 +44,13 @@ const DEFAULT_SYMBOLS = [
   'SISE', 'PETKM', 'TOASO', 'FROTO', 'TCELL', 'TTKOM', 'ARCLK', 'PGSUS',
 ];
 
-function jsonResponse(data: unknown, status = 200, ttlSec = 3600): Response {
+// 13 Eki 2026: ACAO:* kaldırıldı (same-origin), HTTP cache yerine D1 agent_cache.
+function jsonResponse(data: unknown, status = 200, _ttlSec = 0): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': `public, max-age=${ttlSec}`,
+      'Cache-Control': 'no-store',
     },
   });
 }
@@ -93,6 +93,9 @@ interface ClaudeSentimentRow {
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  const denied = await guardAgent(request, env);
+  if (denied) return denied;
+
   if (!env.ANTHROPIC_API_KEY) {
     return jsonResponse({ ok: false, error: 'ANTHROPIC_API_KEY env not set' }, 503, 60);
   }
@@ -106,10 +109,24 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   ).map((s) => s.toUpperCase()).slice(0, 30);
   const maxNews = Math.min(80, Math.max(20, body.maxNews ?? 50));
 
+  // D1 cache: aynı sembol seti + maxNews için 1 saat boyunca Anthropic çağrılmaz.
+  const key = await cacheKey('sentiment', { symbols: [...symbols].sort(), maxNews });
+  const { data, cached } = await withAgentCache(env, key, 3600, () => computeSentiment(request, env, symbols, maxNews));
+  return jsonResponse({ ...data, cached });
+};
+
+async function computeSentiment(
+  request: Request,
+  env: Env,
+  symbols: string[],
+  maxNews: number,
+): Promise<{ ok: boolean; [k: string]: unknown }> {
+  const fail = (error: string, extra: Record<string, unknown> = {}) => ({ ok: false, error, ...extra });
+
   // 1) Haberleri çek
   const news = await fetchInternalNews(request, maxNews);
   if (news.length === 0) {
-    return jsonResponse({ ok: false, error: 'Haber çekilemedi (/api/news boş)' }, 502, 60);
+    return fail('Haber çekilemedi (/api/news boş)');
   }
 
   // 2) Sembol başına haberleri eşle (her sembol için max 3 manşet)
@@ -126,13 +143,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   // Filtre: hiç haberi olmayan sembolleri at
   const symbolsWithNews = Array.from(symbolToTitles.keys());
   if (symbolsWithNews.length === 0) {
-    return jsonResponse({
+    return {
       ok: true,
       generatedAt: new Date().toISOString(),
       model: 'none',
       items: [] as SentimentItem[],
       note: 'Verilen sembollerden hiçbirine ait haber bulunamadı.',
-    }, 200, 300);
+    };
   }
 
   // 3) Claude için flat (symbol, headline) listesi oluştur
@@ -180,24 +197,17 @@ KURALLAR:
     });
     if (!r.ok) {
       const errText = await r.text();
-      return jsonResponse({
-        ok: false,
-        error: `Anthropic API ${r.status}: ${errText.slice(0, 200)}`,
-      }, 502, 60);
+      return fail(`Anthropic API ${r.status}: ${errText.slice(0, 200)}`);
     }
     const json = (await r.json()) as AnthropicResponse;
     claudeText = json.content?.[0]?.text ?? '';
   } catch (e) {
-    return jsonResponse({ ok: false, error: `Anthropic fetch error: ${(e as Error).message}` }, 500, 30);
+    return fail(`Anthropic fetch error: ${(e as Error).message}`);
   }
 
   const parsed = parseClaudeJson<ClaudeSentimentRow[]>(claudeText);
   if (!parsed || !Array.isArray(parsed)) {
-    return jsonResponse({
-      ok: false,
-      error: 'Claude çıktısı parse edilemedi',
-      rawSnippet: claudeText.slice(0, 300),
-    }, 502, 60);
+    return fail('Claude çıktısı parse edilemedi', { rawSnippet: claudeText.slice(0, 300) });
   }
 
   // 4) Sembol bazında agrega — ortalama skor, en olumlu/olumsuz örnek
@@ -237,14 +247,14 @@ KURALLAR:
   const items = Array.from(bySymbol.values())
     .sort((a, b) => b.score - a.score);
 
-  return jsonResponse({
+  return {
     ok: true,
     generatedAt: new Date().toISOString(),
     model: 'claude-3-5-haiku-latest',
     sourceNewsCount: news.length,
     items,
-  }, 200, 3600);
-};
+  };
+}
 
 function scoreToLabel(score: number): 'positive' | 'neutral' | 'negative' {
   if (score > 0.2) return 'positive';
@@ -253,11 +263,6 @@ function scoreToLabel(score: number): 'positive' | 'neutral' | 'negative' {
 }
 
 export const onRequestOptions: PagesFunction = async () => {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  // Same-origin only — CORS preflight'a ACAO vermiyoruz.
+  return new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
 };

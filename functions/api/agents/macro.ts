@@ -12,9 +12,9 @@
  * Edge cache 1 saat.
  */
 
-interface Env {
-  ANTHROPIC_API_KEY?: string;
-}
+import { guardAgent, withAgentCache, cacheKey, type AgentEnv } from './_guard';
+
+type Env = AgentEnv;
 
 interface MacroSnapshot {
   symbol: string;
@@ -54,13 +54,13 @@ const SYMBOLS: Array<{ sym: string; label: string; unit?: string }> = [
   { sym: 'EURTRY=X',  label: 'EUR/TRY' },
 ];
 
-function jsonResponse(data: unknown, status = 200, ttlSec = 3600): Response {
+// 13 Eki 2026: ACAO:* kaldırıldı (same-origin), HTTP cache yerine D1 agent_cache.
+function jsonResponse(data: unknown, status = 200, _ttlSec = 0): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': `public, max-age=${ttlSec}`,
+      'Cache-Control': 'no-store',
     },
   });
 }
@@ -128,10 +128,22 @@ interface ClaudeMacroOutput {
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  const denied = await guardAgent(request, env);
+  if (denied) return denied;
+
   if (!env.ANTHROPIC_API_KEY) {
     return jsonResponse({ ok: false, error: 'ANTHROPIC_API_KEY env not set' }, 503, 60);
   }
 
+  // D1 cache: saat dilimi anahtarı — makro brifing saatte bir yenilenir.
+  const hourBucket = Math.floor(Date.now() / 3_600_000);
+  const key = await cacheKey('macro', { hourBucket });
+  const { data, cached } = await withAgentCache(env, key, 3600, () => computeMacro(request, env));
+  return jsonResponse({ ...data, cached });
+};
+
+async function computeMacro(request: Request, env: Env): Promise<{ ok: boolean; [k: string]: unknown }> {
+  const fail = (error: string, extra: Record<string, unknown> = {}) => ({ ok: false, error, ...extra });
   const origin = new URL(request.url).origin;
 
   // Makro verileri paralel çek
@@ -165,7 +177,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   if (snapshot.length < 3) {
-    return jsonResponse({ ok: false, error: 'Yeterli makro veri çekilemedi' }, 502, 60);
+    return fail('Yeterli makro veri çekilemedi');
   }
 
   // Claude için context oluştur
@@ -213,21 +225,17 @@ GÖREV:
     });
     if (!r.ok) {
       const errText = await r.text();
-      return jsonResponse({ ok: false, error: `Anthropic ${r.status}: ${errText.slice(0, 200)}` }, 502, 60);
+      return fail(`Anthropic ${r.status}: ${errText.slice(0, 200)}`);
     }
     const json = (await r.json()) as AnthropicResponse;
     claudeText = json.content?.[0]?.text ?? '';
   } catch (e) {
-    return jsonResponse({ ok: false, error: `Anthropic fetch: ${(e as Error).message}` }, 500, 30);
+    return fail(`Anthropic fetch: ${(e as Error).message}`);
   }
 
   const parsed = parseClaudeJson<ClaudeMacroOutput>(claudeText);
   if (!parsed) {
-    return jsonResponse({
-      ok: false,
-      error: 'Claude JSON parse edilemedi',
-      rawSnippet: claudeText.slice(0, 300),
-    }, 502, 60);
+    return fail('Claude JSON parse edilemedi', { rawSnippet: claudeText.slice(0, 300) });
   }
 
   const validLabel = (l: string): AgentMacroResponse['riskLabel'] => {
@@ -235,7 +243,7 @@ GÖREV:
     return 'orta';
   };
 
-  return jsonResponse({
+  return {
     ok: true,
     generatedAt: new Date().toISOString(),
     model: 'claude-3-5-haiku-latest',
@@ -249,15 +257,9 @@ GÖREV:
       note: String(d.note ?? ''),
     })).slice(0, 5) : [],
     snapshot,
-  }, 200, 3600);
-};
+  };
+}
 
 export const onRequestOptions: PagesFunction = async () => {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  return new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
 };

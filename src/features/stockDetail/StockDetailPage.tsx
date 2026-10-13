@@ -164,11 +164,28 @@ export function StockDetailPage() {
       fetchHistoricalYahoo(sym, '1mo', '60m', { bistSuffix: !isUs }),
     ]).then(([liveStocks, hist, allNews, hist1h]) => {
       if (!alive) return;
-      const found = liveStocks.find((s) => s.symbol === sym);
+      const found: Stock | undefined = liveStocks.find((s) => s.symbol === sym);
       if (found) setStock(found);
       if (hist) {
-        setHistorical(hist);
-        setReturns(computePeriodReturns(hist.closes));
+        // Yahoo bazen son seans barını eksik verir (TKFEN 12 Eki 2026 vakası):
+        // grafik ve dönem getirileri 1-2 gün geride kalır. Snapshot (FVT /
+        // İş Yatırım) daha yeni bir kapanış taşıyorsa seriye ekle ki grafik,
+        // sparkline ve 1 HAFTA/1 AY aynı son fiyattan hesaplansın.
+        let series: HistoricalSeries = hist;
+        const lastBar = hist.closes.at(-1);
+        const snapMs = found?.asOf ? Date.parse(found.asOf) : NaN;
+        const dayTR = (ms: number) => new Date(ms + 3 * 3_600_000).toISOString().slice(0, 10);
+        if (found && Number.isFinite(snapMs) && lastBar && dayTR(snapMs) > dayTR(lastBar.date) && found.price > 0) {
+          series = { ...hist, closes: [...hist.closes, { date: snapMs, close: found.price }] };
+        }
+        setHistorical(series);
+        const r = computePeriodReturns(series.closes);
+        // 1 GÜN: başlıkla aynı kaynak (snapshot changePct = dünkü kapanışa göre).
+        // Grafikten türetilen değer eksik bar yüzünden 2 günlük değişimi gösterebilir.
+        if (found && Number.isFinite(found.changePct) && (found.feedSource === 'fvt' || found.feedSource === 'isyatirim')) {
+          r['1g'] = found.changePct;
+        }
+        setReturns(r);
       }
       setNews(allNews.data.filter((n) => n.symbols.includes(sym)));
       setLoading(false);

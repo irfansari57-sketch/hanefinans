@@ -114,15 +114,18 @@ export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | nul
   // /api/yahoo/snapshot?symbols=BTC-USD,ETH-USD,... virgul ayrilmis liste kabul ediyor.
   // Eskiden 13 x ~600ms = 7.8s (throttle queue'da sirali). Simdi 1 fetch x ~500ms.
   const yahooSyms = symbols.map(toBISTSymbol);
+  let snapshotOk = false;
   try {
     const r = await throttledFetch(
       `/api/yahoo/snapshot?symbols=${encodeURIComponent(yahooSyms.join(','))}&nocache=1`,
     );
     if (r.ok) {
-      const j = (await r.json()) as Record<
-        string,
-        { price?: number; changePct?: number; source?: string; asOf?: string; name?: string; updatedAt?: number }
-      >;
+      type Q = { price?: number; changePct?: number; source?: string; asOf?: string; name?: string; updatedAt?: number };
+      const raw = (await r.json()) as { quotes?: Record<string, Q> } & Record<string, Q>;
+      // 13 Eki 2026: yanıt { ok, quotes:{SYM:{...}} } — eskiden j[sym] okunuyordu,
+      // hep boş dönüyor ve 300+ sembol tek tek Yahoo'ya gidiyordu (liste 30sn+).
+      const j: Record<string, Q> = raw.quotes ?? raw;
+      snapshotOk = true;
       const stocks: Stock[] = [];
       symbols.forEach((sym, i) => {
         const ySym = yahooSyms[i];
@@ -150,7 +153,11 @@ export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | nul
     }
   } catch { /* fallback altta */ }
 
-  // Snapshot fail olursa tek tek dene (eski davranis, geriye donuk uyum)
+  // Snapshot fail olursa tek tek dene (eski davranis, geriye donuk uyum).
+  // Snapshot BAŞARILI ama sembol yoksa (kotasyon dışı / FVT listesinde yok):
+  // yalnızca küçük listelerde (detay sayfası) tek tek dene; 300+ sembolü
+  // tek tek Yahoo'ya göndermek liste sayfasını dakikalarca kilitliyordu.
+  if (snapshotOk && symbols.length > 5) return null;
   const results = await Promise.all(symbols.map((s) => fetchOne(toBISTSymbol(s), { noCache: true })));
   const stocks: Stock[] = [];
   symbols.forEach((s, i) => {

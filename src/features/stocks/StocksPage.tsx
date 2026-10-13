@@ -195,8 +195,11 @@ export function StocksPage() {
         })();
       }
 
-      const BATCH_SIZE = 50;
-      const BATCH_DELAY_MS = 1500;
+      // 13 Eki 2026: 50'lik paket + 1.5sn bekleme (819 sembol → 30-40sn, bu
+      // sürede eski satırlar görünüyordu) → 300'lük paket, 100ms. Snapshot tek
+      // cache'li gövde olduğu için paketleme artık yalnızca render adımı.
+      const BATCH_SIZE = 300;
+      const BATCH_DELAY_MS = 100;
       const liveStocks: Stock[] = [];
       for (let i = 0; i < all.length; i += BATCH_SIZE) {
         const batch = all.slice(i, i + BATCH_SIZE);
@@ -300,7 +303,11 @@ export function StocksPage() {
       const p1g = ret?.['1g'];
       const liveAuthoritative = (s.feedSource === 'fvt' || s.feedSource === 'isyatirim')
         && Number.isFinite(s.changePct) && Math.abs(s.changePct) <= 25;
-      if (liveAuthoritative) {
+      if (!(s.price > 0)) {
+        // Canlı fiyat yok (kotasyon dışı / kaynakta yok): gece hesaplanan 1g'yi
+        // "günlük değişim" diye göstermek yanıltıcı — boş bırak.
+        displayChangePct = NaN;
+      } else if (liveAuthoritative) {
         displayChangePct = s.changePct;
       } else if (p1g != null && Number.isFinite(p1g)) {
         displayChangePct = p1g;

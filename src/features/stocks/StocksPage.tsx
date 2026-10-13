@@ -6,7 +6,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { DoubleScrollTable } from '@/components/ui/DoubleScrollTable';
 import { LiveBadge } from '@/components/domain/LiveBadge';
-import { loadStocks } from '@/data/services';
+import { loadStocks, listSnapshotBistSymbols } from '@/data/services';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
@@ -145,6 +145,13 @@ export function StocksPage() {
         if (seen.has(s.symbol)) continue;
         seen.add(s.symbol);
         universe.push({ symbol: s.symbol, name: s.name, sector: s.sector });
+      }
+      // 13 Eki 2026: statik evrende olmayan ama bugün fiyatı olan semboller
+      // (yeni halka arz, liste dışı kalmış — ör. TERA) snapshot'tan eklenir.
+      for (const s of await listSnapshotBistSymbols()) {
+        if (seen.has(s.symbol)) continue;
+        seen.add(s.symbol);
+        universe.push({ symbol: s.symbol, name: s.name, sector: '' });
       }
       const all = universe.map((s) => s.symbol);
 
@@ -489,6 +496,17 @@ export function StocksPage() {
       {returnsLoading && (
         <div className="mb-3 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-slate-400">
           Getiriler Yahoo Finance'tan çekiliyor (~30 sn) — sonuçlar 30 dk cache'lenir.
+        </div>
+      )}
+
+      {sortKey === 'changePct' && scopeFilter !== 'BISTTUM' && tab === 'all' && (
+        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
+          Günlük sıralama yalnızca <span className="text-slate-200">{BIST_SCOPES.find((s) => s.code === scopeFilter)?.label}</span> kapsamında.
+          Tavan/taban yapan küçük hisseler için{' '}
+          <button type="button" className="text-accent underline-offset-2 hover:underline" onClick={() => { setScopeFilter('BISTTUM'); setCurrentPage(1); }}>
+            BIST Tüm
+          </button>{' '}
+          seçin — Panel'deki "Günün Enleri" tüm BIST'e bakar.
         </div>
       )}
 

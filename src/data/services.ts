@@ -163,6 +163,24 @@ async function fetchSnapshot(): Promise<SnapshotApi | null> {
   return snapshotInFlight;
 }
 
+/**
+ * Snapshot'ta bugün fiyatı olan tüm BIST sembolleri (".IS" soneki atılmış).
+ * 13 Eki 2026: Hisseler listesi statik evrenle (bistAll) sınırlıydı; FVT'nin
+ * döndürdüğü ama listede olmayan semboller (ör. TERA) hiç görünmüyordu.
+ */
+export async function listSnapshotBistSymbols(): Promise<Array<{ symbol: string; name: string }>> {
+  const snap = await fetchSnapshot();
+  if (!snap) return [];
+  const out: Array<{ symbol: string; name: string }> = [];
+  for (const [k, q] of Object.entries(snap.quotes)) {
+    if (!k.endsWith('.IS') || !(q.price > 0)) continue;
+    const sym = k.slice(0, -3);
+    if (sym.startsWith('XU') || sym.startsWith('XB') || sym.startsWith('XK')) continue; // endeksler
+    out.push({ symbol: sym, name: q.name ?? sym });
+  }
+  return out;
+}
+
 export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; source: 'live' | 'mock' | 'mixed' }> {
   const want = symbols ?? MOCK_STOCKS.map((s) => s.symbol);
   const cacheKey = `stocks-${want.sort().join(',')}`;

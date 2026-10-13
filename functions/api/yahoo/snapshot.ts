@@ -10,8 +10,18 @@
  * Format: { ok: true, updatedAt: <ms>, quotes: { SYMBOL: { price, changePct, prev, updatedAt } } }
  */
 
+import { fvtJson, isBistSessionUtc } from '../_fvt';
+
 interface Env {
   DB?: D1Database;
+}
+
+/** TR saatiyle son BIST iş günü (hafta sonu → Cuma; 09:00 öncesi → önceki gün). */
+function lastBistSessionDateTR(now: Date): string {
+  const tr = new Date(now.getTime() + 3 * 3_600_000);
+  if (tr.getUTCHours() < 9) tr.setUTCDate(tr.getUTCDate() - 1);
+  while (tr.getUTCDay() === 0 || tr.getUTCDay() === 6) tr.setUTCDate(tr.getUTCDate() - 1);
+  return tr.toISOString().slice(0, 10);
 }
 
 interface QuoteOut {
@@ -20,8 +30,8 @@ interface QuoteOut {
   prev: number;
   updatedAt: number;
   name?: string;
-  /** Veri kaynagi - default 'yahoo'. BIST endeksleri 'isyatirim' olabilir. */
-  source?: 'yahoo' | 'isyatirim';
+  /** Veri kaynagi - default 'yahoo'. BIST endeksleri 'isyatirim'; cron bayatsa 'fvt'. */
+  source?: 'yahoo' | 'isyatirim' | 'fvt';
   /** Verinin gosterdigi seans tarihi (YYYY-MM-DD). Hafta sonu 'son acik gun' anlami. */
   asOf?: string;
 }
@@ -358,6 +368,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   // yerine buraya bak. Cron 15dk'dan eski ise stale (piyasa saatlerinde
   // kron mutlaka 5dk sonra tekrar yazar; hafta sonu stale beklenir).
   // -------------------------------------------------------------------------
+  let bistRowCount = 0;
+  let bistNewest = 0;
   try {
     const bistRows = await env.DB
       .prepare(
@@ -378,10 +390,58 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
         asOf: row.as_of,
       };
       if (!yahooEntry) parsedCount++;
+      bistRowCount++;
+      if (row.updated_at > bistNewest) bistNewest = row.updated_at;
     }
   } catch (e) {
     // bist_snapshot tablo yok / migration yapilmamis olabilir. Yahoo fallback devam.
     console.warn('[snapshot] bist_snapshot read failed:', (e as Error).message);
+  }
+
+  // -------------------------------------------------------------------------
+  // 13 Eki 2026 — KENDİ KENDİNİ ONARAN YOL (TKFEN vakası): bist_snapshot boş
+  // veya bayatsa (cron düşmüş), FVT'den TEK istekle tüm BIST'i çek ve Yahoo'yu
+  // ez. Yahoo BIST'te gün atlıyor (12 Eki barı null) ve previousClose'u yanlış
+  // veriyor; FVT dunkuKapanis doğru. Bu endpoint 30sn edge cache'li olduğu için
+  // FVT'ye dakikada en fazla 2 istek gider.
+  // Bayat eşiği: seans içinde 20 dk, seans dışında 20 saat.
+  // -------------------------------------------------------------------------
+  const nowMs = Date.now();
+  const staleMs = isBistSessionUtc(new Date(nowMs)) ? 20 * 60_000 : 20 * 3_600_000;
+  const bistStale = bistRowCount < 50 || nowMs - bistNewest > staleMs;
+  let fvtOverride = 0;
+  if (bistStale) {
+    try {
+      const d = await fvtJson<{ data?: Array<Record<string, unknown>> }>(
+        'https://fvt.com.tr/api/stocks?limit=5000&hissePazar=2',
+        8000,
+      );
+      const sessionDate = lastBistSessionDateTR(new Date(nowMs));
+      for (const row of d?.data ?? []) {
+        if (!(row.hisseUrl as string)?.includes('.IS/')) continue;
+        const sym = String(row.hisseKodu ?? '').toUpperCase();
+        if (!sym) continue;
+        const son = parseFloat(String(row.gunlukKapanis ?? ''));
+        const dun = parseFloat(String(row.dunkuKapanis ?? ''));
+        if (!Number.isFinite(son) || !Number.isFinite(dun) || son <= 0 || dun <= 0) continue;
+        const changePct = ((son - dun) / dun) * 100;
+        if (Math.abs(changePct) > 15) continue;
+        const key = `${sym}.IS`;
+        const rowDate = typeof row.tarih === 'string' ? row.tarih.slice(0, 10) : '';
+        quotes[key] = {
+          price: son,
+          prev: dun,
+          changePct,
+          updatedAt: nowMs,
+          name: quotes[key]?.name,
+          source: 'fvt',
+          asOf: /^\d{4}-\d{2}-\d{2}$/.test(rowDate) ? rowDate : sessionDate,
+        };
+        fvtOverride++;
+      }
+    } catch (e) {
+      console.warn('[snapshot] FVT fallback failed:', (e as Error).message);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -485,6 +545,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       ok: true,
       count: parsedCount,
       updatedAt: mostRecent,
+      // Teşhis alanları (13 Eki 2026): cron sağlığı ve fallback kullanımı
+      bistSnapshotRows: bistRowCount,
+      bistSnapshotNewest: bistNewest || null,
+      bistStale,
+      fvtOverride,
       quotes,
     }),
     {

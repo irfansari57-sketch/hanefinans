@@ -131,7 +131,7 @@ interface SnapshotApi {
     asOf?: string;
     name?: string;
     /** 'isyatirim' = bist_snapshot D1 authoritative, 'yahoo' = Yahoo Finance (default) */
-    source?: 'yahoo' | 'isyatirim';
+    source?: 'yahoo' | 'isyatirim' | 'fvt';
   }>;
 }
 let snapshotMemo: { fetchedAt: number; data: SnapshotApi } | null = null;
@@ -224,8 +224,12 @@ export async function loadStocks(symbols?: string[]): Promise<{ data: Stock[]; s
         changePct: q.changePct,
         updatedAt: new Date(q.updatedAt).toISOString(),
         // feedSource'u TopMovers Yahoo previousClose bug filter'i icin propagate ediyoruz.
-        // 'isyatirim' = authoritative (bist_snapshot D1), 'yahoo' = default fallback.
-        feedSource: q.source === 'isyatirim' ? 'isyatirim' : 'yahoo',
+        // 'isyatirim' = authoritative (bist_snapshot D1), 'fvt' = cron bayatken FVT
+        // fallback (13 Eki 2026), 'yahoo' = default fallback.
+        feedSource: q.source === 'isyatirim' ? 'isyatirim' : q.source === 'fvt' ? 'fvt' : 'yahoo',
+        // Veri yaşı rozeti: fiyat anı (ms) varsa ISO, yoksa seans tarihi.
+        asOf: q.updatedAt > 1e12 ? new Date(q.updatedAt).toISOString() : q.asOf,
+        delayMin: 15,
       });
     }
   }

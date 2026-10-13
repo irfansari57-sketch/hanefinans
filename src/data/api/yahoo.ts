@@ -141,7 +141,7 @@ export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | nul
             asOf: typeof q.updatedAt === 'number' && q.updatedAt > 1e12
               ? new Date(q.updatedAt).toISOString()
               : q.asOf,
-            feedSource: q.source === 'isyatirim' ? 'isyatirim' : 'yahoo',
+            feedSource: q.source === 'isyatirim' ? 'isyatirim' : q.source === 'fvt' ? 'fvt' : 'yahoo',
             delayMin: isCryptoSymbol(sym) ? 0 : 15,
           });
         }

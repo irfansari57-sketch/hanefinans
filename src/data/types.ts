@@ -13,7 +13,7 @@ export interface Stock {
    *   'isyatirim' - Is Yatirim pre-warm cache (bist_snapshot D1, authoritative)
    * TopMovers filter'i Yahoo previousClose bug'ini elemek icin bu alani kullanir.
    */
-  feedSource?: 'yahoo' | 'isyatirim';
+  feedSource?: 'yahoo' | 'isyatirim' | 'fvt';
   /**
    * Fiyatın ait olduğu an (ISO). Kaynaktan gelmezse undefined — UI "—" göstermeli,
    * ASLA "şimdi" ile doldurulmamalı (13 Eki 2026 veri-güven denetimi).

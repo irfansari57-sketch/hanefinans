@@ -341,6 +341,8 @@ export function StocksPage() {
       //   B) Fiyatı var + Gün %=0 + getirisi yok → KOZAA/IPEKE gibi borsa
       //      kotesinden çıkarılmış (fiyat MOCK'tan sabit kalmış, hareket yok), sil
       if (tab === 'all') {
+        // BYF (6 harf, F sonlu: ZGOLDF, APX30F…) ve vadeli/sertifika kodları hisse değil.
+        if (s.symbol.length > 5) return false;
         const hasReturns = s.returns && Object.values(s.returns).some((v) => v != null && Number.isFinite(v));
         const hasPrice = s.price > 0;
         const hasDailyMove = Number.isFinite(s.changePct) && s.changePct !== 0;

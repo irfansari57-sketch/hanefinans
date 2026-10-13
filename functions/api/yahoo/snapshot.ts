@@ -34,6 +34,11 @@ interface QuoteOut {
   source?: 'yahoo' | 'isyatirim' | 'fvt';
   /** Verinin gosterdigi seans tarihi (YYYY-MM-DD). Hafta sonu 'son acik gun' anlami. */
   asOf?: string;
+  /**
+   * Enstrüman türü (13 Eki 2026). Hisse ise yok. FVT hisseKategori 45 = BYF,
+   * 51 = gayrimenkul sertifikası. Hisse listeleri bunları dışarıda tutar.
+   */
+  kind?: 'byf' | 'cert';
 }
 
 // ===========================================================================
@@ -439,14 +444,18 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
         if (Math.abs(changePct) > 15) continue;
         const key = `${sym}.IS`;
         const rowDate = typeof row.tarih === 'string' ? row.tarih.slice(0, 10) : '';
+        const kat = Number(row.hisseKategori);
+        const kind: QuoteOut['kind'] | undefined =
+          kat === 45 || /^[A-Z0-9]{5}F$/.test(sym) ? 'byf' : kat === 51 ? 'cert' : undefined;
         quotes[key] = {
           price: son,
           prev: dun,
           changePct,
           updatedAt: nowMs,
-          name: quotes[key]?.name,
+          name: quotes[key]?.name ?? (typeof row.hisseAdi === 'string' ? row.hisseAdi.trim() : undefined),
           source: 'fvt',
           asOf: /^\d{4}-\d{2}-\d{2}$/.test(rowDate) ? rowDate : sessionDate,
+          ...(kind ? { kind } : {}),
         };
         fvtOverride++;
       }

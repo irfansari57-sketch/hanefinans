@@ -132,6 +132,8 @@ interface SnapshotApi {
     name?: string;
     /** 'isyatirim' = bist_snapshot D1 authoritative, 'yahoo' = Yahoo Finance (default) */
     source?: 'yahoo' | 'isyatirim' | 'fvt';
+    /** 'byf' | 'cert' — hisse değil (snapshot FVT etiketi). */
+    kind?: 'byf' | 'cert';
   }>;
 }
 let snapshotMemo: { fetchedAt: number; data: SnapshotApi } | null = null;
@@ -176,6 +178,8 @@ export async function listSnapshotBistSymbols(): Promise<Array<{ symbol: string;
     if (!k.endsWith('.IS') || !(q.price > 0)) continue;
     const sym = k.slice(0, -3);
     if (sym.startsWith('XU') || sym.startsWith('XB') || sym.startsWith('XK')) continue; // endeksler
+    if (q.kind) continue; // BYF / sertifika — hisse listesine girmez
+    if (/^[A-Z0-9]{5}F$/.test(sym) || sym.length > 5) continue; // 6 harfli F sonlu = BYF; X30YVADE vb.
     out.push({ symbol: sym, name: q.name ?? sym });
   }
   return out;

@@ -1,7 +1,7 @@
 -- Migration 003: Yahoo Finance response cache (#106)
 --
 -- Apply (üretim D1'inde tek sefer):
---   wrangler d1 execute hanefinans-auth --file=./functions/migrations/003_yahoo_cache.sql --remote
+--   wrangler d1 execute hanefinans-db --file=./functions/migrations/003_yahoo_cache.sql --remote
 --
 -- Veya Cloudflare Dashboard → D1 → Query tab → satırları tek tek çalıştır.
 --

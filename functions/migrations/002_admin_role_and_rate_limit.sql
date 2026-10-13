@@ -1,7 +1,7 @@
 -- Migration 002: Admin role kolonu + rate_limits tablosu
 --
 -- Apply (üretim D1'inde tek sefer):
---   wrangler d1 execute hanefinans-auth --file=./functions/migrations/002_admin_role_and_rate_limit.sql --remote
+--   wrangler d1 execute hanefinans-db --file=./functions/migrations/002_admin_role_and_rate_limit.sql --remote
 --
 -- Veya Cloudflare Dashboard → D1 → Query tab → satırları tek tek çalıştır.
 --

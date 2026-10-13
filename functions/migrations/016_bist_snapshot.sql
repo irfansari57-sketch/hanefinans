@@ -4,7 +4,7 @@
 -- yoksa Yahoo yahoo_cache'e duser (stale/hatali olabilir).
 --
 -- Kullanim:
---   npx wrangler d1 execute investliq --file functions/migrations/016_bist_snapshot.sql
+--   npx wrangler d1 execute hanefinans-db --remote --file=functions/migrations/016_bist_snapshot.sql
 --
 -- Ilk cron calistigi anda ~500 satir populates olur (BIST tam evreni).
 

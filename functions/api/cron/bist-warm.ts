@@ -216,11 +216,17 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       await upsertBatch(env.DB, results.slice(i, i + CHUNK));
     }
   } catch (e) {
+    const msg = (e as Error).message ?? String(e);
+    // 13 Eki 2026: en sık neden tablo yokluğu (016 migration yanlış DB'ye uygulanmış).
+    const hint = /no such table/i.test(msg)
+      ? 'bist_snapshot tablosu yok → npx wrangler d1 execute hanefinans-db --remote --file=functions/migrations/016_bist_snapshot.sql'
+      : undefined;
     return new Response(JSON.stringify({
       ok: false,
-      error: `D1 batch write failed: ${(e as Error).message}`,
-      success, fail, totalTried: symbols.length,
-    }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      error: `D1 batch write failed: ${msg}`,
+      hint,
+      success, fail, totalTried: symbols.length, primarySource,
+    }), { status: 500, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
   }
 
   // 13 Eki 2026: sıfır başarı = hata (önceden ok:true/200 dönüyordu, cron sessiz kalıyordu).

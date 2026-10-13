@@ -26,7 +26,7 @@ npx wrangler d1 execute hanefinans-db --remote --file=functions/migrations/<dosy
 | 013 | portfolio_snapshots | ✅ | |
 | 014 | metals_spot | ✅ | |
 | 015 | watchlist | ✅ | |
-| 016 | bist_snapshot | ✅ | |
+| 016 | bist_snapshot | ⚠️ doğrula | Dosyadaki komut eski DB adını (`investliq`) kullanıyordu — `hanefinans-db`de tablo yoksa tekrar uygula (IF NOT EXISTS, güvenli) |
 | 017 | agent_cache | ✅ 13 Eki 2026 | AI agent yanıt cache'i |
 | 018 | token_version | ✅ 13 Eki 2026 | JWT iptali |
 | 019 | bars_daily | ⏳ | Sinyal motoru bar deposu + bars_meta — **uygulanmalı**, sonra Actions → "Bars Daily Warmer" → Run workflow (range=3y) |

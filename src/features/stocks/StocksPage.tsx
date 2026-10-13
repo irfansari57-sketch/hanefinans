@@ -7,6 +7,9 @@ import { TableSkeleton } from '@/components/ui/Skeleton';
 import { DoubleScrollTable } from '@/components/ui/DoubleScrollTable';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { loadStocks, listSnapshotBistSymbols } from '@/data/services';
+import { useKatilim } from '@/hooks/useKatilim';
+import { KatilimBadge } from '@/components/domain/KatilimBadge';
+import type { KatilimIndex } from '@/data/katilim';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
@@ -103,6 +106,7 @@ export function StocksPage() {
   const watchedSymbolsList = useWatchlist((s) => s.symbols);
   const toggleWatchlist = useWatchlist((s) => s.toggle);
   const watchedSymbols = useMemo(() => new Set(watchedSymbolsList), [watchedSymbolsList]);
+  const { map: katilimMap } = useKatilim();
 
   const [stocks, setStocks] = useState<StockRow[]>(() => stocksMemo?.stocks ?? []);
   const [returnsMap, setReturnsMap] = useState<Record<string, PeriodReturns>>(() => readReturnsCache() ?? {});
@@ -564,6 +568,7 @@ export function StocksPage() {
                       rank={globalIndex}
                       isWatched={isWatched}
                       onToggle={() => toggleWatch(s.symbol)}
+                      katilim={katilimMap[s.symbol]}
                     />
                   );
                 })}
@@ -626,9 +631,10 @@ interface StockTableRowProps {
   rank: number;
   isWatched: boolean;
   onToggle: () => void;
+  katilim?: KatilimIndex[];
 }
 
-function StockTableRow({ stock, rank, isWatched, onToggle }: StockTableRowProps) {
+function StockTableRow({ stock, rank, isWatched, onToggle, katilim }: StockTableRowProps) {
   return (
     <tr className="border-b border-border/60 transition hover:bg-bg-card">
       <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{rank}</td>
@@ -645,6 +651,7 @@ function StockTableRow({ stock, rank, isWatched, onToggle }: StockTableRowProps)
           <Link to={`/stock/${stock.symbol}`} className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-accent">
             {stock.symbol}
           </Link>
+          <KatilimBadge indices={katilim} />
         </div>
       </td>
       <td className="hidden sm:table-cell px-2 py-2.5">

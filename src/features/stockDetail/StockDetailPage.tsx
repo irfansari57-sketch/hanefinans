@@ -22,6 +22,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { fetchHistoricalYahoo, fetchIndexYahoo, computePeriodReturns, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
 import { loadStocks, loadNews } from '@/data/services';
+import { useKatilim } from '@/hooks/useKatilim';
+import { KatilimBadge } from '@/components/domain/KatilimBadge';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, closedBarsOnly, type OHLC } from '@/lib/indicators';
 import { isBistOpen } from '@/lib/marketCalendar';
 import { analyzeTimeframe, aggregateTo4h, BIST_4H, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
@@ -141,6 +143,7 @@ export function StockDetailPage() {
   // User-specific data from IndexedDB
   const notes = useLiveQuery(() => notesRepo.bySymbol(sym), [sym]) ?? [];
   const alerts = useLiveQuery(() => alertsRepo.bySymbol(sym), [sym]) ?? [];
+  const { map: katilimMap } = useKatilim();
 
   useEffect(() => {
     let alive = true;
@@ -419,6 +422,7 @@ export function StockDetailPage() {
               <span className="rounded-md bg-bg-soft px-2 py-0.5 text-xs text-slate-400">
                 {isUs ? (usMeta?.exchange ?? 'NYSE/NASDAQ') : 'BIST'}
               </span>
+              {!isUs && <KatilimBadge indices={katilimMap[sym]} size="md" />}
             </div>
             <p className="mt-1 text-lg text-slate-300">{stock.name}</p>
           </div>

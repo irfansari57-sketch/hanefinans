@@ -6,11 +6,20 @@
 
 const env = (import.meta as unknown as { env: Record<string, string | undefined> }).env;
 
+/**
+ * 13 Eki 2026 (P0 güvenlik): TwelveData/GNews/GoldAPI/Metals-API anahtarları
+ * ARTIK bundle'a girmez. Çağrılar /api/proxy/<provider> üzerinden gider; anahtar
+ * yalnızca Cloudflare Pages env'de (GNEWS_API_KEY, GOLDAPI_KEY, TWELVEDATA_KEY,
+ * METALSAPI_KEY). Buradaki `true`, "proxy üzerinden denenebilir" demektir —
+ * anahtar sunucuda yoksa proxy 503 döner ve istemci null'a düşer.
+ */
+const PROXY = true;
+
 export const API_KEYS = {
-  twelveData: (env.VITE_TWELVEDATA_KEY ?? '').trim(),
-  gnews: (env.VITE_GNEWS_KEY ?? '').trim(),
-  goldApi: (env.VITE_GOLDAPI_KEY ?? '').trim(),
-  metalsApi: (env.VITE_METALSAPI_KEY ?? '').trim(),
+  twelveData: PROXY,
+  gnews: PROXY,
+  goldApi: PROXY,
+  metalsApi: PROXY,
   telegramChatId: (env.VITE_TELEGRAM_CHAT_ID ?? '').trim(),
   // Supabase opsiyonel — Hafta 2 için
   supabaseUrl: (env.VITE_SUPABASE_URL ?? '').trim(),
@@ -52,8 +61,8 @@ export const API_STATUS: ApiKeyStatus[] = [
   {
     service: 'twelveData',
     label: 'Twelve Data',
-    configured: !!API_KEYS.twelveData,
-    envVar: 'VITE_TWELVEDATA_KEY',
+    configured: true, // sunucu tarafı — gerçek durum /api/proxy/twelvedata yanıtında
+    envVar: 'TWELVEDATA_KEY (Pages env, server-only)',
     signUpUrl: 'https://twelvedata.com/register',
     freeTier: '800/gün',
     provides: 'BIST hisse, forex (free tier kısıtlı)',
@@ -61,8 +70,8 @@ export const API_STATUS: ApiKeyStatus[] = [
   {
     service: 'gnews',
     label: 'GNews',
-    configured: !!API_KEYS.gnews,
-    envVar: 'VITE_GNEWS_KEY',
+    configured: true,
+    envVar: 'GNEWS_API_KEY (Pages env, server-only)',
     signUpUrl: 'https://gnews.io/register',
     freeTier: '100/gün',
     provides: 'Türkçe finans haberleri',
@@ -71,8 +80,8 @@ export const API_STATUS: ApiKeyStatus[] = [
   {
     service: 'goldApi',
     label: 'GoldAPI',
-    configured: !!API_KEYS.goldApi,
-    envVar: 'VITE_GOLDAPI_KEY',
+    configured: true,
+    envVar: 'GOLDAPI_KEY (Pages env, server-only)',
     signUpUrl: 'https://www.goldapi.io/dashboard',
     freeTier: '100/ay',
     provides: 'Ons + Gram altın spot (USD)',
@@ -80,8 +89,8 @@ export const API_STATUS: ApiKeyStatus[] = [
   {
     service: 'metalsApi',
     label: 'Metals-API',
-    configured: !!API_KEYS.metalsApi,
-    envVar: 'VITE_METALSAPI_KEY',
+    configured: true,
+    envVar: 'METALSAPI_KEY (Pages env, server-only)',
     signUpUrl: 'https://metals-api.com/',
     freeTier: '50/gün',
     provides: 'Ons altın/gümüş/platin spot (USD) — hafta sonu Cuma kapanış değeri',

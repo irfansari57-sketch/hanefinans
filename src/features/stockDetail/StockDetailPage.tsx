@@ -22,7 +22,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { fetchHistoricalYahoo, fetchIndexYahoo, computePeriodReturns, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
 import { loadStocks, loadNews } from '@/data/services';
-import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, type OHLC } from '@/lib/indicators';
+import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, closedBarsOnly, type OHLC } from '@/lib/indicators';
+import { isBistOpen } from '@/lib/marketCalendar';
 import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { DeepAnalysisCard } from './sections/DeepAnalysisCard';
@@ -39,6 +40,7 @@ import { findBistStock } from '@/data/bistAll';
 import { formatMoney, formatNumber, formatCompact } from '@/lib/format';
 import { validateStockQuote, dqLog } from '@/lib/dataQuality';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
+import { DataFreshness } from '@/components/ui/DataFreshness';
 import { formatRelative, formatDateTR } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { kapDetailUrl } from '@/data/kapSlugs';
@@ -191,8 +193,13 @@ export function StockDetailPage() {
   // (aksi halde stock null → null değil arası render'da React #310).
   const technicalAnalysis = useMemo(() => {
     if (!historical || historical.bars.length < 25) return null;
-    const closes = historical.bars.map((b) => b.close);
-    const bars: OHLC[] = historical.bars.map((b) => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
+    // 13 Eki 2026: BIST seansı açıkken son günlük bar kapanmamış → göstergeden hariç
+    // (repaint koruması). US/kripto için dokunulmaz (seans mantığı farklı).
+    const todayTR = new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 10);
+    const srcBars = !isUs ? closedBarsOnly(historical.bars, isBistOpen(), todayTR) : historical.bars;
+    if (srcBars.length < 25) return null;
+    const closes = srcBars.map((b) => b.close);
+    const bars: OHLC[] = srcBars.map((b) => ({ open: b.open, high: b.high, low: b.low, close: b.close }));
     const cur = closes[closes.length - 1];
     const r = rsi(closes, 14).at(-1);
     const macdR = macd(closes);
@@ -379,9 +386,13 @@ export function StockDetailPage() {
               <span>{sign}{displayChangePct.toFixed(2)}%</span>
               <ConfidenceBadge dq={dq} compact />
             </div>
-            <div className="mt-0.5 text-[11px] text-slate-500">
-              <Calendar size={10} className="mr-1 inline" />
-              {formatRelative(stock.updatedAt)}
+            <div className="mt-1 flex justify-end">
+              {/* 13 Eki 2026: kaynak · veri anı · gecikme — "şimdi" uydurma yok */}
+              <DataFreshness
+                source={stock.feedSource ?? (isUs ? 'yahoo' : undefined)}
+                asOf={stock.asOf}
+                delayMin={stock.delayMin ?? (isUs ? 15 : 15)}
+              />
             </div>
           </div>
         </div>

@@ -16,25 +16,15 @@
  * Edge cache 60sn market open, 10dk kapali — FVT paritesi real-time.
  */
 
+import { fvtJson } from '../_fvt';
+
 interface Env {}
 
-// Shared FVT fetch helper
+// Shared FVT fetch helper — ortak header + 8sn timeout (_fvt.ts)
 async function fvtFetch(url: string): Promise<{ data: unknown[] } | null> {
-  try {
-    const r = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-        'Referer': 'https://fvt.com.tr/',
-        'Origin': 'https://fvt.com.tr',
-      },
-    });
-    if (!r.ok) return null;
-    const j = (await r.json()) as { success: boolean; data?: { data: unknown[] } };
-    if (!j.success || !j.data?.data) return null;
-    return j.data;
-  } catch { return null; }
+  const d = await fvtJson<{ data?: unknown[] }>(url);
+  if (!d || !Array.isArray(d.data)) return null;
+  return { data: d.data };
 }
 
 function toNum(v: unknown): number {
@@ -165,22 +155,44 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
     fetchCrypto(),
   ]);
 
+  // 13 Eki 2026: Hiçbir kategori veri getiremediyse bu bir hata — 502 + no-store,
+  // edge cache'e yazılmaz. Kısmi veri (örn. sadece kripto düştü) cache'lenir ama
+  // hangi kategorilerin boş olduğu `partial` alanında raporlanır.
+  const sizes = {
+    stocks: stocks.gainers.length + stocks.losers.length,
+    funds: funds.gainers.length + funds.losers.length,
+    bes: bes.gainers.length + bes.losers.length,
+    crypto: crypto.gainers.length + crypto.losers.length,
+  };
+  const emptyCats = (Object.keys(sizes) as Array<keyof typeof sizes>).filter((k) => sizes[k] === 0);
+  const allEmpty = emptyCats.length === 4;
+
   const body = {
-    ok: true,
+    ok: !allEmpty,
     source: 'fvt.com.tr',
     attribution: 'Veri kaynağı: fvt.com.tr',
     updatedAt: new Date().toISOString(),
+    partial: emptyCats.length > 0 ? emptyCats : undefined,
+    error: allEmpty ? 'FVT kaynağından veri alınamadı' : undefined,
     stocks,
     funds,
     bes,
     crypto,
   };
 
+  if (allEmpty) {
+    return new Response(JSON.stringify(body), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
+  }
+
   const now = new Date();
   const utcH = now.getUTCHours();
   const isWeekday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5;
   const marketOpen = isWeekday && utcH >= 6 && utcH <= 16;
-  const ttl = marketOpen ? 60 : 600;
+  // Kısmi veri: kısa TTL ki eksik kategori hızla tamamlansın.
+  const ttl = emptyCats.length > 0 ? 30 : marketOpen ? 60 : 600;
 
   const resp = new Response(JSON.stringify(body), {
     status: 200,

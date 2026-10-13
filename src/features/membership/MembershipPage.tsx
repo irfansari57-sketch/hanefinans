@@ -58,7 +58,7 @@ const PLANS: Plan[] = [
       'Tüm Ücretsiz özellikler',
       'Telegram günlük otomatik rapor',
       'Sınırsız fiyat + RSI + MACD alarmı',
-      'Gecikmesiz BIST kotasyonu',
+      'Kaynak ve veri anı etiketli BIST kotasyonu (~15 dk gecikmeli)',
       'Detaylı teknik göstergeler (Bollinger, ADX, Fibonacci)',
       'Sanal portföy simülatörü + backtest',
       'Haftalık özel "Öneri" havuzu',

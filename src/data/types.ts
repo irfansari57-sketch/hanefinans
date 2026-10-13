@@ -14,6 +14,13 @@ export interface Stock {
    * TopMovers filter'i Yahoo previousClose bug'ini elemek icin bu alani kullanir.
    */
   feedSource?: 'yahoo' | 'isyatirim';
+  /**
+   * Fiyatın ait olduğu an (ISO). Kaynaktan gelmezse undefined — UI "—" göstermeli,
+   * ASLA "şimdi" ile doldurulmamalı (13 Eki 2026 veri-güven denetimi).
+   */
+  asOf?: string;
+  /** Kaynağın tipik gecikmesi, dakika. BIST (Yahoo/FVT) ~15; kripto ~0. */
+  delayMin?: number;
 }
 
 export type NewsSource = string;

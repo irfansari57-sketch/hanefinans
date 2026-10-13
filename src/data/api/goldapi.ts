@@ -1,4 +1,3 @@
-import { API_KEYS } from './keys';
 
 interface GoldApiResp {
   timestamp: number;
@@ -12,7 +11,7 @@ interface GoldApiResp {
   error?: string;
 }
 
-const BASE = 'https://www.goldapi.io/api';
+// Upstream (goldapi.io) artık sunucu proxy'si arkasında: /api/proxy/goldapi?pair=XAU
 
 /**
  * GoldAPI DE-FACTO DISABLED (Phase 1).
@@ -37,11 +36,8 @@ const GOLDAPI_DISABLED = true;
  */
 export async function fetchGramAltinTRY(usdToTry: number | null): Promise<{ value: number; changePct?: number } | null> {
   if (GOLDAPI_DISABLED) return null;
-  if (!API_KEYS.goldApi) return null;
   try {
-    const res = await fetch(`${BASE}/XAU/USD`, {
-      headers: { 'x-access-token': API_KEYS.goldApi, 'Content-Type': 'application/json' },
-    });
+    const res = await fetch('/api/proxy/goldapi?pair=XAU');
     if (!res.ok) return null;
     const json = (await res.json()) as GoldApiResp;
     if (json.error || !json.price_gram_24k) return null;
@@ -58,11 +54,8 @@ export async function fetchGramAltinTRY(usdToTry: number | null): Promise<{ valu
  */
 async function fetchMetalSpotUSD(pair: 'XAU' | 'XAG' | 'XPT' | 'XPD'): Promise<{ value: number; changePct: number } | null> {
   if (GOLDAPI_DISABLED) return null;
-  if (!API_KEYS.goldApi) return null;
   try {
-    const res = await fetch(`${BASE}/${pair}/USD`, {
-      headers: { 'x-access-token': API_KEYS.goldApi, 'Content-Type': 'application/json' },
-    });
+    const res = await fetch(`/api/proxy/goldapi?pair=${pair}`);
     if (!res.ok) return null;
     const json = (await res.json()) as GoldApiResp;
     if (json.error || !json.price || json.price <= 0) return null;
@@ -110,7 +103,6 @@ export async function fetchSpotMetalsGoldApi(): Promise<GoldApiCache | null> {
   if (GOLDAPI_DISABLED) return null;
   const cached = readGoldApiCache();
   if (cached) return cached;
-  if (!API_KEYS.goldApi) return null;
   const [xau, xag, xpt] = await Promise.all([
     fetchMetalSpotUSD('XAU'),
     fetchMetalSpotUSD('XAG'),
@@ -170,7 +162,6 @@ export async function fetchPalladiumGoldApi(): Promise<{ value: number; changePc
   if (cached && cached.value && Number.isFinite(cached.value)) {
     return { value: cached.value, changePct: cached.changePct ?? 0 };
   }
-  if (!API_KEYS.goldApi) return null;
   const xpd = await fetchMetalSpotUSD('XPD');
   if (!xpd) return null;
   writePalladiumCache({

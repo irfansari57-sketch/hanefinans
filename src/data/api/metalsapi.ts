@@ -1,4 +1,3 @@
-import { API_KEYS } from './keys';
 
 /**
  * MetalsAPI.com entegrasyonu — free 50 req/day spot metal fiyatları.
@@ -19,7 +18,7 @@ interface MetalsApiResp {
   error?: { code: number; info: string };
 }
 
-const BASE = 'https://metals-api.com/api/latest';
+// Upstream (metals-api.com) artık sunucu proxy'si arkasında: /api/proxy/metalsapi
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const CACHE_KEY = 'fa.metalsapi.spot.v1';
 
@@ -53,9 +52,8 @@ function writeCache(data: MetalsApiSpot) {
 export async function fetchSpotMetalsMetalsApi(): Promise<MetalsApiSpot | null> {
   const cached = readCache();
   if (cached) return cached;
-  if (!API_KEYS.metalsApi) return null;
   try {
-    const url = `${BASE}?access_key=${encodeURIComponent(API_KEYS.metalsApi)}&base=USD&symbols=XAU,XAG,XPT,XPD`;
+    const url = '/api/proxy/metalsapi?symbols=XAU,XAG,XPT,XPD';
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as MetalsApiResp;

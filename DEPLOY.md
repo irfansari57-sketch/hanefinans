@@ -82,15 +82,20 @@ Repon `https://github.com/<KULLANICI_ADIN>/hanefinans` adresinde görünür olma
 - **Build output directory:** `dist`
 - **Root directory:** boş bırak
 
-### 2.4 Environment variables (build için)
-Aşağıyı genişletip ekle. **Plaintext** olarak:
+### 2.4 Environment variables
 
-| Variable | Value |
+> **13 Eki 2026 güvenlik notu:** Daha önce burada düz metin yazılı olan GNews/GoldAPI/TwelveData
+> anahtarları git geçmişinde kaldı → **sağlayıcı panellerinden yenilenmeli (rotate)**.
+> Anahtarlar artık `VITE_*` DEĞİL; istemci bundle'ına girmez. Sunucu (Pages Functions) env'ine
+> **Secret** olarak ekle; istemci `/api/proxy/<provider>` üzerinden çağırır.
+
+| Variable (Secret) | Kullanan |
 |---|---|
-| `VITE_TWELVEDATA_KEY` | `ebb26064c1154fe094f7370ec552a10b` |
-| `VITE_GNEWS_KEY` | `5c4ddc08bffa3d26cd009ea7beb94e37` |
-| `VITE_GOLDAPI_KEY` | `goldapi-12e53f90815ec100c2ad94e10236e8ef-io` |
-| `VITE_TELEGRAM_CHAT_ID` | `1016691630` |
+| `GNEWS_API_KEY` | `/api/proxy/gnews` |
+| `GOLDAPI_KEY` | `/api/proxy/goldapi` |
+| `TWELVEDATA_KEY` | `/api/proxy/twelvedata` |
+| `METALSAPI_KEY` | `/api/proxy/metalsapi` |
+| `VITE_TELEGRAM_CHAT_ID` | Settings "Telegram test" butonu (gizli değil, chat id) |
 
 ### 2.5 Deploy
 - **Save and Deploy** tıkla

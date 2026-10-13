@@ -41,10 +41,34 @@ jobs:
           code=$(echo "$response" | tail -n 1)
           echo "HTTP $code"
           echo "$body" | head -100
+          # 13 Eki 2026: sessiz başarısızlık kapatıldı — HTTP≠200 veya success=0 → job FAIL
+          # (bir sonraki adım Telegram'a bildirir). Tek bir 5dk'lık aksama alarm
+          # üretmesin diye eşik: success < 20 sembol.
+          echo "code=$code" >> "$GITHUB_OUTPUT"
           if [ "$code" -eq 200 ]; then
             success=$(echo "$body" | grep -o '"success":[0-9]*' | head -1 | cut -d: -f2)
             fail=$(echo "$body" | grep -o '"fail":[0-9]*' | head -1 | cut -d: -f2)
-            echo "::notice::BIST warm: $success success, $fail fail"
+            src=$(echo "$body" | grep -o '"primarySource":"[^"]*"' | head -1 | cut -d: -f2 | tr -d '"')
+            echo "::notice::BIST warm: $success success, $fail fail (source: $src)"
+            echo "summary=$success ok / $fail fail / $src" >> "$GITHUB_OUTPUT"
+            if [ -z "$success" ] || [ "$success" -lt 20 ]; then
+              echo "::error::BIST warm: success=$success (<20) — veri kaynakları düşmüş olabilir"
+              exit 1
+            fi
           else
-            echo "::warning::BIST warm returned HTTP $code — next cron will retry"
+            echo "::error::BIST warm returned HTTP $code"
+            echo "summary=HTTP $code" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
+        id: warm
+
+      - name: Telegram alarm (hata)
+        if: failure() && env.TELEGRAM_BOT_TOKEN != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          msg="🚨 InvestliQ bist-warm BAŞARISIZ%0A${{ steps.warm.outputs.summary }}%0Ahttps://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=${msg}" > /dev/null || true

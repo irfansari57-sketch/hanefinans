@@ -37,6 +37,11 @@ function toBISTSymbol(s: string): string {
   return `${s}.IS`;
 }
 
+/** Kripto (BTC-USD) ve forex (USDTRY=X) 7/24 ve neredeyse gecikmesiz; BIST ~15 dk. */
+function isCryptoSymbol(s: string): boolean {
+  return s.includes('-USD') || s.includes('=X');
+}
+
 async function fetchOne(
   yahooSymbol: string,
   opts?: { noCache?: boolean },
@@ -116,7 +121,7 @@ export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | nul
     if (r.ok) {
       const j = (await r.json()) as Record<
         string,
-        { price?: number; changePct?: number; source?: string; asOf?: string; name?: string }
+        { price?: number; changePct?: number; source?: string; asOf?: string; name?: string; updatedAt?: number }
       >;
       const stocks: Stock[] = [];
       symbols.forEach((sym, i) => {
@@ -129,7 +134,15 @@ export async function fetchQuotesYahoo(symbols: string[]): Promise<Stock[] | nul
             sector: undefined,
             price: q.price as number,
             changePct: q.changePct as number,
-            updatedAt: q.asOf ?? new Date().toISOString(),
+            // updatedAt = fetch anı (cache/SWR için); asOf = fiyatın gerçek anı (UI etiketi).
+            updatedAt: new Date().toISOString(),
+            // Yahoo regularMarketTime / İş Yatırım updated_at (ms) → fiyat anı. Yoksa
+            // sadece tarih (as_of, YYYY-MM-DD); o da yoksa undefined.
+            asOf: typeof q.updatedAt === 'number' && q.updatedAt > 1e12
+              ? new Date(q.updatedAt).toISOString()
+              : q.asOf,
+            feedSource: q.source === 'isyatirim' ? 'isyatirim' : 'yahoo',
+            delayMin: isCryptoSymbol(sym) ? 0 : 15,
           });
         }
       });

@@ -1,4 +1,3 @@
-import { API_KEYS } from './keys';
 import type { Stock } from '../types';
 
 interface TDQuote {
@@ -13,16 +12,16 @@ interface TDQuote {
   message?: string;
 }
 
-const BASE = 'https://api.twelvedata.com';
+// Upstream (api.twelvedata.com) artık sunucu proxy'si arkasında: /api/proxy/twelvedata
 
 function isError(q: TDQuote): boolean {
   return q.status === 'error' || !q.close;
 }
 
 export async function fetchQuotesTD(symbols: string[]): Promise<Stock[] | null> {
-  if (!API_KEYS.twelveData || symbols.length === 0) return null;
+  if (symbols.length === 0) return null;
   try {
-    const url = `${BASE}/quote?symbol=${encodeURIComponent(symbols.join(','))}&exchange=BIST&apikey=${API_KEYS.twelveData}`;
+    const url = `/api/proxy/twelvedata?symbol=${encodeURIComponent(symbols.join(','))}&exchange=BIST`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as Record<string, TDQuote> | TDQuote;
@@ -54,9 +53,8 @@ export async function fetchQuotesTD(symbols: string[]): Promise<Stock[] | null> 
 export async function fetchMetalSpotTD(
   pair: 'XAU/USD' | 'XAG/USD' | 'XPT/USD',
 ): Promise<{ value: number; changePct: number } | null> {
-  if (!API_KEYS.twelveData) return null;
   try {
-    const url = `${BASE}/quote?symbol=${encodeURIComponent(pair)}&apikey=${API_KEYS.twelveData}`;
+    const url = `/api/proxy/twelvedata?symbol=${encodeURIComponent(pair)}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as TDQuote;

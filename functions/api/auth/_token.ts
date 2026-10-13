@@ -45,12 +45,27 @@ async function hmac(secret: string, payload: string): Promise<string> {
   return base64urlEncode(sig);
 }
 
+/**
+ * E-posta doğrulama payload'ı.
+ * 13 Eki 2026 (P0): `code` artık token'da DEĞİL. Token sadece `codeHash` =
+ * HMAC(secret, email|nonce|code) taşır; istemci base64 çözse de kodu göremez.
+ * Doğrulama: aynı HMAC girilen kodla yeniden hesaplanır ve sabit zamanlı
+ * karşılaştırılır.
+ */
 export interface VerificationPayload {
   email: string;
-  code: string;
+  codeHash: string;
+  nonce: string;
   exp: number;
   purpose?: 'verify-email' | 'reset-password';
 }
+
+/** Kod HMAC'i — token'a konan değer. */
+export async function hashCode(secret: string, email: string, nonce: string, code: string): Promise<string> {
+  return hmac(secret, `code|${email}|${nonce}|${code}`);
+}
+
+export { timingSafeEqual };
 
 /** Şifre sıfırlama için payload — code yok. */
 export interface ResetPayload {
@@ -101,23 +116,17 @@ export function generateCode(): string {
   return v.toString().padStart(6, '0');
 }
 
+// 13 Eki 2026: ACAO:* kaldırıldı — auth uç noktaları same-origin.
 export function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-store',
     },
   });
 }
 
 export function corsPreflightResponse(): Response {
-  return new Response(null, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
+  return new Response(null, { status: 204, headers: { Allow: 'POST, OPTIONS' } });
 }

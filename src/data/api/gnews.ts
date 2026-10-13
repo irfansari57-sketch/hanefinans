@@ -1,4 +1,3 @@
-import { API_KEYS } from './keys';
 import type { NewsItem } from '../types';
 
 interface GNewsArticle {
@@ -15,7 +14,7 @@ interface GNewsResponse {
   articles: GNewsArticle[];
 }
 
-const BASE = 'https://gnews.io/api/v4';
+// Upstream (gnews.io/api/v4) artık sunucu proxy'si arkasında: functions/api/proxy/[provider].ts
 
 const TR_FINANCE_WHITELIST: Record<string, string> = {
   'bloomberght.com': 'BloombergHT',
@@ -99,11 +98,11 @@ export async function fetchNewsGNews(opts: {
   symbols?: string[];
   max?: number;
 }): Promise<NewsItem[] | null> {
-  if (!API_KEYS.gnews) return null;
+  // 13 Eki 2026: anahtar sunucuda — /api/proxy/gnews (503 → null, eski davranış)
   const query = opts.query ?? 'BIST OR borsa istanbul OR KAP OR bankacilik OR ekonomi OR TCMB';
   const requested = Math.min((opts.max ?? 25) * 2, 50);
   try {
-    const url = `${BASE}/search?q=${encodeURIComponent(query)}&lang=tr&country=tr&max=${requested}&apikey=${API_KEYS.gnews}`;
+    const url = `/api/proxy/gnews?q=${encodeURIComponent(query)}&max=${requested}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = (await res.json()) as GNewsResponse;

@@ -36,6 +36,7 @@ import { fetchTr10y, type Tr10yData } from '@/data/api/tr10y';
 import type { MacroIndicator, NewsItem, Stock, FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { DataFreshness } from '@/components/ui/DataFreshness';
 
 const SWR_TTL_MS = 24 * 60 * 60 * 1000;
 const AUTO_REFRESH_MS = 30_000;
@@ -485,6 +486,16 @@ export function SoftPanelPage() {
                 <div className={cn('mt-0.5 text-sm font-medium tabular-nums', bist100Positive ? 'text-success' : 'text-danger')}>
                   {bist100 ? (bist100Positive ? '+' : '') + (bist100.changePct ?? 0).toFixed(2) + '%' : '—'}
                 </div>
+                {/* 13 Eki 2026: kaynak · veri anı · gecikme (veri-güven etiketi) */}
+                {bist100 && (
+                  <div className="mt-1.5">
+                    <DataFreshness
+                      source={bist100.feedSource}
+                      asOf={bist100.asOf ?? bist100.updatedAt}
+                      delayMin={15}
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex gap-1">
                 {(['1mo', '3mo', '6mo', 'ytd', '1y'] as const).map((p) => (

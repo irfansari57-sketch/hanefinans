@@ -15,6 +15,9 @@ export interface BesSeedFund {
   tip: 'BES' | 'OKS' | 'DK';
 }
 
+/** Seed listesinin elle güncellendiği tarih — API yanıtında asOf olarak döner. */
+export const SEED_AS_OF = '2026-09-13T00:00:00.000Z';
+
 export const BES_SEED: BesSeedFund[] = [
   { code: 'AAJ', name: 'OKS STANDART EMEKLİLİK YATIRIM FONU', founder: 'Agesa Hayat ve Emeklilik A.Ş.', besKategori: 'OKS Standart Fon', tip: 'OKS' },
   { code: 'ABE', name: 'S&P 500 YABANCI BYF FON SEPETİ EMEKLİLİK YATIRIM FONU', founder: 'Anadolu Hayat Emeklilik A.Ş.', besKategori: 'Fon Sepeti', tip: 'BES' },

@@ -18,6 +18,8 @@
  *   ?scope=bist100|bist30|all|top50  (default: bist100 - hizli MVP)
  */
 
+import { fvtJson } from '../_fvt';
+
 interface Env {
   DB: D1Database;
   CRON_SECRET?: string;
@@ -25,6 +27,18 @@ interface Env {
 
 interface IsYatirimResponse {
   data?: Array<[number, number]>; // [ts_ms, close]
+}
+
+/**
+ * TR saatiyle (UTC+3, DST yok) son BIST iş günü, YYYY-MM-DD.
+ * Hafta sonu → Cuma. Seans açılmadan önce (TR 09:00 öncesi) → önceki iş günü.
+ * Resmi tatil takvimi YOK — bilinen sınır, marketCalendar.ts ile birleştirilecek.
+ */
+function lastBistSessionDateTR(now = new Date()): string {
+  const tr = new Date(now.getTime() + 3 * 3_600_000);
+  if (tr.getUTCHours() < 9) tr.setUTCDate(tr.getUTCDate() - 1);
+  while (tr.getUTCDay() === 0 || tr.getUTCDay() === 6) tr.setUTCDate(tr.getUTCDate() - 1);
+  return tr.toISOString().slice(0, 10);
 }
 
 function formatTimestamp(d: Date): string {
@@ -156,32 +170,31 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   // 2. Fail olursa Is Yatirim per-symbol fallback (eski davranis)
   // Boylece 9 Eki Cuma gibi Is Yatirim CF'den bloklanirsa snapshot yine guncellenir.
   try {
-    const fvtResp = await fetch('https://fvt.com.tr/api/stocks?limit=5000&hissePazar=2', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Referer': 'https://fvt.com.tr/',
-      },
-    });
-    if (fvtResp.ok) {
-      const fvtJson = (await fvtResp.json()) as { success?: boolean; data?: { data?: Array<Record<string, unknown>> } };
-      const items = fvtJson?.data?.data ?? [];
-      if (items.length > 0) {
-        primarySource = 'fvt';
-        const now = Date.now();
-        const todayISO = new Date().toISOString().slice(0, 10);
-        for (const row of items) {
-          if (!(row.hisseUrl as string)?.includes('.IS/')) continue;
-          const symbol = (row.hisseKodu as string)?.toUpperCase();
-          if (!symbol || !symbols.includes(symbol)) continue;
-          const son = parseFloat(String(row.gunlukKapanis ?? ''));
-          const dun = parseFloat(String(row.dunkuKapanis ?? ''));
-          if (!Number.isFinite(son) || !Number.isFinite(dun) || son <= 0 || dun <= 0) continue;
-          const changePct = ((son - dun) / dun) * 100;
-          if (Math.abs(changePct) > 15) continue; // outlier (BIST ±%10 limit + marj)
-          results.push({ symbol, price: son, prev: dun, changePct, asOf: todayISO, updatedAt: now });
-          success++;
-        }
+    // 13 Eki 2026: ortak header + 8sn timeout (_fvt.ts)
+    const fvtData = await fvtJson<{ data?: Array<Record<string, unknown>> }>(
+      'https://fvt.com.tr/api/stocks?limit=5000&hissePazar=2',
+      12000,
+    );
+    const items = fvtData?.data ?? [];
+    if (items.length > 0) {
+      primarySource = 'fvt';
+      const now = Date.now();
+      // asOf = seans tarihi. UTC "bugün" DEĞİL: FVT satırındaki `tarih` alanı varsa o,
+      // yoksa TR saatiyle son iş günü (hafta sonu → Cuma). Tatil takvimi yok (bilinen sınır).
+      const fallbackSession = lastBistSessionDateTR();
+      for (const row of items) {
+        if (!(row.hisseUrl as string)?.includes('.IS/')) continue;
+        const symbol = (row.hisseKodu as string)?.toUpperCase();
+        if (!symbol || !symbols.includes(symbol)) continue;
+        const son = parseFloat(String(row.gunlukKapanis ?? ''));
+        const dun = parseFloat(String(row.dunkuKapanis ?? ''));
+        if (!Number.isFinite(son) || !Number.isFinite(dun) || son <= 0 || dun <= 0) continue;
+        const changePct = ((son - dun) / dun) * 100;
+        if (Math.abs(changePct) > 15) continue; // outlier (BIST ±%10 limit + marj)
+        const rowDate = typeof row.tarih === 'string' ? row.tarih.slice(0, 10) : '';
+        const asOf = /^\d{4}-\d{2}-\d{2}$/.test(rowDate) ? rowDate : fallbackSession;
+        results.push({ symbol, price: son, prev: dun, changePct, asOf, updatedAt: now });
+        success++;
       }
     }
   } catch { /* FVT fail — fallback'e dus */ }
@@ -224,15 +237,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 
+  // 13 Eki 2026: sıfır başarı = hata (önceden ok:true/200 dönüyordu, cron sessiz kalıyordu).
+  const zero = success === 0;
   return new Response(JSON.stringify({
-    ok: true,
+    ok: !zero,
+    error: zero ? 'Hiçbir sembol güncellenemedi (FVT + İş Yatırım düşmüş olabilir)' : undefined,
     success,
     fail,
     totalTried: symbols.length,
     primarySource,
     elapsedMs: Date.now() - startTime,
   }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    status: zero ? 502 : 200,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 };

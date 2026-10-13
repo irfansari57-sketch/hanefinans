@@ -157,7 +157,7 @@ async function fetchTefasBes(): Promise<BesFund[]> {
   return out;
 }
 
-import { BES_SEED } from './_seed';
+import { BES_SEED, SEED_AS_OF } from './_seed';
 
 /** Seed listeyi TEFAS-style BesFund'a cevirir (NAV/getiri null; founder mevcut) */
 function seedToBesFunds(): BesFund[] {
@@ -206,9 +206,12 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
     source = 'seed';
   }
 
+  // 13 Eki 2026: seed verisi "şimdi" damgası taşımasın — seed'in gerçek tarihi.
   const body = {
     ok: true,
-    updatedAt: new Date().toISOString(),
+    updatedAt: source === 'seed' ? SEED_AS_OF : new Date().toISOString(),
+    asOf: source === 'seed' ? SEED_AS_OF.slice(0, 10) : new Date().toISOString().slice(0, 10),
+    stale: source === 'seed',
     count: funds.length,
     source,
     funds,

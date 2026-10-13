@@ -10,9 +10,9 @@ Kapsam: `functions/`, `src/`, `public/`, `.github/`, `.env*`, `package.json`, de
 ### K1. Canlı API anahtarları repo'da plain text
 - **Dosya:** `DEPLOY.md` (git'te tracked, ilk commit `87997dd`)
 - **Sızan secret'lar:**
-  - `VITE_TWELVEDATA_KEY = ebb26064c1154fe094f7370ec552a10b`
-  - `VITE_GNEWS_KEY = 5c4ddc08bffa3d26cd009ea7beb94e37`
-  - `VITE_GOLDAPI_KEY = goldapi-12e53f90815ec100c2ad94e10236e8ef-io`
+  - `VITE_TWELVEDATA_KEY = <redacted — 13 Eki 2026'da proxy'ye taşındı, anahtar yenilenmeli>`
+  - `VITE_GNEWS_KEY = <redacted>`
+  - `VITE_GOLDAPI_KEY = <redacted>`
   - `TCMB_API_KEY = lT4irjYOXr`
   - `TELEGRAM_BOT_TOKEN = 8624595740:AAE7bFW4QvAfW5jyr5cjZcb29H0tYOEdGNU`
 - **Aksiyon:**

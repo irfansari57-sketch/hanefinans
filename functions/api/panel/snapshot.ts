@@ -31,9 +31,13 @@ interface SubFetch {
   crypto: unknown;
 }
 
-async function safeJson<T>(fetchPromise: Promise<Response>): Promise<T | null> {
+// 13 Eki 2026: alt istek timeout'u — tek yavaş kaynak tüm paneli kilitlemesin.
+async function safeJson<T>(fetchPromise: Promise<Response>, timeoutMs = 6000): Promise<T | null> {
   try {
-    const r = await fetchPromise;
+    const r = await Promise.race([
+      fetchPromise,
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs)),
+    ]);
     if (!r.ok) return null;
     return (await r.json()) as T;
   } catch {
@@ -75,9 +79,26 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
     safeJson<unknown>(fetch(`${base}/api/yahoo/snapshot?symbols=BTC-USD,ETH-USD,XRP-USD,DOGE-USD,BNB-USD,SOL-USD,ADA-USD,DOT-USD,AVAX-USD,TRX-USD,LINK-USD,LTC-USD`)),
   ]);
 
+  // 13 Eki 2026: Düşen alt kaynaklar raporlanır; ana kaynak (snapshot) yoksa
+  // 502 + no-store — null'u dakikalarca cache'leme (cache zehirlenmesi).
+  const failed = (
+    [
+      ['snapshot', snapshot],
+      ['news', news],
+      ['spotMetals', spotMetals],
+      ['bistChart', bistChart],
+      ['crypto', crypto],
+    ] as const
+  )
+    .filter(([, v]) => v == null)
+    .map(([k]) => k);
+  const coreDown = snapshot == null;
+
   const body = {
-    ok: true,
+    ok: !coreDown,
     updatedAt: new Date().toISOString(),
+    partial: failed.length > 0 ? failed : undefined,
+    error: coreDown ? 'Ana fiyat kaynağı (yahoo/snapshot) alınamadı' : undefined,
     snapshot,
     news,
     spotMetals,
@@ -85,12 +106,20 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
     crypto,
   };
 
+  if (coreDown) {
+    return new Response(JSON.stringify(body), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
+  }
+
   // Piyasa acikken 30sn (fresh), kapaliyken 5dk (bos saatler, battery friendly)
   const now = new Date();
   const utcH = now.getUTCHours();
   const isWeekday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5;
   const marketOpen = isWeekday && utcH >= 6 && utcH <= 16;
-  const ttl = marketOpen ? 30 : 300;
+  // Kısmi hata: 15sn TTL — eksik parça hızla tamamlansın.
+  const ttl = failed.length > 0 ? 15 : marketOpen ? 30 : 300;
   // stale-while-revalidate — 1 saat eski bile olsa INSTANT servis, arka planda yenile
   const swr = marketOpen ? 300 : 3600;
 

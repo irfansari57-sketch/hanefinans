@@ -223,6 +223,24 @@ export function adx(bars: OHLC[], period = 14): ADXResult {
   return { adx: adxArr, plusDI, minusDI, lastTrendStrength, bullishBias };
 }
 
+// ============ Kapanmamış mum koruması ============
+/**
+ * Seans açıkken günlük serinin son barı henüz kapanmamıştır; göstergeye
+ * girerse sinyal seans içinde değişip kapanışta kaybolabilir (repaint).
+ * 13 Eki 2026 denetimi: `sessionOpen=true` ise son bar düşülür.
+ * Günlük bar'ın tarihi bugünden eskiyse (veri gecikmeli) zaten kapanmıştır, dokunulmaz.
+ */
+export function closedBarsOnly<T extends { time?: number | string }>(bars: T[], sessionOpen: boolean, todayKey?: string): T[] {
+  if (!sessionOpen || bars.length === 0) return bars;
+  const last = bars[bars.length - 1];
+  if (todayKey && last.time != null) {
+    const t = typeof last.time === 'number' ? new Date(last.time < 1e12 ? last.time * 1000 : last.time) : new Date(last.time);
+    const key = Number.isFinite(t.getTime()) ? t.toISOString().slice(0, 10) : '';
+    if (key && key !== todayKey) return bars; // son bar bugün değil → kapanmış
+  }
+  return bars.slice(0, -1);
+}
+
 // ============ Yardımcılar ============
 export function rsiSignal(value: number): 'aşırı satım' | 'satış bölgesi' | 'nötr' | 'alış bölgesi' | 'aşırı alım' {
   if (value < 30) return 'aşırı satım';

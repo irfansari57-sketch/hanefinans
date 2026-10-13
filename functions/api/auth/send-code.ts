@@ -11,7 +11,7 @@
  *   RESEND_FROM_EMAIL   — opsiyonel, varsayılan: onboarding@resend.dev (Resend sandbox)
  */
 
-import { signToken, generateCode, jsonResponse, corsPreflightResponse } from './_token';
+import { signToken, generateCode, generateNonce, hashCode, jsonResponse, corsPreflightResponse } from './_token';
 import { verifyTurnstile } from '../../_turnstile';
 import { getClientIp } from '../../_rate-limit';
 
@@ -57,7 +57,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const code = generateCode();
   const exp = Date.now() + EXPIRY_MS;
-  const token = await signToken({ email, code, exp }, env.AUTH_TOKEN_SECRET);
+  // 13 Eki 2026 (P0): kod token'a konmaz; sadece HMAC'i konur.
+  const nonce = generateNonce();
+  const codeHash = await hashCode(env.AUTH_TOKEN_SECRET, email, nonce, code);
+  const token = await signToken({ email, codeHash, nonce, exp, purpose: 'verify-email' as const }, env.AUTH_TOKEN_SECRET);
 
   const fromEmail = env.RESEND_FROM_EMAIL ?? 'InvestliQ <onboarding@resend.dev>';
   const html = buildEmailHtml(code, email);

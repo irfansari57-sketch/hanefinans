@@ -16,7 +16,7 @@
  * Edge cache 60sn market open, 10dk kapali — FVT paritesi real-time.
  */
 
-import { fvtJson } from '../_fvt';
+import { fvtJson, isFvtBistRow } from '../_fvt';
 
 interface Env {}
 
@@ -41,7 +41,7 @@ async function fetchStocks(): Promise<{ gainers: MoverItem[]; losers: MoverItem[
   if (!d) return { gainers: [], losers: [] };
   const items: MoverItem[] = [];
   for (const row of d.data as Array<Record<string, unknown>>) {
-    if (!(row.hisseUrl as string)?.includes('.IS/')) continue;
+    if (!isFvtBistRow(row)) continue;
     let pct = toNum(row.gunlukYuzde);
     const son = toNum(row.gunlukKapanis);
     const prev = toNum(row.dunkuKapanis);

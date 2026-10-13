@@ -18,7 +18,7 @@
  *   ?scope=bist100|bist30|all|top50  (default: bist100 - hizli MVP)
  */
 
-import { fvtJson } from '../_fvt';
+import { fvtJson, isFvtBistRow } from '../_fvt';
 import { BIST_100_UNIVERSE } from '../_universe';
 
 interface Env {
@@ -169,7 +169,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       // yoksa TR saatiyle son iş günü (hafta sonu → Cuma). Tatil takvimi yok (bilinen sınır).
       const fallbackSession = lastBistSessionDateTR();
       for (const row of items) {
-        if (!(row.hisseUrl as string)?.includes('.IS/')) continue;
+        if (!isFvtBistRow(row)) continue;
         const symbol = (row.hisseKodu as string)?.toUpperCase();
         if (!symbol || !symbols.includes(symbol)) continue;
         const son = parseFloat(String(row.gunlukKapanis ?? ''));

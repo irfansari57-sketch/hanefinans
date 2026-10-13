@@ -3,12 +3,14 @@
  *
  * Kaynak: fvt.com.tr/api/stocks (public JSON endpoint)
  *   - hissePazar=2 BIST + bazı yabancı hisseler mixed
- *   - hisseUrl Yahoo URL formatında — .IS/ suffixi varsa BIST
+ *   - yerli hisse ayracı: yabanci===0 (hisseUrl null olabilir — 13 Eki 2026)
  *   - gunlukYuzde field'ı bazen null → gunlukKapanis/dunkuKapanis'ten hesaplanır
  *
  * BIST günlük tavan/taban ±%10 (SPK) — üstünü outlier olarak atar.
  * Edge cache 60sn market open / 10dk kapali.
  */
+
+import { isFvtBistRow } from '../_fvt';
 
 interface Env {}
 
@@ -77,7 +79,7 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
 
     // Sadece BIST (yahoo URL .IS suffixi) + gecerli fiyat + ±%10 BIST tavan filtresi
     const items = j.data.data
-      .filter((s) => s.hisseUrl?.includes('.IS/'))
+      .filter((s) => isFvtBistRow(s as unknown as Record<string, unknown>))
       .map((s) => {
         let pct = toNum(s.gunlukYuzde);
         const son = toNum(s.gunlukKapanis);

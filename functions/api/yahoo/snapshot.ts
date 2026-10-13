@@ -10,7 +10,7 @@
  * Format: { ok: true, updatedAt: <ms>, quotes: { SYMBOL: { price, changePct, prev, updatedAt } } }
  */
 
-import { fvtJson, isBistSessionUtc } from '../_fvt';
+import { fvtJson, isBistSessionUtc, isFvtBistRow } from '../_fvt';
 
 interface Env {
   DB?: D1Database;
@@ -429,7 +429,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
       );
       const sessionDate = lastBistSessionDateTR(new Date(nowMs));
       for (const row of d?.data ?? []) {
-        if (!(row.hisseUrl as string)?.includes('.IS/')) continue;
+        if (!isFvtBistRow(row)) continue;
         const sym = String(row.hisseKodu ?? '').toUpperCase();
         if (!sym) continue;
         const son = parseFloat(String(row.gunlukKapanis ?? ''));

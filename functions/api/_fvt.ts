@@ -54,3 +54,20 @@ export function isBistSessionUtc(now = new Date()): boolean {
   const d = now.getUTCDay();
   return d >= 1 && d <= 5 && h >= 6 && h <= 15; // 09:00–18:59 TR
 }
+
+/**
+ * FVT /api/stocks satırı yerli (BIST) hisse mi?
+ *
+ * 13 Eki 2026 düzeltmesi: eskiden `hisseUrl` içinde ".IS/" aranıyordu; ancak
+ * ~190 yerli hissede (BIGEN, BULGS, KARCL, ISVEA…) `hisseUrl = null` geliyor ve
+ * bunlar eleniyordu → Yahoo'nun bozuk değeri kalıyor (BIGEN -34% vs gerçek -10%)
+ * ya da hisse hiç listelenmiyordu. Otoriter alan `yabanci` (0 = yerli; FVT'de
+ * 762 yerli / 1130 yabancı). Eski URL kontrolü yalnızca `yabanci` yoksa devrede.
+ */
+export function isFvtBistRow(row: Record<string, unknown>): boolean {
+  const kod = String(row.hisseKodu ?? '').toUpperCase();
+  if (!/^[A-Z0-9]{3,6}$/.test(kod)) return false;
+  if (typeof row.yabanci === 'number') return row.yabanci === 0;
+  if (typeof row.yabanci === 'string') return row.yabanci === '0';
+  return typeof row.hisseUrl === 'string' && row.hisseUrl.includes('.IS/');
+}

@@ -30,7 +30,7 @@ const STOCK_RETURNS_CACHE_KEY = 'fa.stocks.returns.v1';
 // dönebilir; eski cache hala kullanılabilir olsun. Cron haftaiçi her gece D1'i
 // yenilediği için pratikte her zaman <24h veri görüyoruz; TTL 7 gün sadece
 // hafta sonu kilit + olası ağ hatası senaryosuna karşı sigorta.
-const STOCK_RETURNS_TTL_MS = 7 * 24 * 60 * 60_000;
+const STOCK_RETURNS_TTL_MS = 4 * 24 * 60 * 60_000; // 13 Eki 2026: 7g→4g (Cuma gecesi → Salı sabahı yeter)
 
 interface ReturnsCache {
   fetchedAt: number;
@@ -72,7 +72,9 @@ function writeReturnsCache(data: Record<string, PeriodReturns>) {
 // SWR 7 gün: hafta sonu kilidiyle Cuma kapanış değerleri Pazartesi açılışa kadar
 // görünür kalır. Cron her haftaiçi günü yeni veriyle override eder.
 const STOCKS_MEMO_TTL_MS = 7 * 24 * 60 * 60_000;
-const STOCKS_MEMO_LS_KEY = 'fa.stocksMemo.v1';
+const STOCKS_MEMO_LS_KEY = 'fa.stocksMemo.v2';
+/** Memo bundan eskiyse canlı fiyat yenilemesi (arka planda) tetiklenir. */
+const STOCKS_LIVE_REFRESH_MS = 2 * 60_000;
 interface StocksMemo {
   fetchedAt: number;
   stocks: StockRow[];
@@ -146,8 +148,12 @@ export function StocksPage() {
       }
       const all = universe.map((s) => s.symbol);
 
+      // Arka plan yenilemede mevcut satırlar korunur (fiyat "—"a düşmesin).
+      const prevMap = new Map((stocksMemo?.stocks ?? []).map((s) => [s.symbol, s]));
       const placeholderStocks: Stock[] = universe.map((u) => {
         const rich = richMap.get(u.symbol);
+        const prev = prevMap.get(u.symbol);
+        if (prev && prev.price > 0) return prev;
         return {
           symbol: u.symbol,
           name: rich?.name ?? u.name,
@@ -256,9 +262,12 @@ export function StocksPage() {
     // Sadece memo taze olsa bile returnsMap yetersizse yeni fetch tetiklenmeli
     // — aksi halde period kolonlari 7 gun boyunca "—" kalabilir.
     const cachedReturns = readReturnsCache();
+    // 13 Eki 2026: memo yalnızca ilk boyama için. Fiyat/GÜN % her açılışta
+    // canlıdan yenilenir — eskiden memo 7 gün tazeyse hiç fetch yapılmıyordu,
+    // liste bir hafta boyunca eski fiyat ve "—" gösteriyordu.
     if (memoAge < STOCKS_MEMO_TTL_MS && cachedReturns) {
       setLoading(false);
-      return;
+      if (memoAge < STOCKS_LIVE_REFRESH_MS) return;
     }
     refresh(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,10 +292,17 @@ export function StocksPage() {
       // 2) Fix: period 1g varsa HER ZAMAN onu kullan (detay sayfasi ile ayni
       //    kaynak, tutarlilik saglanir). Sapma esigi kaldirildi.
       // 3) Period yoksa snapshot fallback + BIST daily limit (+/-11) sanity clamp.
+      // 4) 13 Eki 2026: FVT / İş Yatırım snapshot'ı otoriter (dünkü kapanışa
+      //    göre, seans içi güncel). Bu kaynaklarda canlı changePct ÖNCE gelir;
+      //    period 1g (gece hesaplanan, 1-2 gün geride) sadece Yahoo kaynaklı
+      //    satırlarda devrede. TKFEN vakası: liste +3.72%, gerçek -9.98%.
       let displayChangePct = s.changePct;
       const p1g = ret?.['1g'];
-      if (p1g != null && Number.isFinite(p1g)) {
-        // Period historical daima daha guvenilir — detay sayfasi ile senkron.
+      const liveAuthoritative = (s.feedSource === 'fvt' || s.feedSource === 'isyatirim')
+        && Number.isFinite(s.changePct) && Math.abs(s.changePct) <= 25;
+      if (liveAuthoritative) {
+        displayChangePct = s.changePct;
+      } else if (p1g != null && Number.isFinite(p1g)) {
         displayChangePct = p1g;
       } else if (
         Number.isFinite(displayChangePct) &&

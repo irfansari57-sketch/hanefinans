@@ -28,7 +28,7 @@ npx wrangler d1 execute hanefinans-db --remote --file=functions/migrations/<dosy
 | 015 | watchlist | ✅ | |
 | 016 | bist_snapshot | ✅ | |
 | 017 | agent_cache | ✅ 13 Eki 2026 | AI agent yanıt cache'i |
-| 018 | token_version | ⏳ | JWT iptali — **uygulanmalı** |
+| 018 | token_version | ✅ 13 Eki 2026 | JWT iptali |
 
 Doğrulama:
 ```powershell

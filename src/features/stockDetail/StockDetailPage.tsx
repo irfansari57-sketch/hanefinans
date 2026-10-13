@@ -113,6 +113,24 @@ export function StockDetailPage() {
   const [loading, setLoading] = useState(true);
   const [mtResult, setMtResult] = useState<MultiTimeframeResult | null>(null);
 
+  // 13 Eki 2026: hisse başına haber/KAP akışı (/api/stocks/:symbol/news — Google News,
+  // şirket adı + sembol). Genel akıştaki sembol filtresi (news) yedek olarak kalır.
+  const [symbolNews, setSymbolNews] = useState<NewsItem[] | null>(null);
+  useEffect(() => {
+    if (isUs) { setSymbolNews(null); return; }
+    let alive = true;
+    const name = initialBistStock?.name ?? '';
+    fetch(`/api/stocks/${encodeURIComponent(sym)}/news?name=${encodeURIComponent(name)}&max=20`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { ok: boolean; items?: Array<NewsItem & { isKap?: boolean }> } | null) => {
+        if (!alive || !j?.ok || !Array.isArray(j.items)) return;
+        setSymbolNews(j.items.map((it) => ({ ...it, symbols: [sym], importance: it.critical ? 10 : it.isKap ? 8 : 6 })));
+      })
+      .catch(() => { /* yedek: genel akış filtresi */ });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sym, isUs]);
+
   // AI Analysis state
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -201,6 +219,17 @@ export function StockDetailPage() {
   // Teknik analiz — historical varsa hesapla.
   // Hook order'ı stabil tutmak için early return'dan ÖNCE çağırılmalı
   // (aksi halde stock null → null değil arası render'da React #310).
+  // Hisse haberleri: sembol akışı geldiyse o, yoksa genel akış filtresi. Hook sırası sabit.
+  const displayNews = useMemo<NewsItem[]>(() => {
+    if (symbolNews && symbolNews.length > 0) {
+      // Genel akıştan gelen ve sembol akışında olmayan başlıkları da ekle (dedupe başlıkla)
+      const seen = new Set(symbolNews.map((n) => n.title.toLowerCase().slice(0, 60)));
+      const extra = news.filter((n) => !seen.has(n.title.toLowerCase().slice(0, 60)));
+      return [...symbolNews, ...extra];
+    }
+    return news;
+  }, [symbolNews, news]);
+
   const technicalAnalysis = useMemo(() => {
     if (!historical || historical.bars.length < 25) return null;
     // 13 Eki 2026: BIST seansı açıkken son günlük bar kapanmamış → göstergeden hariç
@@ -628,15 +657,20 @@ export function StockDetailPage() {
         {/* News mentioning this symbol */}
         <section className="lg:col-span-2">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <Newspaper size={14} /> Bu Sembolü İçeren Gelişmeler ({news.length})
+            <Newspaper size={14} /> Bu Sembolü İçeren Gelişmeler ({displayNews.length})
+            {symbolNews && symbolNews.length > 0 && (
+              <span className="ml-1 rounded border border-border bg-bg-soft px-1.5 py-0.5 text-[10px] font-normal normal-case tracking-normal text-slate-500" title="Google News arşivi (son 3 hafta) — şirket adı + sembol + KAP">
+                Google News · 3 hafta
+              </span>
+            )}
           </h2>
-          {news.length === 0 ? (
+          {displayNews.length === 0 ? (
             <div className="card p-6 text-center text-xs text-slate-500">
               {loading ? 'Yükleniyor…' : `${sym} hakkında haber bulunamadı.`}
             </div>
           ) : (
             <div className="space-y-3">
-              {news.slice(0, 10).map((n) => (
+              {displayNews.slice(0, 12).map((n) => (
                 <NewsCard key={n.id} item={n} />
               ))}
             </div>

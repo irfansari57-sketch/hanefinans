@@ -5,6 +5,7 @@ import {
   Wallet, Plus, Trash2, RefreshCw, ChevronRight, Search, Sparkles, Upload, FileText, Landmark, Pencil, History,
 } from 'lucide-react';
 import { FundsPanel } from './FundsPanel';
+import { RiskReportCard } from './RiskReportCard';
 import { TxnHistoryModal } from './TxnHistoryModal';
 import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
 import { PortfolioEquityCurve } from './PortfolioEquityCurve';
@@ -429,6 +430,17 @@ export function PortfolioPage() {
       {tab === 'other' && <OtherAssetsPanel positions={allPositions.filter((p) => OTHER_KINDS.includes(p.kind as typeof OTHER_KINDS[number]))} />}
 
       {tab === 'stocks' && (<>
+
+      {/* Risk Raporu v1 — deterministik (13 Eki 2026). AI analizinden ÖNCE: açıklanabilir, ücretsiz. */}
+      {rows.some((r) => (r.marketValue ?? 0) > 0) && (
+        <div className="mb-4">
+          <RiskReportCard
+            positions={rows
+              .filter((r) => (r.marketValue ?? 0) > 0)
+              .map((r) => ({ symbol: r.symbol, marketValue: r.marketValue as number, sector: r.sector, kind: 'stock' }))}
+          />
+        </div>
+      )}
 
       {/* AI Portföy Analizi */}
       {positions.length > 0 && (

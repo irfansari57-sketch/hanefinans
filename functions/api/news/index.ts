@@ -27,33 +27,8 @@ interface NewsItem {
   criticalReason?: string;
 }
 
-/**
- * Kritik finansal bildirim tespiti — yatırımcıyı birebir ilgilendiren,
- * fiyatı anında etkileyen olaylar. Eşleşme bulunursa importance=10, critical=true.
- */
-const CRITICAL_PATTERNS: Array<{ re: RegExp; reason: string }> = [
-  { re: /\b(konkordato)\b/i, reason: 'Konkordato' },
-  { re: /\b(iflas(?:\s+erteleme)?|iflas\s+istedi|iflas\s+basvurusu|iflas\s+başvuru|iflas\s+kararı|iflas\s+karari)\b/i, reason: 'İflas' },
-  { re: /\b(kayy[ıi]m|kayyum\s+atan)\b/i, reason: 'Kayyım' },
-  { re: /\b(tedbir\s+karar|ihtiyati\s+tedbir|tedbirli\s+pazar)\b/i, reason: 'Tedbir' },
-  { re: /\b(haciz\s+karar|haczedild)\b/i, reason: 'Haciz' },
-  { re: /\b(delisting|borsadan\s+çıkar|kottan\s+çıkar|borsadan\s+cikar|kottan\s+cikar)\b/i, reason: 'Borsadan Çıkarma' },
-  { re: /\b(spk\s+(?:ceza|para\s+cezas|idari\s+para)|sermaye\s+piyasası\s+kurulu\s+ceza)\b/i, reason: 'SPK Cezası' },
-  { re: /\b(muvazaa|manip[üu]lasyon\s+iddia|insider\s+trading|içeriden\s+öğrenen|iceriden\s+ogrenen)\b/i, reason: 'Manipülasyon' },
-  { re: /\b(bedelsiz\s+sermaye\s+artırım|bedelsiz\s+sermaye\s+artirim)\b/i, reason: 'Bedelsiz Sermaye' },
-  { re: /\b(pay\s+geri\s+alım|pay\s+geri\s+alim|buyback)\b/i, reason: 'Pay Geri Alımı' },
-  { re: /\b(halka\s+arz\s+(?:başvuru|basvuru|izahname|onay))\b/i, reason: 'Halka Arz' },
-  { re: /\b(profit\s+warning|kar\s+uyarı|kar\s+uyari|rekor\s+zarar|dönem\s+zararı|donem\s+zarari)\b/i, reason: 'Kar Uyarısı' },
-  { re: /\b(önemli\s+nitelikte\s+işlem|onemli\s+nitelikte\s+islem)\b/i, reason: 'Önemli Nitelikte İşlem' },
-];
-
-function detectCritical(title: string, summary: string): { critical: boolean; reason?: string } {
-  const text = `${title} ${summary}`;
-  for (const { re, reason } of CRITICAL_PATTERNS) {
-    if (re.test(text)) return { critical: true, reason };
-  }
-  return { critical: false };
-}
+// Kritik bildirim tespiti ortak modüle taşındı (13 Eki 2026): functions/api/_critical.ts
+import { detectCritical } from '../_critical';
 
 interface RssSource {
   name: string;

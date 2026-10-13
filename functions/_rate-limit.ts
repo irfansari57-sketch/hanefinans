@@ -162,6 +162,9 @@ export function classifyRoute(path: string): { bucket: string; limit: number; wi
   // Bunlar read-only ve upstream rate limit kendi tarafında zaten var.
   // Yüksek limit ver (600/dk) — yoksa default 60/dk anında doluyor ve
   // aynı IP'den admin panel + auth/me gibi gerçek auth istekleri 429 yiyor.
+  // 13 Eki 2026: panel/stocks/funds/befas/byf/isyatirim/proxy/spot-metals/tr-* de
+  // read-only + edge cache'li — default 60/dk'ya düşüyordu; panel + hisse detay
+  // gezintisi 429 üretip hisse sayfasını skeleton'da kilitliyordu.
   if (
     path.startsWith('/api/yahoo/') ||
     path.startsWith('/api/tcmb/') ||
@@ -169,7 +172,17 @@ export function classifyRoute(path: string): { bucket: string; limit: number; wi
     path.startsWith('/api/twelvedata/') ||
     path.startsWith('/api/goldapi/') ||
     path.startsWith('/api/gnews/') ||
+    path.startsWith('/api/proxy/') ||
     path.startsWith('/api/tefas') ||
+    path.startsWith('/api/panel/') ||
+    path.startsWith('/api/stocks/') ||
+    path.startsWith('/api/funds/') ||
+    path.startsWith('/api/befas/') ||
+    path.startsWith('/api/byf/') ||
+    path.startsWith('/api/isyatirim/') ||
+    path.startsWith('/api/spot-metals') ||
+    path.startsWith('/api/tr-cds') ||
+    path.startsWith('/api/tr-10y') ||
     path.startsWith('/api/csp-report')
   ) {
     return { bucket: 'public', limit: 600, windowSec: 60 };

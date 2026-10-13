@@ -184,6 +184,14 @@ export function StockDetailPage() {
 
       // Log view
       activityRepo.log({ type: 'page-view', symbol: sym, detail: `/stock/${sym}` }).catch(() => {});
+    }).catch((e: unknown) => {
+      // 13 Eki 2026: Promise.all'dan biri reject olunca (429/ağ hatası) sayfa
+      // sonsuz skeleton'da kalıyordu — catch yoktu. Artık yükleme kapanır,
+      // elde ne varsa (statik meta) gösterilir.
+      if (!alive) return;
+      console.warn('[StockDetail] load failed:', e);
+      setLoading(false);
+      toast.error('Veri alınamadı — kısa süre sonra tekrar dene.');
     });
     return () => {
       alive = false;

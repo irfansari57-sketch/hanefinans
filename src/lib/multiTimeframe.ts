@@ -84,21 +84,47 @@ export function trendLabel(t: PriceTrend): string {
   return t === 'up' ? 'Yükseliş Trendi' : t === 'down' ? 'Düşüş Trendi' : 'Yatay Seyir';
 }
 
-/** 1h barlardan 4h barlar üret (4 bar = 1 4h bar). */
-export function aggregateTo4h(bars1h: OhlcvBar[]): OhlcvBar[] {
+/**
+ * 1h barlardan 4h barlar üret.
+ *
+ * 13 Eki 2026 (denetim §3 bulgu #3): eski sürüm diziyi başından 4'erli
+ * kesiyordu — gruplar gün sınırını aşıyor, seansa hizalı olmuyordu. Artık her
+ * bar kendi GÜNÜ + 4 saatlik kovası ((saat - offset) / 4) ile gruplanır:
+ *   - BIST (tzOffsetHours=3, sessionStartHour=10): 10-13, 14-17, 18 ...
+ *   - Kripto/US (varsayılan 0/0): UTC 00-03, 04-07, ... TradingView ile uyumlu.
+ * Gün değişince yeni bar başlar; eksik kalan son grup da bar olur (kapanmamış
+ * sayılır — closedBarsOnly ile süzülebilir).
+ */
+/** BIST 4h kovaları: TR saati (UTC+3), seans 10:00 başlangıç. */
+export const BIST_4H = { tzOffsetHours: 3, sessionStartHour: 10 } as const;
+
+export function aggregateTo4h(
+  bars1h: OhlcvBar[],
+  opts: { tzOffsetHours?: number; sessionStartHour?: number } = {},
+): OhlcvBar[] {
+  const tz = opts.tzOffsetHours ?? 0;
+  const start = opts.sessionStartHour ?? 0;
   const bars4h: OhlcvBar[] = [];
-  for (let i = 0; i < bars1h.length; i += 4) {
-    const chunk = bars1h.slice(i, Math.min(i + 4, bars1h.length));
-    if (chunk.length === 0) continue;
-    bars4h.push({
-      time: chunk[0].time,
-      open: chunk[0].open,
-      high: Math.max(...chunk.map((c) => c.high)),
-      low: Math.min(...chunk.map((c) => c.low)),
-      close: chunk[chunk.length - 1].close,
-      volume: chunk.reduce((s, c) => s + (c.volume ?? 0), 0),
-    });
+  let curKey = '';
+  let cur: OhlcvBar | null = null;
+  for (const b of bars1h) {
+    const ms = b.time < 1e12 ? b.time * 1000 : b.time;
+    const local = new Date(ms + tz * 3_600_000);
+    const day = local.toISOString().slice(0, 10);
+    const bucket = Math.floor(((local.getUTCHours() - start + 24) % 24) / 4);
+    const key = `${day}#${bucket}`;
+    if (key !== curKey) {
+      if (cur) bars4h.push(cur);
+      cur = { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume ?? 0 };
+      curKey = key;
+    } else if (cur) {
+      cur.high = Math.max(cur.high, b.high);
+      cur.low = Math.min(cur.low, b.low);
+      cur.close = b.close;
+      cur.volume = (cur.volume ?? 0) + (b.volume ?? 0);
+    }
   }
+  if (cur) bars4h.push(cur);
   return bars4h;
 }
 

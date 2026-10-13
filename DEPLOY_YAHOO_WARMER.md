@@ -37,7 +37,7 @@ worker temas ediyor — bu da kontrollü hızda (8 paralel, 150ms aralıklı).
 
 ```bash
 cd C:\dev\hanefinans
-npx wrangler d1 execute hanefinans-auth --file=./functions/migrations/003_yahoo_cache.sql --remote
+npx wrangler d1 execute hanefinans-db --file=./functions/migrations/003_yahoo_cache.sql --remote
 ```
 
 Beklenen çıktı: `Executed 2 commands in X ms`.
@@ -48,7 +48,7 @@ Beklenen çıktı: `Executed 2 commands in X ms`.
 npx wrangler d1 list
 ```
 
-Çıkan listede `hanefinans-auth` satırının `database_id` sütunundaki uuid'yi kopyala.
+Çıkan listede `hanefinans-db` satırının `database_id` sütunundaki uuid'yi kopyala.
 
 Şu dosyayı düzenle:
 
@@ -189,11 +189,11 @@ yap.
 
 ### Proxy hâlâ Yahoo'ya gidiyor (X-Source: UPSTREAM)
 Cache miss demek. Şunları kontrol et:
-1. `npx wrangler d1 execute hanefinans-auth --command "SELECT COUNT(*) FROM yahoo_cache" --remote`
+1. `npx wrangler d1 execute hanefinans-db --command "SELECT COUNT(*) FROM yahoo_cache" --remote`
    → 400+ olmalı
 2. Adım 4'teki warm-up'ı çalıştır
 3. Proxy'nin `env.DB` binding'i çalışıyor mu — Cloudflare Pages → Settings →
-   Functions → D1 namespace bindings → `DB` → `hanefinans-auth` olmalı
+   Functions → D1 namespace bindings → `DB` → `hanefinans-db` olmalı
 
 ## Eski cache satırlarını manuel sil
 
@@ -204,7 +204,7 @@ curl https://hane-finans-yahoo-warmer.<your-subdomain>.workers.dev/cleanup
 Veya tüm cache'i sıfırla:
 
 ```bash
-npx wrangler d1 execute hanefinans-auth --command "DELETE FROM yahoo_cache" --remote
+npx wrangler d1 execute hanefinans-db --command "DELETE FROM yahoo_cache" --remote
 ```
 
 Sonra yeni warm-up tetikle.

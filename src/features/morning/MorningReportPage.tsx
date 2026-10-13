@@ -16,7 +16,7 @@ import {
   supportResistance, type OHLC,
 } from '@/lib/indicators';
 import {
-  analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict,
+  analyzeTimeframe, aggregateTo4h, BIST_4H, computeBigPlayerLean, buildVerdict,
   type MultiTimeframeResult, type TimeframeAnalysis,
 } from '@/lib/multiTimeframe';
 import { useAuth, isAdmin, isPro } from '@/store/auth';
@@ -267,7 +267,7 @@ export function MorningReportPage() {
           // 4h trend (1h barlardan üret)
           let tf4h: TimeframeAnalysis | null = null;
           if (hist1h && hist1h.bars.length > 0) {
-            const bars4h = aggregateTo4h(hist1h.bars);
+            const bars4h = aggregateTo4h(hist1h.bars, BIST_4H);
             const closes4h = bars4h.map((b) => b.close);
             tf4h = analyzeTimeframe(closes4h, [5, 8, 13, 21]);
           }

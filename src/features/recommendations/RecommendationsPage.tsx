@@ -13,7 +13,7 @@ import { loadStocks, clearServiceCaches } from '@/data/services';
 import { fetchHistoricalYahoo, fetchIndexYahoo } from '@/data/api/yahoo';
 import { ema, type OHLC } from '@/lib/indicators';
 import {
-  analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict,
+  analyzeTimeframe, aggregateTo4h, BIST_4H, computeBigPlayerLean, buildVerdict,
   type TimeframeAnalysis, type MultiTimeframeResult,
 } from '@/lib/multiTimeframe';
 import { sendTelegram, getTelegramChatId } from '@/lib/telegram';
@@ -263,7 +263,7 @@ export function RecommendationsPage() {
 
           if (hist1h && hist1h.bars.length > 0) {
             trend1h = analyzeTimeframe(hist1h.bars.map((b) => b.close), [5, 8, 13, 21, 55]);
-            trend4h = analyzeTimeframe(aggregateTo4h(hist1h.bars).map((b) => b.close), [5, 8, 13, 21]);
+            trend4h = analyzeTimeframe(aggregateTo4h(hist1h.bars, BIST_4H).map((b) => b.close), [5, 8, 13, 21]);
           }
           if (hist1d && hist1d.bars.length > 0) {
             const closes1d = hist1d.bars.map((b) => b.close);

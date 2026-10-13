@@ -17,7 +17,7 @@
  */
 
 import {
-  type Env, hashPassword, jsonResponse, getAuthedUser,
+  type Env, hashPassword, verifyPassword, jsonResponse, getAuthedUser, bumpTokenVersion, signJwt, makeSessionCookie,
 } from './_utils';
 
 interface ChangePasswordBody {
@@ -48,8 +48,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return jsonResponse({ ok: false, error: 'Yeni şifre eskisinden farklı olmalı' }, 400);
   }
 
-  const currentHash = await hashPassword(auth.user.email, currentPassword);
-  if (currentHash !== auth.user.password_hash) {
+  const verdict = await verifyPassword(auth.user.email, currentPassword, auth.user.password_hash);
+  if (!verdict.ok) {
     return jsonResponse({ ok: false, error: 'Mevcut şifre yanlış' }, 401);
   }
 
@@ -59,5 +59,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .bind(newHash, auth.user.id)
     .run();
 
-  return jsonResponse({ ok: true }, 200);
+  // 13 Eki 2026 (P1): diğer cihazlardaki oturumları düşür; bu cihaza yeni token ver.
+  const tv = await bumpTokenVersion(env.DB, auth.user.id);
+  const token = await signJwt(auth.user.id, auth.user.email, env.AUTH_TOKEN_SECRET!, tv);
+
+  return jsonResponse({ ok: true, sessionsRevoked: true }, 200, {
+    'Set-Cookie': makeSessionCookie(token),
+  });
 };

@@ -23,6 +23,8 @@ export interface UserRow {
   avatar_color: string | null;
   /** DB kolonu — migration 002 ile eklendi. Eski satırlarda null gelebilir. */
   is_admin?: 0 | 1 | null;
+  /** Migration 018 — JWT iptali için. Yoksa 0. */
+  token_version?: number | null;
   created_at: number;
   last_login_at: number | null;
 }
@@ -87,14 +89,59 @@ export function randomColor(seed: string): string {
   return `hsl(${Math.abs(h) % 360}, 65%, 55%)`;
 }
 
-// Aynı hash algoritması frontend ile (mevcut auth.ts) eşleşir:
-// SHA-256("email::password::hane-finans")
-export async function hashPassword(email: string, password: string): Promise<string> {
+// --- Şifre hash ---
+//
+// ESKİ (legacy): SHA-256("email::password::hane-finans") — salt yok, tek tur. DB
+// sızarsa hızlı kırılır. 13 Eki 2026 denetimi (P1) ile PBKDF2'ye geçildi.
+//
+// YENİ: "pbkdf2$<iter>$<saltB64url>$<hashB64url>" — PBKDF2-HMAC-SHA256, 16 byte
+// rastgele salt, 210.000 iterasyon (OWASP 2023 önerisi). Kademeli geçiş: eski
+// hash ile giriş başarılı olunca `needsRehash` döner, login yeni hash'i yazar.
+
+export async function hashPasswordLegacy(email: string, password: string): Promise<string> {
   const enc = new TextEncoder().encode(`${email.toLowerCase()}::${password}::hane-finans`);
   const buf = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
+}
+
+const PBKDF2_ITER = 210_000;
+
+async function pbkdf2(password: string, salt: Uint8Array, iter: number): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt as BufferSource, iterations: iter }, key, 256);
+  return new Uint8Array(bits);
+}
+
+/** Yeni kayıt / şifre değişikliği için PBKDF2 hash üretir. */
+export async function hashPassword(_email: string, password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2(password, salt, PBKDF2_ITER);
+  return `pbkdf2$${PBKDF2_ITER}$${base64urlEncode(salt)}$${base64urlEncode(hash)}`;
+}
+
+/**
+ * Kayıtlı hash'e karşı doğrula. Legacy SHA-256 hash'leri de kabul eder ve
+ * `needsRehash:true` ile geri döner — çağıran taraf DB'yi günceller.
+ */
+export async function verifyPassword(
+  email: string,
+  password: string,
+  stored: string,
+): Promise<{ ok: boolean; needsRehash: boolean }> {
+  if (!stored) return { ok: false, needsRehash: false };
+  if (stored.startsWith('pbkdf2$')) {
+    const [, iterStr, saltB64, hashB64] = stored.split('$');
+    const iter = parseInt(iterStr, 10);
+    if (!Number.isFinite(iter) || !saltB64 || !hashB64) return { ok: false, needsRehash: false };
+    const calc = base64urlEncode(await pbkdf2(password, base64urlDecode(saltB64), iter));
+    const ok = timingSafeEqual(calc, hashB64);
+    return { ok, needsRehash: ok && iter < PBKDF2_ITER };
+  }
+  const legacy = await hashPasswordLegacy(email, password);
+  const ok = timingSafeEqual(legacy, stored);
+  return { ok, needsRehash: ok };
 }
 
 // --- JWT (HS256) ---
@@ -104,6 +151,8 @@ interface JwtPayload {
   email: string;
   iat: number;
   exp: number;
+  /** Token sürümü — users.token_version ile eşleşmezse oturum geçersiz (13 Eki 2026). */
+  tv?: number;
 }
 
 function base64urlEncode(buf: ArrayBuffer | Uint8Array): string {
@@ -156,11 +205,11 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function signJwt(uid: number, email: string, secret: string): Promise<string> {
+export async function signJwt(uid: number, email: string, secret: string, tokenVersion = 0): Promise<string> {
   const header = base64urlEncode(new TextEncoder().encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
   const now = nowSec();
   const payload = base64urlEncode(new TextEncoder().encode(JSON.stringify({
-    uid, email, iat: now, exp: now + JWT_TTL_SEC,
+    uid, email, iat: now, exp: now + JWT_TTL_SEC, tv: tokenVersion,
   } satisfies JwtPayload)));
   const sig = await hmacSha256(secret, `${header}.${payload}`);
   return `${header}.${payload}.${sig}`;
@@ -225,7 +274,23 @@ export async function getAuthedUser(req: Request, env: Env): Promise<{ payload: 
   if (!payload) return null;
   const row = await env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(payload.uid).first<UserRow>();
   if (!row) return null;
+  // Token sürümü: şifre değişti/sıfırlandı → users.token_version arttı → eski
+  // token'lar düşer. Kolon yoksa (migration 018 uygulanmadı) 0 kabul edilir.
+  const dbTv = row.token_version ?? 0;
+  const tokTv = payload.tv ?? 0;
+  if (dbTv !== tokTv) return null;
   return { payload, user: row };
+}
+
+/** Şifre değişikliği/sıfırlama sonrası tüm oturumları düşür; yeni sürümü döner. */
+export async function bumpTokenVersion(db: D1Database, uid: number): Promise<number> {
+  try {
+    await db.prepare('UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?').bind(uid).run();
+    const r = await db.prepare('SELECT token_version FROM users WHERE id = ?').bind(uid).first<{ token_version: number }>();
+    return r?.token_version ?? 0;
+  } catch {
+    return 0; // kolon yok → sürüm 0 ile devam (eski davranış)
+  }
 }
 
 export async function requireAdmin(req: Request, env: Env): Promise<{ payload: JwtPayload; user: UserRow } | Response> {

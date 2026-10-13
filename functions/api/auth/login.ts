@@ -11,7 +11,7 @@
  */
 
 import {
-  type Env, type UserRow, hashPassword, signJwt, makeSessionCookie,
+  type Env, type UserRow, hashPassword, verifyPassword, signJwt, makeSessionCookie,
   publicUser, jsonResponse,
 } from './_utils';
 import { rateLimitCheck, getClientIp } from '../../_rate-limit';
@@ -70,21 +70,27 @@ export const onRequestPost: PagesFunction<LoginEnv> = async ({ request, env }) =
 
   const row = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(email).first<UserRow>();
 
-  // Timing balance (#Ö3): kullanıcı yoksa da hash hesapla
-  const expectedHash = row?.password_hash ?? '\x00invalid';
-  const inputHash = row
-    ? await hashPassword(email, password)
-    : await hashPassword(email, DUMMY_PASSWORD);
+  // Timing balance (#Ö3): kullanıcı yoksa da hash hesapla (PBKDF2 maliyeti eşitlensin)
+  const verdict = row
+    ? await verifyPassword(email, password, row.password_hash)
+    : await verifyPassword(email, DUMMY_PASSWORD, await hashPassword(email, DUMMY_PASSWORD)).then(() => ({ ok: false, needsRehash: false }));
 
-  if (!row || inputHash !== expectedHash) {
+  if (!row || !verdict.ok) {
     return jsonResponse({ ok: false, error: GENERIC_AUTH_ERROR }, 401);
   }
 
   const now = Date.now();
-  await env.DB.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').bind(now, row.id).run();
+  // 13 Eki 2026: legacy SHA-256 hash ile giriş → PBKDF2'ye kademeli taşı
+  if (verdict.needsRehash) {
+    const newHash = await hashPassword(email, password);
+    await env.DB.prepare('UPDATE users SET password_hash = ?, last_login_at = ? WHERE id = ?').bind(newHash, now, row.id).run();
+    row.password_hash = newHash;
+  } else {
+    await env.DB.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').bind(now, row.id).run();
+  }
   row.last_login_at = now;
 
-  const token = await signJwt(row.id, row.email, env.AUTH_TOKEN_SECRET);
+  const token = await signJwt(row.id, row.email, env.AUTH_TOKEN_SECRET, row.token_version ?? 0);
   return jsonResponse({ ok: true, user: publicUser(row) }, 200, {
     'Set-Cookie': makeSessionCookie(token),
   });

@@ -120,12 +120,12 @@ export async function findOrCreateOauthUser(
 export async function issueSessionAndRedirect(
   env: Env,
   user: UserRow,
-  redirectTo = '/panel',
+  redirectTo = '/',
 ): Promise<Response> {
   if (!env.AUTH_TOKEN_SECRET) {
     return new Response('AUTH_TOKEN_SECRET not configured', { status: 500 });
   }
-  const token = await signJwt(user.id, user.email, env.AUTH_TOKEN_SECRET);
+  const token = await signJwt(user.id, user.email, env.AUTH_TOKEN_SECRET, user.token_version ?? 0);
   const cookie = makeSessionCookie(token);
   return new Response(null, {
     status: 302,

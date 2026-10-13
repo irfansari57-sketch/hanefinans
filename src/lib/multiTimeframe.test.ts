@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   analyzeTimeframe,
   aggregateTo4h,
+  BIST_4H,
   buildVerdict,
   type MultiTimeframeResult,
 } from './multiTimeframe';
@@ -49,8 +50,13 @@ describe('aggregateTo4h', () => {
     volume: 100,
   });
 
-  it('4 adet 1h bar → 1 adet 4h bar üretir', () => {
-    const bars1h = [mkBar(1, 10), mkBar(2, 12), mkBar(3, 11), mkBar(4, 13)];
+  // Saatlik epoch (saniye) üretici — UTC 2026-10-13 başlangıç
+  const H = 3600;
+  const day0 = Math.floor(Date.parse('2026-10-13T00:00:00Z') / 1000);
+  const at = (hourUtc: number, c: number) => mkBar(day0 + hourUtc * H, c);
+
+  it('UTC 00-03 saatleri → 1 adet 4h bar (varsayılan hizalama)', () => {
+    const bars1h = [at(0, 10), at(1, 12), at(2, 11), at(3, 13)];
     const bars4h = aggregateTo4h(bars1h);
     expect(bars4h).toHaveLength(1);
     expect(bars4h[0].open).toBe(10);
@@ -60,11 +66,31 @@ describe('aggregateTo4h', () => {
     expect(bars4h[0].volume).toBe(400);
   });
 
-  it('eşit olmayan bölme — son chunk daha az bar içerebilir', () => {
-    const bars1h = Array.from({ length: 6 }, (_, i) => mkBar(i + 1, 10 + i));
+  it('kova sınırı saate göre: UTC 00-05 → 2 bar (00-03, 04-05)', () => {
+    const bars1h = Array.from({ length: 6 }, (_, i) => at(i, 10 + i));
     const bars4h = aggregateTo4h(bars1h);
     expect(bars4h).toHaveLength(2);
-    expect(bars4h[1].open).toBe(14); // 5. bar
+    expect(bars4h[1].open).toBe(14); // 5. bar (UTC 04)
+  });
+
+  it('BIST hizası: TR 10-13 / 14-17 / 18 ayrı kovalar, dizinin ortasından başlasa da', () => {
+    // TR 10:00 = UTC 07:00. Dizi TR 11:00'dan başlıyor (eski sürüm 4'erli keserdi: 11-14 → yanlış)
+    const trHours = [11, 12, 13, 14, 15, 16, 17, 18];
+    const bars1h = trHours.map((h, i) => at(h - 3, 100 + i));
+    const bars4h = aggregateTo4h(bars1h, BIST_4H);
+    expect(bars4h).toHaveLength(3);
+    expect(bars4h[0].open).toBe(100); // TR 11-13 (kısmi ilk kova)
+    expect(bars4h[1].open).toBe(103); // TR 14-17
+    expect(bars4h[2].open).toBe(107); // TR 18 (kapanış kovası)
+  });
+
+  it('gün değişince yeni bar başlar (aynı kova numarası olsa bile)', () => {
+    const d1 = [at(7, 1), at(8, 2)];                // 13 Eki TR 10-11
+    const d2 = [at(24 + 7, 3), at(24 + 8, 4)];      // 14 Eki TR 10-11
+    const bars4h = aggregateTo4h([...d1, ...d2], BIST_4H);
+    expect(bars4h).toHaveLength(2);
+    expect(bars4h[0].close).toBe(2);
+    expect(bars4h[1].open).toBe(3);
   });
 });
 

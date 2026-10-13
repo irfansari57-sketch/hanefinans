@@ -300,24 +300,31 @@ export async function fetchHistoricalYahoo(
     const meta = result?.meta;
     const timestamps = result?.timestamp ?? [];
     const quote = result?.indicators?.quote?.[0];
-    const closes = result?.indicators?.adjclose?.[0]?.adjclose ?? quote?.close ?? [];
+    const rawCloses = quote?.close ?? [];
+    const adjCloses = result?.indicators?.adjclose?.[0]?.adjclose;
+    const closes = adjCloses ?? rawCloses;
     if (timestamps.length === 0 || closes.length === 0) return null;
 
+    // 13 Eki 2026 (denetim §3 bulgu #1): kapanış `adjclose`, O/H/L ham geliyordu;
+    // bölünme/bedelsiz sonrası ADX, Bollinger ve destek/direnç bozuluyordu.
+    // Artık O/H/L da aynı düzeltme faktörüyle (adj/raw) ölçekleniyor.
     const pairs: { date: number; close: number }[] = [];
     const bars: OhlcvBar[] = [];
     for (let i = 0; i < timestamps.length; i++) {
       const c = closes[i];
+      if (c == null) continue;
+      const raw = rawCloses[i];
+      const factor = adjCloses && raw != null && raw > 0 && Number.isFinite(c / raw) ? c / raw : 1;
       const o = quote?.open?.[i];
       const h = quote?.high?.[i];
       const l = quote?.low?.[i];
       const v = quote?.volume?.[i];
-      if (c == null) continue;
       pairs.push({ date: timestamps[i] * 1000, close: c });
       bars.push({
         time: timestamps[i],
-        open: o ?? c,
-        high: h ?? c,
-        low: l ?? c,
+        open: o != null ? o * factor : c,
+        high: h != null ? h * factor : c,
+        low: l != null ? l * factor : c,
         close: c,
         volume: v ?? 0,
       });

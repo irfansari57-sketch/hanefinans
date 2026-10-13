@@ -8,12 +8,14 @@
  */
 
 import {
-  type Env, type UserRow, getAuthedUser, hashPassword, isAdminEmail,
+  type Env, getAuthedUser, verifyPassword, isAdminEmail,
   clearSessionCookie, jsonResponse,
 } from './_utils';
 
 interface DeleteAccountRequest {
-  password: string;
+  password?: string;
+  /** OAuth (şifresiz) hesaplar için onay kelimesi: "SIL" */
+  confirm?: string;
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -27,23 +29,54 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try { body = await request.json(); }
   catch { return jsonResponse({ ok: false, error: 'Geçersiz JSON' }, 400); }
 
-  if (!body.password) return jsonResponse({ ok: false, error: 'Şifre zorunlu' }, 400);
+  if (!body.password && !body.confirm) return jsonResponse({ ok: false, error: 'Şifre (veya OAuth için confirm) zorunlu' }, 400);
 
   // Admin hesapları self-delete edemez (data integrity)
   if (isAdminEmail(auth.user.email)) {
     return jsonResponse({ ok: false, error: 'Admin hesapları silinemez' }, 403);
   }
 
-  // Şifre doğrulama
-  const inputHash = await hashPassword(auth.user.email, body.password);
-  if (inputHash !== auth.user.password_hash) {
-    return jsonResponse({ ok: false, error: 'Şifre yanlış' }, 401);
+  // Şifre doğrulama. OAuth kullanıcısının (password_hash='') şifresi yok →
+  // body.confirm === 'SIL' ile onay (13 Eki 2026: OAuth hesapları silinemiyordu, KVKK m.7).
+  const isOAuthUser = !auth.user.password_hash;
+  if (isOAuthUser) {
+    if (body.confirm !== 'SIL') {
+      return jsonResponse({ ok: false, error: 'Onay için confirm alanına "SIL" yaz', code: 'OAUTH_CONFIRM_REQUIRED' }, 400);
+    }
+  } else {
+    const verdict = await verifyPassword(auth.user.email, body.password, auth.user.password_hash);
+    if (!verdict.ok) {
+      return jsonResponse({ ok: false, error: 'Şifre yanlış' }, 401);
+    }
   }
 
-  // Sil
-  await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(auth.user.id).run();
+  // 13 Eki 2026 (P1, KVKK m.7): users dışındaki tüm kişisel veri tabloları da silinir.
+  // users'a FK yok → elle. Tablo yoksa (migration eksik) o satır atlanır.
+  const uid = auth.user.id;
+  const tables = [
+    'portfolio_txns',          // positions'tan önce (FK CASCADE var ama garanti)
+    'portfolio_positions',
+    'portfolio_snapshots',
+    'portfolio_health_scores',
+    'price_alerts',
+    'push_subscriptions',
+    'predictions',
+    'user_watchlist',
+    'user_streaks',
+    'deep_analyses',
+    'telemetry_events',
+  ];
+  const deleted: Record<string, number> = {};
+  for (const t of tables) {
+    try {
+      const r = await env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(uid).run();
+      deleted[t] = r.meta?.changes ?? 0;
+    } catch { /* tablo/kolon yok */ }
+  }
+  await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid).run();
+  deleted.users = 1;
 
-  return jsonResponse({ ok: true }, 200, {
+  return jsonResponse({ ok: true, deleted }, 200, {
     'Set-Cookie': clearSessionCookie(),
   });
 };

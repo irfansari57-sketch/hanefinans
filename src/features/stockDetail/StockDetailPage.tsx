@@ -24,7 +24,7 @@ import { fetchHistoricalYahoo, fetchIndexYahoo, computePeriodReturns, type Histo
 import { loadStocks, loadNews } from '@/data/services';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, closedBarsOnly, type OHLC } from '@/lib/indicators';
 import { isBistOpen } from '@/lib/marketCalendar';
-import { analyzeTimeframe, aggregateTo4h, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
+import { analyzeTimeframe, aggregateTo4h, BIST_4H, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { DeepAnalysisCard } from './sections/DeepAnalysisCard';
 import { FinancialStatementsCard } from './sections/FinancialStatementsCard';
@@ -165,7 +165,9 @@ export function StockDetailPage() {
         let lean: 'alıcı' | 'satıcı' | 'kararsız' = 'kararsız';
         if (hist1h && hist1h.bars.length > 0) {
           tf1h = analyzeTimeframe(hist1h.bars.map((b) => b.close), [5, 8, 13, 21, 55]);
-          tf4h = analyzeTimeframe(aggregateTo4h(hist1h.bars).map((b) => b.close), [5, 8, 13, 21]);
+          // BIST: TR saati (UTC+3), seans 10:00 → 10-13 / 14-17 / 18 kovaları. US: NY seansı 09:30 ≈ UTC-4 (EDT) kaba yaklaşım.
+          const agg = isUs ? aggregateTo4h(hist1h.bars, { tzOffsetHours: -4, sessionStartHour: 9 }) : aggregateTo4h(hist1h.bars, BIST_4H);
+          tf4h = analyzeTimeframe(agg.map((b) => b.close), [5, 8, 13, 21]);
         }
         if (hist && hist.bars.length > 0) {
           const closes1d = hist.bars.map((b) => b.close);

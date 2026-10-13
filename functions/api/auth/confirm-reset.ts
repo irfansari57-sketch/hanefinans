@@ -7,18 +7,18 @@
  *  2) Yeni şifreyi hash'le ve DB'ye yaz
  *  3) JWT cookie set et — kullanıcı otomatik login
  *
- * Güvenlik:
- *  - Stateless token replay riski var → kullanıcının lazy-migrate yapması gerekir
- *    (used_tokens tablosu sonraki sprint #Ö17). Şu an 30 dk window içinde
- *    aynı token birden fazla kullanılabilir; kabul edilebilir trade-off.
+ * Güvenlik (13 Eki 2026 güncellemesi):
+ *  - Token tek kullanımlık: nonce başına 1 hak (rate_limits, 30 dk) → replay yok.
  *  - Şifre kuralı: min 8 karakter (#Ö11)
- *  - Hash: SHA-256 + sabit pepper (mevcut sistem; PBKDF2 migration #K3 ayrı)
+ *  - Hash: PBKDF2-HMAC-SHA256 (210k iter, salt) — bkz. _utils.hashPassword
+ *  - token_version artar → diğer cihazlardaki oturumlar düşer.
  */
 
 import { verifyToken, corsPreflightResponse, type ResetPayload } from './_token';
 import {
-  type Env, type UserRow, hashPassword, signJwt, makeSessionCookie, publicUser, jsonResponse,
+  type Env, type UserRow, hashPassword, signJwt, makeSessionCookie, publicUser, jsonResponse, bumpTokenVersion,
 } from './_utils';
+import { rateLimitCheck } from '../../_rate-limit';
 
 interface ConfirmResetBody {
   token: string;
@@ -60,6 +60,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return jsonResponse({ ok: false, error: 'Hesap bulunamadı' }, 410);
   }
 
+  // 13 Eki 2026 (P1): tek kullanımlık token — nonce başına 1 hak (rate_limits tablosu, 30 dk pencere).
+  // Replay: aynı bağlantı ikinci kez kullanılırsa reddedilir.
+  try {
+    const once = await rateLimitCheck(env.DB, 'reset-token-use', payload.nonce, 1, 30 * 60);
+    if (!once.allowed) {
+      return jsonResponse({ ok: false, error: 'Bu bağlantı zaten kullanıldı — yeni sıfırlama iste' }, 401);
+    }
+  } catch { /* rate_limits yoksa devam */ }
+
   const newHash = await hashPassword(email, newPassword);
   const now = Date.now();
   await env.DB
@@ -67,10 +76,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .bind(newHash, now, row.id)
     .run();
 
+  // Tüm mevcut oturumları düşür (şifre sıfırlandı), bu cihaza yeni token ver.
+  const tv = await bumpTokenVersion(env.DB, row.id);
+
   // Otomatik login — yeni JWT cookie
   row.password_hash = newHash;
   row.last_login_at = now;
-  const jwt = await signJwt(row.id, row.email, env.AUTH_TOKEN_SECRET);
+  const jwt = await signJwt(row.id, row.email, env.AUTH_TOKEN_SECRET, tv);
 
   return jsonResponse({ ok: true, user: publicUser(row) }, 200, {
     'Set-Cookie': makeSessionCookie(jwt),

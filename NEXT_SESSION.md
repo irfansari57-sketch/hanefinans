@@ -36,12 +36,12 @@
 
 - **D1. Metals-spot D1 dolduruldu mu?** — 2026-08-30 seansında migration + cron yazıldı ama GitHub Actions manuel tetiklendi mi? Doğrula.
   ```powershell
-  npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote
+  npx wrangler d1 execute hanefinans-db --file=functions/migrations/014_metals_spot.sql --remote
   # + GitHub Actions "Refresh Metals Spot" → Run workflow
   ```
 - **D2. Watchlist D1 dolduruldu mu?** — 015 migration çalıştırılmalı.
   ```powershell
-  npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote
+  npx wrangler d1 execute hanefinans-db --file=functions/migrations/015_watchlist.sql --remote
   ```
 - **D3. Anthropic Claude 4.5 test** — 2026-08-30 seansında model chain güncellendi. Live test: /sorgu → doğal dil query → 200 dönmeli. Kredi durumuna bak.
 - **D4. TEFAS scraper stabilite** — geçmiş 30 gün log kontrol: hafta içi her gün 1d/1w güncelleme yaptı mı?
@@ -79,8 +79,8 @@ Bu 2 D1 migration çalıştırılmadığından **watchlist cloud sync** ve **met
 
 ```powershell
 cd C:\dev\hanefinans
-npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote
-npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote
+npx wrangler d1 execute hanefinans-db --file=functions/migrations/014_metals_spot.sql --remote
+npx wrangler d1 execute hanefinans-db --file=functions/migrations/015_watchlist.sql --remote
 ```
 
 Sonra GitHub Actions → **"Refresh Metals Spot"** → Run workflow (D1 doldurmak için).
@@ -143,7 +143,7 @@ Sonra GitHub Actions → **"Refresh Metals Spot"** → Run workflow (D1 doldurma
 - `functions/api/spot-metals.ts` — STUB kaldırıldı, D1'den okuma, edge cache 60s, XPD dahil
 - `.github/workflows/metals-refresh.yml` — Hafta içi her 30dk / hafta sonu 2h
 - `src/data/api/spotMetals.ts` — XPD response type
-- **KULLANICI:** `npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote` + Actions "Run workflow" manuel tetikleme
+- **KULLANICI:** `npx wrangler d1 execute hanefinans-db --file=functions/migrations/014_metals_spot.sql --remote` + Actions "Run workflow" manuel tetikleme
 
 ### 4) Task #323 — Watchlist D1 Sync
 - `functions/migrations/015_watchlist.sql` — `user_watchlist` tablo (user_id + symbol + kind + position UNIQUE)
@@ -151,7 +151,7 @@ Sonra GitHub Actions → **"Refresh Metals Spot"** → Run workflow (D1 doldurma
 - `src/data/watchlistSync.ts` — 4 helper (cloudFetch/Add/Remove/Replace)
 - `src/store/watchlist.ts` — `cloudEnabled` flag + `syncFromCloud()` / `migrateToCloud()` / `disableCloud()` + optimistic UI + fire-and-forget cloud POST/DELETE + `partialize` (cloudEnabled persist edilmez)
 - `src/app/Layout.tsx` — login effect: migrate → sync; logout: disableCloud
-- **KULLANICI:** `npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote`
+- **KULLANICI:** `npx wrangler d1 execute hanefinans-db --file=functions/migrations/015_watchlist.sql --remote`
 - **NOT:** siteSettings admin-global, D1'e taşımaya gerek yok. User prefs (tema vb.) localStorage'da makul kalıyor
 
 ### 5) Task #331 — Portföy PDF Export
@@ -207,8 +207,8 @@ git push
 **Post-deploy (bir defalık):**
 ```powershell
 # D1 migrations
-npx wrangler d1 execute finansal-asistan --file=functions/migrations/014_metals_spot.sql --remote
-npx wrangler d1 execute finansal-asistan --file=functions/migrations/015_watchlist.sql --remote
+npx wrangler d1 execute hanefinans-db --file=functions/migrations/014_metals_spot.sql --remote
+npx wrangler d1 execute hanefinans-db --file=functions/migrations/015_watchlist.sql --remote
 
 # Metals cron ilk tetikleme (D1 doldurmak icin)
 # GitHub Actions → "Refresh Metals Spot" → Run workflow

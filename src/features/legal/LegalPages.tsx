@@ -13,6 +13,9 @@ const COMPANY = {
   brand: 'InvestliQ',
   website: 'investliq.com',
   supportEmail: 'destek@investliq.com',
+  // 13 Eki 2026 denetim notu: Aşağıdaki üç alan ticari faaliyet (ücretli üyelik)
+  // başlamadan ÖNCE doldurulmalı — 6563 sayılı Kanun ve Mesafeli Sözleşmeler
+  // Yönetmeliği zorunlu kılar. Boşken UI'da "Bilgi güncelleniyor" yazar.
   address: 'İstanbul, Türkiye', // TODO: tam adres ekle
   mersis: '', // TODO: MERSİS numarası
   taxNumber: '', // TODO: VKN
@@ -100,11 +103,33 @@ export function KvkkPage() {
 
       <H2>4. Verilerin Aktarıldığı Taraflar</H2>
       <ul className="list-disc pl-6 space-y-1">
-        <li><strong>Iyzico Ödeme Hizmetleri A.Ş.</strong> — ödeme işlemleri</li>
-        <li><strong>Cloudflare, Inc.</strong> — barındırma ve içerik dağıtım altyapısı</li>
+        <li><strong>Cloudflare, Inc.</strong> (ABD) — barındırma, içerik dağıtımı ve veritabanı (D1) altyapısı; hesap ve portföy verileriniz burada saklanır</li>
+        <li><strong>Anthropic, PBC</strong> (ABD) — yapay zekâ destekli analiz özelliklerini kullandığınızda, analiz için gerekli portföy pozisyonları/sembolleri ve haber başlıkları model sağlayıcısına iletilir; e-posta ve kimlik bilgileri gönderilmez</li>
+        <li><strong>Resend, Inc.</strong> (ABD) — e-posta doğrulama ve şifre sıfırlama mesajlarının iletimi (e-posta adresi)</li>
+        <li><strong>Google LLC / Apple Inc.</strong> (ABD) — "Google/Apple ile giriş" tercih ettiğinizde kimlik doğrulama (e-posta, ad)</li>
+        <li><strong>Telegram FZ-LLC</strong> (BAE) — Telegram bildirimlerini etkinleştirdiyseniz, sağladığınız chat kimliğine alarm mesajları</li>
+        <li><strong>Sentry (Functional Software, Inc.)</strong> (ABD) — hata izleme etkinse teknik hata kayıtları (kişisel veri içermeyecek şekilde yapılandırılmıştır)</li>
+        <li><strong>Iyzico Ödeme Hizmetleri A.Ş.</strong> — ücretli üyelik başlatıldığında ödeme işlemleri (şu an ödeme alınmamaktadır)</li>
         <li><strong>Yetkili kamu kurumları</strong> — yasal talepler doğrultusunda (GİB, mahkemeler, vb.)</li>
-        <li><strong>E-fatura sağlayıcımız</strong> — fatura düzenleme</li>
       </ul>
+
+      <H2>4a. Yurt Dışına Aktarım (KVKK m.9)</H2>
+      <P>
+        Yukarıda ülkesi belirtilen hizmet sağlayıcıların sunucuları Türkiye dışındadır. Bu aktarımlar,
+        hizmetin sunulabilmesi için zorunlu olup KVKK m.9 kapsamında açık rızanıza ve/veya Kişisel
+        Verileri Koruma Kurulu tarafından kabul edilen standart sözleşme/taahhütname mekanizmalarına
+        dayanır. Yapay zekâ analizi ve Telegram bildirimi gibi isteğe bağlı özellikleri kullanmadığınız
+        sürece ilgili sağlayıcıya veri aktarılmaz.
+      </P>
+
+      <H2>4b. Saklama ve Silme</H2>
+      <P>
+        Hesabınızı Ayarlar &gt; Hesabı Sil üzerinden kapattığınızda; hesap, portföy pozisyonları ve
+        işlemleri, alarmlar, bildirim abonelikleri, tahminler, takip listesi ve yapay zekâ analiz kayıtları
+        sunucularımızdan derhal silinir. Yedek kopyalar altyapı sağlayıcısının saklama süresi (en fazla
+        30 gün) içinde silinir. Yasal saklama yükümlülüğü bulunan kayıtlar (fatura vb.) ilgili mevzuat
+        süresince tutulur.
+      </P>
 
       <H2>5. Kişisel Veri Toplamanın Yöntemi ve Hukuki Sebebi</H2>
       <P>
@@ -357,7 +382,7 @@ export function CerezPolitikasiPage() {
           <strong>Zorunlu Çerezler:</strong> Oturum yönetimi, güvenlik ve temel işlevsellik için
           gerekli. Onayınız olmadan da kullanılır.
           <br />
-          <span className="text-xs text-slate-500">Örn: fa.auth.session.v1 (oturum), fa.disclaimer.acceptedAt.v1 (KVKK onayı)</span>
+          <span className="text-xs text-slate-500">Örn: fa_session (HttpOnly oturum çerezi, 30 gün), fa.disclaimer.acceptedAt.v1 (KVKK onayı), fa.theme (tema)</span>
         </li>
         <li>
           <strong>İşlevsel Çerezler:</strong> Watchlist, tema, dil gibi tercihlerinizi hatırlar.

@@ -389,7 +389,11 @@ async function fetchSource(src: RssSource, timeoutMs?: number): Promise<NewsItem
   // Google News RSS feed'leri 3-8sn alabilir, local kaynaklar 2-3sn.
   // Google News için 15sn, diğerleri için 6sn timeout.
   const isGoogleNews = src.url.includes('news.google.com');
-  const actualTimeout = timeoutMs ?? (isGoogleNews ? 15000 : 6000);
+  // 13 Eki 2026: 15sn/6sn → 4.5sn/3.5sn. Endpoint toplamı en yavaş kaynak kadar
+  // sürüyordu (ölçüm: 15.7sn) ve panel aggregator 6sn'de pes edip partial
+  // dönüyordu → panel her ziyarette 6sn iskelet. Yavaş kaynak o turu atlar;
+  // edge cache (aşağıda) sonraki isteklerde anında servis eder.
+  const actualTimeout = timeoutMs ?? (isGoogleNews ? 4500 : 3500);
   // Google News bot UA'yı bloklar — gerçek browser UA kullan
   const userAgent = isGoogleNews
     ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -414,10 +418,20 @@ async function fetchSource(src: RssSource, timeoutMs?: number): Promise<NewsItem
   }
 }
 
-export const onRequestGet: PagesFunction = async ({ request }) => {
+export const onRequestGet: PagesFunction = async ({ request, waitUntil }) => {
   const url = new URL(request.url);
   const max = Math.min(parseInt(url.searchParams.get('max') ?? '30', 10) || 30, 60);
   const queryFilter = url.searchParams.get('q')?.toLowerCase() ?? '';
+
+  // 13 Eki 2026: açık edge cache (caches.default). Cache-Control başlığı tek
+  // başına worker→worker alt isteklerde (panel aggregator) güvenilir hit
+  // vermiyordu; her panel isteği 13 RSS kaynağını yeniden çekiyordu.
+  const cache = (caches as unknown as { default: Cache }).default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.searchParams.set('cv', '2');
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+  const hit = await cache.match(cacheKey);
+  if (hit && hit.ok) return hit;
 
   // Tüm kaynaklardan paralel çek
   const results = await Promise.all(SOURCES.map((s) => fetchSource(s)));
@@ -485,11 +499,15 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
   // İlk N tane
   const data = pinned.slice(0, max);
 
-  return new Response(JSON.stringify({ ok: true, count: data.length, data }), {
+  // Hiç kaynak gelmediyse (tüm RSS'ler timeout/engel) boş sonucu cache'leme.
+  const empty = combined.length === 0;
+  const resp = new Response(JSON.stringify({ ok: true, count: data.length, data }), {
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=60, s-maxage=60',
+      'Cache-Control': empty ? 'no-store' : 'public, max-age=60, s-maxage=120, stale-while-revalidate=600',
       'Access-Control-Allow-Origin': '*',
     },
   });
+  if (!empty) waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
+  return resp;
 };

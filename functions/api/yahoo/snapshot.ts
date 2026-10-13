@@ -324,7 +324,18 @@ function parseYahooBody(body: string, symbolHint?: string): { price: number; cha
   }
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
+  // 13 Eki 2026: açık edge cache. Yanıt ~95KB ve üretimi 4-5sn (D1 600 satır +
+  // bist_snapshot boşken FVT fallback). symbols paramı yok sayıldığı için tek
+  // anahtar: tüm çağrılar aynı gövdeyi paylaşır.
+  const cache = (caches as unknown as { default: Cache }).default;
+  const cacheUrl = new URL(request.url);
+  cacheUrl.search = '';
+  cacheUrl.searchParams.set('cv', '3');
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+  const hit = await cache.match(cacheKey);
+  if (hit && hit.ok) return hit;
+
   if (!env.DB) {
     return new Response(JSON.stringify({ ok: false, error: 'D1 not bound' }), {
       status: 503,
@@ -540,7 +551,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     }),
   );
 
-  return new Response(
+  const resp = new Response(
     JSON.stringify({
       ok: true,
       count: parsedCount,
@@ -556,8 +567,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
+        'Cache-Control': 'public, max-age=30, s-maxage=30, stale-while-revalidate=120',
       },
     },
   );
+  if (parsedCount > 0) waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
+  return resp;
 };

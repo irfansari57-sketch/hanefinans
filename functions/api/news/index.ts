@@ -360,6 +360,10 @@ function decode(s: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#039;/g, "'")
     .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // Numeric entity'ler: &#8217; (’), &#8220; (“), &#x2019; vb.
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
     .replace(/&amp;/g, '&')
     .replace(/<[^>]+>/g, '') // strip HTML tag'leri
     .trim();
@@ -379,14 +383,14 @@ function parseRss(xml: string, sourceName: string): NewsItem[] {
     const title = extractTag(block, 'title') ?? '';
     const link = extractTag(block, 'link') ?? '';
     const description = extractTag(block, 'description') ?? '';
-    const pubDate = extractTag(block, 'pubDate') ?? extractTag(block, 'dc:date') ?? new Date().toISOString();
+    const pubDate = extractTag(block, 'pubDate') ?? extractTag(block, 'dc:date') ?? extractTag(block, 'published') ?? null;
     if (!title || !link) continue;
-    const publishedAt = (() => {
-      try {
-        const d = new Date(pubDate);
-        return Number.isFinite(d.getTime()) ? d.toISOString() : new Date().toISOString();
-      } catch { return new Date().toISOString(); }
-    })();
+    // 13 Eki 2026: Tarihsiz item'ı "şimdi" diye damgalama — eski haber taze
+    // görünür. Tarih yoksa veya parse edilemiyorsa item'ı at.
+    if (!pubDate) continue;
+    const parsedDate = new Date(pubDate);
+    if (!Number.isFinite(parsedDate.getTime())) continue;
+    const publishedAt = parsedDate.toISOString();
     const summary = description.slice(0, 280);
     const crit = detectCritical(title, summary);
     const baseImportance = scoreImportance(title, summary);
@@ -465,6 +469,21 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
       n.summary.toLowerCase().includes(queryFilter),
     );
   }
+
+  // 13 Eki 2026: Tazelik filtresi — Google News RSS aramaları 2009'a kadar
+  // eski sonuç dönebiliyor. Kritik haber en fazla 7 gün, normal haber en fazla
+  // 3 gün eski olabilir. Gelecek tarihli (saat farkı toleransı 2sa) da elenir.
+  const nowMs = Date.now();
+  const MAX_AGE_CRITICAL_MS = 7 * 24 * 60 * 60 * 1000;
+  const MAX_AGE_NORMAL_MS = 3 * 24 * 60 * 60 * 1000;
+  const FUTURE_TOLERANCE_MS = 2 * 60 * 60 * 1000;
+  combined = combined.filter((n) => {
+    const t = +new Date(n.publishedAt);
+    if (!Number.isFinite(t)) return false;
+    if (t > nowMs + FUTURE_TOLERANCE_MS) return false;
+    const age = nowMs - t;
+    return age <= (n.critical ? MAX_AGE_CRITICAL_MS : MAX_AGE_NORMAL_MS);
+  });
 
   // Tarih → yeniden eskiye
   combined.sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));

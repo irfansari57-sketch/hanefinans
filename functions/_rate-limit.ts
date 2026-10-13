@@ -176,6 +176,7 @@ export function classifyRoute(path: string): { bucket: string; limit: number; wi
     path.startsWith('/api/tefas') ||
     path.startsWith('/api/panel/') ||
     path.startsWith('/api/stocks/') ||
+    path.startsWith('/api/bars/') ||
     path.startsWith('/api/funds/') ||
     path.startsWith('/api/befas/') ||
     path.startsWith('/api/byf/') ||

@@ -1,0 +1,72 @@
+name: Bars Daily Warmer (sinyal motoru)
+
+# Günlük düzeltilmiş OHLCV'yi D1 bars_daily'ye yazar. Hafta içi seans kapanışı
+# sonrası 19:40 TR (16:40 UTC). BIST100 + endeksler, 3 batch × 40 sembol.
+# İlk kurulum: Actions → Run workflow → scope=bist100, range=3y (≈3 dk).
+
+on:
+  schedule:
+    - cron: '40 16 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'bist100 | all | indices'
+        default: 'bist100'
+      range:
+        description: 'Boş = artımlı (3mo/3y otomatik); 3y = tam yeniden yükle'
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bars-warm
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Batch loop
+        id: warm
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SCOPE: ${{ github.event.inputs.scope || 'bist100' }}
+          RANGE: ${{ github.event.inputs.range || '' }}
+        run: |
+          set -e
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET yok"; exit 1; fi
+          offset=0; total_ok=0; total_fail=0; total_bars=0
+          for i in $(seq 1 20); do
+            url="https://investliq.com/api/cron/bars-warm?scope=${SCOPE}&offset=${offset}&limit=40"
+            if [ -n "$RANGE" ]; then url="${url}&range=${RANGE}"; fi
+            resp=$(curl -sS -w "\n%{http_code}" -X POST -H "X-Cron-Secret: $CRON_SECRET" --max-time 280 "$url")
+            body=$(echo "$resp" | head -n -1); code=$(echo "$resp" | tail -n 1)
+            echo "offset=$offset HTTP $code"; echo "$body" | head -c 600; echo
+            if [ "$code" -ne 200 ]; then echo "::error::bars-warm HTTP $code at offset $offset"; echo "summary=HTTP $code @offset $offset" >> "$GITHUB_OUTPUT"; exit 1; fi
+            ok=$(echo "$body" | grep -o '"success":[0-9]*' | head -1 | cut -d: -f2)
+            fail=$(echo "$body" | grep -o '"fail":[0-9]*' | head -1 | cut -d: -f2)
+            bars=$(echo "$body" | grep -o '"barsWritten":[0-9]*' | head -1 | cut -d: -f2)
+            total_ok=$((total_ok + ${ok:-0})); total_fail=$((total_fail + ${fail:-0})); total_bars=$((total_bars + ${bars:-0}))
+            next=$(echo "$body" | grep -o '"nextOffset":[0-9]*' | head -1 | cut -d: -f2)
+            if [ -z "$next" ]; then break; fi
+            offset=$next
+            sleep 3
+          done
+          echo "::notice::bars-warm: $total_ok ok / $total_fail fail / $total_bars bars"
+          echo "summary=$total_ok ok / $total_fail fail / $total_bars bars" >> "$GITHUB_OUTPUT"
+          if [ "$total_ok" -lt 20 ]; then echo "::error::success=$total_ok (<20)"; exit 1; fi
+
+      - name: Health
+        if: always()
+        run: curl -sS "https://investliq.com/api/bars/health" | head -c 800; echo
+
+      - name: Telegram alarm (hata)
+        if: failure() && env.TELEGRAM_BOT_TOKEN != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          msg="🚨 InvestliQ bars-warm BAŞARISIZ%0A${{ steps.warm.outputs.summary }}%0Ahttps://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=${msg}" > /dev/null || true

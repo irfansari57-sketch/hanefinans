@@ -19,6 +19,7 @@
  */
 
 import { fvtJson } from '../_fvt';
+import { BIST_100_UNIVERSE } from '../_universe';
 
 interface Env {
   DB: D1Database;
@@ -103,22 +104,7 @@ async function fetchIsYatirimStock(
   }
 }
 
-// BIST 100 sembol listesi — ilk cron populasyonu icin.
-// Kucuk kap dahil tam evren scope=all ile.
-const BIST_100_UNIVERSE = [
-  'AEFES','AGHOL','AHGAZ','AKBNK','AKCNS','AKFYE','AKSA','AKSEN','ALARK','ALBRK',
-  'ALFAS','ARCLK','ASELS','ASTOR','BERA','BFREN','BIMAS','BINHO','BRSAN','BRYAT',
-  'CANTE','CIMSA','CWENE','DOAS','DOHOL','ECILC','ECZYT','EGEEN','EKGYO','ENERY',
-  'ENJSA','ENKAI','EREGL','FROTO','GARAN','GESAN','GLYHO','GUBRF','GWIND','HALKB',
-  'HEKTS','ISCTR','ISDMR','ISFIN','ISMEN','IZMDC','KARSN','KAYSE','KCAER','KCHOL',
-  'KLKIM','KMPUR','KONTR','KONYA','KOZAA','KOZAL','KRDMD','MAVI','MGROS','MIATK',
-  'ODAS','OTKAR','OYAKC','PETKM','PGSUS','SAHOL','SASA','SISE','SKBNK','SMRTG',
-  'SOKM','TAVHL','TCELL','THYAO','TKFEN','TKNSA','TOASO','TRGYO','TSKB','TTKOM',
-  'TTRAK','TUPRS','TUREX','ULKER','VAKBN','VESBE','VESTL','YATAS','YKBNK','ZOREN',
-  // BIST 30 disi ama yaygin — daha genis kapsam
-  'AKGRT','ALTNY','ANHYT','BRISA','CCOLA','GENIL','ICBCT','LOGO','NETAS','NTHOL',
-  'PARSN','PENTA','QUAGR','SNGYO','TATGD','TSPOR','TURSG','ULUUN','VESTL','ZOREN',
-];
+// BIST 100 sembol listesi — 13 Eki 2026: ortak modüle taşındı (_universe.ts).
 
 async function upsertBatch(
   db: D1Database,

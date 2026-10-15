@@ -106,6 +106,7 @@ const ForgotPasswordPage    = lazyWithRetry(() => import('@/features/auth/Forgot
 const ResetPasswordPage     = lazyWithRetry(() => import('@/features/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const SmartSearchPage       = lazyWithRetry(() => import('@/features/smartSearch/SmartSearchPage').then((m) => ({ default: m.SmartSearchPage })));
 const ScreenerPage          = lazyWithRetry(() => import('@/features/screener/ScreenerPage').then((m) => ({ default: m.ScreenerPage })));
+const TaramaPage            = lazyWithRetry(() => import('@/features/screener/TaramaPage').then((m) => ({ default: m.TaramaPage })));
 const FinancialLiteracyPage = lazyWithRetry(() => import('@/features/literacy/FinancialLiteracyPage').then((m) => ({ default: m.FinancialLiteracyPage })));
 const MembershipPage        = lazyWithRetry(() => import('@/features/membership/MembershipPage').then((m) => ({ default: m.MembershipPage })));
 const SettingsPage          = lazyWithRetry(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })));
@@ -135,6 +136,7 @@ export const router = createBrowserRouter([
       { path: 'morning', element: withSuspense(<MorningReportPage />) },
       { path: 'recommendations', element: withSuspense(<RecommendationsPage />) },
       { path: 'signals', element: withSuspense(<SignalsPage />) },
+      { path: 'tarama', element: withSuspense(<TaramaPage />) },
       { path: 'egitim', element: withSuspense(<FinancialLiteracyPage />) },
       { path: 'uyelik', element: withSuspense(<MembershipPage />) },
       { path: 'news', element: withSuspense(<NewsPage />) },

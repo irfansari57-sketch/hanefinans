@@ -33,6 +33,7 @@ import {
   Layers,
   Scale,
   Gamepad2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEATURES } from '@/lib/featureFlags';
@@ -80,6 +81,7 @@ const navGroups: NavGroup[] = [
       // Route hala mevcut - direkt URL ile erisilebilir. Yeniden aktive icin bu satiri geri ac.
       // { to: '/morning', label: 'Günlük Analiz', icon: Sun },
       { to: '/signals', label: 'Sinyaller', icon: Radar },
+      { to: '/tarama', label: 'Tarama', icon: SlidersHorizontal },
       { to: '/recommendations', label: 'Piyasa Radarı', icon: Flame, pro: false },
       // Akilli Sorgu: kullanici talebi 13 Eyl 2026 — nav'dan tamamen kaldirildi.
       // Route hala mevcut, direkt URL ile erisilebilir. Yeniden aktive: alttaki satiri geri ac.

@@ -28,6 +28,8 @@ import {
   CalendarClock,
   Shield,
   Radar,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEATURES } from '@/lib/featureFlags';
@@ -45,6 +47,7 @@ import { AdVideo } from '@/components/domain/AdVideo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { DensityToggle } from '@/components/ui/DensityToggle';
 import { RegimeStrip } from '@/components/domain/RegimeStrip';
+import { useSidebar } from '@/store/sidebar';
 import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
@@ -124,6 +127,8 @@ const navGroups: NavGroup[] = [
 
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const collapsed = useSidebar((s) => s.collapsed);
+  const toggleSidebar = useSidebar((s) => s.toggle);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
@@ -325,37 +330,57 @@ export function Layout() {
       <div className="pointer-events-none fixed inset-0 bg-grid opacity-15" aria-hidden="true" />
 
       {/* Desktop sidebar */}
-      <aside className="relative z-10 hidden border-r border-border bg-bg-soft/85 backdrop-blur-md md:flex md:w-64 md:flex-col">
-        <Link to="/panel" className="flex justify-center border-b border-border px-4 pt-4 pb-2 transition hover:bg-bg-card/50">
-          <Logo variant="full" size={52} />
+      <aside
+        className={cn(
+          'relative z-10 hidden border-r border-border bg-bg-soft md:flex md:flex-col transition-[width] duration-200',
+          collapsed ? 'md:w-16' : 'md:w-64',
+        )}
+        data-collapsed={collapsed || undefined}
+      >
+        <Link to="/panel" className={cn('flex justify-center border-b border-border transition hover:bg-bg-card/50', collapsed ? 'px-2 py-3' : 'px-4 pt-4 pb-2')} title="Panel">
+          {collapsed ? <Logo variant="icon" size={32} /> : <Logo variant="full" size={52} />}
         </Link>
-        {/* FT Masthead — gazete tarzi: tarih + piyasa durumu, ince ayirici. */}
-        <SidebarMasthead />
-        <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
+        {!collapsed && <SidebarMasthead />}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className={cn('mx-auto mt-2 inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border text-[11px] text-fg-2 hover:bg-bg-card hover:text-fg', collapsed ? 'w-9' : 'w-[calc(100%-1.5rem)]')}
+          aria-label={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+          title={collapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}
+        >
+          {collapsed ? <PanelLeftOpen size={14} /> : <><PanelLeftClose size={14} /> Daralt</>}
+        </button>
+        <nav className={cn('flex-1 space-y-3 overflow-y-auto py-3', collapsed ? 'px-2' : 'px-3')}>
           {visibleNavGroups.map((group) => (
             <div key={group.title}>
-              <div className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
-                {group.title}
-              </div>
+              {collapsed ? (
+                <div className="mx-auto mb-1 h-px w-6 bg-border" aria-hidden />
+              ) : (
+                <div className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                  {group.title}
+                </div>
+              )}
               <div className="space-y-0.5">
                 {group.items.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
+                    title={collapsed ? item.label : undefined}
                     className={({ isActive }) =>
                       cn(
-                        'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all',
+                        'group flex items-center rounded-lg text-sm transition-all',
+                        collapsed ? 'h-10 justify-center' : 'gap-3 px-3 py-2',
                         isActive
-                          ? 'bg-gradient-to-r from-accent/15 to-accent/5 text-accent shadow-sm shadow-accent/10 ring-1 ring-accent/20'
-                          : 'text-slate-400 hover:translate-x-0.5 hover:bg-bg-card hover:text-slate-100',
+                          ? 'bg-accent/10 text-accent ring-1 ring-accent/20'
+                          : 'text-slate-400 hover:bg-bg-card hover:text-slate-100',
                       )
                     }
                   >
                     {({ isActive }) => (
                       <>
-                        <item.icon size={15} className={cn('transition-transform group-hover:scale-110', isActive && 'drop-shadow-[0_0_6px_rgba(34,211,238,0.5)]')} />
-                        <span>{item.label}</span>
-                        {item.pro && (
+                        <item.icon size={collapsed ? 18 : 15} className={cn(isActive && 'stroke-[2.2]')} />
+                        {!collapsed && <span>{item.label}</span>}
+                        {!collapsed && item.pro && (
                           <span className="ml-auto rounded bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-warning">
                             PRO
                           </span>
@@ -368,6 +393,7 @@ export function Layout() {
             </div>
           ))}
 
+          {!collapsed && (<>
           {/* Yasal bilgilendirme linkleri — sidebar'ın en başında */}
           <div className="pt-3">
             <LegalLinksBlock />
@@ -400,9 +426,11 @@ export function Layout() {
               <AdBanner variant="compact" />
             </div>
           )}
+          </>)}
         </nav>
 
         {/* Sidebar footer — yasal linkler + version */}
+        {!collapsed && (
         <div className="border-t border-border bg-bg-soft/95 p-2.5 text-center text-[9px] text-slate-600">
           <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5">
             <Link to="/legal/kvkk" className="hover:text-accent">KVKK</Link>
@@ -417,6 +445,7 @@ export function Layout() {
           </div>
           <div className="mt-1.5"><span className="text-accent/80">v0.2</span> • Hafta 0 önizleme</div>
         </div>
+        )}
       </aside>
 
       <div className="relative z-10 flex flex-1 flex-col min-w-0">

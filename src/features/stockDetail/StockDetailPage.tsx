@@ -590,7 +590,7 @@ export function StockDetailPage() {
             TradingView'de aç ↗
           </a>
         </div>
-        <PanelStyleChart symbol={sym} isBist={!isUs} defaultPeriod="1Y" events={chartEvents} />
+        <PanelStyleChart symbol={sym} isBist={!isUs} defaultPeriod="1Y" events={chartEvents} dailyPositive={displayChangePct >= 0} />
         {chartEvents.length > 0 && (
           <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-fg-2" aria-label="Grafik olayları">
             {chartEvents.map((e) => (

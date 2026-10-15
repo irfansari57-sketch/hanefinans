@@ -56,8 +56,10 @@ interface Props {
   priceTransform?: (p: number) => number;
   /** Grafik üzerinde numaralı olay işaretleri (KAP, temettü, kritik…) */
   events?: ChartEvent[];
-  /** 'line' = dolgusuz teal çizgi (Design 03) */
+  /** 'line' = dolgusuz çizgi (Design 03) */
   variant?: 'area' | 'line';
+  /** Günlük değişim işareti — verilirse çizgi rengi buna göre (dönem işaretine değil) */
+  dailyPositive?: boolean;
 }
 
 export function PanelStyleChart({
@@ -69,6 +71,7 @@ export function PanelStyleChart({
   priceTransform,
   events,
   variant = 'line',
+  dailyPositive,
 }: Props) {
   const [period, setPeriod] = useState<Period>(defaultPeriod);
   // ONEMLI: rawSeries HER ZAMAN ham fiyat (ONS USD gibi). priceTransform
@@ -124,6 +127,8 @@ export function PanelStyleChart({
     return first > 0 ? ((last - first) / first) * 100 : 0;
   }, [series]);
   const positive = changePct >= 0;
+  // Çizgi rengi: günlük işaret verilmişse o, yoksa dönem işareti
+  const lineTone = dailyPositive ?? positive;
 
   return (
     <div>
@@ -160,7 +165,7 @@ export function PanelStyleChart({
       {loading && series.length === 0 ? (
         <div className="grid h-40 place-items-center text-xs text-slate-500">Grafik yükleniyor…</div>
       ) : series.length >= 2 ? (
-        <MiniAreaChart data={series} positive={positive} formatValue={formatValue} events={events} variant={variant} />
+        <MiniAreaChart data={series} positive={lineTone} formatValue={formatValue} events={events} variant={variant} />
       ) : (
         <div className="grid h-40 place-items-center text-xs text-slate-500">Grafik verisi yok</div>
       )}
@@ -204,7 +209,8 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
   const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   const bottom = PAD_TOP + chartH;
   const area = `${line} L ${points[points.length - 1].x.toFixed(1)} ${bottom} L 0 ${bottom} Z`;
-  const stroke = variant === 'line' ? '#2DD4BF' : positive ? '#22c55e' : '#ef4444';
+  // 15 Eki 2026 (kullanıcı kararı): çizgi rengi GÜNLÜK değişimin işareti — artı yeşil, eksi kırmızı; dolgu yok.
+  const stroke = positive ? '#22c55e' : '#ef4444';
   const fillId = positive ? 'psc-grad-pos' : 'psc-grad-neg';
   const fmt = formatValue ?? ((v: number) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 }));
 

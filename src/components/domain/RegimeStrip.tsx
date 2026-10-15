@@ -74,7 +74,7 @@ export function RegimeStrip({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex h-9 items-center gap-3 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-soft px-4 text-[12px] [scrollbar-width:none] xl:gap-4 xl:text-[13px]',
+        'flex h-9 items-center gap-2.5 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-soft px-3 text-[12px] [scrollbar-width:none] 2xl:gap-4 2xl:px-4 2xl:text-[13px]',
         className,
       )}
       aria-label="Piyasa rejimi"
@@ -105,9 +105,10 @@ export function RegimeStrip({ className }: { className?: string }) {
           <span className={cn('font-medium', regime.trend.regime === 'yükseliş' ? 'text-success' : regime.trend.regime === 'düşüş' ? 'text-danger' : 'text-fg')}>
             {regime.trend.regime === 'yükseliş' ? 'Yükseliş' : regime.trend.regime === 'düşüş' ? 'Düşüş' : 'Yatay'}
           </span>
-          {regime.vol.percentile1y != null && (
+          {/* Oynaklık yalnız normalden sapınca yazılır (normal = varsayılan durum, yer kaplamasın) */}
+          {regime.vol.percentile1y != null && regime.vol.regime !== 'normal' && (
             <span className={cn(regime.vol.regime === 'yüksek' ? 'text-warning' : 'text-fg-2')}>
-              · {regime.vol.regime === 'yüksek' ? 'yüksek' : regime.vol.regime === 'düşük' ? 'düşük' : 'normal'} oynaklık
+              · {regime.vol.regime === 'yüksek' ? 'yüksek' : 'düşük'} oynaklık
             </span>
           )}
           <EvidenceLink
@@ -120,7 +121,7 @@ export function RegimeStrip({ className }: { className?: string }) {
       {MARKET_KEYS.map((k) => {
         const m = macroMap.get(k);
         return (
-          <Link key={k} to={macroKeyToRoute(k) ?? '/global'} className="inline-flex items-center gap-1.5 hover:text-accent">
+          <Link key={k} to={macroKeyToRoute(k) ?? '/global'} className="inline-flex items-center gap-1 hover:text-accent">
             <span className="text-fg-2">{SHORT[k]}</span>
             <span className="font-mono font-semibold text-fg">{fmtV(m?.value, k)}</span>
             <Pct v={m?.changePct} />
@@ -132,8 +133,12 @@ export function RegimeStrip({ className }: { className?: string }) {
         <span className="font-mono font-semibold text-fg">{cds?.value != null ? cds.value.toFixed(0) : '—'}</span>
         <Pct v={cds?.changePct ?? undefined} invert />
       </Link>
-      <span className="ml-auto hidden lg:inline">
+      <span className="ml-auto hidden 2xl:inline">
         <DataFreshness source={idx.source} asOf={asOfIso} delayMin={15} compact />
+      </span>
+      {/* Dar ekranda: yalnız saat, kaynak/gecikme tooltip'te */}
+      <span className="ml-auto inline font-mono text-[11px] text-fg-3 2xl:hidden" title={`${idx.source ?? 'kaynak'} · ~15 dk gecikmeli`}>
+        {asOfIso && !/^\d{4}-\d{2}-\d{2}$/.test(asOfIso) ? new Date(asOfIso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' }) : ''}
       </span>
     </div>
   );

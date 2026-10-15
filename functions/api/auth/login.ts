@@ -11,8 +11,8 @@
  */
 
 import {
-  type Env, type UserRow, hashPassword, verifyPassword, signJwt, makeSessionCookie,
-  publicUser, jsonResponse,
+  type Env, type UserRow, hashPassword, hashPasswordLegacy, verifyPassword, signJwt, makeSessionCookie,
+  publicUser, jsonResponse, configurePbkdf2,
 } from './_utils';
 import { rateLimitCheck, getClientIp } from '../../_rate-limit';
 import { verifyTurnstile } from '../../_turnstile';
@@ -30,9 +30,20 @@ interface LoginEnv extends Env {
 const GENERIC_AUTH_ERROR = 'E-posta veya şifre hatalı';
 const DUMMY_PASSWORD = '\x00:::dummy-no-user-timing-balance:::';
 
-export const onRequestPost: PagesFunction<LoginEnv> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<LoginEnv> = async (ctx) => {
+  // 15 Eki 2026: beklenmeyen hata → Cloudflare HTML hata sayfası yerine JSON.
+  try {
+    return await handleLogin(ctx);
+  } catch (e) {
+    console.error('[auth/login] unhandled', (e as Error)?.message);
+    return jsonResponse({ ok: false, error: 'Giriş sırasında beklenmeyen bir hata oluştu. Tekrar dene.' }, 500);
+  }
+};
+
+async function handleLogin({ request, env, waitUntil }: { request: Request; env: LoginEnv; waitUntil: (p: Promise<unknown>) => void }): Promise<Response> {
   if (!env.AUTH_TOKEN_SECRET) return jsonResponse({ ok: false, error: 'Servis geçici olarak kullanılamıyor' }, 503);
   if (!env.DB) return jsonResponse({ ok: false, error: 'Servis geçici olarak kullanılamıyor' }, 503);
+  configurePbkdf2(env as { PBKDF2_ITERATIONS?: string });
 
   let body: LoginRequest;
   try { body = await request.json(); }
@@ -73,25 +84,34 @@ export const onRequestPost: PagesFunction<LoginEnv> = async ({ request, env }) =
   // Timing balance (#Ö3): kullanıcı yoksa da hash hesapla (PBKDF2 maliyeti eşitlensin)
   const verdict = row
     ? await verifyPassword(email, password, row.password_hash)
-    : await verifyPassword(email, DUMMY_PASSWORD, await hashPassword(email, DUMMY_PASSWORD)).then(() => ({ ok: false, needsRehash: false }));
+    // Kullanıcı yoksa: ucuz (SHA-256) zamanlama dengesi — iki PBKDF2 turu CPU bütçesini aşıyordu (15 Eki 2026)
+    : await hashPasswordLegacy(email, DUMMY_PASSWORD).then(() => ({ ok: false, needsRehash: false }));
 
   if (!row || !verdict.ok) {
     return jsonResponse({ ok: false, error: GENERIC_AUTH_ERROR }, 401);
   }
 
   const now = Date.now();
-  // 13 Eki 2026: legacy SHA-256 hash ile giriş → PBKDF2'ye kademeli taşı
-  if (verdict.needsRehash) {
-    const newHash = await hashPassword(email, password);
-    await env.DB.prepare('UPDATE users SET password_hash = ?, last_login_at = ? WHERE id = ?').bind(newHash, now, row.id).run();
-    row.password_hash = newHash;
-  } else {
-    await env.DB.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').bind(now, row.id).run();
-  }
+  await env.DB.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').bind(now, row.id).run();
   row.last_login_at = now;
 
   const token = await signJwt(row.id, row.email, env.AUTH_TOKEN_SECRET, row.token_version ?? 0);
-  return jsonResponse({ ok: true, user: publicUser(row) }, 200, {
+  const response = jsonResponse({ ok: true, user: publicUser(row) }, 200, {
     'Set-Cookie': makeSessionCookie(token),
   });
-};
+
+  // 13 Eki 2026: legacy SHA-256 → PBKDF2 kademeli taşıma. 15 Eki: yanıtı BEKLETMEZ
+  // (waitUntil) — başarısız olursa kullanıcı yine giriş yapmış olur, eski hash kalır.
+  if (verdict.needsRehash) {
+    const uid = row.id;
+    waitUntil((async () => {
+      try {
+        const newHash = await hashPassword(email, password);
+        await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(newHash, uid).run();
+      } catch (e) {
+        console.warn('[auth/login] rehash skipped', (e as Error)?.message);
+      }
+    })());
+  }
+  return response;
+}

@@ -106,7 +106,18 @@ export async function hashPasswordLegacy(email: string, password: string): Promi
     .join('');
 }
 
-const PBKDF2_ITER = 210_000;
+/**
+ * PBKDF2 iterasyonu. OWASP önerisi 600k; Workers CPU bütçesi (ücretsiz planda ~10 ms,
+ * ücretli 30 s) içinde kalmak için 100k varsayılan. 15 Eki 2026: 210k ile login,
+ * "1102 Worker exceeded resource limits" HTML sayfasına düşüyordu (DOĞRULANDI: istemci
+ * "<!DOCTYPE … is not valid JSON" aldı). Env `PBKDF2_ITERATIONS` ile yükseltilebilir.
+ */
+const PBKDF2_ITER_DEFAULT = 100_000;
+let PBKDF2_ITER = PBKDF2_ITER_DEFAULT;
+export function configurePbkdf2(env: { PBKDF2_ITERATIONS?: string }): void {
+  const n = parseInt(env.PBKDF2_ITERATIONS ?? '', 10);
+  if (Number.isFinite(n) && n >= 10_000 && n <= 1_000_000) PBKDF2_ITER = n;
+}
 
 async function pbkdf2(password: string, salt: Uint8Array, iter: number): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
@@ -137,6 +148,7 @@ export async function verifyPassword(
     if (!Number.isFinite(iter) || !saltB64 || !hashB64) return { ok: false, needsRehash: false };
     const calc = base64urlEncode(await pbkdf2(password, base64urlDecode(saltB64), iter));
     const ok = timingSafeEqual(calc, hashB64);
+    // Daha düşük iterasyonlu eski kayıtları da kabul et; rehash yalnızca hedefin altındaysa
     return { ok, needsRehash: ok && iter < PBKDF2_ITER };
   }
   const legacy = await hashPasswordLegacy(email, password);

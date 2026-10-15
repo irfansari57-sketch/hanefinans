@@ -56,7 +56,7 @@ async function apiPost<T>(path: string, body: unknown): Promise<{ ok: true; data
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const j = await r.json() as T & { ok: boolean; error?: string };
+    const j = await parseJsonSafe<T>(r);
     if (!j.ok) return { ok: false, error: j.error ?? `HTTP ${r.status}` };
     return { ok: true, data: j };
   } catch (e) {
@@ -64,10 +64,28 @@ async function apiPost<T>(path: string, body: unknown): Promise<{ ok: true; data
   }
 }
 
+/**
+ * 15 Eki 2026: Cloudflare HTML hata sayfası (1101/1102/5xx) JSON diye parse edilince
+ * kullanıcı "Unexpected token '<'" görüyordu. Okunur mesaja çevir.
+ */
+async function parseJsonSafe<T>(r: Response): Promise<T & { ok: boolean; error?: string }> {
+  const text = await r.text();
+  try {
+    return JSON.parse(text) as T & { ok: boolean; error?: string };
+  } catch {
+    const msg = r.status === 429
+      ? 'Çok fazla deneme. Bir dakika sonra tekrar dene.'
+      : r.status >= 500 || /<!DOCTYPE|<html/i.test(text)
+        ? `Sunucu geçici olarak yanıt veremedi (HTTP ${r.status}). Birkaç saniye sonra tekrar dene.`
+        : `Beklenmeyen yanıt (HTTP ${r.status}).`;
+    return { ok: false, error: msg } as T & { ok: boolean; error?: string };
+  }
+}
+
 async function apiGet<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
   try {
     const r = await fetch(path, { credentials: 'same-origin' });
-    const j = await r.json() as T & { ok: boolean; error?: string };
+    const j = await parseJsonSafe<T>(r);
     if (!j.ok) return { ok: false, error: j.error ?? `HTTP ${r.status}` };
     return { ok: true, data: j };
   } catch (e) {

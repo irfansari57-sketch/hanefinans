@@ -437,7 +437,7 @@ export function SoftPanelPage() {
             </div>
           </div>
           <div style={{ height: 300 }} className="mt-2">
-            {heroSeries.length > 1 ? <MiniAreaChart data={heroSeries} positive={bist100Positive} /> : <div className="h-full rounded-md bg-bg-soft" />}
+            {heroSeries.length > 1 ? <MiniAreaChart data={heroSeries} positive={bist100Positive} variant="line" /> : <div className="h-full rounded-md bg-bg-soft" />}
           </div>
         </section>
 

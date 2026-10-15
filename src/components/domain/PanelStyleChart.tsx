@@ -165,10 +165,12 @@ export function PanelStyleChart({
 // Y-axis 3 seviye (min/mid/max), X-axis 5 tarih tick, HOVER TOOLTIP (FVT tarzi).
 // Export edildi - StockDetail chart fetch ederken, FundDetail anchor points ile
 // direkt cizim yapabilir.
-export function MiniAreaChart({ data, positive, formatValue }: {
+export function MiniAreaChart({ data, positive, formatValue, variant = 'area' }: {
   data: Array<{ date: number; close: number }>;
   positive: boolean;
   formatValue?: (v: number) => string;
+  /** 'line' = Design 03: dolgu yok, nötr teal çizgi (yön rengi yalnız % rozetinde) */
+  variant?: 'area' | 'line';
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -193,7 +195,7 @@ export function MiniAreaChart({ data, positive, formatValue }: {
   const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   const bottom = PAD_TOP + chartH;
   const area = `${line} L ${points[points.length - 1].x.toFixed(1)} ${bottom} L 0 ${bottom} Z`;
-  const stroke = positive ? '#22c55e' : '#ef4444';
+  const stroke = variant === 'line' ? '#2DD4BF' : positive ? '#22c55e' : '#ef4444';
   const fillId = positive ? 'psc-grad-pos' : 'psc-grad-neg';
   const fmt = formatValue ?? ((v: number) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 }));
 
@@ -267,7 +269,7 @@ export function MiniAreaChart({ data, positive, formatValue }: {
           strokeDasharray="3 3"
         />
       ))}
-      <path d={area} fill={`url(#${fillId})`} />
+      {variant === 'area' && <path d={area} fill={`url(#${fillId})`} />}
       <path d={line} stroke={stroke} strokeWidth="2" fill="none" />
       {yLevels.map((lv) => (
         <text

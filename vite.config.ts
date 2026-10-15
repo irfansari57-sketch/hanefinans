@@ -16,7 +16,12 @@ export default defineConfig(({ mode }) => {
   // %BUILD_VERSION% placeholder'i bu deger ile replace edilir. Client bu meta'yi
   // localStorage'daki eski deger ile karsilastirip mismatch varsa SW'yi update eder.
   // Sentry release tag'i olarak da kullaniliyor (VITE_APP_VERSION set edilmemisse).
-  const buildVersion = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // 15 Eki 2026: Cloudflare Pages'ta commit SHA varsa onu kullan → aynı commit'in iki
+  // build'i birebir aynı asset hash'lerini üretir (Date.now()/random JS'e inline
+  // ediliyordu, her build farklı index-*.js hash'i veriyordu; iki build yarışınca
+  // tarayıcı bir build'in HTML'i ile diğerinin asset'lerini istiyor → HTML fallback → MIME hatası).
+  const sha = process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || '';
+  const buildVersion = sha ? `${sha.slice(0, 12)}` : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   return {
     define: {

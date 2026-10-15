@@ -369,6 +369,11 @@ function parseRss(xml: string, sourceName: string): NewsItem[] {
     const summary = description.slice(0, 280);
     const crit = detectCritical(title, summary);
     const baseImportance = scoreImportance(title, summary);
+    const syms = detectSymbols(`${title} ${summary}`);
+    // 15 Eki 2026: kritik rozeti yalnızca BIST sembolüne bağlanabilen haberlerde.
+    // "60'tan fazla ülkeye ihracat yapan Türk şirketi iflas etti" gibi genel haberler
+    // akışta kalır ama kırmızı rozet almaz (yatırımcı için eyleme dönük değil).
+    const critical = crit.critical && syms.length > 0;
     items.push({
       id: `${sourceName}-${publishedAt}-${title.slice(0, 30)}`,
       title,
@@ -376,10 +381,10 @@ function parseRss(xml: string, sourceName: string): NewsItem[] {
       url: link,
       source: sourceName,
       publishedAt,
-      symbols: detectSymbols(`${title} ${summary}`),
-      importance: crit.critical ? 10 : baseImportance,
-      critical: crit.critical,
-      criticalReason: crit.reason,
+      symbols: syms,
+      importance: critical ? 10 : baseImportance,
+      critical,
+      criticalReason: critical ? crit.reason : undefined,
     });
   }
   return items;
@@ -428,7 +433,7 @@ export const onRequestGet: PagesFunction = async ({ request, waitUntil }) => {
   // vermiyordu; her panel isteği 13 RSS kaynağını yeniden çekiyordu.
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '2');
+  cacheUrl.searchParams.set('cv', '3');
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit && hit.ok) return hit;

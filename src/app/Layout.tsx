@@ -35,7 +35,6 @@ import { useAuth, isAdmin, isPro } from '@/store/auth';
 import { useSiteSettings } from '@/store/siteSettings';
 import { searchGlobal, setFundIndex, kindBadge } from '@/lib/globalSearchIndex';
 import { activityRepo } from '@/data/repositories';
-import { RightNewsTicker } from '@/components/domain/RightNewsTicker';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { Logo } from '@/components/brand/Logo';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -372,7 +371,11 @@ export function Layout() {
             <LegalLinksBlock />
           </div>
 
-          {/* BrandingBlock + HaneModAdBanner sağ panele (RightNewsTicker) taşındı — burada tekrarlanmıyor. */}
+          {/* Sağ ray kaldırılınca (15 Eki 2026) branding + sponsor sidebar'a döndü */}
+          <div className="mt-3 space-y-3">
+            <BrandingBlock />
+            <HaneModAdBanner variant="compact" />
+          </div>
 
           {/* YTD + KVKK Disclaimer — default açık, herkese görünür */}
           <details className="group mt-3 rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-2" open>
@@ -662,8 +665,8 @@ export function Layout() {
         </footer>
       </div>
 
-      {/* Sağ haber bandı — aşağıdan yukarı akan gündem */}
-      <RightNewsTicker />
+      {/* 15 Eki 2026 (Design 03): sağ haber rayı kaldırıldı — haber akışı Piyasa Durumu
+          sayfasının içinde; sponsor/branding blokları sol sidebar'a döndü. */}
 
       {/* Geri bildirim widget — gecici olarak kapali */}
       {/* <FeedbackWidget /> */}

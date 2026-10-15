@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { fetchHistoricalYahoo } from '@/data/api/yahoo';
 import { cn } from '@/lib/utils';
+import type { ChartEvent } from '@/lib/chartEvents';
 
 type Period = '1H' | '1A' | '3A' | 'YTD' | '1Y';
 
@@ -53,6 +54,10 @@ interface Props {
   hideHeader?: boolean;
   /** Fiyat donusumu (emtia gram cevirme vs.) */
   priceTransform?: (p: number) => number;
+  /** Grafik üzerinde numaralı olay işaretleri (KAP, temettü, kritik…) */
+  events?: ChartEvent[];
+  /** 'line' = dolgusuz teal çizgi (Design 03) */
+  variant?: 'area' | 'line';
 }
 
 export function PanelStyleChart({
@@ -62,6 +67,8 @@ export function PanelStyleChart({
   formatValue,
   hideHeader = false,
   priceTransform,
+  events,
+  variant = 'line',
 }: Props) {
   const [period, setPeriod] = useState<Period>(defaultPeriod);
   // ONEMLI: rawSeries HER ZAMAN ham fiyat (ONS USD gibi). priceTransform
@@ -153,7 +160,7 @@ export function PanelStyleChart({
       {loading && series.length === 0 ? (
         <div className="grid h-40 place-items-center text-xs text-slate-500">Grafik yükleniyor…</div>
       ) : series.length >= 2 ? (
-        <MiniAreaChart data={series} positive={positive} formatValue={formatValue} />
+        <MiniAreaChart data={series} positive={positive} formatValue={formatValue} events={events} variant={variant} />
       ) : (
         <div className="grid h-40 place-items-center text-xs text-slate-500">Grafik verisi yok</div>
       )}
@@ -165,12 +172,14 @@ export function PanelStyleChart({
 // Y-axis 3 seviye (min/mid/max), X-axis 5 tarih tick, HOVER TOOLTIP (FVT tarzi).
 // Export edildi - StockDetail chart fetch ederken, FundDetail anchor points ile
 // direkt cizim yapabilir.
-export function MiniAreaChart({ data, positive, formatValue, variant = 'area' }: {
+export function MiniAreaChart({ data, positive, formatValue, variant = 'area', events }: {
   data: Array<{ date: number; close: number }>;
   positive: boolean;
   formatValue?: (v: number) => string;
   /** 'line' = Design 03: dolgu yok, nötr teal çizgi (yön rengi yalnız % rozetinde) */
   variant?: 'area' | 'line';
+  /** Numaralı olay işaretleri — tarihe en yakın (≤) bara oturur */
+  events?: ChartEvent[];
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -312,6 +321,27 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area' }:
           </text>
         );
       })}
+      {/* Olay işaretleri — numaralı daire, bar noktasının üstünde */}
+      {events && events.length > 0 && (() => {
+        const placed: Array<{ x: number; y: number; n: number; label: string; title: string }> = [];
+        for (const ev of events) {
+          let idx = -1;
+          for (let i = data.length - 1; i >= 0; i--) { if (data[i].date <= ev.date + 12 * 3_600_000) { idx = i; break; } }
+          if (idx < 0) continue;
+          const p = points[idx];
+          // Aynı noktada üst üste binmesin: önceki işaretle 14px'ten yakınsa yukarı kaydır
+          let y = Math.max(PAD_TOP + 10, p.y - 16);
+          for (const q of placed) if (Math.abs(q.x - p.x) < 14 && Math.abs(q.y - y) < 16) y = q.y - 16;
+          placed.push({ x: p.x, y, n: ev.n, label: ev.label, title: ev.title });
+        }
+        return placed.map((m) => (
+          <g key={`ev-${m.n}`} transform={`translate(${m.x.toFixed(1)}, ${m.y.toFixed(1)})`} style={{ pointerEvents: 'none' }}>
+            <title>{`${m.n}. ${m.label} — ${m.title}`}</title>
+            <circle r="7" fill="#151A21" stroke="#2DD4BF" strokeWidth="1.3" />
+            <text y="3" textAnchor="middle" fill="#2DD4BF" fontSize="9" fontWeight="700" fontFamily="JetBrains Mono, monospace">{m.n}</text>
+          </g>
+        ));
+      })()}
       {/* Hover crosshair + nokta + tooltip */}
       {hover && (
         <>

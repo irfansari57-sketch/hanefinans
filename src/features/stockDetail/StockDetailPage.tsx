@@ -26,6 +26,7 @@ import { useKatilim } from '@/hooks/useKatilim';
 import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { computeRegime, type RegimeResult } from '@/lib/regime';
 import { fetchRegime, type RegimeApi } from '@/data/api/regime';
+import { buildChartEvents } from '@/lib/chartEvents';
 import { KatilimBadge } from '@/components/domain/KatilimBadge';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, closedBarsOnly, type OHLC } from '@/lib/indicators';
 import { isBistOpen } from '@/lib/marketCalendar';
@@ -274,6 +275,13 @@ export function StockDetailPage() {
     }
     return news;
   }, [symbolNews, news]);
+
+  // Grafik olayları — sembol haberlerinden (son 1 yıl), deterministik sınıflandırma
+  const chartEvents = useMemo(
+    () => buildChartEvents(displayNews, { from: Date.now() - 370 * 86400_000, max: 8 }),
+    [displayNews],
+  );
+
 
   const technicalAnalysis = useMemo(() => {
     if (!historical || historical.bars.length < 25) return null;
@@ -546,7 +554,23 @@ export function StockDetailPage() {
             TradingView'de aç ↗
           </a>
         </div>
-        <PanelStyleChart symbol={sym} isBist={!isUs} defaultPeriod="1Y" />
+        <PanelStyleChart symbol={sym} isBist={!isUs} defaultPeriod="1Y" events={chartEvents} />
+        {chartEvents.length > 0 && (
+          <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-fg-2" aria-label="Grafik olayları">
+            {chartEvents.map((e) => (
+              <li key={e.n} className="inline-flex max-w-full items-center gap-1.5">
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full border border-accent text-[9px] font-bold text-accent">{e.n}</span>
+                <span className={cn('font-medium', e.kind === 'kritik' ? 'text-danger' : 'text-fg')}>{e.label}</span>
+                <span className="text-fg-3">{new Date(e.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                {e.url ? (
+                  <a href={e.url} target="_blank" rel="noreferrer" className="truncate hover:text-accent" title={e.title}>{e.title}</a>
+                ) : (
+                  <span className="truncate" title={e.title}>{e.title}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       {/* Kompakt ozet — chart altinda tek tek accordion yerine, hepsi bir satirda gozet

@@ -59,7 +59,7 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
+export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil }) => {
   const code = String(params.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!code || code.length < 2 || code.length > 6) {
     return new Response(JSON.stringify({ ok: false, error: 'Gecersiz fon kodu' }), {
@@ -176,7 +176,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
     });
 
     if (!force && items.length > 0) {
-      cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+      waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
     }
     return resp;
   } catch (e) {

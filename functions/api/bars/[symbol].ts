@@ -13,7 +13,7 @@ interface Env { DB: D1Database }
 
 interface Row { date: string; open: number; high: number; low: number; close: number; volume: number }
 
-export const onRequestGet: PagesFunction<Env> = async ({ request, params, env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, params, env, waitUntil }) => {
   const symbol = String(params.symbol ?? '').toUpperCase().trim();
   if (!/^[A-Z0-9]{2,10}$/.test(symbol)) {
     return new Response(JSON.stringify({ ok: false, error: 'Geçersiz sembol' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
@@ -56,7 +56,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, params, env })
       status: 200,
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600, s-maxage=600, stale-while-revalidate=3600' },
     });
-    cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+    waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
     return resp;
   } catch (e) {
     return new Response(JSON.stringify({ ok: false, error: `D1: ${(e as Error).message.slice(0, 120)}` }), {

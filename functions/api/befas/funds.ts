@@ -174,7 +174,7 @@ function seedToBesFunds(): BesFund[] {
   }));
 }
 
-export const onRequest: PagesFunction<Env> = async ({ request }) => {
+export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
   const url = new URL(request.url);
   const force = url.searchParams.get('force') === '1';
   const debug = url.searchParams.get('debug') === '1';
@@ -227,7 +227,7 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
     },
   });
   if (!force && !debug && funds.length > 0) {
-    cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+    waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
   }
   return resp;
 };

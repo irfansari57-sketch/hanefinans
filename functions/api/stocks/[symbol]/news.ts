@@ -51,7 +51,7 @@ function buildQuery(symbol: string, name: string | null): string {
   return `(${parts.join(' OR ')}) (borsa OR KAP OR hisse OR bildirim)`;
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ request, params }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, params, waitUntil }) => {
   const symbol = String(params.symbol ?? '').toUpperCase().trim();
   if (!/^[A-Z0-9]{2,10}$/.test(symbol)) {
     return new Response(JSON.stringify({ ok: false, error: 'Geçersiz sembol' }), {
@@ -137,6 +137,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, params }) => {
       },
     },
   );
-  cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+  waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
   return resp;
 };

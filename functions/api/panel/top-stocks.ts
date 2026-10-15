@@ -38,7 +38,7 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-export const onRequest: PagesFunction<Env> = async ({ request }) => {
+export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
   const url = new URL(request.url);
   const force = url.searchParams.get('force') === '1';
 
@@ -131,7 +131,7 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
       },
     });
     if (!force && items.length > 0) {
-      cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+      waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
     }
     return resp;
   } catch (e) {

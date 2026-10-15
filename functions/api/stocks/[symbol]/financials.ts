@@ -79,7 +79,7 @@ const FVT_HEADERS = {
   'Origin': 'https://fvt.com.tr',
 };
 
-export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
+export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil }) => {
   const symbol = String(params.symbol ?? '').toUpperCase().trim();
   if (!symbol || symbol.length > 10 || !/^[A-Z0-9]+$/.test(symbol)) {
     return new Response(JSON.stringify({ ok: false, error: 'Geçersiz sembol' }), {
@@ -176,7 +176,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params }) => {
       },
     });
     if (!force) {
-      cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+      waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
     }
     return resp;
   } catch (e) {

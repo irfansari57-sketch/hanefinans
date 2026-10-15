@@ -86,7 +86,7 @@ function buildUpstream(provider: Provider, q: URLSearchParams, env: Env): { url:
   }
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ request, params, env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, params, env, waitUntil }) => {
   const provider = String(params.provider ?? '') as Provider;
   if (!(provider in TTL)) return json({ ok: false, error: 'Bilinmeyen sağlayıcı' }, 404);
 
@@ -124,6 +124,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, params, env })
       'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}`,
     },
   });
-  cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ });
+  waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));
   return resp;
 };

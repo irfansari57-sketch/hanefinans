@@ -22,6 +22,7 @@ import { useAuth } from '@/store/auth';
 import { MiniAreaChart } from '@/components/domain/PanelStyleChart';
 import { usePersistedState } from '@/lib/usePersistedState';
 import { useVisibleInterval } from '@/hooks/useVisibleInterval';
+import { isBistOpen } from '@/lib/marketCalendar';
 import { useWatchlist } from '@/store/watchlist';
 import { loadStocks, loadNews, loadMacroAll, primePanelCaches } from '@/data/services';
 import { loadPanelSnapshot } from '@/data/api/panelSnapshot';
@@ -82,19 +83,24 @@ export function SoftPanelPage() {
     crypto: { gainers: Mover[]; losers: Mover[] };
   }
   const [topMovers, setTopMovers] = useState<TopMoversPayload | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const t = setTimeout(async () => {
-      try {
-        const r = await fetch('/api/panel/top-movers');
-        if (!r.ok) return;
-        const j = (await r.json()) as { ok: boolean } & TopMoversPayload;
-        if (!alive || !j.ok) return;
-        setTopMovers({ stocks: j.stocks, funds: j.funds, bes: j.bes, crypto: j.crypto });
-      } catch { /* silent */ }
-    }, 800);
-    return () => { alive = false; clearTimeout(t); };
+  const loadTopMovers = useCallback(async () => {
+    try {
+      const r = await fetch('/api/panel/top-movers');
+      if (!r.ok) return;
+      const j = (await r.json()) as { ok: boolean } & TopMoversPayload;
+      if (!j.ok) return;
+      setTopMovers({ stocks: j.stocks, funds: j.funds, bes: j.bes, crypto: j.crypto });
+    } catch { /* silent */ }
   }, []);
+  useEffect(() => {
+    const t = setTimeout(loadTopMovers, 800); // kritik path dışı: 0,8 sn ertele
+    return () => clearTimeout(t);
+  }, [loadTopMovers]);
+  // 15 Eki 2026: "Bugün" seans boyunca canlı — açıkken 60 sn (sunucu TTL ile aynı),
+  // kapalıyken 10 dk (fon/BES NAV'ları gün sonu değişir). Sekme gizliyken durur.
+  const [bistOpenNow, setBistOpenNow] = useState(() => isBistOpen());
+  useVisibleInterval(() => setBistOpenNow(isBistOpen()), 60_000, { fireOnVisible: true });
+  useVisibleInterval(loadTopMovers, bistOpenNow ? 60_000 : 10 * 60_000, { fireOnVisible: true });
 
   // Yön: kazandıran (up) veya kaybettiren (down)
   const [enlerDir, setEnlerDir] = useState<'up' | 'down'>('up');
@@ -454,8 +460,26 @@ export function SoftPanelPage() {
           )}
         </section>
 
+        {/* 15 Eki 2026: Haber + takvim, Takip/Portföy üstüne alındı (kullanıcı talebi) */}
+        <section className="lg:col-span-7 min-w-0">
+          <div className="flex items-center"><h2 className="text-base font-semibold text-fg">Haber akışı</h2><Link to="/news" className="ml-auto text-[11px] text-accent hover:underline">Tümü →</Link></div>
+          <div className="mt-2">
+            {feedNews.length === 0 ? <div className="py-3 text-[12px] text-fg-3">Haberler yükleniyor…</div> : feedNews.map((n) => (
+              <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex min-h-[40px] items-start gap-3 border-b border-border/60 py-2 last:border-0 text-[12px] hover:bg-bg-card -mx-1 px-1 rounded">
+                <span className="mt-0.5 shrink-0 font-mono text-[11px] text-fg-3">{new Date(n.publishedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="line-clamp-2 text-fg">{n.title}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="lg:col-span-5 min-w-0">
+          <div className="flex items-center"><h2 className="text-base font-semibold text-fg">Ekonomik takvim</h2><Link to="/takvim" className="ml-auto text-[11px] text-accent hover:underline">Tümü →</Link></div>
+          <div className="mt-2"><EconomicCalendarWidget compact maxItems={6} daysAhead={14} collapsible={false} /></div>
+        </section>
+
         <section className="lg:col-span-6 min-w-0">
-          <h2 className="text-base font-semibold text-fg">Takibin <span className="text-[12px] font-normal text-fg-3">{symbols.length}</span></h2>
+          <h2 className="text-base font-semibold text-fg">Takip Listesi <span className="text-[12px] font-normal text-fg-3">{symbols.length}</span></h2>
           <div className="mt-2">
             {symbols.length === 0 ? (
               <div className="py-3 text-[12px] text-fg-3">Takip listen boş. <Link to="/stocks" className="text-accent hover:underline">Hisselerden yıldızla</Link>.</div>
@@ -472,7 +496,7 @@ export function SoftPanelPage() {
         </section>
 
         <section className="lg:col-span-6 min-w-0">
-          <h2 className="text-base font-semibold text-fg">Portföyün</h2>
+          <h2 className="text-base font-semibold text-fg">Portföy</h2>
           {user && portfolio.hasData ? (
             <>
               <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -509,22 +533,6 @@ export function SoftPanelPage() {
           )}
         </section>
 
-        <section className="lg:col-span-7 min-w-0">
-          <div className="flex items-center"><h2 className="text-base font-semibold text-fg">Haber akışı</h2><Link to="/news" className="ml-auto text-[11px] text-accent hover:underline">Tümü →</Link></div>
-          <div className="mt-2">
-            {feedNews.length === 0 ? <div className="py-3 text-[12px] text-fg-3">Haberler yükleniyor…</div> : feedNews.map((n) => (
-              <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex min-h-[40px] items-start gap-3 border-b border-border/60 py-2 last:border-0 text-[12px] hover:bg-bg-card -mx-1 px-1 rounded">
-                <span className="mt-0.5 shrink-0 font-mono text-[11px] text-fg-3">{new Date(n.publishedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
-                <span className="line-clamp-2 text-fg">{n.title}</span>
-              </a>
-            ))}
-          </div>
-        </section>
-
-        <section className="lg:col-span-5 min-w-0">
-          <div className="flex items-center"><h2 className="text-base font-semibold text-fg">Ekonomik takvim</h2><Link to="/takvim" className="ml-auto text-[11px] text-accent hover:underline">Tümü →</Link></div>
-          <div className="mt-2"><EconomicCalendarWidget compact maxItems={6} daysAhead={14} collapsible={false} /></div>
-        </section>
       </div>
     </>
   );

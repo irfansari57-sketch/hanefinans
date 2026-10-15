@@ -130,7 +130,8 @@ export function getClientIp(req: Request): string {
  * - ai     (/api/ai/* + /api/agents/*) — 60 req/saat (pahalı AI çağrıları için IP cap'i)
  *          NOT: /api/ai/screener tier-aware quota'ya tabi (handler içinde) — burada
  *          sadece dakika başına IP burst protection için default'a düşürüyoruz.
- * - default — 60 req/dk (genel API, /api/auth/me dahil)
+ * - session (auth/me, portfolio, watchlist, alerts, streak, predictions, telemetry) — 240 req/dk
+ * - default — 60 req/dk (geri kalan)
  *
  * Sayıları artırmak/azaltmak için sadece bu tabloyu değiştir.
  */
@@ -140,8 +141,28 @@ export function classifyRoute(path: string): { bucket: string; limit: number; wi
     if (/\/(login|signup|send-code|verify-code|delete-account)$/.test(path)) {
       return { bucket: 'auth', limit: 10, windowSec: 60 };
     }
-    // /api/auth/me her sayfa yüklenmesinde çağrılır — default yeterli
+    // /api/auth/me her sayfa yüklenmesinde + portföy senkronunda çağrılır.
+    // 15 Eki 2026: default (60/dk) telemetry/portfolio/watchlist ile paylaşılınca
+    // oturum kontrolü 429 yiyip kullanıcıyı "çıkış yapmış" gösteriyordu → session kovası.
+    if (/\/(me|logout)$/.test(path) || path.startsWith('/api/auth/oauth/')) {
+      return { bucket: 'session', limit: 240, windowSec: 60 };
+    }
     return { bucket: 'default', limit: 60, windowSec: 60 };
+  }
+  // Oturumlu kullanıcı verisi — sayfa başına birden çok okuma/yazma (portföy senkronu,
+  // takip listesi, alarmlar, seri, telemetri). Hepsi cookie-auth'lu; brute-force yüzeyi yok.
+  if (
+    path.startsWith('/api/portfolio') ||
+    path.startsWith('/api/watchlist') ||
+    path.startsWith('/api/alerts') ||
+    path.startsWith('/api/streak') ||
+    path.startsWith('/api/predictions') ||
+    path.startsWith('/api/telemetry') ||
+    path.startsWith('/api/push') ||
+    path.startsWith('/api/config') ||
+    path.startsWith('/api/health')
+  ) {
+    return { bucket: 'session', limit: 240, windowSec: 60 };
   }
   // /api/ai/screener — tier-aware quota handler içinde uygulanır.
   // Burada sadece IP burst protection: dakikada 20 (yanlışlıkla butona spam atan kullanıcı).

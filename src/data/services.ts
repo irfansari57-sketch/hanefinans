@@ -170,6 +170,52 @@ async function fetchSnapshot(): Promise<SnapshotApi | null> {
  * 13 Eki 2026: Hisseler listesi statik evrenle (bistAll) sınırlıydı; FVT'nin
  * döndürdüğü ama listede olmayan semboller (ör. TERA) hiç görünmüyordu.
  */
+
+/**
+ * Piyasa genişliği + endeks — RegimeStrip v1 için (15 Eki 2026).
+ * Deterministik: snapshot'taki yerli hisselerden (BYF/sertifika hariç)
+ * yükselen / düşen / yatay sayısı ve XU100 kotasyonu. Trend/oynaklık rejimi
+ * Hafta 2 motoru (/api/bars/regime) gelince eklenecek; burada UYDURULMAZ.
+ */
+export interface MarketBreadth {
+  index: { price: number; changePct: number; asOf?: string; source?: string; updatedAt: number } | null;
+  advancers: number;
+  decliners: number;
+  unchanged: number;
+  total: number;
+  limitUp: number;
+  limitDown: number;
+  source: string;
+  fetchedAt: number;
+}
+
+export async function loadMarketBreadth(): Promise<MarketBreadth | null> {
+  const snap = await fetchSnapshot();
+  if (!snap) return null;
+  let advancers = 0, decliners = 0, unchanged = 0, limitUp = 0, limitDown = 0;
+  const sources = new Set<string>();
+  for (const [k, q] of Object.entries(snap.quotes)) {
+    if (!k.endsWith('.IS')) continue;
+    const sym = k.slice(0, -3);
+    if (sym.length > 5 || sym.startsWith('XU') || sym.startsWith('XB') || sym.startsWith('XK')) continue;
+    if (q.kind || !(q.price > 0) || !Number.isFinite(q.changePct)) continue;
+    if (Math.abs(q.changePct) > 11) continue;
+    if (q.source) sources.add(q.source);
+    if (q.changePct > 0.0001) advancers++;
+    else if (q.changePct < -0.0001) decliners++;
+    else unchanged++;
+    if (q.changePct >= 9.5) limitUp++;
+    if (q.changePct <= -9.5) limitDown++;
+  }
+  const xu = snap.quotes['XU100.IS'];
+  return {
+    index: xu && xu.price > 0 ? { price: xu.price, changePct: xu.changePct, asOf: xu.asOf, source: xu.source, updatedAt: xu.updatedAt } : null,
+    advancers, decliners, unchanged, total: advancers + decliners + unchanged, limitUp, limitDown,
+    source: sources.has('fvt') ? 'fvt' : sources.has('isyatirim') ? 'isyatirim' : 'yahoo',
+    fetchedAt: Date.now(),
+  };
+}
+
 export async function listSnapshotBistSymbols(): Promise<Array<{ symbol: string; name: string }>> {
   const snap = await fetchSnapshot();
   if (!snap) return [];

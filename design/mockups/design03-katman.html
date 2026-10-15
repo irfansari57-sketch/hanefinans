@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>investliQ — Design 03 “Katman” mockup</title>
+<style>
+:root{--bg:#0E1116;--surface:#151A21;--surface2:#1B2129;--border:#232A33;--text:#E8ECF1;--text2:#93A0AE;--accent:#2DD4BF;--pos:#22C55E;--neg:#EF4444;--warn:#F59E0B;--neutral:#64748B}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#05070A;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:20px;padding:32px;display:flex;flex-direction:column;gap:48px;align-items:center}
+.mono{font-family:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.cap{font-size:11px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);font-weight:600}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.t2{color:var(--text2)}.acc{color:var(--accent)}
+.label{color:#6B7684;font-size:12px;margin-bottom:8px;letter-spacing:.04em}
+/* desktop frame */
+.desk{width:1440px;height:900px;background:var(--bg);border:1px solid #1C222B;border-radius:10px;overflow:hidden;display:grid;grid-template-columns:64px 1fr;transform-origin:top left}
+.rail{background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding-top:12px;gap:6px}
+.rail .logo{width:32px;height:32px;border-radius:8px;background:var(--accent);color:#04342C;font-weight:700;display:grid;place-items:center;margin-bottom:14px;font-size:13px}
+.rail .ic{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;color:var(--text2)}
+.rail .ic.on{background:var(--surface2);color:var(--accent)}
+.rail svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6}
+.main{display:flex;flex-direction:column;min-width:0}
+.hdr{height:48px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px}
+.hdr h1{font-size:22px;line-height:30px;font-weight:600}
+.search{margin-left:auto;width:360px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);display:flex;align-items:center;padding:0 10px;gap:8px;color:var(--text2);font-size:12px}
+.search kbd{margin-left:auto;font:11px/16px inherit;color:#6B7684;border:1px solid var(--border);border-radius:4px;padding:0 5px}
+.seg{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;height:28px}
+.seg span{padding:0 10px;line-height:26px;font-size:12px;color:var(--text2)}
+.seg span.on{background:var(--surface2);color:var(--text)}
+.regime{height:36px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:14px;font-size:13px;background:var(--surface)}
+.regime .idx{font-weight:600;font-size:14px}
+.dot{width:6px;height:6px;border-radius:3px;display:inline-block;margin:0 6px 2px 0}
+.content{padding:20px 24px;display:grid;grid-template-columns:repeat(12,1fr);gap:24px;align-content:start}
+.blk{min-width:0}
+.blk h2{font-size:16px;line-height:24px;font-weight:600;display:flex;align-items:center;gap:12px}
+.chart{margin-top:10px;height:300px;position:relative}
+.chart svg{width:100%;height:100%}
+.tf{display:flex;gap:4px;margin-left:auto}
+.tf span{font-size:11px;padding:2px 8px;border-radius:4px;color:var(--text2)}
+.tf span.on{background:var(--surface2);color:var(--text)}
+.ev{position:absolute;width:16px;height:16px;border-radius:8px;background:var(--surface);border:1.5px solid var(--accent);color:var(--accent);font-size:10px;display:grid;place-items:center}
+.evline{margin-top:6px;font-size:12px;color:var(--text2);display:flex;gap:18px}
+.evline b{color:var(--text);font-weight:500}
+.list{margin-top:8px}
+.row{display:grid;grid-template-columns:1fr auto;align-items:center;height:32px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row .sym{font-weight:600;font-size:13px}
+.row .sub{color:var(--text2);font-size:11px;margin-left:8px;font-weight:400}
+.badge{display:inline-block;font-size:9px;line-height:14px;padding:0 5px;border:1px solid rgba(45,212,191,.4);background:rgba(45,212,191,.1);color:var(--accent);border-radius:3px;margin-left:6px;letter-spacing:.06em;font-weight:600;vertical-align:1px}
+.crit{color:var(--neg)}
+.markets{grid-column:1/-1;height:40px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:28px;font-size:12px}
+.markets .k{color:var(--text2);margin-right:6px}
+.big{font-size:28px;line-height:32px;font-weight:600}
+.spark{width:56px;height:16px}
+.btn{height:32px;padding:0 12px;border-radius:6px;border:1px solid var(--border);display:inline-flex;align-items:center;font-size:12px;color:var(--text)}
+.ev2{color:var(--accent);font-weight:600;margin-left:4px}
+/* mobile */
+.mob{width:390px;height:844px;background:var(--bg);border:1px solid #1C222B;border-radius:28px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.mob .top{height:48px;display:flex;align-items:center;padding:0 16px;gap:10px;border-bottom:1px solid var(--border)}
+.mob .top .logo{width:28px;height:28px;border-radius:7px;background:var(--accent);color:#04342C;font-weight:700;display:grid;place-items:center;font-size:12px}
+.mob .top .s{flex:1;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text2);font-size:12px;display:flex;align-items:center;padding:0 10px}
+.mob .body{flex:1;overflow:hidden;padding:0 16px}
+.mrow{display:grid;grid-template-columns:72px 1fr auto 56px;align-items:center;height:44px;border-bottom:1px solid var(--border);gap:8px}
+.mrow .sym{font-weight:600}
+.mrow.open{background:var(--surface);margin:0 -16px;padding:0 16px;border-left:2px solid var(--accent)}
+.l2{background:var(--surface);margin:0 -16px;padding:8px 16px 10px 30px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)}
+.l2 .acts{display:flex;gap:8px;margin-top:8px}
+.l2 .acts span{border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text);font-size:12px}
+.tabbar{height:72px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,1fr);align-items:start;padding-top:8px;background:var(--bg)}
+.tabbar div{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--text2)}
+.tabbar div.on{color:var(--accent)}
+.tabbar svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6}
+.mcap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);font-weight:600;height:32px;display:flex;align-items:center;justify-content:space-between}
+.pill{display:flex;border:1px solid var(--border);border-radius:5px;overflow:hidden;text-transform:none;letter-spacing:0;font-weight:500}
+.pill span{padding:0 8px;line-height:20px;font-size:11px}
+.pill span.on{background:var(--surface2);color:var(--text)}
+.scroll{display:flex;gap:18px;height:36px;align-items:center;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;font-size:12px}
+.wrap{display:flex;gap:48px;align-items:flex-start}
+</style>
+</head>
+<body>
+
+<div>
+  <div class="label">DESIGN 03 · KATMAN — DESKTOP 1440 × 900 · “Piyasa Durumu” (Standart yoğunluk)</div>
+  <div class="desk">
+    <div class="rail">
+      <div class="logo">iQ</div>
+      <div class="ic on" title="Piyasa"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-7 4 5"/></svg></div>
+      <div class="ic" title="Hisseler"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div>
+      <div class="ic" title="Fonlar"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></div>
+      <div class="ic" title="Portföy"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 3"/></svg></div>
+      <div class="ic" title="Takip"><svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg></div>
+      <div class="ic" title="Sinyaller"><svg viewBox="0 0 24 24"><path d="M4 14l4-8 4 12 4-8 4 4"/></svg></div>
+      <div class="ic" title="Araçlar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg></div>
+    </div>
+    <div class="main">
+      <div class="hdr">
+        <h1>Piyasa Durumu</h1>
+        <div class="search">Sembol, sayfa veya eylem ara <kbd>Ctrl K</kbd></div>
+        <div class="seg"><span>Sade</span><span class="on">Standart</span><span>Yoğun</span></div>
+        <span class="t2" style="font-size:12px">☾</span>
+        <span class="btn">Giriş</span>
+      </div>
+      <div class="regime">
+        <span class="idx mono">XU100 10.912</span>
+        <span class="neg mono">−0,80%</span>
+        <span class="t2">·</span>
+        <span><span class="dot" style="background:var(--neg)"></span>Rejim: Düşüş trendi</span>
+        <span><span class="dot" style="background:var(--warn)"></span>Yüksek oynaklık</span>
+        <span>Genişlik <span class="mono">23/100</span> yükselen <span class="ev2">▸</span></span>
+        <span class="t2" style="margin-left:auto;font-size:11px">FVT · 18:05 · ~15 dk gecikmeli</span>
+      </div>
+      <div class="content">
+        <div class="blk" style="grid-column:span 7">
+          <h2>BIST 100 <span class="big mono" style="font-size:20px;line-height:24px">10.912</span>
+            <div class="tf"><span>1H</span><span>1A</span><span>3A</span><span>YTD</span><span class="on">1Y</span><span>3Y</span></div></h2>
+          <div class="chart">
+            <svg viewBox="0 0 736 300" preserveAspectRatio="none">
+              <line x1="0" y1="60" x2="736" y2="60" stroke="#232A33" stroke-dasharray="3 4"/>
+              <line x1="0" y1="150" x2="736" y2="150" stroke="#232A33" stroke-dasharray="3 4"/>
+              <line x1="0" y1="240" x2="736" y2="240" stroke="#232A33" stroke-dasharray="3 4"/>
+              <polyline fill="none" stroke="#2DD4BF" stroke-width="1.5" points="0,210 40,200 80,215 120,190 160,185 200,170 240,180 280,150 320,140 360,155 400,120 440,110 480,125 520,95 560,70 600,85 640,60 680,80 736,95"/>
+              <g fill="#2DD4BF" opacity=".35"><rect x="0" y="270" width="18" height="30"/><rect x="40" y="280" width="18" height="20"/><rect x="80" y="262" width="18" height="38"/><rect x="120" y="275" width="18" height="25"/><rect x="160" y="268" width="18" height="32"/><rect x="200" y="285" width="18" height="15"/><rect x="240" y="260" width="18" height="40"/><rect x="280" y="272" width="18" height="28"/><rect x="320" y="266" width="18" height="34"/><rect x="360" y="278" width="18" height="22"/><rect x="400" y="258" width="18" height="42"/><rect x="440" y="270" width="18" height="30"/><rect x="480" y="282" width="18" height="18"/><rect x="520" y="255" width="18" height="45"/><rect x="560" y="264" width="18" height="36"/><rect x="600" y="276" width="18" height="24"/><rect x="640" y="250" width="18" height="50"/><rect x="680" y="268" width="18" height="32"/></g>
+              <text x="700" y="64" fill="#93A0AE" font-size="10" font-family="monospace">11.420</text>
+              <text x="700" y="154" fill="#93A0AE" font-size="10" font-family="monospace">10.100</text>
+              <text x="700" y="244" fill="#93A0AE" font-size="10" font-family="monospace">8.780</text>
+            </svg>
+            <div class="ev" style="left:282px;top:138px">1</div>
+            <div class="ev" style="left:522px;top:83px">2</div>
+            <div class="ev" style="left:642px;top:48px">3</div>
+          </div>
+          <div class="evline"><span><b>① KAP</b> TKFEN bedelsiz sermaye artırımı</span><span><b>② Temettü</b> BIMAS 12,40 TL</span><span><b>③ Sinyal</b> XU100 50g üstü kırılım <span class="ev2">▸</span></span></div>
+        </div>
+        <div class="blk" style="grid-column:span 5">
+          <h2>Bugün <span class="cap" style="margin-left:auto;font-weight:500">BIST Tüm · 629 hisse</span></h2>
+          <div class="list">
+            <div class="cap" style="margin:10px 0 2px">▲ Yükselenler</div>
+            <div class="row"><span class="sym mono">IZFAS<span class="badge">Katılım</span><span class="sub">İzmir Fırça</span></span><span class="mono pos">+10,00%</span></div>
+            <div class="row"><span class="sym mono">DGNMO<span class="sub">Doğanlar Mobilya</span></span><span class="mono pos">+10,00%</span></div>
+            <div class="row"><span class="sym mono">POLTK<span class="sub">Politeknik Metal</span></span><span class="mono pos">+10,00%</span></div>
+            <div class="cap" style="margin:12px 0 2px">▼ Düşenler</div>
+            <div class="row"><span class="sym mono">TKFEN<span class="badge">Katılım</span><span class="sub">Tekfen Holding</span></span><span class="mono neg">−9,98%</span></div>
+            <div class="row"><span class="sym mono">BIGEN<span class="sub">Biotrend Enerji</span></span><span class="mono neg">−10,00%</span></div>
+            <div class="row"><span class="sym mono">TERA<span class="sub">Tera Yatırım</span></span><span class="mono neg">−10,00%</span></div>
+            <div class="cap" style="margin:12px 0 2px">★ Sinyaller (3)</div>
+            <div class="row"><span class="sym mono">ASELS<span class="sub">Momentum · RSI 62 · ADX 31</span></span><span class="t2" style="font-size:12px">Neden? <span class="ev2">▸</span></span></div>
+            <div class="cap" style="margin:12px 0 2px"><span class="crit">● Kritik (1)</span></div>
+            <div class="row"><span class="sym mono">ALVES<span class="sub">Konkordato başvurusu · KAP 09 Eki</span></span><span class="t2" style="font-size:12px">7 gün</span></div>
+          </div>
+        </div>
+        <div class="markets mono">
+          <span class="cap" style="font-family:Inter,sans-serif">Piyasalar</span>
+          <span><span class="k">USD/TRY</span>41,23 <span class="pos">+0,1</span></span>
+          <span><span class="k">EUR/TRY</span>48,06 <span class="neg">−0,2</span></span>
+          <span><span class="k">Gram Altın</span>5.812 <span class="pos">+0,4</span></span>
+          <span><span class="k">BTC</span>82.980 <span class="pos">+0,5</span></span>
+          <span><span class="k">Brent</span>71,2 <span class="neg">−1,1</span></span>
+          <span><span class="k">VIX</span>18,4</span>
+          <span><span class="k">CDS 5Y</span>262</span>
+          <span class="t2" style="margin-left:auto;font-family:Inter,sans-serif;font-size:11px">Yahoo · TCMB · 18:04</span>
+        </div>
+        <div class="blk" style="grid-column:span 6">
+          <h2>Takibin <span class="t2" style="font-size:12px;font-weight:400">6</span></h2>
+          <div class="list">
+            <div class="row"><span class="sym mono">ASELS<span class="sub">Aselsan</span></span><span style="display:flex;gap:20px;align-items:center"><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#22C55E" stroke-width="1.2" points="0,12 10,10 20,11 30,7 40,8 50,4 56,3"/></svg><span class="mono">350,75</span><span class="mono pos">+2,63%</span></span></div>
+            <div class="row"><span class="sym mono">TKFEN<span class="sub">Tekfen Holding</span></span><span style="display:flex;gap:20px;align-items:center"><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#EF4444" stroke-width="1.2" points="0,4 10,5 20,3 30,6 40,5 50,10 56,14"/></svg><span class="mono">231,80</span><span class="mono neg">−9,98%</span></span></div>
+            <div class="row"><span class="sym mono">BIMAS<span class="badge">Katılım</span><span class="sub">BİM Mağazalar</span></span><span style="display:flex;gap:20px;align-items:center"><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#22C55E" stroke-width="1.2" points="0,10 10,9 20,11 30,8 40,6 50,7 56,4"/></svg><span class="mono">411,25</span><span class="mono pos">+3,72%</span></span></div>
+          </div>
+        </div>
+        <div class="blk" style="grid-column:span 6">
+          <h2>Portföyün</h2>
+          <div style="display:flex;align-items:baseline;gap:16px;margin-top:8px">
+            <span class="big mono">₺412.380</span>
+            <span class="mono pos">bugün +1,2%</span>
+            <span class="mono t2">toplam +18,4%</span>
+          </div>
+          <div style="margin-top:8px;font-size:13px">Risk: 3 pozisyon portföyün %78'i — tek sektör ağırlığı <span class="ev2">▸</span></div>
+          <div style="margin-top:10px;display:flex;gap:8px"><span class="btn">Detay</span><span class="btn">Risk raporu</span></div>
+          <div class="cap" style="margin-top:10px;font-weight:500;letter-spacing:0;text-transform:none">Yatırım tavsiyesi değildir.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div>
+    <div class="label">MOBİL 390 × 844 · Piyasa sekmesi (satır yerinde açılmış)</div>
+    <div class="mob">
+      <div class="top"><div class="logo">iQ</div><div class="s">Sembol ara</div><span class="t2">☾</span><span class="t2">○</span></div>
+      <div class="body">
+        <div style="height:56px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--border)">
+          <div><span class="mono" style="font-weight:600;font-size:15px">XU100 10.912</span> <span class="mono neg">−0,80%</span><span class="t2" style="float:right;font-size:11px">FVT 18:05 · ~15 dk</span></div>
+          <div class="t2" style="font-size:12px"><span class="dot" style="background:var(--neg)"></span>Düşüş · <span class="dot" style="background:var(--warn)"></span>yüksek oynaklık · 23/100 <span class="ev2">▸</span></div>
+        </div>
+        <div style="height:140px;position:relative;margin-top:6px">
+          <svg viewBox="0 0 358 140" preserveAspectRatio="none" style="width:100%;height:100%">
+            <line x1="0" y1="35" x2="358" y2="35" stroke="#232A33" stroke-dasharray="3 4"/><line x1="0" y1="105" x2="358" y2="105" stroke="#232A33" stroke-dasharray="3 4"/>
+            <polyline fill="none" stroke="#2DD4BF" stroke-width="1.5" points="0,110 30,104 60,112 90,96 120,90 150,98 180,70 210,60 240,72 270,40 300,30 330,45 358,52"/>
+          </svg>
+          <div class="ev" style="left:176px;top:62px">1</div><div class="ev" style="left:296px;top:22px">2</div>
+        </div>
+        <div style="display:flex;gap:4px;height:32px;align-items:center"><span class="tf" style="margin:0"><span>1H</span><span>1A</span><span>3A</span><span>YTD</span><span class="on">1Y</span></span></div>
+        <div class="scroll mono"><span><span class="t2">USD</span> 41,23 <span class="pos">+0,1</span></span><span><span class="t2">Altın</span> 5.812 <span class="pos">+0,4</span></span><span><span class="t2">BTC</span> 82.9k <span class="pos">+0,5</span></span><span><span class="t2">Brent</span> 71,2</span></div>
+        <div class="mcap">Bugün <span class="pill"><span class="on">Yükselen</span><span>Düşen</span></span></div>
+        <div class="mrow"><span class="sym mono">IZFAS</span><span class="t2" style="font-size:11px">İzmir Fırça</span><span class="mono pos">+10,00%</span><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#22C55E" stroke-width="1.2" points="0,12 14,10 28,8 42,6 56,2"/></svg></div>
+        <div class="mrow open"><span class="sym mono">DGNMO</span><span class="t2" style="font-size:11px">Doğanlar Mobilya</span><span class="mono pos">+10,00%</span><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#22C55E" stroke-width="1.2" points="0,13 14,11 28,12 42,7 56,2"/></svg></div>
+        <div class="l2">
+          <div class="mono"><span class="t2">1H</span> <span class="pos">+16,6</span> &nbsp; <span class="t2">1A</span> <span class="neg">−37,7</span> &nbsp; <span class="t2">RSI</span> 71 &nbsp; <span class="t2">Hacim</span> 5g ort. 3,2× <span class="ev2">▸</span></div>
+          <div style="margin-top:4px;color:var(--text)">Tavan; hacim 5 günlük ortalamanın 3,2 katı, 1 aylık düşüşün ardından ilk alım günü.</div>
+          <div class="acts"><span>Detay</span><span>☆ Takip</span><span>⏰ Alarm</span></div>
+        </div>
+        <div class="mrow"><span class="sym mono">POLTK</span><span class="t2" style="font-size:11px">Politeknik</span><span class="mono pos">+10,00%</span><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#22C55E" stroke-width="1.2" points="0,10 14,12 28,9 42,5 56,3"/></svg></div>
+        <div class="mrow"><span class="sym mono">BORLS</span><span class="t2" style="font-size:11px">Borlease</span><span class="mono pos">+10,00%</span><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#22C55E" stroke-width="1.2" points="0,8 14,10 28,12 42,6 56,2"/></svg></div>
+        <div style="height:36px;display:flex;align-items:center;color:var(--accent);font-size:12px">… 6 daha</div>
+        <div class="mrow" style="grid-template-columns:auto 1fr auto"><span class="crit" style="font-size:9px">●</span><span><span class="cap" style="color:var(--neg)">Kritik</span> &nbsp;<span class="sym mono">ALVES</span> <span class="t2" style="font-size:11px">konkordato başvurusu</span></span><span class="t2" style="font-size:11px">7 gün</span></div>
+        <div class="mcap">Takibin <span style="font-weight:400;letter-spacing:0;text-transform:none">6</span></div>
+        <div class="mrow"><span class="sym mono">ASELS</span><span class="t2" style="font-size:11px">Aselsan</span><span class="mono pos">+2,63%</span><svg class="spark" viewBox="0 0 56 16"><polyline fill="none" stroke="#22C55E" stroke-width="1.2" points="0,12 14,10 28,11 42,7 56,3"/></svg></div>
+      </div>
+      <div class="tabbar">
+        <div class="on"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-7 4 5"/></svg>Piyasa</div>
+        <div><svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>Takip</div>
+        <div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 3"/></svg>Portföy</div>
+        <div><svg viewBox="0 0 24 24"><path d="M4 14l4-8 4 12 4-8 4 4"/></svg>Sinyal</div>
+        <div><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Daha</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="label">MOBİL 390 · Hisse detayı — seviye 1 başlık + sekmeler</div>
+    <div class="mob" style="height:844px">
+      <div class="top"><span class="t2">‹</span><span style="font-weight:600;flex:1">TKFEN</span><span class="t2">☆</span><span class="t2">⏰</span></div>
+      <div class="body">
+        <div style="padding:12px 0 8px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:8px"><span class="mono" style="font-weight:600;font-size:16px">TKFEN</span><span class="badge">Katılım</span><span class="badge" style="color:var(--text2);border-color:var(--border);background:transparent">Yıldız Pazar</span><span class="badge" style="color:var(--text2);border-color:var(--border);background:transparent">BIST 30</span></div>
+          <div class="t2" style="font-size:12px">Tekfen Holding · Holding</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:8px"><span class="big mono">₺231,80</span><span class="mono neg" style="font-size:15px">−9,98%</span></div>
+          <div class="t2" style="font-size:11px;margin-top:2px">FVT · 18:05 · ~15 dk gecikmeli · dünkü kapanış 257,50</div>
+          <div style="margin-top:10px;font-size:13px">Günü tabanda kapattı; hacim 30 günlük ortalamanın 4,1 katı, 1 Ekim tepesinden −16%. <span class="ev2">▸</span></div>
+        </div>
+        <div style="display:flex;gap:18px;height:40px;align-items:center;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)"><span style="color:var(--text);border-bottom:2px solid var(--accent);line-height:38px">Genel</span><span>Teknik</span><span>Temel</span><span>Haber &amp; KAP</span><span>Karşılaştır</span></div>
+        <div style="height:150px;position:relative;margin-top:10px">
+          <svg viewBox="0 0 358 150" preserveAspectRatio="none" style="width:100%;height:100%">
+            <line x1="0" y1="40" x2="358" y2="40" stroke="#232A33" stroke-dasharray="3 4"/><line x1="0" y1="110" x2="358" y2="110" stroke="#232A33" stroke-dasharray="3 4"/>
+            <polyline fill="none" stroke="#2DD4BF" stroke-width="1.5" points="0,120 30,115 60,118 90,100 120,96 150,80 180,70 210,60 240,42 270,30 300,38 330,28 358,60"/>
+          </svg>
+          <div class="ev" style="left:262px;top:22px">1</div><div class="ev" style="left:340px;top:52px">2</div>
+        </div>
+        <div style="display:flex;gap:4px;height:32px;align-items:center"><span class="tf" style="margin:0"><span>1H</span><span>1A</span><span>3A</span><span>YTD</span><span class="on">1Y</span><span>3Y</span></span></div>
+        <div class="mono" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;font-size:12px">
+          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div class="cap" style="font-family:Inter,sans-serif">1 gün</div><div class="neg">−9,98%</div></div>
+          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div class="cap" style="font-family:Inter,sans-serif">1 hafta</div><div class="neg">−10,85%</div></div>
+          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div class="cap" style="font-family:Inter,sans-serif">1 ay</div><div class="pos">+6,67%</div></div>
+          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div class="cap" style="font-family:Inter,sans-serif">3 ay</div><div class="pos">+63,47%</div></div>
+          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div class="cap" style="font-family:Inter,sans-serif">6 ay</div><div class="pos">+96,61%</div></div>
+          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div class="cap" style="font-family:Inter,sans-serif">1 yıl</div><div class="pos">+170,18%</div></div>
+        </div>
+        <div class="mcap" style="margin-top:8px">Neden? <span style="font-weight:400;letter-spacing:0;text-transform:none;color:var(--accent)">kanıt ▸</span></div>
+        <div style="font-size:13px;line-height:20px">
+          <div>1. Hacim 871 M ₺ — 30g ort. 4,1× <span class="t2">(FVT)</span></div>
+          <div>2. RSI 46 → nötr; MACD aşağı kesişim <span class="t2">(bars_daily)</span></div>
+          <div>3. KAP: bedelsiz sermaye artırımı 13 Eki <span class="t2">(KAP)</span></div>
+        </div>
+        <div class="cap" style="margin-top:8px;font-weight:500;letter-spacing:0;text-transform:none">Yatırım tavsiyesi değildir.</div>
+      </div>
+      <div class="tabbar">
+        <div class="on"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-7 4 5"/></svg>Piyasa</div>
+        <div><svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>Takip</div>
+        <div><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 3"/></svg>Portföy</div>
+        <div><svg viewBox="0 0 24 24"><path d="M4 14l4-8 4 12 4-8 4 4"/></svg>Sinyal</div>
+        <div><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Daha</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.chip{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text2);background:var(--surface)}
+.chip b{font-size:9px;line-height:14px;padding:0 4px;border-radius:3px;background:var(--surface2);color:#6B7684;font-weight:700}
+.chip.on{border-color:rgba(45,212,191,.5);background:rgba(45,212,191,.15);color:var(--accent)}
+.chip.on b{background:rgba(45,212,191,.2);color:var(--accent)}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.chiprow .cap{margin-right:6px}
+table.tbl{width:100%;border-collapse:collapse;margin-top:14px}
+.tbl th{text-align:right;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);font-weight:600;height:32px;border-bottom:1px solid var(--border);padding:0 10px}
+.tbl th:first-child,.tbl th:nth-child(2){text-align:left}
+.tbl td{height:40px;border-bottom:1px solid var(--border);padding:0 10px;text-align:right;white-space:nowrap}
+.tbl td:first-child,.tbl td:nth-child(2){text-align:left}
+.tbl tr.open td{background:var(--surface);border-bottom:0}
+.tbl tr.l2 td{background:var(--surface);height:auto;padding:0 10px 12px 44px;text-align:left;border-left:2px solid var(--accent)}
+.dens{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;height:28px;margin-left:auto}
+.dens span{padding:0 10px;line-height:26px;font-size:12px;color:var(--text2)}.dens span.on{background:var(--surface2);color:var(--text)}
+.bar{height:8px;border-radius:2px;background:var(--surface2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.kpi{display:flex;gap:40px;align-items:baseline;margin-top:8px}
+.kpi .cap{display:block;margin-bottom:2px}
+.cmp{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;width:1440px;transform-origin:top left}
+.cmp .pane{border-radius:10px;overflow:hidden;border:1px solid #1C222B;height:420px;padding:16px;font-size:12px;line-height:18px}
+.cmp h3{font-size:13px;font-weight:600;margin-bottom:10px}
+</style>
+
+<div>
+  <div class="label">DESKTOP 1440 · HİSSELER — grup çipleri · yoğunluk anahtarı · satır içi derinlik (TKFEN açılmış)</div>
+  <div class="desk desk2">
+    <div class="rail">
+      <div class="logo">iQ</div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-7 4 5"/></svg></div>
+      <div class="ic on"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 3"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 14l4-8 4 12 4-8 4 4"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div>
+    </div>
+    <div class="main">
+      <div class="hdr">
+        <h1>Hisseler</h1>
+        <div class="search">Sembol, sayfa veya eylem ara <kbd>Ctrl K</kbd></div>
+        <div class="seg"><span>Sade</span><span class="on">Standart</span><span>Yoğun</span></div>
+        <span class="t2" style="font-size:12px">☾</span><span class="btn">Giriş</span>
+      </div>
+      <div class="regime">
+        <span class="idx mono">XU100 10.912</span><span class="neg mono">−0,80%</span><span class="t2">·</span>
+        <span><span class="dot" style="background:var(--neg)"></span>Bankacılık: 12 hissenin 9'u düştü</span>
+        <span class="t2" style="margin-left:auto;font-size:11px">FVT · 18:05 · ~15 dk gecikmeli</span>
+      </div>
+      <div style="padding:16px 24px">
+        <div class="chiprow"><span class="cap">Endeksler ve temalar</span>
+          <span class="chip">BIST Tüm <b>629</b></span><span class="chip">BIST 30 <b>30</b></span><span class="chip">BIST 50 <b>50</b></span><span class="chip">BIST 100 <b>100</b></span><span class="chip">Yıldız Pazar <b>149</b></span><span class="chip">Katılım Endeksi <b>238</b></span><span class="chip">Temettü 25 <b>25</b></span><span class="chip">Sürdürülebilirlik <b>100</b></span><span class="chip">Halka Arz <b>57</b></span><span class="chip">Kurumsal Yönetim <b>89</b></span><span class="chip">KOBİ Sanayi <b>38</b></span></div>
+        <div class="chiprow"><span class="cap">Ana sektörler</span>
+          <span class="chip">Sınai <b>248</b></span><span class="chip on">Mali <b>151</b></span><span class="chip">Hizmetler <b>140</b></span><span class="chip">Teknoloji <b>43</b></span></div>
+        <div class="chiprow"><span class="cap">Sektörler</span>
+          <span class="chip on">Bankacılık <b>12</b></span><span class="chip">Sigorta <b>7</b></span><span class="chip">Fin. Kiralama <b>9</b></span><span class="chip">Aracı Kurumlar <b>8</b></span><span class="chip">Holding <b>49</b></span><span class="chip">GYO <b>54</b></span><span class="chip">Gıda <b>48</b></span><span class="chip">Kimya <b>50</b></span><span class="chip">Metal Ana <b>32</b></span><span class="chip">Savunma <b>6</b></span><span class="chip">Elektrik <b>42</b></span><span class="chip">Bilişim <b>39</b></span><span class="chip" style="color:#6B7684">+12</span></div>
+        <div style="display:flex;align-items:center;margin-top:14px;gap:12px">
+          <span class="seg"><span class="on">Tüm hisseler</span><span>Takipte 6</span></span>
+          <span class="t2" style="font-size:12px">1–12 / 12 · GÜN % azalan</span>
+          <span class="btn" style="margin-left:auto">Sütunlar</span><span class="btn">Görünümü kaydet</span>
+        </div>
+        <table class="tbl mono">
+          <thead><tr><th>#</th><th>Sembol</th><th>Fiyat</th><th>Gün %</th><th>1 hafta</th><th>1 ay</th><th>3 ay</th><th>YTD</th><th>1 yıl</th><th>Hacim</th><th>RSI</th><th>Veri</th></tr></thead>
+          <tbody>
+            <tr><td class="t2">1</td><td><span class="sym">ISCTR</span><span class="badge" style="visibility:hidden">x</span></td><td>13,05</td><td class="pos">+2,76%</td><td class="neg">−0,85%</td><td class="neg">−8,40%</td><td class="neg">−8,14%</td><td class="pos">+10,60%</td><td class="pos">+10,60%</td><td class="t2">2,1 Mr</td><td>54</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr><td class="t2">2</td><td><span class="sym">YKBNK</span></td><td>36,42</td><td class="pos">+2,02%</td><td class="pos">+1,43%</td><td class="neg">−3,17%</td><td class="pos">+0,85%</td><td class="pos">+13,59%</td><td class="pos">+13,59%</td><td class="t2">1,4 Mr</td><td>51</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr><td class="t2">3</td><td><span class="sym">GARAN</span></td><td>131,30</td><td class="pos">+1,16%</td><td class="neg">−0,38%</td><td class="neg">−3,20%</td><td class="pos">+0,78%</td><td class="pos">+6,67%</td><td class="pos">+6,67%</td><td class="t2">3,8 Mr</td><td>49</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr class="open"><td class="t2">4</td><td><span class="sym">ALBRK</span><span class="badge">Katılım</span></td><td>8,80</td><td class="neg">−0,68%</td><td class="pos">+0,45%</td><td class="neg">−2,84%</td><td class="pos">+11,82%</td><td class="pos">+18,58%</td><td class="pos">+18,58%</td><td class="t2">412 M</td><td>58</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr class="l2"><td colspan="12">
+              <div style="display:flex;gap:32px;align-items:center;font-family:Inter,sans-serif">
+                <svg style="width:220px;height:48px" viewBox="0 0 220 48"><polyline fill="none" stroke="#2DD4BF" stroke-width="1.5" points="0,40 20,36 40,38 60,30 80,32 100,24 120,26 140,18 160,20 180,12 200,14 220,10"/></svg>
+                <div class="mono" style="font-size:12px"><span class="t2">ADX</span> 27 &nbsp; <span class="t2">Vol-20g</span> 2,1% &nbsp; <span class="t2">P.D.</span> 22,0 Mr &nbsp; <span class="t2">F/K</span> 6,4</div>
+                <div style="font-size:13px">Katılım 30 üyesi; 1 aylık düşüşte bankacılık endeksinden %4 daha iyi. <span class="ev2">▸</span></div>
+                <div style="margin-left:auto;display:flex;gap:8px"><span class="btn">Detay</span><span class="btn">☆ Takip</span><span class="btn">⏰ Alarm</span></div>
+              </div>
+            </td></tr>
+            <tr><td class="t2">5</td><td><span class="sym">AKBNK</span></td><td>62,15</td><td class="neg">−0,90%</td><td class="neg">−1,10%</td><td class="neg">−4,20%</td><td class="pos">+2,30%</td><td class="pos">+9,80%</td><td class="pos">+9,80%</td><td class="t2">2,9 Mr</td><td>47</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr><td class="t2">6</td><td><span class="sym">VAKBN</span></td><td>27,40</td><td class="neg">−1,25%</td><td class="neg">−2,02%</td><td class="neg">−6,10%</td><td class="neg">−1,40%</td><td class="pos">+4,10%</td><td class="pos">+4,10%</td><td class="t2">1,1 Mr</td><td>44</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr><td class="t2">7</td><td><span class="sym">HALKB</span></td><td>24,86</td><td class="neg">−1,62%</td><td class="neg">−2,90%</td><td class="neg">−7,30%</td><td class="neg">−3,10%</td><td class="pos">+1,20%</td><td class="pos">+1,20%</td><td class="t2">890 M</td><td>41</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr><td class="t2">8</td><td><span class="sym">SKBNK</span></td><td>5,19</td><td class="neg">−0,57%</td><td class="pos">+1,98%</td><td class="neg">−19,44%</td><td class="neg">−73,33%</td><td class="neg">−23,47%</td><td class="neg">−23,47%</td><td class="t2">310 M</td><td>38</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr><td class="t2">9</td><td><span class="sym">TSKB</span></td><td>9,90</td><td class="pos">+1,33%</td><td class="pos">+0,61%</td><td class="neg">−12,82%</td><td class="neg">−13,88%</td><td class="neg">−19,75%</td><td class="neg">−19,75%</td><td class="t2">240 M</td><td>42</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+            <tr><td class="t2">10</td><td><span class="sym">ICBCT</span></td><td>18,60</td><td class="neg">−2,10%</td><td class="neg">−3,40%</td><td class="neg">−9,10%</td><td class="neg">−6,20%</td><td class="pos">+3,30%</td><td class="pos">+3,30%</td><td class="t2">42 M</td><td>36</td><td class="t2" style="font-size:11px">FVT 18:05</td></tr>
+          </tbody>
+        </table>
+        <div class="cap" style="margin-top:10px;font-weight:500;letter-spacing:0;text-transform:none">Fiyatlar FVT, ~15 dk gecikmeli · dönem getirileri bars_daily (kapanış) · Yatırım tavsiyesi değildir.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="label">DESKTOP 1440 · PORTFÖY — seviye 1 (risk cümlesi) + seviye 2 (pozisyonlar, benchmark)</div>
+  <div class="desk desk3" style="height:760px">
+    <div class="rail">
+      <div class="logo">iQ</div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 5-7 4 5"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg></div>
+      <div class="ic on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6 3"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M4 14l4-8 4 12 4-8 4 4"/></svg></div>
+      <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div>
+    </div>
+    <div class="main">
+      <div class="hdr"><h1>Portföyüm</h1><div class="search">Sembol, sayfa veya eylem ara <kbd>Ctrl K</kbd></div><div class="seg"><span>Sade</span><span class="on">Standart</span><span>Yoğun</span></div><span class="btn">+ İşlem</span></div>
+      <div class="regime"><span class="idx mono">XU100 10.912</span><span class="neg mono">−0,80%</span><span class="t2">·</span><span>Portföy bugün endeksin <span class="mono pos">+2,0 puan</span> üstünde</span><span class="t2" style="margin-left:auto;font-size:11px">Fiyatlar FVT 18:05 · değerleme kapanış</span></div>
+      <div class="content">
+        <div class="blk" style="grid-column:span 12">
+          <div class="kpi mono">
+            <div><span class="cap">Toplam değer</span><span class="big">₺412.380</span></div>
+            <div><span class="cap">Bugün</span><span class="pos" style="font-size:18px">+₺4.890 · +1,2%</span></div>
+            <div><span class="cap">Toplam getiri</span><span class="pos" style="font-size:18px">+18,4%</span></div>
+            <div><span class="cap">Max düşüş 1Y</span><span class="neg" style="font-size:18px">−14,2%</span></div>
+            <div><span class="cap">60g oynaklık</span><span style="font-size:18px">28,6%</span></div>
+            <div><span class="cap">Etkin N</span><span style="font-size:18px">2,4</span></div>
+          </div>
+          <div style="margin-top:12px;font-size:14px">Risk: 3 pozisyon portföyün %78'i; TKFEN ve ASELS aynı günlerde hareket ediyor (60g korelasyon 0,71) — tek tema ağırlığı. <span class="ev2">▸</span></div>
+        </div>
+        <div class="blk" style="grid-column:span 7">
+          <h2>Pozisyonlar <span class="t2" style="font-size:12px;font-weight:400">7</span></h2>
+          <table class="tbl mono" style="margin-top:8px">
+            <thead><tr><th>Sembol</th><th>Ağırlık</th><th>Adet</th><th>Maliyet</th><th>Fiyat</th><th>Bugün</th><th>Getiri</th><th>Katkı</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sym">ASELS</span></td><td><div class="bar" style="width:90px"><i style="width:34%"></i></div></td><td>400</td><td>228,40</td><td>350,75</td><td class="pos">+2,63%</td><td class="pos">+53,6%</td><td class="pos">+9,1 p</td></tr>
+              <tr><td><span class="sym">TKFEN</span><span class="badge">Katılım</span></td><td><div class="bar" style="width:90px"><i style="width:26%"></i></div></td><td>460</td><td>142,10</td><td>231,80</td><td class="neg">−9,98%</td><td class="pos">+63,1%</td><td class="pos">+7,4 p</td></tr>
+              <tr><td><span class="sym">BIMAS</span><span class="badge">Katılım</span></td><td><div class="bar" style="width:90px"><i style="width:18%"></i></div></td><td>180</td><td>388,00</td><td>411,25</td><td class="pos">+3,72%</td><td class="pos">+6,0%</td><td class="pos">+1,0 p</td></tr>
+              <tr><td><span class="sym">GARAN</span></td><td><div class="bar" style="width:90px"><i style="width:10%"></i></div></td><td>320</td><td>120,50</td><td>131,30</td><td class="pos">+1,16%</td><td class="pos">+9,0%</td><td class="pos">+0,8 p</td></tr>
+              <tr><td><span class="sym">SASA</span></td><td><div class="bar" style="width:90px"><i style="width:7%"></i></div></td><td>15.000</td><td>2,41</td><td>1,86</td><td class="neg">−0,53%</td><td class="neg">−22,8%</td><td class="neg">−1,9 p</td></tr>
+              <tr><td class="t2">+2 daha</td><td colspan="7"></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="blk" style="grid-column:span 5">
+          <h2>Benchmark <div class="tf"><span>1A</span><span>3A</span><span class="on">1Y</span></div></h2>
+          <div style="height:200px;margin-top:10px"><svg viewBox="0 0 480 200" preserveAspectRatio="none" style="width:100%;height:100%">
+            <line x1="0" y1="50" x2="480" y2="50" stroke="#232A33" stroke-dasharray="3 4"/><line x1="0" y1="100" x2="480" y2="100" stroke="#232A33" stroke-dasharray="3 4"/><line x1="0" y1="150" x2="480" y2="150" stroke="#232A33" stroke-dasharray="3 4"/>
+            <polyline fill="none" stroke="#7C8DA6" stroke-width="1.5" points="0,150 60,146 120,140 180,130 240,120 300,110 360,95 420,100 480,105"/>
+            <polyline fill="none" stroke="#2DD4BF" stroke-width="1.5" points="0,150 60,144 120,132 180,120 240,98 300,80 360,60 420,70 480,58"/>
+            <text x="6" y="40" fill="#2DD4BF" font-size="11" font-family="monospace">Portföy +18,4%</text><text x="6" y="56" fill="#7C8DA6" font-size="11" font-family="monospace">XU100 +9,1%</text>
+          </svg></div>
+          <h2 style="margin-top:16px">Dağılım</h2>
+          <div class="mono" style="margin-top:8px;font-size:12px;display:grid;grid-template-columns:90px 1fr 48px;row-gap:8px;align-items:center">
+            <span class="t2" style="font-family:Inter,sans-serif">Savunma</span><div class="bar"><i style="width:34%"></i></div><span style="text-align:right">34%</span>
+            <span class="t2" style="font-family:Inter,sans-serif">Holding</span><div class="bar"><i style="width:26%"></i></div><span style="text-align:right">26%</span>
+            <span class="t2" style="font-family:Inter,sans-serif">Perakende</span><div class="bar"><i style="width:18%"></i></div><span style="text-align:right">18%</span>
+            <span class="t2" style="font-family:Inter,sans-serif">Bankacılık</span><div class="bar"><i style="width:10%"></i></div><span style="text-align:right">10%</span>
+            <span class="t2" style="font-family:Inter,sans-serif">Diğer</span><div class="bar"><i style="width:12%;background:var(--neutral)"></i></div><span style="text-align:right">12%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div>
+  <div class="label">ÜÇ TASARIM, AYNI İÇERİK — Design 01 Terminal Sakin · Design 02 Brifing · Design 03 Katman (seçilen)</div>
+  <div class="cmp">
+    <div class="pane" style="background:#0B0D10;color:#E6E8EB;font-family:Inter,sans-serif">
+      <h3 style="color:#8B929C;font-weight:500;font-size:11px;letter-spacing:.06em;text-transform:uppercase">Design 01 · Terminal Sakin</h3>
+      <div class="mono" style="display:flex;gap:16px;font-size:12px;border-bottom:1px solid #1A1F26;padding-bottom:8px"><span>XU100 10.912 <span style="color:#E5484D">−0,80</span></span><span>USD 41,23</span><span>ALTIN 5.812</span><span>BTC 82.980</span></div>
+      <div style="font-size:12px;color:#8B929C;margin:8px 0">Bugün: BIST 100 %0,8 düştü; bankalar satıldı, savunma alındı.</div>
+      <div class="mono" style="font-size:12px;display:grid;grid-template-columns:1fr auto auto;row-gap:0">
+        <div style="display:contents"><span style="color:#8B929C;padding:4px 0">SEMBOL</span><span style="color:#8B929C;text-align:right;padding:4px 8px">FİYAT</span><span style="color:#8B929C;text-align:right;padding:4px 0">GÜN</span></div>
+        <div style="display:contents"><span style="padding:4px 0">IZFAS</span><span style="text-align:right;padding:4px 8px">16,94</span><span style="color:#2FBF71;text-align:right;padding:4px 0">+10,00</span></div>
+        <div style="display:contents"><span style="padding:4px 0">DGNMO</span><span style="text-align:right;padding:4px 8px">4,29</span><span style="color:#2FBF71;text-align:right;padding:4px 0">+10,00</span></div>
+        <div style="display:contents"><span style="padding:4px 0;background:#111418">TKFEN</span><span style="text-align:right;padding:4px 8px;background:#111418">231,80</span><span style="color:#E5484D;text-align:right;padding:4px 0;background:#111418">−9,98</span></div>
+        <div style="display:contents"><span style="padding:4px 0">BIGEN</span><span style="text-align:right;padding:4px 8px">19,17</span><span style="color:#E5484D;text-align:right;padding:4px 0">−10,00</span></div>
+        <div style="display:contents"><span style="padding:4px 0">ASELS</span><span style="text-align:right;padding:4px 8px">350,75</span><span style="color:#2FBF71;text-align:right;padding:4px 0">+2,63</span></div>
+      </div>
+      <div style="font-size:11px;color:#8B929C;font-style:italic;margin-top:6px">TKFEN: −9,98 · hacim 30g ort. 4,1× · [FVT]</div>
+      <div style="margin-top:12px;height:110px"><svg viewBox="0 0 400 110" preserveAspectRatio="none" style="width:100%;height:100%"><polyline fill="none" stroke="#F2B544" stroke-width="1.2" points="0,80 50,72 100,78 150,60 200,55 250,40 300,30 350,38 400,42"/></svg></div>
+      <div style="font-size:11px;color:#8B929C;margin-top:6px">Vurgu amber · kart yok · 32px satır · komut paleti</div>
+    </div>
+    <div class="pane" style="background:#FAF8F4;color:#141414;font-family:Georgia,'Times New Roman',serif">
+      <h3 style="color:#6B6B6B;font-weight:500;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-family:Inter,sans-serif">Design 02 · Brifing</h3>
+      <div style="font-size:19px;line-height:26px;font-weight:600;color:#1B2A4A">Sabah brifingi · 14 Ekim</div>
+      <p style="font-family:Inter,sans-serif;font-size:13px;line-height:21px;margin-top:8px">BIST 100 dün <b style="font-weight:600">10.912</b> puandan kapandı (−%0,8). Satış bankalarda yoğunlaştı; <span style="color:#1B2A4A;border-bottom:1px dotted #1B2A4A">TKFEN</span> bedelsiz sonrası tabana indi (−%9,98). Küçük hisselerde tavan günü: <span style="color:#1B2A4A;border-bottom:1px dotted #1B2A4A">IZFAS</span>, <span style="color:#1B2A4A;border-bottom:1px dotted #1B2A4A">DGNMO</span>, <span style="color:#1B2A4A;border-bottom:1px dotted #1B2A4A">POLTK</span>.</p>
+      <p style="font-family:Inter,sans-serif;font-size:13px;line-height:21px;margin-top:8px">Takip listende <span style="color:#1B2A4A;border-bottom:1px dotted #1B2A4A">ASELS</span> +%2,6 ile öne çıktı; savunma endeksi haftayı artıda kapatmaya aday.</p>
+      <div style="font-family:Inter,sans-serif;font-size:11px;color:#6B6B6B;margin-top:6px">Kaynaklar: KAP · FVT · TCMB &nbsp;·&nbsp; Yatırım tavsiyesi değildir.</div>
+      <div style="margin-top:14px;height:90px"><svg viewBox="0 0 400 90" preserveAspectRatio="none" style="width:100%;height:100%"><polyline fill="none" stroke="#1B2A4A" stroke-width="1.6" points="0,70 50,64 100,68 150,52 200,48 250,34 300,26 350,32 400,36"/></svg></div>
+      <div style="font-family:Inter,sans-serif;font-size:11px;color:#6B6B6B;margin-top:6px">Krem zemin · serif başlık · metin içinde sayı · haberden veriye</div>
+    </div>
+    <div class="pane" style="background:#0E1116;color:#E8ECF1;border:1px solid rgba(45,212,191,.5)">
+      <h3 style="color:#93A0AE;font-weight:500;font-size:11px;letter-spacing:.06em;text-transform:uppercase">Design 03 · Katman <span class="badge">Seçilen</span></h3>
+      <div style="font-size:12px;display:flex;gap:10px;align-items:center;background:#151A21;padding:6px 8px;border-radius:6px"><span class="mono" style="font-weight:600">XU100 10.912</span><span class="mono neg">−0,80%</span><span><span class="dot" style="background:var(--neg)"></span>Düşüş</span><span><span class="dot" style="background:var(--warn)"></span>Yüksek oynaklık</span><span class="t2">23/100 ▸</span></div>
+      <div class="mono" style="font-size:12px;margin-top:10px">
+        <div class="row" style="height:28px"><span class="sym">IZFAS<span class="badge">Katılım</span></span><span class="pos">+10,00%</span></div>
+        <div class="row" style="height:28px"><span class="sym">DGNMO</span><span class="pos">+10,00%</span></div>
+        <div class="row" style="height:28px;background:#151A21;border-left:2px solid var(--accent);padding-left:6px"><span class="sym">TKFEN<span class="badge">Katılım</span></span><span class="neg">−9,98%</span></div>
+        <div style="background:#151A21;padding:6px 8px 8px 16px;font-family:Inter,sans-serif;font-size:12px;color:#93A0AE;border-bottom:1px solid var(--border)"><span class="mono">1H −10,9 · 1A +6,7 · RSI 46 · hacim 4,1×</span><br><span style="color:#E8ECF1">Tabanda; bedelsiz sonrası ilk gün.</span> <span class="ev2">▸</span></div>
+        <div class="row" style="height:28px"><span class="sym">BIGEN</span><span class="neg">−10,00%</span></div>
+      </div>
+      <div style="margin-top:10px;height:80px"><svg viewBox="0 0 400 80" preserveAspectRatio="none" style="width:100%;height:100%"><polyline fill="none" stroke="#2DD4BF" stroke-width="1.5" points="0,62 50,56 100,60 150,44 200,40 250,28 300,20 350,26 400,30"/></svg></div>
+      <div style="font-size:11px;color:#93A0AE;margin-top:6px">Rejim şeridi · yerinde derinlik · kanıt ▸ · teal vurgu, yeşil yalnız kazanç</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function fit(){
+    var w = window.innerWidth - 64;
+    var s = Math.min(1, w / 1440);
+    document.querySelectorAll('.desk').forEach(function(d){
+      var h = d.classList.contains('desk3') ? 760 : 900;
+      d.style.transform = 'scale(' + s + ')';
+      d.parentElement.style.height = (h * s + 28) + 'px';
+      d.parentElement.style.width = (1440 * s) + 'px';
+    });
+    var c = document.querySelector('.cmp');
+    c.style.transform = 'scale(' + s + ')';
+    c.parentElement.style.height = (420 * s + 28) + 'px';
+    c.parentElement.style.width = (1440 * s) + 'px';
+    var wrap = document.querySelector('.wrap');
+    wrap.style.flexDirection = w < 900 ? 'column' : 'row';
+    wrap.style.alignItems = w < 900 ? 'center' : 'flex-start';
+  }
+  fit(); window.addEventListener('resize', fit);
+})();
+</script>
+</body>
+</html>

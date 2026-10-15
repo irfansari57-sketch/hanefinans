@@ -28,7 +28,7 @@ type SortKey =
   | 'symbol' | 'price' | 'changePct'
   | 'r1h' | 'r1a' | 'r3a' | 'r6a' | 'rytd' | 'r1y';
 
-const STOCK_RETURNS_CACHE_KEY = 'fa.stocks.returns.v1';
+const STOCK_RETURNS_CACHE_KEY = 'fa.stocks.returns.v2'; // v2: ytd alanı eklendi (15 Eki 2026)
 // SWR: 7 gün — hafta sonu (Cmt-Paz) BIST kapalıyken Yahoo/snapshot endpoint boş
 // dönebilir; eski cache hala kullanılabilir olsun. Cron haftaiçi her gece D1'i
 // yenilediği için pratikte her zaman <24h veri görüyoruz; TTL 7 gün sadece
@@ -137,6 +137,7 @@ export function StocksPage() {
     return g ? new Set(g.symbols) : null;
   }, [groupFilter, katilimMap]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedSym, setExpandedSym] = useState<string | null>(null);
   const PAGE_SIZE = 50;
 
   const refresh = async (forceReturns = false) => {
@@ -561,6 +562,8 @@ export function StocksPage() {
                       isWatched={isWatched}
                       onToggle={() => toggleWatch(s.symbol)}
                       katilim={katilimMap[s.symbol]}
+                      expanded={expandedSym === s.symbol}
+                      onExpand={() => setExpandedSym((cur) => (cur === s.symbol ? null : s.symbol))}
                     />
                   );
                 })}
@@ -643,51 +646,104 @@ interface StockTableRowProps {
   isWatched: boolean;
   onToggle: () => void;
   katilim?: KatilimIndex[];
+  expanded: boolean;
+  onExpand: () => void;
 }
 
-function StockTableRow({ stock, rank, isWatched, onToggle, katilim }: StockTableRowProps) {
+const PERIODS: Array<[keyof PeriodReturns, string]> = [['1h', '1 hafta'], ['1a', '1 ay'], ['3a', '3 ay'], ['6a', '6 ay'], ['ytd', 'YTD'], ['1y', '1 yıl']];
+
+function StockTableRow({ stock, rank, isWatched, onToggle, katilim, expanded, onExpand }: StockTableRowProps) {
+  const cell = 'px-2 h-row text-right font-mono text-table font-semibold tabular-nums whitespace-nowrap';
   return (
-    <tr className="border-b border-border/60 transition hover:bg-bg-card">
-      <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{rank}</td>
-      <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-            className={cn('shrink-0 transition', isWatched ? 'text-warning' : 'text-slate-600 hover:text-warning')}
-            title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
-          >
-            <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
-          </button>
-          <Link to={`/stock/${stock.symbol}`} title={stock.sector ? `${stock.name} · ${stock.sector}` : stock.name} className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-accent">
-            {stock.symbol}
-          </Link>
-          <KatilimBadge indices={katilim} />
-        </div>
-      </td>
-      <td className="px-2 py-2.5 text-right font-mono text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100 whitespace-nowrap">
-        {stock.price > 0 ? `₺${stock.price.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : '—'}
-      </td>
-      <PerfCell value={stock.changePct} />
-      <PerfCell value={stock.returns?.['1h']} />
-      <PerfCell value={stock.returns?.['1a']} />
-      <PerfCell value={stock.returns?.['3a']} />
-      <PerfCell value={stock.returns?.['6a']} />
-      <PerfCell value={stock.returns?.['1y']} />
-      <PerfCell value={stock.returns?.['1y']} />
-    </tr>
+    <>
+      <tr
+        className={cn('border-b border-border/60 transition cursor-pointer', expanded ? 'bg-bg-card' : 'hover:bg-bg-card')}
+        onClick={onExpand}
+        aria-expanded={expanded}
+      >
+        <td className={cn('sticky left-0 z-10 px-2 h-row text-[11px] text-fg-3 tabular-nums', expanded ? 'bg-bg-card' : 'bg-bg-soft')}>{rank}</td>
+        <td className={cn('sticky left-8 z-10 px-2 h-row', expanded ? 'bg-bg-card' : 'bg-bg-soft')}>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
+              className={cn('shrink-0 transition', isWatched ? 'text-warning' : 'text-fg-3 hover:text-warning')}
+              title={isWatched ? 'Takipten çıkar' : 'Takibe al'}
+            >
+              <Star size={12} fill={isWatched ? 'currentColor' : 'none'} />
+            </button>
+            <Link
+              to={`/stock/${stock.symbol}`}
+              onClick={(e) => e.stopPropagation()}
+              title={stock.sector ? `${stock.name} · ${stock.sector}` : stock.name}
+              className="font-mono text-table font-bold text-fg hover:text-accent"
+            >
+              {stock.symbol}
+            </Link>
+            <KatilimBadge indices={katilim} />
+          </div>
+        </td>
+        <td className={cn(cell, 'text-fg')}>
+          {stock.price > 0 ? `₺${stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+        </td>
+        <PerfCell value={stock.changePct} />
+        <PerfCell value={stock.returns?.['1h']} />
+        <PerfCell value={stock.returns?.['1a']} />
+        <PerfCell value={stock.returns?.['3a']} />
+        <PerfCell value={stock.returns?.['6a']} />
+        <PerfCell value={stock.returns?.['ytd']} />
+        <PerfCell value={stock.returns?.['1y']} />
+      </tr>
+      {expanded && (
+        <tr className="border-b border-border bg-bg-card">
+          <td colSpan={10} className="border-l-2 border-accent px-4 py-3">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-medium text-fg">{stock.name}</div>
+                <div className="text-fg-3">
+                  {stock.sector && stock.sector !== 'Diger' && stock.sector !== 'Diğer' ? stock.sector : 'Sektör bilgisi yok'}
+                  {stock.feedSource && stock.asOf && (
+                    <> · {stock.feedSource === 'fvt' ? 'FVT' : stock.feedSource === 'isyatirim' ? 'İş Yatırım' : 'Yahoo'} · {new Date(stock.asOf).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' })} · ~15 dk gecikmeli</>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-4 font-mono">
+                {PERIODS.map(([k, label]) => {
+                  const v = stock.returns?.[k];
+                  const ok = v != null && Number.isFinite(v);
+                  return (
+                    <span key={k} className="text-right">
+                      <span className="block text-[10px] font-sans uppercase tracking-wider text-fg-3">{label}</span>
+                      <span className={cn('font-semibold', !ok ? 'text-fg-3' : v >= 0 ? 'text-success' : 'text-danger')}>
+                        {ok ? `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` : '—'}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="ml-auto flex gap-2">
+                <Link to={`/stock/${stock.symbol}`} onClick={(e) => e.stopPropagation()} className="btn-secondary h-8 px-3 text-xs">Detay</Link>
+                <button type="button" onClick={(e) => { e.stopPropagation(); onToggle(); }} className="btn-secondary h-8 px-3 text-xs">
+                  {isWatched ? '★ Takipte' : '☆ Takibe al'}
+                </button>
+                <Link to={`/stock/${stock.symbol}?alarm=1`} onClick={(e) => e.stopPropagation()} className="btn-secondary h-8 px-3 text-xs">Alarm</Link>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
-
 function PerfCell({ value }: { value: number | undefined }) {
   if (value == null || !Number.isFinite(value)) {
-    return <td className="px-2 py-2.5 text-right font-mono text-sm tabular-nums text-slate-500 dark:text-slate-500 whitespace-nowrap">—</td>;
+    return <td className="px-2 h-row text-right font-mono text-table tabular-nums text-fg-3 whitespace-nowrap">—</td>;
   }
-  const tone = value >= 0 ? 'text-success' : 'text-danger';
+  const tone = value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-neutral';
   return (
-    <td className={cn('px-2 py-2.5 text-right font-mono text-sm font-semibold tabular-nums whitespace-nowrap', tone)}>
-      {value >= 0 ? '+' : ''}{value.toFixed(2)}%
+    <td className={cn('px-2 h-row text-right font-mono text-table font-semibold tabular-nums whitespace-nowrap', tone)}>
+      {value > 0 ? '+' : ''}{value.toFixed(2)}%
     </td>
   );
 }

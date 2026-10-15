@@ -18,6 +18,7 @@ interface PeriodReturns {
   '3a'?: number;
   '6a'?: number;
   '1y'?: number;
+  'ytd'?: number;
 }
 
 interface YahooHistRaw {
@@ -47,6 +48,10 @@ function computePeriodReturns(closes: { date: number; close: number }[]): Period
   };
   const pct = (old?: { close: number } | null) =>
     old && old.close > 0 ? ((last.close - old.close) / old.close) * 100 : undefined;
+  // YTD: önceki yılın son kapanışı (15 Eki 2026 — eskiden sütun 1y'yi gösteriyordu)
+  const jan1 = Date.UTC(new Date(last.date).getUTCFullYear(), 0, 1);
+  let prevYear: { date: number; close: number } | null = null;
+  for (const c of closes) { if (c.date < jan1) prevYear = c; else break; }
   return {
     '1g': pct(findOldest(1)),
     '1h': pct(findOldest(7)),
@@ -54,6 +59,7 @@ function computePeriodReturns(closes: { date: number; close: number }[]): Period
     '3a': pct(findOldest(90)),
     '6a': pct(findOldest(180)),
     '1y': pct(findOldest(365)),
+    'ytd': pct(prevYear),
   };
 }
 

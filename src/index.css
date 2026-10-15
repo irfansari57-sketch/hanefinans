@@ -7,43 +7,53 @@
    Renkler 'r g b' formatinda (Tailwind alpha-value uyumlulugu icin).
    ============================================================ */
 :root {
-  /* THEME: InvestliQ Terminal (2026-09-09 rewrite — FVT tarzi)
-     Modern data terminal estetigi. Yesil aksan (Q logo emerald ile senkron),
-     koyu lacivert-siyah zemin, tek font ailesi, minimal border.
+  /* THEME: investliQ Design 03 "Katman" (15 Eki 2026 — design/mockups/design03-katman.html)
+     Token sozlugu: docs → "Design System" bolumu. Degerler 'r g b' (Tailwind alpha uyumu).
+     Kural: --c-accent (teal) SECILI/VURGU rengidir, kazanc rengi DEGIL. Kazanc = --c-success. */
 
-     Dark: cok koyu antrasit + yesil aksan + kirmizi negatif.
-     Light: temiz beyaz + koyu antrasit metin + yesil aksan. */
-
-  /* Dark (default) — terminal cok koyu */
-  --c-bg: 13 16 23;              /* #0D1017 — derin near-black */
-  --c-bg-soft: 15 19 25;         /* #0F1319 sidebar/masthead */
-  --c-bg-card: 19 25 36;         /* #131924 kart yuzeyi */
-  --c-border: 30 37 48;          /* #1E2530 hairline */
-  --c-accent: 34 197 94;         /* #22C55E emerald — Q logo ile senkron */
-  --c-accent-fg: 4 18 10;        /* koyu on yesil */
-  --c-success: 34 197 94;        /* aksan ile ayni yesil (unified) */
-  --c-danger: 239 68 68;         /* #EF4444 kirmizi — clean */
-  --c-warning: 251 191 36;       /* amber-400 */
-  --c-text-1: 248 250 252;       /* #F8FAFC neredeyse beyaz */
-  --c-text-2: 148 163 184;       /* #94A3B8 slate-400 secondary */
-  --c-text-3: 100 116 139;       /* #64748B slate-500 muted */
+  /* Dark (default) */
+  --c-bg: 14 17 22;              /* #0E1116 sayfa zemini */
+  --c-bg-soft: 21 26 33;         /* #151A21 surface — tablo, panel, peek */
+  --c-bg-card: 27 33 41;         /* #1B2129 surface-2 — hover, secili satir */
+  --c-border: 35 42 51;          /* #232A33 yalniz tablo basligi alti ve panel kenari */
+  --c-accent: 45 212 191;        /* #2DD4BF teal — secili, link, birincil buton */
+  --c-accent-fg: 4 52 44;        /* teal uzeri koyu metin */
+  --c-success: 34 197 94;        /* #22C55E kazanc (ok isareti zorunlu) */
+  --c-danger: 239 68 68;         /* #EF4444 kayip */
+  --c-warning: 245 158 11;       /* #F59E0B veri yasi, kritik olay */
+  --c-neutral: 100 116 139;      /* #64748B degisim 0, bos durum */
+  --c-text-1: 232 236 241;       /* #E8ECF1 birincil */
+  --c-text-2: 147 160 174;       /* #93A0AE ikincil, caption */
+  --c-text-3: 107 118 132;       /* #6B7684 muted */
+  /* Veri gorsellestirme paleti — sira sabit */
+  --viz-1: 45 212 191; --viz-2: 59 91 219; --viz-3: 194 112 61;
+  --viz-4: 124 141 166; --viz-5: 139 124 200; --viz-6: 138 154 91;
   color-scheme: dark;
+
+  /* Yogunluk (data-density = compact | standard | comfortable) — varsayilan standard */
+  --row-h: 40px;
+  --table-fs: 13px;
+  --table-lh: 20px;
+  --chip-h: 28px;
 }
+html[data-density="compact"]     { --row-h: 32px; --table-fs: 12px; --table-lh: 16px; --chip-h: 26px; }
+html[data-density="comfortable"] { --row-h: 48px; --table-fs: 14px; --table-lh: 22px; --chip-h: 32px; }
 
 html.light {
-  /* Light theme — temiz beyaz + koyu antrasit (FVT'nin light modu) */
-  --c-bg: 255 255 255;           /* #FFFFFF saf beyaz */
-  --c-bg-soft: 248 250 252;      /* #F8FAFC slate-50 wash */
-  --c-bg-card: 255 255 255;      /* kart beyaz */
-  --c-border: 226 232 240;       /* #E2E8F0 slate-200 hairline */
-  --c-accent: 22 163 74;         /* #16A34A daha koyu yesil (light modda kontrast) */
-  --c-accent-fg: 255 255 255;    /* beyaz on yesil */
-  --c-success: 22 163 74;        /* aksan ile senkron */
-  --c-danger: 220 38 38;         /* #DC2626 koyu kirmizi */
-  --c-warning: 202 138 4;        /* amber-600 */
-  --c-text-1: 15 23 42;          /* #0F172A slate-900 koyu antrasit */
-  --c-text-2: 51 65 85;          /* #334155 slate-700 secondary */
-  --c-text-3: 100 116 139;       /* #64748B slate-500 muted */
+  /* Light — Design 03 acik tema (Faz 3'te varsayilan secenek olarak acilir) */
+  --c-bg: 247 248 250;           /* #F7F8FA */
+  --c-bg-soft: 255 255 255;      /* #FFFFFF surface */
+  --c-bg-card: 240 242 245;      /* #F0F2F5 surface-2 */
+  --c-border: 227 230 234;       /* #E3E6EA */
+  --c-accent: 13 148 136;        /* #0D9488 teal koyu (AA) */
+  --c-accent-fg: 255 255 255;
+  --c-success: 21 128 61;        /* #15803D */
+  --c-danger: 185 28 28;         /* #B91C1C */
+  --c-warning: 180 83 9;         /* #B45309 */
+  --c-neutral: 148 163 184;
+  --c-text-1: 20 24 29;          /* #14181D */
+  --c-text-2: 91 102 115;        /* #5B6673 */
+  --c-text-3: 120 130 142;
   color-scheme: light;
 }
 
@@ -95,10 +105,11 @@ html.light {
   .tabular-nums.font-sans {
     font-family: inherit;
   }
-  /* Sembol kodlari — body Inter ile ayni */
+  /* Sembol kodlari ve sayilar — gercek monospace (Design 03: tabular, sutunlar titremez) */
   .font-mono {
-    font-family: inherit;
-    font-feature-settings: 'tnum';
+    font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+    font-feature-settings: 'tnum', 'lnum';
+    font-variant-numeric: tabular-nums lining-nums;
     letter-spacing: 0;
   }
   /* Kod/log gosterimi icin gercek monospace istenirse .font-code utility'sini kullan */

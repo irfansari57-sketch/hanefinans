@@ -15,7 +15,7 @@ export function KatilimBadge({ indices, size = 'sm' }: { indices?: KatilimIndex[
   return (
     <span
       title={label}
-      className={`inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/10 font-semibold uppercase tracking-wide text-emerald-300 ${cls}`}
+      className={`inline-flex items-center rounded border border-accent/40 bg-accent/10 font-semibold uppercase tracking-wide text-accent ${cls}`}
     >
       Katılım
     </span>

@@ -43,6 +43,8 @@ import { AdBanner } from '@/components/domain/AdBanner';
 import { HaneModAdBanner } from '@/components/domain/HaneModAdBanner';
 import { AdVideo } from '@/components/domain/AdVideo';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { DensityToggle } from '@/components/ui/DensityToggle';
+import { RegimeStrip } from '@/components/domain/RegimeStrip';
 import { FeedbackWidget } from '@/components/domain/FeedbackWidget';
 import { DisclaimerModal } from '@/components/domain/DisclaimerModal';
 import { DisclaimerBody, DISCLAIMER_TITLE } from '@/components/domain/Disclaimer';
@@ -500,6 +502,7 @@ export function Layout() {
           <div className="ml-auto flex items-center gap-2">
             {/* Canli akis badge kaldirildi — yer kazanimi */}
             <StreakBadge variant="compact" className="hidden sm:inline-flex" />
+            <DensityToggle className="hidden md:inline-flex" />
             <ThemeToggle size="sm" />
             <button
               type="button"
@@ -511,6 +514,7 @@ export function Layout() {
             <AuthButton />
           </div>
         </header>
+        <RegimeStrip />
 
         {/* Mobile drawer — iOS uyumlu: 100dvh + iç scroll + safe-area inset */}
         {mobileOpen && (

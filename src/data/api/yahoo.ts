@@ -381,6 +381,8 @@ export interface PeriodReturns {
   '3a'?: number;
   '6a'?: number;
   '1y'?: number;
+  /** Yılbaşından bu yana — önceki yılın son kapanışına göre (15 Eki 2026) */
+  'ytd'?: number;
 }
 
 export function computePeriodReturns(closes: { date: number; close: number }[]): PeriodReturns {
@@ -423,5 +425,15 @@ export function computePeriodReturns(closes: { date: number; close: number }[]):
   const d365 = findNearest(365, 30);
   if (d365) r['1y'] = pct(d365.close);
   else if (closes.length > 1) r['1y'] = pct(closes[0].close); // fallback: eski davranis
+  // YTD: önceki yılın son kapanışı (yoksa bu yılın ilk kapanışı, 10 gün tolerans)
+  const jan1 = Date.UTC(new Date(last.date).getUTCFullYear(), 0, 1);
+  let prevYearClose: { date: number; close: number } | null = null;
+  let firstThisYear: { date: number; close: number } | null = null;
+  for (const p of closes) {
+    if (p.date < jan1) prevYearClose = p;
+    else if (!firstThisYear) firstThisYear = p;
+  }
+  const base = prevYearClose ?? (firstThisYear && firstThisYear.date - jan1 <= 10 * 86400_000 && firstThisYear !== last ? firstThisYear : null);
+  if (base) r['ytd'] = pct(base.close);
   return r;
 }

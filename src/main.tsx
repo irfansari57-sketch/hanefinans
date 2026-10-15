@@ -7,12 +7,14 @@ import { initDb } from './data/db';
 import { queryClient } from './lib/queryClient';
 import { initSentry } from './lib/sentry';
 import { initTheme } from './store/theme';
+import { initDensity } from './store/density';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 
 // Theme'i ilk render'dan once <html>'e uygula — FOUC engelle
 initTheme();
+initDensity();
 
 // Sentry'yi olabildiğince erken init et
 initSentry();

@@ -150,7 +150,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
   const text = await fetchBriefing(origin);
   if (!text) {
     return new Response(JSON.stringify({ ok: false, error: 'Briefing endpoint cevap vermedi' }), {
-      status: 502, headers: { 'Content-Type': 'application/json' },
+      status: 503, headers: { 'Content-Type': 'application/json' },
     });
   }
 

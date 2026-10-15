@@ -253,14 +253,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       ok: false, error: 'ai_failed',
       message: `AI servisinden cevap alinamadi (${aiResp.status})`,
       detail: errText.slice(0, 200),
-    }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+    }), { status: 503, headers: { 'Content-Type': 'application/json' } });
   }
 
   const aiData = (await aiResp.json()) as AnthropicResponse;
   const contentMd = aiData.content?.[0]?.text?.trim();
   if (!contentMd) {
     return new Response(JSON.stringify({ ok: false, error: 'empty_response' }), {
-      status: 502, headers: { 'Content-Type': 'application/json' },
+      status: 503, headers: { 'Content-Type': 'application/json' },
     });
   }
 

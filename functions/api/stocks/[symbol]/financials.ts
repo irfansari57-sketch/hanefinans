@@ -110,7 +110,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
 
     if (!bilancoR.ok) {
       return new Response(JSON.stringify({ ok: false, error: `FVT bilanco HTTP ${bilancoR.status}` }), {
-        status: 502,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -182,7 +182,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return new Response(JSON.stringify({ ok: false, error: msg }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
   }

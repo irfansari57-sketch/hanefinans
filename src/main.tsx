@@ -54,10 +54,31 @@ initSentry();
 })();
 
 // PWA service worker register — installable app olabilmek için
+// 15 Eki 2026: deploy sonrasi eski bundle'da kalma sorunu icin
+//  (a) yeni SW kontrolu devralinca (controllerchange) sayfa yenilenir — kullanici
+//      bir alanda yaziyorsa hemen degil, sekme gizlenince / rota degisince,
+//  (b) SW guncellemesi periyodik (15 dk) + sekme gorunur olunca tetiklenir.
+//  Build-version guard (yukarida) ikinci savunma hatti olarak kalir.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      const check = () => { reg.update().catch(() => { /* offline vb. */ }); };
+      window.setInterval(check, 15 * 60_000);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    }).catch((err) => {
       console.error('SW register failed', err);
+    });
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded) return; // ilk kurulumda yenileme yok
+      reloaded = true;
+      const safeReload = () => window.location.reload();
+      const typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+      if (document.visibilityState === 'hidden' || !typing) { safeReload(); return; }
+      // Kullanici yaziyor: rota degisince veya sekme gizlenince yenile
+      (window as unknown as { __iqNeedsReload?: boolean }).__iqNeedsReload = true;
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') safeReload(); }, { once: true });
     });
   });
 }

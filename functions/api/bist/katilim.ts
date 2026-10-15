@@ -29,7 +29,7 @@ export const onRequestGet: PagesFunction = async ({ request, waitUntil }) => {
   const count = Object.keys(symbols).length;
   if (!d?.success || count < 50) {
     return new Response(JSON.stringify({ ok: false, error: 'Katılım endeks verisi alınamadı', count }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
     });
   }

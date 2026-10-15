@@ -98,7 +98,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
         ok: false,
         error: `FVT HTTP ${r.status}`,
       }), {
-        status: 502,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -109,7 +109,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
         ok: false,
         error: 'FVT invalid response or no distribution data',
       }), {
-        status: 502,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -182,7 +182,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return new Response(JSON.stringify({ ok: false, error: msg }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
   }

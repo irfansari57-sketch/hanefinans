@@ -85,7 +85,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, params, waitUn
   );
   if (!r || !r.ok) {
     return new Response(JSON.stringify({ ok: false, error: `Google News ${r?.status ?? 'timeout'}` }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     });
   }

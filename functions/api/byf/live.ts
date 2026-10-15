@@ -187,7 +187,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
 
     if (!r.ok) {
       return new Response(JSON.stringify({ ok: false, error: `Fintables HTTP ${r.status}` }), {
-        status: 502,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -230,7 +230,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
         ok: false,
         error: 'BYF parse basarisiz — HTML formati degismis olabilir',
         htmlPreview: textFallback.slice(0, 500),
-      }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+      }), { status: 503, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Yahoo Finance enrichment — bazi BYF'ler Yahoo'da da listeli (GLDTR.IS vb.).
@@ -295,7 +295,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return new Response(JSON.stringify({ ok: false, error: msg }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
   }

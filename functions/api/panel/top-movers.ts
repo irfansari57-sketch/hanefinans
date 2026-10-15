@@ -182,7 +182,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
 
   if (allEmpty) {
     return new Response(JSON.stringify(body), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
     });
   }

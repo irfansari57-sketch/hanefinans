@@ -42,7 +42,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, env }) =>
   } catch (e) {
     clearTimeout(t);
     return new Response(JSON.stringify({ error: `TCMB upstream: ${(e as Error).message}` }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     });
   }

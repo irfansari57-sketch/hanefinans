@@ -140,7 +140,7 @@ Akıcı Türkçe, yatırım tavsiyesi değil bilgi amaçlı uyarısı sonda. Mad
     if (!r.ok) {
       const errText = await r.text();
       return new Response(JSON.stringify({ ok: false, error: `Anthropic API error ${r.status}: ${errText.slice(0, 200)}` }), {
-        status: 502,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }

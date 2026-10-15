@@ -64,7 +64,7 @@ export async function fetchScreenerSpec(query: string, datasetHint?: 'stocks' | 
       body: JSON.stringify({ query, dataset: datasetHint }),
     });
     // 429 (quota) ve 502 (LLM hata) durumlarında body içinde anlamlı bilgi var — parse et.
-    if (!r.ok && r.status !== 429 && r.status !== 502) {
+    if (!r.ok && r.status !== 429 && r.status !== 502 && r.status !== 503) {
       const errText = await r.text().catch(() => '');
       return { ok: false, error: `HTTP ${r.status}: ${errText.slice(0, 120)}` };
     }

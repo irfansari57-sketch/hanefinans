@@ -334,7 +334,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
     }
     return new Response(JSON.stringify({ error: 'upstream_unreachable', detail: String(e) }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     });
   }

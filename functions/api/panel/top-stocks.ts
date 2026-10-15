@@ -65,14 +65,14 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
     });
     if (!r.ok) {
       return new Response(JSON.stringify({ ok: false, error: `FVT HTTP ${r.status}` }), {
-        status: 502,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
     const j = (await r.json()) as FvtResponse;
     if (!j.success || !j.data?.data) {
       return new Response(JSON.stringify({ ok: false, error: 'FVT invalid response' }), {
-        status: 502,
+        status: 503,
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -137,7 +137,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return new Response(JSON.stringify({ ok: false, error: msg }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
   }

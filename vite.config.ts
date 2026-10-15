@@ -66,9 +66,15 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true,
           // Clear-cache.html SW kontrolu disinda kalsin — kullanici acsin diye
           navigateFallbackDenylist: [/^\/api\//, /^\/clear-cache\.html$/],
-          // Navigation request'leri NetworkFirst — offline'da en son cache'lenmis
-          // index.html servis edilir ama online'da hep taze gelir.
-          navigateFallback: '/index.html',
+          // 15 Eki 2026 — KÖK NEDEN DÜZELTMESİ: Workbox, navigateFallback (NavigationRoute)
+          // rotasını runtimeCaching'den ÖNCE kaydeder; dolayısıyla her navigasyon
+          // PRECACHE'teki eski index.html'den servis ediliyor, asagidaki NetworkFirst
+          // hic calismiyordu. Sonuc: deploy sonrasi kullanici eski bundle'da kaliyor,
+          // yeni rotalar (/signals, /tarama) ana sayfaya düşüyor, silinen chunk'lar
+          // "chunk load error" veriyordu (canli olarak dogrulandi: SW index-LP1b9MZb,
+          // sunucu index-BDNcuJib). navigateFallback kapali → navigasyon NetworkFirst'e
+          // duser: online'da daima taze HTML, offline'da son ziyaret edilen sayfa.
+          navigateFallback: null,
           runtimeCaching: [
             // index.html ve diger navigation request'leri NetworkFirst
             { urlPattern: ({ request }) => request.mode === 'navigate', handler: 'NetworkFirst', options: { cacheName: 'html-pages', networkTimeoutSeconds: 3, expiration: { maxEntries: 10 } } },

@@ -144,6 +144,11 @@ export function Layout() {
   const admin = isAdmin(user);
   const adBannerEnabled = useSiteSettings((s) => s.adBannerEnabled);
 
+  // Yeni SW devraldi ama kullanici o an yaziyordu → ilk rota degisiminde yenile (main.tsx)
+  useEffect(() => {
+    if ((window as unknown as { __iqNeedsReload?: boolean }).__iqNeedsReload) window.location.reload();
+  }, [location.pathname]);
+
   // Watchlist cloud sync — login/logout senkronizasyonu
   // Anonim kullanicinin localStorage listesi ilk login'de cloud'a migre olur,
   // sonrasinda cloud authoritative. Logout'ta cloudEnabled=false → sadece local.

@@ -143,7 +143,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
   const bars = await fetchIsYatirim(symbol, range);
   if (!bars) {
     return new Response(JSON.stringify({ ok: false, error: 'no data', symbol, range }), {
-      status: 502,
+      status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
   }

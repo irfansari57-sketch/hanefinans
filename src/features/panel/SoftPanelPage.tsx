@@ -368,7 +368,7 @@ export function SoftPanelPage() {
   );
 
   const criticalNews = useMemo(() => news.filter((n) => n.critical).slice(0, 2), [news]);
-  const feedNews = useMemo(() => news.filter((n) => !n.critical).slice(0, 6), [news]);
+  const feedNews = useMemo(() => news.filter((n) => !n.critical).slice(0, 8), [news]);
 
   const Pct = ({ v, invert }: { v: number | null | undefined; invert?: boolean }) => {
     if (v == null || !Number.isFinite(v)) return <span className="font-mono text-fg-3">—</span>;

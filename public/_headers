@@ -48,6 +48,17 @@
 /registerSW.js
   Cache-Control: no-cache, no-store, must-revalidate
 
+# Kök seviyesi önyükleme script'leri — kısa cache; SPA fallback HTML'i bu
+# yollarda saatlerce saklanmasın (15 Eki 2026 zehirlenme olayı)
+/bootGuard.js
+  Cache-Control: no-cache, must-revalidate
+
+/themeInit.js
+  Cache-Control: no-cache, must-revalidate
+
+/push-handler.js
+  Cache-Control: no-cache, must-revalidate
+
 /manifest.webmanifest
   Cache-Control: public, max-age=3600
 

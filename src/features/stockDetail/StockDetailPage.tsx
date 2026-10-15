@@ -27,6 +27,7 @@ import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { computeRegime, type RegimeResult } from '@/lib/regime';
 import { fetchRegime, type RegimeApi } from '@/data/api/regime';
 import { buildChartEvents } from '@/lib/chartEvents';
+import { evaluateSignals, type Signal } from '@/lib/signals';
 import { KatilimBadge } from '@/components/domain/KatilimBadge';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, closedBarsOnly, type OHLC } from '@/lib/indicators';
 import { isBistOpen } from '@/lib/marketCalendar';
@@ -261,6 +262,15 @@ export function StockDetailPage() {
   // Hook order'ı stabil tutmak için early return'dan ÖNCE çağırılmalı
   // (aksi halde stock null → null değil arası render'da React #310).
   // Hisse haberleri: sembol akışı geldiyse o, yoksa genel akış filtresi. Hook sırası sabit.
+  // Hafta 3: hissenin kendi sinyalleri — aynı kütüphane, kapanmış 1y barları, XU100 rejim bağlamı
+  const stockSignals = useMemo<Signal[]>(() => {
+    if (!historical || historical.bars.length < 60) return [];
+    const bars = closedBarsOnly(historical.bars, isBistOpen()).map((b) => ({
+      date: new Date(b.time).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume ?? 0,
+    }));
+    return evaluateSignals(bars, indexRegime?.trend.regime ?? null, 'yahoo 1y');
+  }, [historical, indexRegime]);
+
   const stockRegime = useMemo<RegimeResult | null>(() => {
     if (!historical || historical.closes.length < 60) return null;
     return computeRegime(historical.closes.map((c) => ({ date: new Date(c.date).toISOString().slice(0, 10), close: c.close })), null, 'yahoo 1y');
@@ -539,6 +549,32 @@ export function StockDetailPage() {
           <span className="text-[11px] text-fg-3">· yatırım tavsiyesi değildir</span>
         </div>
       )}
+      {historical && historical.bars.length >= 60 && (
+        <div className="mb-4 rounded-xl border border-border bg-bg-soft px-4 py-3">
+          <div className="mb-1.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-fg-3">
+            Teknik durum <span className="font-normal normal-case tracking-normal">· tanımlı kurallar · kapanış verisi</span>
+            <Link to="/signals" className="ml-auto text-accent normal-case tracking-normal hover:underline">Tüm sinyaller →</Link>
+          </div>
+          {stockSignals.length === 0 ? (
+            <div className="text-[12px] text-fg-2">Bugünkü kapanışta tanımlı kurallardan geçen sinyal yok.</div>
+          ) : (
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              {stockSignals.map((sg, i) => (
+                <span key={i} className="inline-flex items-center gap-1.5 text-[13px] text-fg">
+                  <span className={cn('rounded border px-1 text-[10px] font-semibold', sg.direction === 'yukarı' ? 'border-success/40 bg-success/10 text-success' : sg.direction === 'aşağı' ? 'border-danger/40 bg-danger/10 text-danger' : 'border-warning/40 bg-warning/10 text-warning')}>
+                    {sg.direction === 'yukarı' ? '▲' : sg.direction === 'aşağı' ? '▼' : '!'}
+                  </span>
+                  {sg.title}
+                  <span className="inline-flex gap-0.5" title={`Güç ${sg.strength}/3`}>{[1, 2, 3].map((k) => <span key={k} className={cn('h-1.5 w-1.5 rounded-sm', k <= sg.strength ? 'bg-accent' : 'bg-bg-card')} />)}</span>
+                  {sg.regimeFit !== 'nötr' && <span className={cn('text-[10px]', sg.regimeFit === 'uyumlu' ? 'text-fg-3' : 'text-warning')}>{sg.regimeFit === 'uyumlu' ? 'rejime uyumlu' : 'rejime karşı'}</span>}
+                  <EvidenceLink title={sg.title} rows={sg.evidence} />
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Chart — Panel Hero stilinde emerald/red area chart. Kullanici talebi
           11 Eyl 2026: ana sayfayla tutarli gorsel, TradingView agir chart yerine
           hafif SVG. Detay isteyen "TradingView'de aç" ile external gider. */}

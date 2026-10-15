@@ -11,7 +11,7 @@ const TABS = [
   { to: '/panel', label: 'Piyasa', icon: Activity },
   { to: '/watchlist', label: 'Takip', icon: Star },
   { to: '/portfoy', label: 'Portföy', icon: Wallet },
-  { to: '/recommendations', label: 'Sinyal', icon: Radar },
+  { to: '/signals', label: 'Sinyal', icon: Radar },
 ] as const;
 
 /**

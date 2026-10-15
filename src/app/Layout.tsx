@@ -27,6 +27,7 @@ import {
   Sparkles,
   CalendarClock,
   Shield,
+  Radar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEATURES } from '@/lib/featureFlags';
@@ -72,6 +73,7 @@ const navGroups: NavGroup[] = [
       // Günlük Analiz gecici olarak pasifize edildi (kullanici talebi 11 Eylul 2026).
       // Route hala mevcut - direkt URL ile erisilebilir. Yeniden aktive icin bu satiri geri ac.
       // { to: '/morning', label: 'Günlük Analiz', icon: Sun },
+      { to: '/signals', label: 'Sinyaller', icon: Radar },
       { to: '/recommendations', label: 'Piyasa Radarı', icon: Flame, pro: false },
       // Akilli Sorgu: kullanici talebi 13 Eyl 2026 — nav'dan tamamen kaldirildi.
       // Route hala mevcut, direkt URL ile erisilebilir. Yeniden aktive: alttaki satiri geri ac.

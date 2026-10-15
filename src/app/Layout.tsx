@@ -12,7 +12,6 @@ import {
   User,
   TrendingUp,
   History,
-  Landmark,
   Sun,
   Flame,
   GraduationCap,
@@ -24,12 +23,16 @@ import {
   Grid3x3,
   Globe,
   Coins,
-  Sparkles,
   CalendarClock,
   Shield,
   Radar,
   PanelLeftClose,
   PanelLeftOpen,
+  PieChart,
+  Vault,
+  Layers,
+  Scale,
+  Gamepad2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FEATURES } from '@/lib/featureFlags';
@@ -84,23 +87,24 @@ const navGroups: NavGroup[] = [
       //   ? [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles }]
       //   : [{ to: '/sorgu', label: 'Akıllı Sorgu', icon: Sparkles, adminOnly: true }]),
       { to: '/risk-profili', label: 'Risk Profilim', icon: Shield },
-      { to: '/tahmin', label: 'Oyunlarım', icon: Sparkles },
+      { to: '/tahmin', label: 'Oyunlarım', icon: Gamepad2 },
       // Hakkinda -> Hesap grubuna tasindi (kullanici talebi 13 Eyl 2026)
     ],
   },
   {
     title: 'Piyasalar',
     items: [
-      // Yeni sıra: Fonlar → BES → BYF → Karşılaştır → Portföyüm → Portföy Simülatörü
-      //           → Hisseler → Emtialar → Döviz → Takip → Takvim → Gelişmeler
-      { to: '/funds', label: 'Yatırım Fonları', icon: Landmark },
-      { to: '/bes', label: 'BES Fonları', icon: Landmark },
-      { to: '/byf', label: 'Borsa Yatırım Fonları', icon: Landmark },
-      { to: '/karsilastir', label: 'Fon Karşılaştır', icon: Landmark },
+      // Sıra (15 Eki 2026): Hisseler → Fonlar → BES → BYF → Karşılaştır → Portföyüm
+      //           → Simülatör → Emtialar → Döviz → Takip → Takvim → Gelişmeler
+      // İkonlar 15 Eki 2026: dört fon sayfası ayrıştırıldı (pasta / kasa / katman / terazi)
+      { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
+      { to: '/funds', label: 'Yatırım Fonları', icon: PieChart },
+      { to: '/bes', label: 'BES Fonları', icon: Vault },
+      { to: '/byf', label: 'Borsa Yatırım Fonları', icon: Layers },
+      { to: '/karsilastir', label: 'Fon Karşılaştır', icon: Scale },
       // Portfoyum + Simulator, Emtialar'in USTUNDE (kullanici talebi 13 Eyl 2026)
       { to: '/portfoy', label: 'Portföyüm', icon: Wallet },
       { to: '/simulator', label: 'Portföy Simülatörü', icon: Grid3x3 },
-      { to: '/stocks', label: 'Hisseler', icon: TrendingUp },
       { to: '/emtia', label: 'Emtialar', icon: Gem },
       { to: '/doviz', label: 'Döviz Kurları', icon: Coins },
       { to: '/watchlist', label: 'Takip Listem', icon: Star },

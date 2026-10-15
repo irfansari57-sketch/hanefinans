@@ -63,7 +63,7 @@ type BYFCategory = 'Hisse Endeksi' | 'Katılım' | 'Altın' | 'Gümüş' | 'Döv
 
 const CATEGORIES: BYFCategory[] = ['Tümü', 'Hisse Endeksi', 'Katılım', 'Altın', 'Gümüş', 'Döviz', 'Temettü', 'GYO', 'Sürdürülebilirlik'];
 
-type SortKey = 'symbol' | 'price' | 'changePct';
+type SortKey = 'symbol' | 'price' | 'changePct' | 'r1m' | 'r3m' | 'r6m' | 'rYtd' | 'r1y' | 'r3y';
 
 type ByfReturns = { '1m'?: number | null; '3m'?: number | null; '6m'?: number | null; ytd?: number | null; '1y'?: number | null; '3y'?: number | null; '5y'?: number | null };
 
@@ -204,8 +204,12 @@ export function BorsaYatirimFundsPage() {
       let bv: number | string;
       if (sortKey === 'symbol') { av = a.symbol; bv = b.symbol; }
       else {
-        av = a[sortKey] ?? -Infinity;
-        bv = b[sortKey] ?? -Infinity;
+        // Veri olmayan ("—") satırlar yön fark etmeksizin en alta
+        const an = a[sortKey], bn = b[sortKey];
+        if (an == null && bn == null) return 0;
+        if (an == null) return 1;
+        if (bn == null) return -1;
+        av = an; bv = bn;
       }
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ? 1 : -1;
@@ -296,12 +300,13 @@ export function BorsaYatirimFundsPage() {
                   <th className="hidden sm:table-cell px-2 py-2 text-left">Kategori / Fon Adı</th>
                   <SortableTh label="Fiyat" k="price" active={sortKey} dir={sortDir} onClick={handleSort} />
                   <SortableTh label="Gün %" k="changePct" active={sortKey} dir={sortDir} onClick={handleSort} />
-                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">1A</th>
-                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">3A</th>
-                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">6A</th>
-                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">YBB</th>
-                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">1Y</th>
-                  <th className="px-2 py-2 text-right text-[10px] uppercase tracking-widest">3Y</th>
+                  {/* 15 Eki 2026: tüm periyotlar sıralanabilir (kullanıcı talebi) */}
+                  <SortableTh label="1A" k="r1m" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="3A" k="r3m" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="6A" k="r6m" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="YBB" k="rYtd" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="1Y" k="r1y" active={sortKey} dir={sortDir} onClick={handleSort} />
+                  <SortableTh label="3Y" k="r3y" active={sortKey} dir={sortDir} onClick={handleSort} />
                 </tr>
               </thead>
               <tbody>

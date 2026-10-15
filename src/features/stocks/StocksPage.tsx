@@ -8,14 +8,13 @@ import { DoubleScrollTable } from '@/components/ui/DoubleScrollTable';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { loadStocks, listSnapshotBistSymbols } from '@/data/services';
 import { useKatilim } from '@/hooks/useKatilim';
-import { useDensity } from '@/store/density';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import { KatilimBadge } from '@/components/domain/KatilimBadge';
 import type { KatilimIndex } from '@/data/katilim';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
 import { MOCK_STOCKS } from '@/data/mock';
 import { BIST_UNIQUE } from '@/data/bistAll';
-import { BIST_GROUPS, BIST_GROUP_BY_SLUG, BIST_GROUP_KIND_LABELS, type BistGroupKind } from '@/data/bistGroups';
+import { BIST_GROUPS, BIST_GROUP_BY_SLUG, type BistGroupKind } from '@/data/bistGroups';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { useWatchlist } from '@/store/watchlist';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
@@ -109,8 +108,6 @@ export function StocksPage() {
   const toggleWatchlist = useWatchlist((s) => s.toggle);
   const watchedSymbols = useMemo(() => new Set(watchedSymbolsList), [watchedSymbolsList]);
   const { map: katilimMap } = useKatilim();
-  const density = useDensity((s) => s.density);
-  const isMobile = useIsMobile();
 
   const [stocks, setStocks] = useState<StockRow[]>(() => stocksMemo?.stocks ?? []);
   const [returnsMap, setReturnsMap] = useState<Record<string, PeriodReturns>>(() => readReturnsCache() ?? {});
@@ -121,25 +118,43 @@ export function StocksPage() {
   const [sortKey, setSortKey] = useState<SortKey>('changePct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [tab, setTab] = useState<'all' | 'watched'>('all');
-  // Grup filtresi (13 Eki 2026): BIST endeks/tema/sektör grupları (bistGroups.ts).
-  // 'all' = BIST Tüm. Son tercih localStorage'da.
-  const [groupFilter, setGroupFilter] = useState<string>(() => {
+  // Grup filtresi (15 Eki 2026, Design 03): üç çoklu-seçim kutusu. Aynı kutu içinde
+  // BİRLEŞİM (Bankacılık + Sigorta), kutular arası KESİŞİM (BIST 100 ∩ Sınai).
+  type GroupSel = Record<BistGroupKind, string[]>;
+  const EMPTY_SEL: GroupSel = { index: [], main: [], sector: [] };
+  const [groupSel, setGroupSel] = useState<GroupSel>(() => {
     try {
-      const saved = localStorage.getItem('fa.stocks.groupFilter');
-      if (saved && (saved === 'all' || BIST_GROUP_BY_SLUG.has(saved))) return saved;
+      const raw = localStorage.getItem('fa.stocks.groupSel');
+      if (raw) {
+        const p = JSON.parse(raw) as Partial<GroupSel>;
+        const clean = (a?: string[]) => (Array.isArray(a) ? a.filter((x) => BIST_GROUP_BY_SLUG.has(x)) : []);
+        return { index: clean(p.index), main: clean(p.main), sector: clean(p.sector) };
+      }
     } catch { /* */ }
-    return 'all';
+    return EMPTY_SEL;
   });
   useEffect(() => {
-    try { localStorage.setItem('fa.stocks.groupFilter', groupFilter); } catch { /* */ }
-  }, [groupFilter]);
-  /** Grup üyelik kümesi — katılım grubu canlı/statik katılım haritasından. */
+    try { localStorage.setItem('fa.stocks.groupSel', JSON.stringify(groupSel)); } catch { /* */ }
+  }, [groupSel]);
+  const groupSelCount = groupSel.index.length + groupSel.main.length + groupSel.sector.length;
+  const membersOf = (slug: string): readonly string[] =>
+    slug === 'katilim' ? Object.keys(katilimMap) : (BIST_GROUP_BY_SLUG.get(slug)?.symbols ?? []);
+  /** Seçime göre izinli sembol kümesi; seçim yoksa null (BIST Tüm). */
   const groupSymbolSet = useMemo<ReadonlySet<string> | null>(() => {
-    if (groupFilter === 'all') return null;
-    if (groupFilter === 'katilim') return new Set(Object.keys(katilimMap));
-    const g = BIST_GROUP_BY_SLUG.get(groupFilter);
-    return g ? new Set(g.symbols) : null;
-  }, [groupFilter, katilimMap]);
+    let acc: Set<string> | null = null;
+    for (const kind of ['index', 'main', 'sector'] as BistGroupKind[]) {
+      const slugs = groupSel[kind];
+      if (slugs.length === 0) continue;
+      const union = new Set<string>();
+      for (const slug of slugs) for (const sym of membersOf(slug)) union.add(sym);
+      if (acc === null) { acc = union; continue; }
+      const prev: Set<string> = acc;
+      acc = new Set(Array.from(prev).filter((x: string) => union.has(x)));
+    }
+    return acc;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupSel, katilimMap]);
+  const groupFilterKey = JSON.stringify(groupSel);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedSym, setExpandedSym] = useState<string | null>(null);
   const PAGE_SIZE = 50;
@@ -405,7 +420,7 @@ export function StocksPage() {
     () => sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
     [sorted, safePage],
   );
-  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, groupFilter]);
+  useEffect(() => { setCurrentPage(1); }, [search, tab, sortKey, sortDir, groupFilterKey]);
 
   // BIST scope sayaçları (chip rozetleri için)
   const groupCounts = useMemo(() => {
@@ -444,28 +459,46 @@ export function StocksPage() {
     <>
       <SeoHead title="BIST Hisseleri" description="BIST tüm hisseleri canlı fiyat ve dönem getirileri." path="/stocks" />
 
-      {/* Grup chip'leri — BIST resmî endeks/tema/sektör kapsamları (bistGroups.ts) */}
-      <div className="mb-3 space-y-2">
-        {(['index', 'main', 'sector'] as BistGroupKind[]).filter((kind) => kind === 'index' || !(isMobile && density === 'comfortable')).map((kind) => (
-          <div key={kind} className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] md:flex-wrap md:whitespace-normal">
-            <span className="mr-1 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-fg-3">
-              {BIST_GROUP_KIND_LABELS[kind]}
-            </span>
-            {kind === 'index' && (
-              <GroupChip label="BIST Tüm" count={groupCounts.all} active={groupFilter === 'all'} onClick={() => setGroupFilter('all')} />
-            )}
-            {BIST_GROUPS.filter((g) => g.kind === kind).map((g) => (
-              <GroupChip
-                key={g.slug}
-                label={g.label}
-                count={groupCounts[g.slug] ?? 0}
-                active={groupFilter === g.slug}
-                onClick={() => setGroupFilter(groupFilter === g.slug ? 'all' : g.slug)}
-              />
-            ))}
-          </div>
+      {/* Grup filtresi — 3 çoklu-seçim kutusu + seçili çipler (Design 03, 15 Eki 2026) */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {(['index', 'main', 'sector'] as BistGroupKind[]).map((kind) => (
+          <MultiSelect
+            key={kind}
+            label={kind === 'index' ? 'Endeks / Tema' : kind === 'main' ? 'Ana sektör' : 'Sektör'}
+            options={BIST_GROUPS.filter((g) => g.kind === kind).map((g) => ({ value: g.slug, label: g.label, count: groupCounts[g.slug] ?? 0 }))}
+            selected={groupSel[kind]}
+            onChange={(next) => setGroupSel((cur) => ({ ...cur, [kind]: next }))}
+            searchFrom={kind === 'sector' ? 1 : 99}
+          />
         ))}
+        <span className="text-[11px] text-fg-3">
+          {groupSelCount === 0 ? <>BIST Tüm · <span className="font-mono text-fg-2">{groupCounts.all}</span> hisse</> : <><span className="font-mono text-fg-2">{sorted.length}</span> hisse</>}
+        </span>
+        {groupSelCount > 0 && (
+          <button type="button" onClick={() => setGroupSel(EMPTY_SEL)} className="text-[11px] text-accent hover:underline">Temizle</button>
+        )}
       </div>
+      {groupSelCount > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          {(['index', 'main', 'sector'] as BistGroupKind[]).map((kind, ki) => (
+            groupSel[kind].map((slug, i) => (
+              <span key={slug} className="inline-flex items-center gap-1">
+                {(ki > 0 && i === 0 && (groupSel.index.length + (ki === 2 ? groupSel.main.length : 0)) > 0) && <span className="mx-0.5 text-[10px] uppercase text-fg-3">ve</span>}
+                {i > 0 && <span className="mx-0.5 text-[10px] uppercase text-fg-3">veya</span>}
+                <button
+                  type="button"
+                  onClick={() => setGroupSel((cur) => ({ ...cur, [kind]: cur[kind].filter((x) => x !== slug) }))}
+                  className="inline-flex h-6 items-center gap-1 rounded border border-accent/40 bg-accent/10 px-2 text-[11px] text-fg hover:bg-accent/20"
+                  title="Kaldır"
+                >
+                  {BIST_GROUP_BY_SLUG.get(slug)?.label ?? slug}
+                  <span aria-hidden className="text-fg-3">×</span>
+                </button>
+              </span>
+            ))
+          ))}
+        </div>
+      )}
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border border-border bg-bg-soft p-1">
@@ -503,14 +536,11 @@ export function StocksPage() {
         </div>
       )}
 
-      {sortKey === 'changePct' && groupFilter !== 'all' && tab === 'all' && (
-        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-400">
-          Günlük sıralama yalnızca <span className="text-slate-200">{BIST_GROUP_BY_SLUG.get(groupFilter)?.label ?? groupFilter}</span> kapsamında.
-          Tavan/taban yapan tüm hisseler için{' '}
-          <button type="button" className="text-accent underline-offset-2 hover:underline" onClick={() => { setGroupFilter('all'); setCurrentPage(1); }}>
-            BIST Tüm
-          </button>{' '}
-          seçin — Panel'deki "Günün Enleri" tüm BIST'e bakar.
+      {sortKey === 'changePct' && groupSelCount > 0 && tab === 'all' && (
+        <div className="mb-3 rounded-lg border border-border bg-bg-soft px-3 py-2 text-xs text-fg-2">
+          Günlük sıralama yalnızca seçili kapsamda. Tavan/taban yapan tüm hisseler için{' '}
+          <button type="button" className="text-accent underline-offset-2 hover:underline" onClick={() => { setGroupSel(EMPTY_SEL); setCurrentPage(1); }}>filtreyi temizle</button>
+          {' '}— Panel'deki "Günün Enleri" tüm BIST'e bakar.
         </div>
       )}
 
@@ -622,25 +652,6 @@ function SortableHeader({ label, sortKey, activeKey, dir, onClick, align = 'righ
         {active ? <span className="text-[9px]">{dir === 'asc' ? '▲' : '▼'}</span> : <ArrowUpDown size={10} className="opacity-30" />}
       </span>
     </th>
-  );
-}
-
-function GroupChip({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition',
-        active
-          ? 'border-accent/50 bg-accent/15 text-accent shadow-sm shadow-accent/10'
-          : 'border-border bg-bg-soft text-slate-400 hover:border-accent/30 hover:text-slate-200',
-      )}
-    >
-      <span>{label}</span>
-      <span className={cn('rounded px-1 py-0.5 text-[9px] font-bold tabular-nums', active ? 'bg-accent/20' : 'bg-bg-card text-slate-500')}>{count}</span>
-    </button>
   );
 }
 

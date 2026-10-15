@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadMarketBreadth, loadMacroAll, type MarketBreadth } from '@/data/services';
+import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
+import { macroKeyToRoute } from '@/lib/macroRoutes';
+import type { MacroIndicator } from '@/data/types';
 import { DataFreshness } from '@/components/ui/DataFreshness';
 import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { cn } from '@/lib/utils';
@@ -13,24 +16,48 @@ import { cn } from '@/lib/utils';
  * o zamana kadar bu alan BOŞ kalır, tahmin yazılmaz.
  */
 let memo: MarketBreadth | null = null;
+let macroMemo: MacroIndicator[] = [];
+let cdsMemo: TrCdsData | null = null;
+
+/** Şeritteki piyasa kalemleri — sabit sıra; 15 Eki 2026: VIX yerine TR CDS */
+const MARKET_KEYS = ['USD/TRY', 'EUR/TRY', 'Gram Altın', 'Gram Gümüş', 'BTC/USD', 'Brent'] as const;
+const SHORT: Record<string, string> = { 'USD/TRY': 'USD', 'EUR/TRY': 'EUR', 'Gram Altın': 'Altın', 'Gram Gümüş': 'Gümüş', 'BTC/USD': 'BTC', Brent: 'Brent' };
+
+function fmtV(v: number | undefined, key: string): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  if (key === 'BTC/USD') return v.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+  if (Math.abs(v) >= 1000) return v.toLocaleString('tr-TR', { maximumFractionDigits: 0 });
+  return v.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+}
+
+function Pct({ v, invert }: { v: number | undefined; invert?: boolean }) {
+  if (v == null || !Number.isFinite(v)) return <span className="font-mono text-fg-3">—</span>;
+  const good = invert ? v <= 0 : v >= 0;
+  return <span className={cn('font-mono font-semibold', v === 0 ? 'text-neutral' : good ? 'text-success' : 'text-danger')}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+}
 
 export function RegimeStrip({ className }: { className?: string }) {
   const [b, setB] = useState<MarketBreadth | null>(memo);
+  const [macro, setMacro] = useState<MacroIndicator[]>(macroMemo);
+  const [cds, setCds] = useState<TrCdsData | null>(cdsMemo);
   useEffect(() => {
     let alive = true;
     // Endeks değeri hero grafikle AYNI kaynaktan (loadMacroAll → BIST 100); genişlik snapshot'tan.
-    const run = () => Promise.all([loadMarketBreadth(), loadMacroAll().catch(() => null)]).then(([r, m]) => {
+    const run = () => Promise.all([loadMarketBreadth(), loadMacroAll().catch(() => null), fetchTrCds().catch(() => null)]).then(([r, m, c]) => {
       if (!alive || !r) return;
       const bist = m?.data.find((x) => x.key === 'BIST 100');
       const merged: MarketBreadth = bist && bist.value > 0
         ? { ...r, index: { price: bist.value, changePct: bist.changePct ?? 0, asOf: bist.asOf ?? bist.updatedAt, source: bist.feedSource, updatedAt: Date.parse(bist.updatedAt) || 0 } }
         : r;
       memo = merged; setB(merged);
+      if (m) { macroMemo = m.data; setMacro(m.data); }
+      if (c) { cdsMemo = c; setCds(c); }
     });
     run();
     const t = window.setInterval(run, 60_000);
     return () => { alive = false; window.clearInterval(t); };
   }, []);
+  const macroMap = new Map(macro.map((x) => [x.key, x]));
 
   if (!b || !b.index) return null;
   const idx = b.index;
@@ -43,7 +70,7 @@ export function RegimeStrip({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex h-9 items-center gap-3 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-soft px-4 text-[13px] [scrollbar-width:none]',
+        'flex h-9 items-center gap-3 overflow-x-auto whitespace-nowrap border-b border-border bg-bg-soft px-4 text-[12px] [scrollbar-width:none] xl:gap-4 xl:text-[13px]',
         className,
       )}
       aria-label="Piyasa rejimi"
@@ -54,31 +81,38 @@ export function RegimeStrip({ className }: { className?: string }) {
       <span className={cn('font-mono font-semibold', tone)}>
         {pct > 0 ? '+' : ''}{pct.toFixed(2)}%
       </span>
-      <span className="text-fg-3">·</span>
-      <span className="inline-flex items-center gap-1.5 text-fg-2">
+      <span className="inline-flex items-center gap-1 text-fg-2" title="Piyasa genişliği: yükselen / düşen hisse">
         <span className={cn('inline-block h-1.5 w-1.5 rounded-full', breadthTone)} aria-hidden />
-        Genişlik
-        <span className="font-mono text-fg">{b.advancers}</span>
-        <span className="text-fg-3">/</span>
-        <span className="font-mono text-fg">{b.decliners}</span>
-        <span className="hidden sm:inline text-fg-3">yükselen/düşen</span>
-        {(b.limitUp > 0 || b.limitDown > 0) && (
-          <span className="hidden md:inline text-fg-3">
-            · tavan <span className="font-mono text-success">{b.limitUp}</span> · taban <span className="font-mono text-danger">{b.limitDown}</span>
-          </span>
-        )}
+        <span className="font-mono text-success">▲{b.advancers}</span>
+        <span className="font-mono text-danger">▼{b.decliners}</span>
         <EvidenceLink
-          title="Genişlik hesabı"
+          title="Genişlik"
           rows={[
             { label: 'Yükselen', value: String(b.advancers), source: b.source.toUpperCase() },
             { label: 'Düşen', value: String(b.decliners), source: b.source.toUpperCase() },
             { label: 'Yatay', value: String(b.unchanged) },
-            { label: 'Kapsam', value: `${b.total} yerli hisse (BYF hariç)` },
             { label: 'Tavan / taban', value: `${b.limitUp} / ${b.limitDown}`, source: '≥ ±9,5%' },
+            { label: 'Kapsam', value: `${b.total} yerli hisse (BYF hariç)` },
           ]}
         />
       </span>
-      <span className="ml-auto">
+      <span className="h-4 w-px bg-border" aria-hidden />
+      {MARKET_KEYS.map((k) => {
+        const m = macroMap.get(k);
+        return (
+          <Link key={k} to={macroKeyToRoute(k) ?? '/global'} className="inline-flex items-center gap-1.5 hover:text-accent">
+            <span className="text-fg-2">{SHORT[k]}</span>
+            <span className="font-mono font-semibold text-fg">{fmtV(m?.value, k)}</span>
+            <Pct v={m?.changePct} />
+          </Link>
+        );
+      })}
+      <Link to="/global" className="inline-flex items-center gap-1.5 hover:text-accent" title="Türkiye 5 yıllık CDS (bps) — düşüş olumlu">
+        <span className="text-fg-2">CDS</span>
+        <span className="font-mono font-semibold text-fg">{cds?.value != null ? cds.value.toFixed(0) : '—'}</span>
+        <Pct v={cds?.changePct ?? undefined} invert />
+      </Link>
+      <span className="ml-auto hidden lg:inline">
         <DataFreshness source={idx.source} asOf={asOfIso} delayMin={15} compact />
       </span>
     </div>

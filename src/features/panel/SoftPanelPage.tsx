@@ -29,9 +29,6 @@ import { fetchHistoricalYahoo, fetchQuotesYahoo } from '@/data/api/yahoo';
 import { loadFundsAsPerformance } from '@/data/api/tefasGithub';
 import { CRYPTOS } from '@/data/cryptoSymbols';
 import { MOCK_STOCKS } from '@/data/mock';
-import { macroKeyToRoute } from '@/lib/macroRoutes';
-import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
-import { fetchTr10y, type Tr10yData } from '@/data/api/tr10y';
 import type { MacroIndicator, NewsItem, Stock, FundPerformance } from '@/data/types';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
@@ -99,19 +96,6 @@ export function SoftPanelPage() {
     return () => { alive = false; clearTimeout(t); };
   }, []);
 
-  // Türkiye risk göstergeleri — mini kart içeriği
-  const [trCds, setTrCds] = useState<TrCdsData | null>(null);
-  const [tr10y, setTr10y] = useState<Tr10yData | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const t = setTimeout(async () => {
-      const [c, y] = await Promise.all([fetchTrCds().catch(() => null), fetchTr10y().catch(() => null)]);
-      if (!alive) return;
-      if (c) setTrCds(c);
-      if (y) setTr10y(y);
-    }, 800);
-    return () => { alive = false; clearTimeout(t); };
-  }, []);
   // Yön: kazandıran (up) veya kaybettiren (down)
   const [enlerDir, setEnlerDir] = useState<'up' | 'down'>('up');
 
@@ -377,15 +361,6 @@ export function SoftPanelPage() {
     [symbols, stockMap],
   );
 
-  const marketsLine: Array<{ key: string; label: string; value: string; pct?: number; invert?: boolean; to: string }> = [
-    ...(['USD/TRY', 'EUR/TRY', 'Gram Altın', 'Gram Gümüş', 'BTC/USD', 'Brent', 'VIX'] as const).map((k) => {
-      const m = macroMap.get(k);
-      return { key: k, label: k === 'BTC/USD' ? 'BTC' : k, value: fmtValue(m?.value), pct: m?.changePct, to: macroKeyToRoute(k) ?? '/global' };
-    }),
-    { key: 'cds', label: 'CDS 5Y', value: trCds?.value != null ? `${trCds.value.toFixed(0)}` : '—', pct: trCds?.changePct ?? undefined, invert: true, to: '/global' },
-    { key: '10y', label: 'TR 10Y', value: tr10y?.value != null ? `%${tr10y.value.toFixed(2)}` : '—', pct: tr10y?.changePct ?? undefined, invert: true, to: '/global' },
-  ];
-
   const criticalNews = useMemo(() => news.filter((n) => n.critical).slice(0, 2), [news]);
   const feedNews = useMemo(() => news.filter((n) => !n.critical).slice(0, 6), [news]);
 
@@ -478,18 +453,6 @@ export function SoftPanelPage() {
             </div>
           )}
         </section>
-
-        {/* Piyasalar — tek satır, tabular */}
-        <div className="lg:col-span-12 flex items-center gap-6 overflow-x-auto whitespace-nowrap border-y border-border py-2.5 text-[12px] [scrollbar-width:none]">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-3">Piyasalar</span>
-          {marketsLine.map((m) => (
-            <Link key={m.key} to={m.to} className="inline-flex items-center gap-1.5 hover:text-accent">
-              <span className="text-fg-2">{m.label}</span>
-              <span className="font-mono font-semibold text-fg">{m.value}</span>
-              <Pct v={m.pct} invert={m.invert} />
-            </Link>
-          ))}
-        </div>
 
         <section className="lg:col-span-6 min-w-0">
           <h2 className="text-base font-semibold text-fg">Takibin <span className="text-[12px] font-normal text-fg-3">{symbols.length}</span></h2>

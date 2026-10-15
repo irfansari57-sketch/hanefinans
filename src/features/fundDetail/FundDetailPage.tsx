@@ -703,7 +703,7 @@ export function FundDetailPage() {
                 items={distribution.items}
               />
               <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
-                Her baloncuğun büyüklüğü hissenin fondaki ağırlığıyla orantılı.
+                Balon alanı hissenin fondaki ağırlığıyla orantılı; içindeki yüzde = ağırlık, küçük sayı = aylık fark (puan).
                 Yeşil = önceki aya göre fon pozisyonunu arttırdı, kırmızı = azalttı.
                 Merkezdeki değer = fonun 1 yıllık getirisi.
               </p>
@@ -1348,16 +1348,17 @@ function FundLineSvg({
 }
 
 /**
- * FundDistributionBubbleChart — Radial network/bubble görsel.
+ * FundDistributionBubbleChart — Radial bubble görsel (v2, 15 Eki 2026).
  *
- * Üstteki ağ görseli:
- *   - Merkez: fon kodu + 1 yıllık getiri
- *   - Çevre: her hisse için bir baloncuk, büyüklük=ağırlık %, renk=fark yönü
- *     (yeşil=arttırıldı, kırmızı=azaltıldı, gri=değişmedi)
- *   - Baloncukların içinde: hisse kodu + fark % (±X.XX)
- *   - Merkeze bağlı ince çizgiler (ağ hissi)
+ * Kodlama (kullanıcı kararı: "balonlarda ağırlık dağılımı görünsün"):
+ *   - Balon ALANI ∝ ağırlık (yarıçap ∝ √ağırlık) → %9,8'lik hisse %1'likten ~10× alan
+ *   - Balon içi: KOD + %AĞIRLIK (birincil) + aylık fark (ikincil, renkli)
+ *   - Renk = aylık fark yönü (yeşil arttı / kırmızı azaldı / gri değişmedi)
+ *   - Açısal yerleşim: her balon çapı kadar yay alır → büyükler sıkışmaz; sığmazsa
+ *     tüm yarıçaplar orantılı küçültülür. Saat 12'den başlayarak ağırlığa göre sıralı.
+ *   - Merkez: fon kodu, 1Y getiri, gösterilen top-N toplamı ve "diğer" payı
  *
- * TOP-N (default 25) hisse — kalanlar tabloda detayli listelenir.
+ * TOP-N (25) hisse — kalanlar tabloda.
  */
 function FundDistributionBubbleChart({
   fundCode, oneYearReturn, items,
@@ -1367,128 +1368,105 @@ function FundDistributionBubbleChart({
   items: Array<{ kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean; }>;
 }) {
   const TOP_N = 25;
-  const sorted = [...items].sort((a, b) => b.agirlik - a.agirlik).slice(0, TOP_N);
+  const all = [...items].sort((a, b) => b.agirlik - a.agirlik);
+  const sorted = all.slice(0, TOP_N);
   if (sorted.length === 0) return null;
+  const shownTotal = sorted.reduce((a, x) => a + x.agirlik, 0);
+  const restTotal = all.slice(TOP_N).reduce((a, x) => a + x.agirlik, 0);
 
-  // SVG viewport
-  const SIZE = 600;
+  const SIZE = 640;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
-  const CENTER_R = 72;
-  const RING_R = 230;
+  const CENTER_R = 70;
+  const RING_R = 236;
+  const GAP = 6;
 
-  // Ağırlıklara göre bubble büyüklük ölçekle (min 20, max 55 px)
+  // Yarıçap ∝ √ağırlık (alan ∝ ağırlık). 14..62 px aralığı, sonra sığdırma ölçeği.
   const maxW = Math.max(...sorted.map((x) => x.agirlik));
-  const minW = Math.min(...sorted.map((x) => x.agirlik));
-  const scaleR = (w: number) => {
-    if (maxW === minW) return 32;
-    const t = (w - minW) / (maxW - minW);
-    return 22 + t * 32; // 22..54
-  };
+  const R_MIN = 14, R_MAX = 62;
+  const baseR = (w: number) => (maxW > 0 ? R_MIN + Math.sqrt(Math.max(w, 0) / maxW) * (R_MAX - R_MIN) : 24);
+  const circumference = 2 * Math.PI * RING_R;
+  const need = sorted.reduce((a, x) => a + 2 * baseR(x.agirlik) + GAP, 0);
+  const fit = need > circumference ? circumference / need : 1;
+  const radii = sorted.map((x) => baseR(x.agirlik) * fit);
 
-  // Fark yönüne göre renk (yesil = arttırıldı, kırmızı = azaltıldı)
+  // Açısal yerleşim: her balon kendi çapı + boşluk kadar yay alır
+  const spans = radii.map((r) => (2 * r + GAP * fit) / RING_R);
+  const totalSpan = spans.reduce((a, b) => a + b, 0);
+  const pad = Math.max(0, (2 * Math.PI - totalSpan) / sorted.length);
+  const angles: number[] = [];
+  let acc = -Math.PI / 2;
+  for (let i = 0; i < sorted.length; i++) { angles.push(acc + spans[i] / 2); acc += spans[i] + pad; }
+
   const colorFor = (fark: number): { fill: string; stroke: string; text: string } => {
-    if (fark > 0.05) return { fill: '#065f4620', stroke: '#10b981', text: '#10b981' };
-    if (fark < -0.05) return { fill: '#991b1b20', stroke: '#ef4444', text: '#ef4444' };
-    return { fill: '#64748b20', stroke: '#94a3b8', text: '#cbd5e1' };
+    if (fark > 0.05) return { fill: 'rgb(var(--c-success) / 0.14)', stroke: 'rgb(var(--c-success))', text: 'rgb(var(--c-success))' };
+    if (fark < -0.05) return { fill: 'rgb(var(--c-danger) / 0.14)', stroke: 'rgb(var(--c-danger))', text: 'rgb(var(--c-danger))' };
+    return { fill: 'rgb(var(--c-neutral) / 0.14)', stroke: 'rgb(var(--c-neutral))', text: 'rgb(var(--c-text-2))' };
   };
-
   const centerIsPositive = (oneYearReturn ?? 0) >= 0;
-  const centerColor = centerIsPositive ? '#10b981' : '#ef4444';
-
-  // Her baloncuk için polar pozisyon — eşit açı
-  const n = sorted.length;
+  const centerColor = centerIsPositive ? 'rgb(var(--c-success))' : 'rgb(var(--c-danger))';
+  const fmtPct = (v: number, d = 1) => `%${v.toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d })}`;
 
   return (
     <div className="flex justify-center">
-      <svg
-        viewBox={`0 0 ${SIZE} ${SIZE}`}
-        className="w-full max-w-[560px] h-auto"
-        role="img"
-        aria-label={`${fundCode} portföy ağı — ${sorted.length} hisse`}
-      >
-        {/* Bağlantı çizgileri (merkez → bubble) */}
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-[600px] h-auto" role="img" aria-label={`${fundCode} portföy ağı — ${sorted.length} hisse, balon alanı ağırlıkla orantılı`}>
+        {/* Bağlantılar — kalınlık ağırlıkla orantılı */}
         {sorted.map((it, i) => {
-          const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-          const r = scaleR(it.agirlik);
-          const bx = CX + RING_R * Math.cos(angle);
-          const by = CY + RING_R * Math.sin(angle);
-          const edgeDx = (bx - CX);
-          const edgeDy = (by - CY);
-          const edgeLen = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy);
-          const nx = edgeDx / edgeLen;
-          const ny = edgeDy / edgeLen;
-          const startX = CX + nx * (CENTER_R + 2);
-          const startY = CY + ny * (CENTER_R + 2);
-          const endX = bx - nx * (r + 2);
-          const endY = by - ny * (r + 2);
+          const a = angles[i], r = radii[i];
+          const nx = Math.cos(a), ny = Math.sin(a);
           const c = colorFor(it.fark);
           return (
-            <line
-              key={`e-${it.kod}-${i}`}
-              x1={startX} y1={startY} x2={endX} y2={endY}
-              stroke={c.stroke}
-              strokeOpacity="0.25"
-              strokeWidth="1"
-            />
+            <line key={`e-${it.kod}-${i}`}
+              x1={CX + nx * (CENTER_R + 2)} y1={CY + ny * (CENTER_R + 2)}
+              x2={CX + nx * (RING_R - r - 2)} y2={CY + ny * (RING_R - r - 2)}
+              style={{ stroke: c.stroke }} strokeOpacity="0.28" strokeWidth={Math.max(0.6, (it.agirlik / maxW) * 3)} />
           );
         })}
 
-        {/* Merkez balon — fon kodu + 1Y getiri */}
-        <circle cx={CX} cy={CY} r={CENTER_R + 8} fill={centerColor} fillOpacity="0.08" />
-        <circle cx={CX} cy={CY} r={CENTER_R} fill={centerColor} fillOpacity="0.15" stroke={centerColor} strokeWidth="2" />
-        <text x={CX} y={CY - 6} textAnchor="middle" fill="#f1f5f9" fontSize="16" fontWeight="700" fontFamily="Inter, system-ui">
-          {fundCode}
-        </text>
+        {/* Merkez */}
+        <circle cx={CX} cy={CY} r={CENTER_R + 8} style={{ fill: centerColor }} fillOpacity="0.08" />
+        <circle cx={CX} cy={CY} r={CENTER_R} style={{ fill: centerColor, stroke: centerColor }} fillOpacity="0.14" strokeWidth="2" />
+        <text x={CX} y={CY - 14} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize="16" fontWeight="700" fontFamily="Inter, system-ui">{fundCode}</text>
         {Number.isFinite(oneYearReturn ?? NaN) ? (
           <>
-            <text x={CX} y={CY + 14} textAnchor="middle" fill={centerColor} fontSize="18" fontWeight="800" fontFamily="Inter, system-ui">
+            <text x={CX} y={CY + 6} textAnchor="middle" style={{ fill: centerColor }} fontSize="18" fontWeight="800" fontFamily="JetBrains Mono, monospace">
               {centerIsPositive ? '+' : ''}{(oneYearReturn ?? 0).toFixed(2)}%
             </text>
-            <text x={CX} y={CY + 30} textAnchor="middle" fill="#94a3b8" fontSize="9" fontFamily="Inter, system-ui">
-              1Y getiri
-            </text>
+            <text x={CX} y={CY + 20} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-3))' }} fontSize="9" fontFamily="Inter, system-ui">1Y getiri</text>
           </>
-        ) : (
-          <text x={CX} y={CY + 14} textAnchor="middle" fill="#94a3b8" fontSize="11" fontFamily="Inter, system-ui">
-            {sorted.length} varlık
-          </text>
-        )}
+        ) : null}
+        <text x={CX} y={CY + 36} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-2))' }} fontSize="9" fontFamily="Inter, system-ui">
+          ilk {sorted.length}: {fmtPct(shownTotal)}{restTotal > 0.05 ? ` · diğer ${fmtPct(restTotal)}` : ''}
+        </text>
 
-        {/* Her hisse için baloncuk */}
+        {/* Balonlar — alan ∝ ağırlık */}
         {sorted.map((it, i) => {
-          const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
-          const r = scaleR(it.agirlik);
-          const bx = CX + RING_R * Math.cos(angle);
-          const by = CY + RING_R * Math.sin(angle);
+          const a = angles[i], r = radii[i];
+          const bx = CX + RING_R * Math.cos(a);
+          const by = CY + RING_R * Math.sin(a);
           const c = colorFor(it.fark);
-          const kodFontSize = r > 40 ? 11 : r > 30 ? 10 : 9;
-          const farkFontSize = r > 40 ? 10 : r > 30 ? 9 : 8;
           const sign = it.fark > 0 ? '+' : '';
+          const big = r >= 34, mid = r >= 22;
+          const kodFs = big ? 11 : mid ? 9.5 : 8;
+          const wFs = big ? 14 : mid ? 11 : 8.5;
           return (
             <g key={`b-${it.kod}-${i}`}>
-              <title>{`${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}\nÖnceki ay: %${it.eskiAgirlik.toFixed(2)}\nFark: ${sign}${it.fark.toFixed(2)}`}</title>
-              <circle cx={bx} cy={by} r={r} fill={c.fill} stroke={c.stroke} strokeWidth="1.5" />
-              <text
-                x={bx} y={by - 1}
-                textAnchor="middle"
-                fill="#f8fafc"
-                fontSize={kodFontSize}
-                fontWeight="700"
-                fontFamily="Inter, system-ui"
-              >
-                {it.kod}
-              </text>
-              <text
-                x={bx} y={by + kodFontSize + 1}
-                textAnchor="middle"
-                fill={c.text}
-                fontSize={farkFontSize}
-                fontWeight="600"
-                fontFamily="Inter, system-ui"
-              >
-                {sign}{it.fark.toFixed(2)}%
-              </text>
+              <title>{`${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}\nÖnceki ay: %${it.eskiAgirlik.toFixed(2)}\nFark: ${sign}${it.fark.toFixed(2)} puan`}</title>
+              <circle cx={bx} cy={by} r={r} style={{ fill: c.fill, stroke: c.stroke }} strokeWidth={big ? 1.8 : 1.3} />
+              {mid ? (
+                <>
+                  <text x={bx} y={by - (big ? 9 : 5)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={kodFs} fontWeight="700" fontFamily="Inter, system-ui">{it.kod}</text>
+                  <text x={bx} y={by + (big ? 6 : 6)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={wFs} fontWeight="800" fontFamily="JetBrains Mono, monospace">{fmtPct(it.agirlik, big ? 2 : 1)}</text>
+                  {big && (
+                    <text x={bx} y={by + 20} textAnchor="middle" style={{ fill: c.text }} fontSize="9" fontWeight="600" fontFamily="JetBrains Mono, monospace">{sign}{it.fark.toFixed(2)}</text>
+                  )}
+                </>
+              ) : (
+                <>
+                  <text x={bx} y={by - 1} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={kodFs} fontWeight="700" fontFamily="Inter, system-ui">{it.kod}</text>
+                  <text x={bx} y={by + 8} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-2))' }} fontSize={wFs} fontWeight="700" fontFamily="JetBrains Mono, monospace">{fmtPct(it.agirlik, 1)}</text>
+                </>
+              )}
             </g>
           );
         })}

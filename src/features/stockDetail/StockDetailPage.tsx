@@ -23,6 +23,9 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { fetchHistoricalYahoo, fetchIndexYahoo, computePeriodReturns, type HistoricalSeries, type PeriodReturns as PeriodReturnsT } from '@/data/api/yahoo';
 import { loadStocks, loadNews } from '@/data/services';
 import { useKatilim } from '@/hooks/useKatilim';
+import { EvidenceLink } from '@/components/ui/EvidenceLink';
+import { computeRegime, type RegimeResult } from '@/lib/regime';
+import { fetchRegime, type RegimeApi } from '@/data/api/regime';
 import { KatilimBadge } from '@/components/domain/KatilimBadge';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, closedBarsOnly, type OHLC } from '@/lib/indicators';
 import { isBistOpen } from '@/lib/marketCalendar';
@@ -144,6 +147,13 @@ export function StockDetailPage() {
   const notes = useLiveQuery(() => notesRepo.bySymbol(sym), [sym]) ?? [];
   const alerts = useLiveQuery(() => alertsRepo.bySymbol(sym), [sym]) ?? [];
   const { map: katilimMap } = useKatilim();
+  // Hafta 2 rejim: hissenin kendi rejimi (1y Yahoo barlarından, deterministik) + XU100 bağlamı
+  const [indexRegime, setIndexRegime] = useState<RegimeApi | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (!isUs) fetchRegime('XU100').then((r) => { if (alive) setIndexRegime(r); });
+    return () => { alive = false; };
+  }, [isUs]);
   // Design 03: katmanlı detay — 4 sekme, URL'de (?tab=)
   const [searchParams, setSearchParams] = useSearchParams();
   type DetailTab = 'genel' | 'teknik' | 'temel' | 'haber';
@@ -250,6 +260,11 @@ export function StockDetailPage() {
   // Hook order'ı stabil tutmak için early return'dan ÖNCE çağırılmalı
   // (aksi halde stock null → null değil arası render'da React #310).
   // Hisse haberleri: sembol akışı geldiyse o, yoksa genel akış filtresi. Hook sırası sabit.
+  const stockRegime = useMemo<RegimeResult | null>(() => {
+    if (!historical || historical.closes.length < 60) return null;
+    return computeRegime(historical.closes.map((c) => ({ date: new Date(c.date).toISOString().slice(0, 10), close: c.close })), null, 'yahoo 1y');
+  }, [historical]);
+
   const displayNews = useMemo<NewsItem[]>(() => {
     if (symbolNews && symbolNews.length > 0) {
       // Genel akıştan gelen ve sembol akışında olmayan başlıkları da ekle (dedupe başlıkla)
@@ -498,6 +513,24 @@ export function StockDetailPage() {
       </div>
 
       {tab === 'genel' && (<>
+      {stockRegime && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-fg">
+          <span className={cn('font-medium', stockRegime.trend.regime === 'yükseliş' ? 'text-success' : stockRegime.trend.regime === 'düşüş' ? 'text-danger' : 'text-fg')}>
+            {stockRegime.trend.regime === 'yükseliş' ? 'Yükseliş trendi' : stockRegime.trend.regime === 'düşüş' ? 'Düşüş trendi' : 'Yatay seyir'}
+          </span>
+          {stockRegime.trend.distToSma50Pct != null && (
+            <span className="text-fg-2">· SMA50'ye göre <span className={cn('font-mono', stockRegime.trend.distToSma50Pct >= 0 ? 'text-success' : 'text-danger')}>{stockRegime.trend.distToSma50Pct >= 0 ? '+' : ''}{stockRegime.trend.distToSma50Pct.toFixed(1)}%</span></span>
+          )}
+          {stockRegime.vol.percentile1y != null && (
+            <span className="text-fg-2">· {stockRegime.vol.regime === 'yüksek' ? 'yüksek' : stockRegime.vol.regime === 'düşük' ? 'düşük' : 'normal'} oynaklık (%{stockRegime.vol.realized20?.toFixed(0)} yıllık)</span>
+          )}
+          {indexRegime && indexRegime.bars >= 60 && (
+            <span className="text-fg-3">· XU100: {indexRegime.trend.regime}</span>
+          )}
+          <EvidenceLink title={`Rejim · ${sym}`} rows={[...stockRegime.trend.evidence, ...stockRegime.vol.evidence, ...(indexRegime ? [{ label: 'XU100 trend', value: indexRegime.trend.regime, source: 'bars_daily' }] : [])]} />
+          <span className="text-[11px] text-fg-3">· yatırım tavsiyesi değildir</span>
+        </div>
+      )}
       {/* Chart — Panel Hero stilinde emerald/red area chart. Kullanici talebi
           11 Eyl 2026: ana sayfayla tutarli gorsel, TradingView agir chart yerine
           hafif SVG. Detay isteyen "TradingView'de aç" ile external gider. */}

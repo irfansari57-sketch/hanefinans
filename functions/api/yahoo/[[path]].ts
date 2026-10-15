@@ -46,7 +46,10 @@ function rangeToDays(range: string): number {
     case 'ytd': return 365;
     case '1y': return 365;
     case '2y': return 730;
+    case '3y': return 1095;  // 15 Eki 2026: bars-warm 3y istiyordu, 30 güne düşüyordu (XU100 23 bar)
     case '5y': return 1825;
+    case '10y': return 3650;
+    case 'max': return 3650;
     default: return 30;
   }
 }

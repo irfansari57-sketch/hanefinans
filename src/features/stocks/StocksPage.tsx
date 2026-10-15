@@ -8,6 +8,8 @@ import { DoubleScrollTable } from '@/components/ui/DoubleScrollTable';
 import { LiveBadge } from '@/components/domain/LiveBadge';
 import { loadStocks, listSnapshotBistSymbols } from '@/data/services';
 import { useKatilim } from '@/hooks/useKatilim';
+import { useDensity } from '@/store/density';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { KatilimBadge } from '@/components/domain/KatilimBadge';
 import type { KatilimIndex } from '@/data/katilim';
 import { fetchHistoricalYahoo, computePeriodReturns, type PeriodReturns } from '@/data/api/yahoo';
@@ -107,6 +109,8 @@ export function StocksPage() {
   const toggleWatchlist = useWatchlist((s) => s.toggle);
   const watchedSymbols = useMemo(() => new Set(watchedSymbolsList), [watchedSymbolsList]);
   const { map: katilimMap } = useKatilim();
+  const density = useDensity((s) => s.density);
+  const isMobile = useIsMobile();
 
   const [stocks, setStocks] = useState<StockRow[]>(() => stocksMemo?.stocks ?? []);
   const [returnsMap, setReturnsMap] = useState<Record<string, PeriodReturns>>(() => readReturnsCache() ?? {});
@@ -442,9 +446,9 @@ export function StocksPage() {
 
       {/* Grup chip'leri — BIST resmî endeks/tema/sektör kapsamları (bistGroups.ts) */}
       <div className="mb-3 space-y-2">
-        {(['index', 'main', 'sector'] as BistGroupKind[]).map((kind) => (
-          <div key={kind} className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 w-full text-[10px] font-semibold uppercase tracking-wider text-slate-500 sm:w-auto">
+        {(['index', 'main', 'sector'] as BistGroupKind[]).filter((kind) => kind === 'index' || !(isMobile && density === 'comfortable')).map((kind) => (
+          <div key={kind} className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] md:flex-wrap md:whitespace-normal">
+            <span className="mr-1 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-fg-3">
               {BIST_GROUP_KIND_LABELS[kind]}
             </span>
             {kind === 'index' && (
@@ -535,19 +539,19 @@ export function StocksPage() {
             {/* Font boyutu artirildi: text-sm (14px) -> text-base (16px) — okunmayi kolaylastirir.
                 Baslik text-[10px] -> text-[11px] + tracking artirildi.
                 DoubleScrollTable: ust + alt yatay scroll (kullanici talebi). */}
-            <table className="w-full min-w-[720px] text-base">
+            <table className="w-full sm:min-w-[720px] text-base">
               <thead className="border-b border-border bg-bg-soft text-[11px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
                   <SortableHeader label="Sembol" sortKey="symbol" activeKey={sortKey} dir={sortDir} onClick={setSort} align="left" className="sticky left-8 z-20 bg-bg-soft" />
                   <SortableHeader label="Fiyat" sortKey="price" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                   <SortableHeader label="Gün %" sortKey="changePct" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                  <SortableHeader label="1 Hafta %" sortKey="r1h" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                  <SortableHeader label="1 Ay %" sortKey="r1a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                  <SortableHeader label="3 Ay %" sortKey="r3a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                  <SortableHeader label="6 Ay %" sortKey="r6a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                  <SortableHeader label="YTD %" sortKey="rytd" activeKey={sortKey} dir={sortDir} onClick={setSort} />
-                  <SortableHeader label="1 Yıl %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader className="hidden sm:table-cell" label="1 Hafta %" sortKey="r1h" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader className="hidden sm:table-cell" label="1 Ay %" sortKey="r1a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader className="hidden sm:table-cell" label="3 Ay %" sortKey="r3a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader className="hidden sm:table-cell" label="6 Ay %" sortKey="r6a" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader className="hidden sm:table-cell" label="YTD %" sortKey="rytd" activeKey={sortKey} dir={sortDir} onClick={setSort} />
+                  <SortableHeader className="hidden sm:table-cell" label="1 Yıl %" sortKey="r1y" activeKey={sortKey} dir={sortDir} onClick={setSort} />
                 </tr>
               </thead>
               <tbody>
@@ -687,12 +691,12 @@ function StockTableRow({ stock, rank, isWatched, onToggle, katilim, expanded, on
           {stock.price > 0 ? `₺${stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
         </td>
         <PerfCell value={stock.changePct} />
-        <PerfCell value={stock.returns?.['1h']} />
-        <PerfCell value={stock.returns?.['1a']} />
-        <PerfCell value={stock.returns?.['3a']} />
-        <PerfCell value={stock.returns?.['6a']} />
-        <PerfCell value={stock.returns?.['ytd']} />
-        <PerfCell value={stock.returns?.['1y']} />
+        <PerfCell value={stock.returns?.['1h']} mobile={false} />
+        <PerfCell value={stock.returns?.['1a']} mobile={false} />
+        <PerfCell value={stock.returns?.['3a']} mobile={false} />
+        <PerfCell value={stock.returns?.['6a']} mobile={false} />
+        <PerfCell value={stock.returns?.['ytd']} mobile={false} />
+        <PerfCell value={stock.returns?.['1y']} mobile={false} />
       </tr>
       {expanded && (
         <tr className="border-b border-border bg-bg-card">
@@ -707,7 +711,7 @@ function StockTableRow({ stock, rank, isWatched, onToggle, katilim, expanded, on
                   )}
                 </div>
               </div>
-              <div className="flex gap-4 font-mono">
+              <div className="flex gap-4 overflow-x-auto font-mono [scrollbar-width:none]">
                 {PERIODS.map(([k, label]) => {
                   const v = stock.returns?.[k];
                   const ok = v != null && Number.isFinite(v);
@@ -736,13 +740,14 @@ function StockTableRow({ stock, rank, isWatched, onToggle, katilim, expanded, on
   );
 }
 
-function PerfCell({ value }: { value: number | undefined }) {
+function PerfCell({ value, mobile = true }: { value: number | undefined; mobile?: boolean }) {
+  const vis = mobile ? '' : 'hidden sm:table-cell';
   if (value == null || !Number.isFinite(value)) {
-    return <td className="px-2 h-row text-right font-mono text-table tabular-nums text-fg-3 whitespace-nowrap">—</td>;
+    return <td className={cn('px-2 h-row text-right font-mono text-table tabular-nums text-fg-3 whitespace-nowrap', vis)}>—</td>;
   }
   const tone = value > 0 ? 'text-success' : value < 0 ? 'text-danger' : 'text-neutral';
   return (
-    <td className={cn('px-2 h-row text-right font-mono text-table font-semibold tabular-nums whitespace-nowrap', tone)}>
+    <td className={cn('px-2 h-row text-right font-mono text-table font-semibold tabular-nums whitespace-nowrap', tone, vis)}>
       {value > 0 ? '+' : ''}{value.toFixed(2)}%
     </td>
   );

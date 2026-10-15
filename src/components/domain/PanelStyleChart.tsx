@@ -220,16 +220,21 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area' }:
   };
 
   // Hover — SVG koordinatlarindan en yakin data index'i bul
-  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+  const moveToClientX = (clientX: number) => {
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    // SVG koordinatına çevir (viewBox scale)
-    const xInSvg = ((e.clientX - rect.left) / rect.width) * W;
-    // xInSvg → index
+    const xInSvg = ((clientX - rect.left) / rect.width) * W;
     const rawIdx = Math.round(xInSvg / xStep);
     const idx = Math.max(0, Math.min(data.length - 1, rawIdx));
     setHoverIdx(idx);
+  };
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => moveToClientX(e.clientX);
+  // Mobil (Design 03 Faz 3): parmakla sürükleme — dikey kaydırmayı bozmamak için
+  // yalnız yatay hareket yakalanır (touch-action: pan-y).
+  const handleTouch = (e: React.TouchEvent<SVGSVGElement>) => {
+    const t = e.touches[0];
+    if (t) moveToClientX(t.clientX);
   };
   const handleLeave = () => setHoverIdx(null);
 
@@ -249,9 +254,12 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area' }:
       ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="none"
-      className="h-52 w-full sm:h-64 cursor-crosshair"
+      className="h-52 w-full sm:h-64 cursor-crosshair [touch-action:pan-y]"
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
+      onTouchStart={handleTouch}
+      onTouchMove={handleTouch}
+      onTouchEnd={handleLeave}
     >
       <defs>
         <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">

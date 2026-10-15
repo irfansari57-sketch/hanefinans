@@ -563,6 +563,11 @@ export function Layout() {
                   <X size={18} />
                 </button>
               </div>
+              {/* Mobil yoğunluk (Design 03 Faz 3): Sade / Yoğun */}
+              <div className="flex items-center justify-between px-4 pb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-3">Görünüm</span>
+                <DensityToggle compact />
+              </div>
               <nav className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-4 pb-2">
                 {allNavItems.map((item) => (
                   <NavLink

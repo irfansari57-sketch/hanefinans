@@ -16,7 +16,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { TrendingUp, Newspaper, Briefcase, Zap, CalendarClock } from 'lucide-react';
 import { EconomicCalendarWidget } from '@/components/domain/EconomicCalendarWidget';
 import { db } from '@/data/db';
 import { useAuth } from '@/store/auth';
@@ -37,45 +36,15 @@ import type { MacroIndicator, NewsItem, Stock, FundPerformance } from '@/data/ty
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { DataFreshness } from '@/components/ui/DataFreshness';
+import { EvidenceLink } from '@/components/ui/EvidenceLink';
 
 const SWR_TTL_MS = 24 * 60 * 60 * 1000;
 const AUTO_REFRESH_MS = 30_000;
 
-// Üst ticker için gösterilen 7 kritik gösterge (sabit sıra, kullanıcı hep aynı yerde bulur)
-const TICKER_KEYS: Array<{ key: string; label: string; unit?: string }> = [
-  { key: 'BIST 100',    label: 'BIST 100' },
-  { key: 'USD/TRY',     label: 'USD/TRY' },
-  { key: 'EUR/TRY',     label: 'EUR/TRY' },
-  { key: 'Gram Altın',  label: 'Gram Altın' },
-  { key: 'Gram Gümüş',  label: 'Gram Gümüş' },
-  { key: 'BTC/USD',     label: 'BTC/USD' },
-  { key: 'Brent',       label: 'Brent' },
-];
-
-// Mini kart (4 adet) için sabit gösterge seti.
-// 10 Eki: VIX + Ons Altın kaldırıldı — VIX yerine TR risk göstergeleri (CDS + 10Y Tahvil),
-// Ons Altın top ticker'daki Gram Altın ile duplicate oluyordu. Final grid 2×2:
-// [Portföyüm · BIST 30] / [TR CDS · TR 10Y Tahvil]
-const MINI_KEYS: Array<{ key: string; label: string }> = [
-  { key: 'BIST 30', label: 'BIST 30' },
-];
-
 /** Soft pulse yeşil nokta — sadece aktif refresh anında görünür */
 function RefreshDot({ active }: { active: boolean }) {
   if (!active) return null;
-  return <span className="soft-pulse-dot" aria-label="Güncelleniyor" />;
-}
-
-/** Yüzdelik değişim göstergesi (compact) */
-function Delta({ v, prefix }: { v: number | null | undefined; prefix?: string }) {
-  if (v == null || !Number.isFinite(v)) return <span className="text-slate-500 text-[11px]">—</span>;
-  const positive = v >= 0;
-  const sign = positive ? '+' : '';
-  return (
-    <span className={cn('text-[11px] font-medium tabular-nums', positive ? 'text-success' : 'text-danger')}>
-      {prefix}{sign}{v.toFixed(2)}%
-    </span>
-  );
+  return <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-label="Güncelleniyor" />;
 }
 
 /** Değer formatlama (Türkçe locale) */
@@ -385,466 +354,211 @@ export function SoftPanelPage() {
     };
   }, [positions, stockMap, fundMap]);
 
-  // Son dakika — ilk 4 haber
-  // Kritik bildirimler (konkordato, iflas, tedbir vb.) her zaman üstte.
-  // 11 Eki 2026: 4 → 6 — kritik haberler normal haberleri ezmesin
-  const topNews = useMemo(() => {
-    const critical = news.filter((n) => n.critical);
-    const rest = news.filter((n) => !n.critical);
-    return [...critical, ...rest].slice(0, 6);
-  }, [news]);
+
+  // Portföy yoğunluğu — deterministik risk cümlesi (Design 03 Signature #10, v1)
+  const concentration = useMemo(() => {
+    const vals: number[] = [];
+    for (const p of positions) {
+      const qty = p.lot ?? 0;
+      const price = p.kind === 'fund' ? fundMap.get(p.symbol)?.nav : stockMap.get(p.symbol)?.price;
+      if (price && price > 0) vals.push(price * qty);
+    }
+    const total = vals.reduce((a, b) => a + b, 0);
+    if (total <= 0 || vals.length === 0) return null;
+    const sorted = [...vals].sort((a, b) => b - a);
+    const top = Math.min(3, sorted.length);
+    const topShare = sorted.slice(0, top).reduce((a, b) => a + b, 0) / total;
+    const hhi = vals.reduce((a, v) => a + (v / total) ** 2, 0);
+    return { top, topShare, hhi, effN: 1 / hhi, count: vals.length };
+  }, [positions, fundMap, stockMap]);
+
+  const watched = useMemo(
+    () => symbols.map((sym) => stockMap.get(sym)).filter((x): x is Stock => !!x && x.price > 0).slice(0, 6),
+    [symbols, stockMap],
+  );
+
+  const marketsLine: Array<{ key: string; label: string; value: string; pct?: number; invert?: boolean; to: string }> = [
+    ...(['USD/TRY', 'EUR/TRY', 'Gram Altın', 'Gram Gümüş', 'BTC/USD', 'Brent', 'VIX'] as const).map((k) => {
+      const m = macroMap.get(k);
+      return { key: k, label: k === 'BTC/USD' ? 'BTC' : k, value: fmtValue(m?.value), pct: m?.changePct, to: macroKeyToRoute(k) ?? '/global' };
+    }),
+    { key: 'cds', label: 'CDS 5Y', value: trCds?.value != null ? `${trCds.value.toFixed(0)}` : '—', pct: trCds?.changePct ?? undefined, invert: true, to: '/global' },
+    { key: '10y', label: 'TR 10Y', value: tr10y?.value != null ? `%${tr10y.value.toFixed(2)}` : '—', pct: tr10y?.changePct ?? undefined, invert: true, to: '/global' },
+  ];
+
+  const criticalNews = useMemo(() => news.filter((n) => n.critical).slice(0, 2), [news]);
+  const feedNews = useMemo(() => news.filter((n) => !n.critical).slice(0, 6), [news]);
+
+  const Pct = ({ v, invert }: { v: number | null | undefined; invert?: boolean }) => {
+    if (v == null || !Number.isFinite(v)) return <span className="font-mono text-fg-3">—</span>;
+    const good = invert ? v <= 0 : v >= 0;
+    return <span className={cn('font-mono font-semibold', v === 0 ? 'text-neutral' : good ? 'text-success' : 'text-danger')}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+  };
+
+  const MoverRow = ({ to, code, name, pct }: { to: string; code: string; name?: string; pct: number }) => (
+    <Link to={to} className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 hover:bg-bg-card -mx-1 px-1 rounded">
+      <span className="min-w-0 truncate"><span className="font-mono text-[13px] font-semibold text-fg">{code}</span>{name && <span className="ml-2 hidden text-[11px] text-fg-3 sm:inline">{name}</span>}</span>
+      <Pct v={pct} />
+    </Link>
+  );
+
+  type EnlerRow = { key: string; to: string; code: string; name?: string; pct: number };
+  const enlerList: EnlerRow[] = (() => {
+    if (enlerTab === 'stocks') return topStocks.map((s) => ({ key: s.symbol, to: `/stock/${s.symbol}`, code: s.symbol, name: s.name !== s.symbol ? s.name : undefined, pct: s.changePct }));
+    if (enlerTab === 'funds') return topFundsSorted.map((f) => ({ key: f.code, to: `/fund/${f.code}`, code: f.code, name: f.name !== f.code ? f.name : undefined, pct: f.day }));
+    if (enlerTab === 'bes') return topBes.map((f) => ({ key: f.kod, to: `/fund/${f.kod}`, code: f.kod, name: f.ad !== f.kod ? f.ad : undefined, pct: f.pct }));
+    return topCrypto.map((c) => ({ key: c.symbol, to: `/crypto/${encodeURIComponent(c.symbol.split('/')[0])}`, code: c.symbol, name: undefined, pct: c.changePct }));
+  })();
 
   return (
     <>
-      <SeoHead title="Panel" description="InvestliQ ana panel — BIST, döviz, altın, kripto ve portföy özeti." path="/" />
+      <SeoHead title="Piyasa Durumu" description="InvestliQ — BIST, döviz, altın, kripto ve portföy: bugün ne oldu, neden, ne izlemeli." path="/" />
 
-      {/* Soft pulse animasyonu + hero gradient — tek sefer tanım */}
-      <style>{`
-        @keyframes soft-pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.8; }
-        }
-        .soft-pulse-dot {
-          display: inline-block;
-          width: 6px; height: 6px;
-          border-radius: 50%;
-          background: #10b981;
-          margin-left: 8px;
-          animation: soft-pulse 2.5s ease-in-out infinite;
-          vertical-align: middle;
-        }
-        .ticker-chip {
-          background: rgba(30, 41, 59, 0.4);
-          border: 1px solid rgba(51, 65, 85, 0.3);
-          border-radius: 10px;
-          padding: 10px 12px;
-          transition: background 0.2s, border-color 0.2s;
-        }
-        .ticker-chip:hover {
-          background: rgba(30, 41, 59, 0.6);
-          border-color: rgba(16, 185, 129, 0.3);
-        }
-        .mini-card {
-          background: rgba(30, 41, 59, 0.3);
-          border: 1px solid rgba(51, 65, 85, 0.3);
-          border-radius: 12px;
-          padding: 14px 16px;
-          transition: background 0.2s;
-        }
-        .mini-card:hover { background: rgba(30, 41, 59, 0.5); }
-        .side-card {
-          background: rgba(30, 41, 59, 0.3);
-          border: 1px solid rgba(51, 65, 85, 0.3);
-          border-radius: 12px;
-          padding: 16px 18px;
-        }
-        .hero-card {
-          background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, transparent 100%);
-          border: 1px solid rgba(51, 65, 85, 0.4);
-          border-radius: 16px;
-          padding: 20px 24px;
-        }
-      `}</style>
-
-      {/* PageHeader + "Güncel · HH:MM" strip tamamen kaldırıldı
-          (10 Eki UX: sol nav zaten saati/tarihi gösteriyor, tekrar yer kaplamasın). */}
-      <div className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        {TICKER_KEYS.map((t) => {
-          const m = macroMap.get(t.key);
-          const positive = (m?.changePct ?? 0) >= 0;
-          const route = macroKeyToRoute(t.key) ?? '/panel';
-          return (
-            <Link
-              key={t.key}
-              to={route}
-              className="ticker-chip block"
-            >
-              <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{t.label}</div>
-              <div className="text-sm font-semibold tabular-nums text-slate-100 mt-0.5">{fmtValue(m?.value)}</div>
-              <div className={cn('text-[11px] font-medium tabular-nums', positive ? 'text-success' : 'text-danger')}>
-                {m ? (positive ? '+' : '') + (m.changePct ?? 0).toFixed(2) + '%' : '—'}
-              </div>
-            </Link>
-          );
-        })}
+      <div className="mb-4 flex items-center gap-3">
+        <h1 className="text-[22px] font-semibold leading-[30px] text-fg">Piyasa Durumu</h1>
+        <RefreshDot active={refreshing} />
+        {updatedAt && <span className="ml-auto text-[11px] text-fg-3">Güncellendi {new Date(updatedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>}
       </div>
 
-      {/* ============ ANA GRID (sol: chart+mini, sağ: haber+enler+portföy) ============ */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.5fr_1fr]">
-        {/* SOL SÜTUN */}
-        <div className="flex flex-col gap-4">
-          {/* HERO CHART — BIST 100 */}
-          <div className="hero-card">
-            <div className="mb-3 flex items-start justify-between">
-              <div>
-                <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                  BIST 100
-                </div>
-                <div className="mt-0.5 text-3xl font-semibold tabular-nums text-slate-100">
-                  {fmtValue(bist100?.value)}
-                </div>
-                <div className={cn('mt-0.5 text-sm font-medium tabular-nums', bist100Positive ? 'text-success' : 'text-danger')}>
-                  {bist100 ? (bist100Positive ? '+' : '') + (bist100.changePct ?? 0).toFixed(2) + '%' : '—'}
-                </div>
-                {/* 13 Eki 2026: kaynak · veri anı · gecikme (veri-güven etiketi) */}
-                {bist100 && (
-                  <div className="mt-1.5">
-                    <DataFreshness
-                      source={bist100.feedSource}
-                      asOf={bist100.asOf ?? bist100.updatedAt}
-                      delayMin={15}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-1">
-                {(['1mo', '3mo', '6mo', 'ytd', '1y'] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setHeroPeriod(p)}
-                    className={cn(
-                      'px-2.5 py-1 text-[11px] font-medium rounded-md transition',
-                      heroPeriod === p ? 'bg-success/15 text-success' : 'text-slate-500 hover:text-slate-300',
-                    )}
-                  >
-                    {p === 'ytd' ? 'YBB' : p === '1mo' ? '1A' : p === '3mo' ? '3A' : p === '6mo' ? '6A' : '1Y'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Chart container 240px — altındaki tarih etiketleri + Y-axis
-                "10.208,76" gibi değerler için nefes alacak alan. Önceden 200px
-                idi, mini kartlarla iç içe geçiyordu. */}
-            <div style={{ height: 240 }} className="pb-2">
-              {heroSeries.length > 1 ? (
-                <MiniAreaChart data={heroSeries} positive={bist100Positive} />
-              ) : (
-                <div className="h-full rounded-md bg-bg-soft/20" />
-              )}
-            </div>
-          </div>
-
-          {/* 4 MİNİ KART */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Portföyüm — dinamik: pozisyon varsa toplam değer + günlük P/L; yoksa CTA */}
-            <Link to="/portfoy" className="mini-card block">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Portföyüm</div>
-              {user && portfolio.hasData ? (
-                <>
-                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">
-                    ₺{portfolio.totalValue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                  </div>
-                  <Delta v={portfolio.dailyPct} prefix="Bugün " />
-                </>
-              ) : (
-                <>
-                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">Takibe git →</div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">Pozisyon ekle, canlı takip</div>
-                </>
-              )}
-            </Link>
-            {MINI_KEYS.map((mk) => {
-              const m = macroMap.get(mk.key);
-              const route = macroKeyToRoute(mk.key) ?? '/panel';
-              return (
-                <Link key={mk.key} to={route} className="mini-card block">
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{mk.label}</div>
-                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">{fmtValue(m?.value)}</div>
-                  <Delta v={m?.changePct} />
-                </Link>
-              );
-            })}
-
-            {/* TR 5Y CDS — Türkiye ülke risk primi (bps).
-                CDS DÜŞMESİ olumlu (risk azalıyor), ARTMASI olumsuz → renk ters. */}
-            <Link to="/global" className="mini-card block">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">TR 5Y CDS</div>
-              <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">
-                {trCds?.value != null ? `${trCds.value.toFixed(0)} bps` : '—'}
-              </div>
-              {trCds?.changePct != null && Number.isFinite(trCds.changePct) ? (
-                <span className={cn(
-                  'text-[11px] font-medium tabular-nums',
-                  // Ters renk: CDS düşerse yeşil (iyi), yükselirse kırmızı (kötü)
-                  trCds.changePct <= 0 ? 'text-success' : 'text-danger',
-                )}>
-                  {trCds.changePct >= 0 ? '+' : ''}{trCds.changePct.toFixed(2)}%
-                </span>
-              ) : <span className="text-slate-500 text-[11px]">—</span>}
-            </Link>
-
-            {/* TR 10Y Tahvil Getirisi (%) */}
-            <Link to="/global" className="mini-card block">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">TR 10Y Tahvil</div>
-              <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-100">
-                {tr10y?.value != null ? `%${tr10y.value.toFixed(2)}` : '—'}
-              </div>
-              {tr10y?.changePct != null && Number.isFinite(tr10y.changePct) ? (
-                <span className={cn(
-                  'text-[11px] font-medium tabular-nums',
-                  tr10y.changePct <= 0 ? 'text-success' : 'text-danger',
-                )}>
-                  {tr10y.changePct >= 0 ? '+' : ''}{tr10y.changePct.toFixed(2)}%
-                </span>
-              ) : <span className="text-slate-500 text-[11px]">—</span>}
-            </Link>
-          </div>
-
-          {/* EKONOMİK TAKVİM — CDS/Tahvil kartlarının altında, Panel'in ekonomi odak alanı.
-              Mini-grid dışında ayrı bölüm — tam genişlikte, aşağıda ekstra görünürlük. */}
-          <div className="side-card">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <CalendarClock size={14} className="text-success" />
-                Ekonomik Takvim
-              </div>
-              <Link to="/takvim" className="text-[10px] text-slate-500 hover:text-accent">Tümü →</Link>
-            </div>
-            <EconomicCalendarWidget compact maxItems={8} daysAhead={14} collapsible={false} />
-          </div>
-        </div>
-
-        {/* SAĞ SÜTUN */}
-        <div className="flex flex-col gap-4">
-          {/* Son Dakika */}
-          <div className="side-card">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <Newspaper size={14} className="text-success" />
-                Son Dakika
-              </div>
-              <Link to="/news" className="text-[10px] text-slate-500 hover:text-accent">Tümü →</Link>
-            </div>
-            {topNews.length === 0 ? (
-              <div className="py-6 text-center text-[11px] text-slate-500">Haberler yükleniyor…</div>
-            ) : (
-              <div className="divide-y divide-slate-700/20">
-                {topNews.map((n) => {
-                  const isCritical = n.critical === true;
-                  return (
-                    <a
-                      key={n.id ?? n.url}
-                      href={n.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        'block py-2 text-[12px] leading-relaxed',
-                        isCritical
-                          ? '-mx-2 my-0.5 rounded-md border-l-2 border-danger bg-danger/10 px-2 text-slate-100 hover:bg-danger/15'
-                          : 'text-slate-300 hover:text-slate-100',
-                      )}
-                    >
-                      {isCritical && (
-                        <div className="mb-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-danger">
-                          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
-                          Kritik{n.criticalReason ? ` · ${n.criticalReason}` : ''}
-                        </div>
-                      )}
-                      <div className="flex items-start gap-2">
-                        {!isCritical && <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-success" />}
-                        <span className="flex-1 line-clamp-2">{n.title}</span>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Günün Enleri — Hisseler / Fonlar / Kripto tab'lı + Kazandıran/Kaybettiren toggle */}
-          <div className="side-card">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <TrendingUp size={14} className={enlerDir === 'up' ? 'text-success' : 'text-danger'} />
-                Günün Enleri
-                <span className="text-[9px] font-normal text-slate-500 uppercase tracking-wider">· Günlük %</span>
-              </div>
-              {/* Kazandıran / Kaybettiren toggle — compact */}
-              <div className="inline-flex rounded-md border border-slate-700/40 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setEnlerDir('up')}
-                  className={cn(
-                    'rounded px-2 py-0.5 text-[10px] font-medium transition',
-                    enlerDir === 'up' ? 'bg-success/15 text-success' : 'text-slate-500 hover:text-slate-300',
-                  )}
-                >
-                  ↑ Kazandıran
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEnlerDir('down')}
-                  className={cn(
-                    'rounded px-2 py-0.5 text-[10px] font-medium transition',
-                    enlerDir === 'down' ? 'bg-danger/15 text-danger' : 'text-slate-500 hover:text-slate-300',
-                  )}
-                >
-                  ↓ Kaybettiren
-                </button>
-              </div>
-            </div>
-
-            {/* Tab seçici — compact pills (Hisseler/Fonlar/BES/Kripto) */}
-            <div className="mb-2 flex gap-1">
-              {([
-                { k: 'stocks', label: 'Hisseler', disabled: topStocks.length === 0 },
-                { k: 'funds',  label: 'Fonlar',   disabled: topFundsSorted.length === 0 },
-                { k: 'bes',    label: 'BES',      disabled: topBes.length === 0 },
-                { k: 'crypto', label: 'Kripto',   disabled: topCrypto.length === 0 },
-              ] as const).map((t) => (
-                <button
-                  key={t.k}
-                  type="button"
-                  onClick={() => setEnlerTab(t.k)}
-                  disabled={t.disabled}
-                  className={cn(
-                    'flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40',
-                    enlerTab === t.k
-                      ? 'bg-success/15 text-success'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/20',
-                  )}
-                >
-                  {t.label}
+      {/* 12 sütun: 7 grafik + 5 Bugün */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <section className="lg:col-span-7 min-w-0">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h2 className="text-base font-semibold text-fg">BIST 100</h2>
+            <span className="font-mono text-xl font-semibold text-fg">{fmtValue(bist100?.value)}</span>
+            <Pct v={bist100?.changePct} />
+            {bist100 && <DataFreshness source={bist100.feedSource} asOf={bist100.asOf ?? bist100.updatedAt} delayMin={15} compact />}
+            <div className="ml-auto flex gap-0.5">
+              {(['1mo', '3mo', '6mo', 'ytd', '1y'] as const).map((p) => (
+                <button key={p} onClick={() => setHeroPeriod(p)} className={cn('rounded px-2 py-0.5 text-[11px]', heroPeriod === p ? 'bg-bg-card text-fg' : 'text-fg-2 hover:text-fg')}>
+                  {p === 'ytd' ? 'YTD' : p === '1mo' ? '1A' : p === '3mo' ? '3A' : p === '6mo' ? '6A' : '1Y'}
                 </button>
               ))}
             </div>
-
-            {/* Aktif tab içeriği */}
-            {enlerTab === 'funds' && (
-              topFundsSorted.length === 0 ? (
-                <div className="py-6 text-center text-[11px] text-slate-500">Fon verisi yükleniyor…</div>
-              ) : (
-                <div className="divide-y divide-slate-700/20">
-                  {topFundsSorted.map((f) => (
-                    <Link
-                      key={f.code}
-                      to={`/fund/${f.code}`}
-                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
-                      title={f.name || f.code}
-                    >
-                      <div className="font-mono font-bold text-slate-100">{f.code}</div>
-                      <Delta v={f.day} />
-                    </Link>
-                  ))}
-                </div>
-              )
-            )}
-
-            {enlerTab === 'stocks' && (
-              topStocks.length === 0 ? (
-                <div className="py-6 text-center text-[11px] text-slate-500">Hisse verisi yükleniyor…</div>
-              ) : (
-                <div className="divide-y divide-slate-700/20">
-                  {topStocks.map((s) => (
-                    <Link
-                      key={s.symbol}
-                      to={`/stock/${s.symbol}`}
-                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
-                      title={s.name || s.symbol}
-                    >
-                      <div className="font-mono font-bold text-slate-100">{s.symbol}</div>
-                      <Delta v={s.changePct} />
-                    </Link>
-                  ))}
-                </div>
-              )
-            )}
-
-            {enlerTab === 'bes' && (
-              topBes.length === 0 ? (
-                <div className="py-6 text-center text-[11px] text-slate-500">BES verisi yükleniyor…</div>
-              ) : (
-                <div className="divide-y divide-slate-700/20">
-                  {topBes.map((f) => (
-                    <Link
-                      key={f.kod}
-                      to={`/fund/${f.kod}`}
-                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
-                      title={f.ad || f.kod}
-                    >
-                      <div className="font-mono font-bold text-slate-100">{f.kod}</div>
-                      <Delta v={f.pct} />
-                    </Link>
-                  ))}
-                </div>
-              )
-            )}
-
-            {enlerTab === 'crypto' && (
-              topCrypto.length === 0 ? (
-                <div className="py-6 text-center text-[11px] text-slate-500">Kripto verisi yükleniyor…</div>
-              ) : (
-                <div className="divide-y divide-slate-700/20">
-                  {topCrypto.map((c) => (
-                    <Link
-                      key={c.symbol}
-                      to={`/crypto/${encodeURIComponent(c.symbol.split('/')[0])}`}
-                      className="flex items-center justify-between py-1.5 text-xs hover:bg-slate-700/10 -mx-2 px-2 rounded"
-                    >
-                      <div className="font-mono font-bold text-slate-100">{c.symbol}</div>
-                      <Delta v={c.changePct} />
-                    </Link>
-                  ))}
-                </div>
-              )
-            )}
           </div>
+          <div style={{ height: 300 }} className="mt-2">
+            {heroSeries.length > 1 ? <MiniAreaChart data={heroSeries} positive={bist100Positive} /> : <div className="h-full rounded-md bg-bg-soft" />}
+          </div>
+        </section>
 
-          {/* Portföyüm — pozisyon varsa 4-metrik ozet, yoksa CTA */}
-          <Link to="/portfoy" className="side-card block hover:border-success/30 transition">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <Briefcase size={14} className="text-success" />
-                Portföyüm
-              </div>
-              {user && portfolio.hasData ? (
-                <span className="text-[10px] text-slate-500">{portfolio.count} pozisyon</span>
-              ) : (
-                <Zap size={14} className="text-slate-500" />
-              )}
+        <section className="lg:col-span-5 min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-fg">Bugün</h2>
+            <div className="ml-auto inline-flex h-7 overflow-hidden rounded-md border border-border bg-bg-soft">
+              {([['stocks', 'Hisseler'], ['funds', 'Fonlar'], ['bes', 'BES'], ['crypto', 'Kripto']] as const).map(([k, label]) => (
+                <button key={k} type="button" onClick={() => setEnlerTab(k)} className={cn('px-2 text-[11px]', enlerTab === k ? 'bg-bg-card text-fg' : 'text-fg-2 hover:text-fg')}>{label}</button>
+              ))}
             </div>
-            {user && portfolio.hasData ? (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <div className="text-[10px] text-slate-500">Toplam Değer</div>
-                  <div className="text-sm font-semibold tabular-nums text-slate-100">
-                    ₺{portfolio.totalValue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500">Toplam K/Z</div>
-                  <div className={cn('text-sm font-semibold tabular-nums', portfolio.totalPnl >= 0 ? 'text-success' : 'text-danger')}>
-                    {portfolio.totalPnl >= 0 ? '+' : ''}₺{Math.abs(portfolio.totalPnl).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                  </div>
-                  <div className={cn('text-[10px] tabular-nums', portfolio.totalPnlPct >= 0 ? 'text-success' : 'text-danger')}>
-                    {portfolio.totalPnlPct >= 0 ? '+' : ''}{portfolio.totalPnlPct.toFixed(2)}%
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500">Bugünkü K/Z</div>
-                  <div className={cn('text-sm font-semibold tabular-nums', portfolio.dailyPnl >= 0 ? 'text-success' : 'text-danger')}>
-                    {portfolio.dailyPnl >= 0 ? '+' : ''}₺{Math.abs(portfolio.dailyPnl).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                  </div>
-                  <div className={cn('text-[10px] tabular-nums', portfolio.dailyPct >= 0 ? 'text-success' : 'text-danger')}>
-                    {portfolio.dailyPct >= 0 ? '+' : ''}{portfolio.dailyPct.toFixed(2)}%
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500">Maliyet</div>
-                  <div className="text-sm font-semibold tabular-nums text-slate-300">
-                    ₺{portfolio.totalCost.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-[11px] text-slate-400 leading-relaxed">
-                {user ? 'Henüz pozisyon yok. Hisse/fon ekle, canlı takip et.' : 'Pozisyonlarını takip et, performans grafiğini gör, benchmark karşılaştır.'}
-              </div>
-            )}
-          </Link>
-        </div>
-      </div>
+            <div className="inline-flex h-7 overflow-hidden rounded-md border border-border bg-bg-soft">
+              <button type="button" onClick={() => setEnlerDir('up')} className={cn('px-2 text-[11px]', enlerDir === 'up' ? 'bg-bg-card text-success' : 'text-fg-2')}>▲</button>
+              <button type="button" onClick={() => setEnlerDir('down')} className={cn('px-2 text-[11px]', enlerDir === 'down' ? 'bg-bg-card text-danger' : 'text-fg-2')}>▼</button>
+            </div>
+          </div>
+          <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-fg-3">{enlerDir === 'up' ? '▲ Yükselenler' : '▼ Düşenler'} · günlük %</div>
+          <div className="mt-1">
+            {enlerList.length === 0
+              ? <div className="py-4 text-[12px] text-fg-3">Veri kaynağından henüz gelmedi.</div>
+              : enlerList.slice(0, 7).map((r) => <MoverRow key={r.key} to={r.to} code={r.code} name={r.name} pct={r.pct} />)}
+          </div>
+          {enlerTab === 'stocks' && <Link to="/stocks" className="mt-1 inline-block text-[11px] text-accent hover:underline">Tüm hisseler →</Link>}
 
+          {criticalNews.length > 0 && (
+            <div className="mt-4">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-danger">● Kritik ({criticalNews.length})</div>
+              {criticalNews.map((n) => (
+                <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 text-[12px] hover:bg-bg-card -mx-1 px-1 rounded">
+                  <span className="min-w-0 truncate text-fg">{n.symbols[0] && <span className="mr-2 font-mono font-semibold">{n.symbols[0]}</span>}{n.criticalReason ?? n.title}</span>
+                  <span className="ml-2 shrink-0 text-[11px] text-fg-3">{new Date(n.publishedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Piyasalar — tek satır, tabular */}
+        <div className="lg:col-span-12 flex items-center gap-6 overflow-x-auto whitespace-nowrap border-y border-border py-2.5 text-[12px] [scrollbar-width:none]">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-3">Piyasalar</span>
+          {marketsLine.map((m) => (
+            <Link key={m.key} to={m.to} className="inline-flex items-center gap-1.5 hover:text-accent">
+              <span className="text-fg-2">{m.label}</span>
+              <span className="font-mono font-semibold text-fg">{m.value}</span>
+              <Pct v={m.pct} invert={m.invert} />
+            </Link>
+          ))}
+        </div>
+
+        <section className="lg:col-span-6 min-w-0">
+          <h2 className="text-base font-semibold text-fg">Takibin <span className="text-[12px] font-normal text-fg-3">{symbols.length}</span></h2>
+          <div className="mt-2">
+            {symbols.length === 0 ? (
+              <div className="py-3 text-[12px] text-fg-3">Takip listen boş. <Link to="/stocks" className="text-accent hover:underline">Hisselerden yıldızla</Link>.</div>
+            ) : watched.length === 0 ? (
+              <div className="py-3 text-[12px] text-fg-3">Fiyatlar yükleniyor…</div>
+            ) : watched.map((s) => (
+              <Link key={s.symbol} to={`/stock/${s.symbol}`} className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 hover:bg-bg-card -mx-1 px-1 rounded">
+                <span className="min-w-0 truncate"><span className="font-mono text-[13px] font-semibold text-fg">{s.symbol}</span><span className="ml-2 hidden text-[11px] text-fg-3 sm:inline">{s.name}</span></span>
+                <span className="flex items-center gap-4"><span className="font-mono text-[13px] text-fg">{s.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><Pct v={s.changePct} /></span>
+              </Link>
+            ))}
+            {symbols.length > 6 && <Link to="/watchlist" className="mt-1 inline-block text-[11px] text-accent hover:underline">Tümü ({symbols.length}) →</Link>}
+          </div>
+        </section>
+
+        <section className="lg:col-span-6 min-w-0">
+          <h2 className="text-base font-semibold text-fg">Portföyün</h2>
+          {user && portfolio.hasData ? (
+            <>
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <span className="font-mono text-[28px] font-semibold leading-8 text-fg">₺{portfolio.totalValue.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</span>
+                <span className="text-[12px] text-fg-2">bugün <Pct v={portfolio.dailyPct} /></span>
+                <span className="text-[12px] text-fg-2">toplam <Pct v={portfolio.totalPnlPct} /></span>
+              </div>
+              {concentration && (
+                <div className="mt-2 text-[13px] text-fg">
+                  Risk: {concentration.top} pozisyon portföyün %{Math.round(concentration.topShare * 100)}'i
+                  {concentration.topShare >= 0.6 ? ' — yoğunlaşma yüksek' : concentration.topShare >= 0.4 ? ' — orta yoğunlaşma' : ' — dağılım dengeli'}
+                  <EvidenceLink
+                    title="Yoğunlaşma hesabı"
+                    rows={[
+                      { label: 'Pozisyon sayısı', value: String(concentration.count) },
+                      { label: `İlk ${concentration.top} pozisyon payı`, value: `%${(concentration.topShare * 100).toFixed(1)}`, source: 'piyasa değeri' },
+                      { label: 'HHI', value: concentration.hhi.toFixed(3) },
+                      { label: 'Etkin pozisyon (1/HHI)', value: concentration.effN.toFixed(1) },
+                    ]}
+                  />
+                </div>
+              )}
+              <div className="mt-3 flex gap-2">
+                <Link to="/portfoy" className="btn-secondary h-8 px-3 text-xs">Detay</Link>
+                <Link to="/portfoy?tab=stocks" className="btn-secondary h-8 px-3 text-xs">Risk raporu</Link>
+              </div>
+              <div className="mt-2 text-[11px] text-fg-3">Yatırım tavsiyesi değildir.</div>
+            </>
+          ) : (
+            <div className="mt-2 text-[12px] text-fg-2">
+              {user ? 'Henüz pozisyon yok. ' : 'Giriş yapıp pozisyon ekle; '}
+              <Link to="/portfoy" className="text-accent hover:underline">değer, günlük K/Z ve risk cümlesi burada görünür</Link>.
+            </div>
+          )}
+        </section>
+
+        <section className="lg:col-span-7 min-w-0">
+          <div className="flex items-center"><h2 className="text-base font-semibold text-fg">Haber akışı</h2><Link to="/news" className="ml-auto text-[11px] text-accent hover:underline">Tümü →</Link></div>
+          <div className="mt-2">
+            {feedNews.length === 0 ? <div className="py-3 text-[12px] text-fg-3">Haberler yükleniyor…</div> : feedNews.map((n) => (
+              <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex min-h-[40px] items-start gap-3 border-b border-border/60 py-2 last:border-0 text-[12px] hover:bg-bg-card -mx-1 px-1 rounded">
+                <span className="mt-0.5 shrink-0 font-mono text-[11px] text-fg-3">{new Date(n.publishedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="line-clamp-2 text-fg">{n.title}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="lg:col-span-5 min-w-0">
+          <div className="flex items-center"><h2 className="text-base font-semibold text-fg">Ekonomik takvim</h2><Link to="/takvim" className="ml-auto text-[11px] text-accent hover:underline">Tümü →</Link></div>
+          <div className="mt-2"><EconomicCalendarWidget compact maxItems={6} daysAhead={14} collapsible={false} /></div>
+        </section>
+      </div>
     </>
   );
 }

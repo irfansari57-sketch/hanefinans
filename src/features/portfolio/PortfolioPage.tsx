@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { FundsPanel } from './FundsPanel';
 import { RiskReportCard } from './RiskReportCard';
+import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { TxnHistoryModal } from './TxnHistoryModal';
 import { PortfolioDonut, type DonutItem } from './PortfolioDonut';
 import { PortfolioEquityCurve } from './PortfolioEquityCurve';
@@ -374,6 +375,32 @@ export function PortfolioPage() {
               </div>
             </div>
           </div>
+          {/* Design 03 Signature #10 — deterministik risk cümlesi (15 Eki 2026) */}
+          {(() => {
+            const vals = rows.map((r) => r.marketValue ?? 0).filter((v) => v > 0);
+            const total = vals.reduce((a, b) => a + b, 0);
+            if (vals.length === 0 || total <= 0) return null;
+            const sorted = [...vals].sort((a, b) => b - a);
+            const top = Math.min(3, sorted.length);
+            const share = sorted.slice(0, top).reduce((a, b) => a + b, 0) / total;
+            const hhi = vals.reduce((a, v) => a + (v / total) ** 2, 0);
+            const verdict = share >= 0.6 ? 'yoğunlaşma yüksek' : share >= 0.4 ? 'orta yoğunlaşma' : 'dağılım dengeli';
+            return (
+              <div className="mt-3 border-t border-border pt-3 text-[13px] text-fg">
+                Risk: {top} pozisyon hisse portföyünün %{Math.round(share * 100)}'i — {verdict}
+                <EvidenceLink
+                  title="Yoğunlaşma hesabı"
+                  rows={[
+                    { label: 'Hisse pozisyonu', value: String(vals.length) },
+                    { label: `İlk ${top} pozisyon payı`, value: `%${(share * 100).toFixed(1)}`, source: 'piyasa değeri' },
+                    { label: 'HHI', value: hhi.toFixed(3) },
+                    { label: 'Etkin pozisyon (1/HHI)', value: (1 / hhi).toFixed(1) },
+                  ]}
+                />
+                <span className="ml-2 text-[11px] text-fg-3">Ayrıntı: aşağıdaki Risk Raporu · yatırım tavsiyesi değildir</span>
+              </div>
+            );
+          })()}
         </section>
       )}
 

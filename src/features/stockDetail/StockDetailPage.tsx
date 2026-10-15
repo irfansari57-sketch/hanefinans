@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   ArrowLeft, Star, Bell, StickyNote, Newspaper, Activity, TrendingUp, TrendingDown,
@@ -144,6 +144,16 @@ export function StockDetailPage() {
   const notes = useLiveQuery(() => notesRepo.bySymbol(sym), [sym]) ?? [];
   const alerts = useLiveQuery(() => alertsRepo.bySymbol(sym), [sym]) ?? [];
   const { map: katilimMap } = useKatilim();
+  // Design 03: katmanlı detay — 4 sekme, URL'de (?tab=)
+  const [searchParams, setSearchParams] = useSearchParams();
+  type DetailTab = 'genel' | 'teknik' | 'temel' | 'haber';
+  const tabParam = searchParams.get('tab');
+  const tab: DetailTab = tabParam === 'teknik' || tabParam === 'temel' || tabParam === 'haber' ? tabParam : 'genel';
+  const setTab = (t: DetailTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (t === 'genel') next.delete('tab'); else next.set('tab', t);
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     let alive = true;
@@ -463,6 +473,31 @@ export function StockDetailPage() {
         </div>
       </div>
 
+      {/* Sekmeler — Design 03 katmanlı detay (15 Eki 2026) */}
+      <div className="mb-4 flex gap-5 overflow-x-auto border-b border-border text-[13px] [scrollbar-width:none]" role="tablist">
+        {([
+          ['genel', 'Genel'],
+          ['teknik', 'Teknik'],
+          ['temel', 'Temel'],
+          ['haber', 'Haber & KAP'],
+        ] as const).filter(([k]) => !(k === 'temel' && (isUs || bistIndexMeta[sym]))).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => setTab(k)}
+            className={cn(
+              'whitespace-nowrap border-b-2 pb-2 pt-1 transition',
+              tab === k ? 'border-accent text-fg' : 'border-transparent text-fg-2 hover:text-fg',
+            )}
+          >
+            {label}{k === 'haber' && displayNews.length > 0 ? <span className="ml-1 text-[11px] text-fg-3">{displayNews.length}</span> : null}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'genel' && (<>
       {/* Chart — Panel Hero stilinde emerald/red area chart. Kullanici talebi
           11 Eyl 2026: ana sayfayla tutarli gorsel, TradingView agir chart yerine
           hafif SVG. Detay isteyen "TradingView'de aç" ile external gider. */}
@@ -535,15 +570,43 @@ export function StockDetailPage() {
         </div>
       )}
 
-      {/* 11 Eki 2026: Çoklu Zaman Dilimi + AI Derin Analiz + AI Hisse Analizi
-          kullanıcı talebiyle kaldırıldı — hisse detayında sadece Teknik Analiz Detayı
-          + Şirket Finansalları kalsın. Komponentler korundu (yeniden açılabilir). */}
+      {/* Stats grid */}
+      {historical && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat
+            label="52 Hafta En Yüksek"
+            value={historical.meta.fiftyTwoWeekHigh
+              ? (isUs ? `$${historical.meta.fiftyTwoWeekHigh.toFixed(2)}` : formatMoney(historical.meta.fiftyTwoWeekHigh))
+              : '—'}
+            tone="success"
+          />
+          <Stat
+            label="52 Hafta En Düşük"
+            value={historical.meta.fiftyTwoWeekLow
+              ? (isUs ? `$${historical.meta.fiftyTwoWeekLow.toFixed(2)}` : formatMoney(historical.meta.fiftyTwoWeekLow))
+              : '—'}
+            tone="danger"
+          />
+          <Stat
+            label="Hacim"
+            value={historical.meta.regularMarketVolume ? formatCompact(historical.meta.regularMarketVolume) : '—'}
+          />
+          <Stat
+            label="Ort. Hacim (3A)"
+            value={historical.meta.averageDailyVolume3Month ? formatCompact(historical.meta.averageDailyVolume3Month) : '—'}
+          />
+        </div>
+      )}
 
+      </>)}
+
+      {tab === 'teknik' && (<>
       {/* Teknik Analiz — accordion, kompakt UX: kullanici isterse acar */}
       {technicalAnalysis && (
         <PinnableAccordion
           id={`ta-${stock.symbol}`}
           title="Teknik Analiz Detayı"
+          defaultOpen
           description={`RSI · MACD · Bollinger · ADX · EMA (${historical?.bars.length ?? 0} günlük veri)`}
           icon={<Activity size={14} />}
           iconColorClass="bg-accent/15 text-accent"
@@ -635,38 +698,9 @@ export function StockDetailPage() {
         </PinnableAccordion>
       )}
 
-      {/* Pozisyon Hesaplayıcı kaldırıldı — kullanıcı talebi */}
+      </>)}
 
-      {/* AI Hisse Analizi — kullanıcı talebi (11 Eki 2026) ile kaldırıldı. */}
-
-      {/* Stats grid */}
-      {historical && (
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
-            label="52 Hafta En Yüksek"
-            value={historical.meta.fiftyTwoWeekHigh
-              ? (isUs ? `$${historical.meta.fiftyTwoWeekHigh.toFixed(2)}` : formatMoney(historical.meta.fiftyTwoWeekHigh))
-              : '—'}
-            tone="success"
-          />
-          <Stat
-            label="52 Hafta En Düşük"
-            value={historical.meta.fiftyTwoWeekLow
-              ? (isUs ? `$${historical.meta.fiftyTwoWeekLow.toFixed(2)}` : formatMoney(historical.meta.fiftyTwoWeekLow))
-              : '—'}
-            tone="danger"
-          />
-          <Stat
-            label="Hacim"
-            value={historical.meta.regularMarketVolume ? formatCompact(historical.meta.regularMarketVolume) : '—'}
-          />
-          <Stat
-            label="Ort. Hacim (3A)"
-            value={historical.meta.averageDailyVolume3Month ? formatCompact(historical.meta.averageDailyVolume3Month) : '—'}
-          />
-        </div>
-      )}
-
+      {tab === 'temel' && (<>
       {/* Şirket Finansalları — sadece BIST hisseleri için (US/endeks hariç) */}
       {!isUs && !bistIndexMeta[sym] && (
         <div className="mb-4">
@@ -674,6 +708,9 @@ export function StockDetailPage() {
         </div>
       )}
 
+      </>)}
+
+      {tab === 'haber' && (<>
       <div className="grid gap-4 lg:grid-cols-3">
         {/* News mentioning this symbol */}
         <section className="lg:col-span-2">
@@ -850,6 +887,7 @@ export function StockDetailPage() {
           </div>
         </aside>
       </div>
+      </>)}
     </>
   );
 }

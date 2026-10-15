@@ -397,7 +397,7 @@ export function SoftPanelPage() {
 
   const MoverRow = ({ to, code, name, pct }: { to: string; code: string; name?: string; pct: number }) => (
     <Link to={to} className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 hover:bg-bg-card -mx-1 px-1 rounded">
-      <span className="min-w-0 truncate"><span className="font-mono text-[13px] font-semibold text-fg">{code}</span>{name && <span className="ml-2 hidden text-[11px] text-fg-3 sm:inline">{name}</span>}</span>
+      <span className="flex min-w-0 items-baseline gap-2"><span className="shrink-0 font-mono text-[13px] font-semibold text-fg">{code}</span>{name && <span className="hidden min-w-0 truncate text-[11px] text-fg-3 sm:inline">{name.replace(/\s+(A\.Ş\.|A\.S\.|AŞ|T\.A\.Ş\.|Sanayi ve Ticaret|San\. ve Tic\.).*$/i, '')}</span>}</span>
       <Pct v={pct} />
     </Link>
   );
@@ -467,7 +467,11 @@ export function SoftPanelPage() {
               <div className="text-[10px] font-semibold uppercase tracking-wider text-danger">● Kritik ({criticalNews.length})</div>
               {criticalNews.map((n) => (
                 <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 text-[12px] hover:bg-bg-card -mx-1 px-1 rounded">
-                  <span className="min-w-0 truncate text-fg">{n.symbols[0] && <span className="mr-2 font-mono font-semibold">{n.symbols[0]}</span>}{n.criticalReason ?? n.title}</span>
+                  <span className="min-w-0 truncate text-fg">
+                    {n.symbols[0] && <span className="mr-2 font-mono font-semibold">{n.symbols[0]}</span>}
+                    {n.criticalReason && <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-danger">{n.criticalReason}</span>}
+                    {n.title}
+                  </span>
                   <span className="ml-2 shrink-0 text-[11px] text-fg-3">{new Date(n.publishedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
                 </a>
               ))}

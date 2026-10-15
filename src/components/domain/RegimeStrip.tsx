@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { loadMarketBreadth, type MarketBreadth } from '@/data/services';
+import { loadMarketBreadth, loadMacroAll, type MarketBreadth } from '@/data/services';
 import { DataFreshness } from '@/components/ui/DataFreshness';
 import { EvidenceLink } from '@/components/ui/EvidenceLink';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,15 @@ export function RegimeStrip({ className }: { className?: string }) {
   const [b, setB] = useState<MarketBreadth | null>(memo);
   useEffect(() => {
     let alive = true;
-    const run = () => loadMarketBreadth().then((r) => { if (alive && r) { memo = r; setB(r); } });
+    // Endeks değeri hero grafikle AYNI kaynaktan (loadMacroAll → BIST 100); genişlik snapshot'tan.
+    const run = () => Promise.all([loadMarketBreadth(), loadMacroAll().catch(() => null)]).then(([r, m]) => {
+      if (!alive || !r) return;
+      const bist = m?.data.find((x) => x.key === 'BIST 100');
+      const merged: MarketBreadth = bist && bist.value > 0
+        ? { ...r, index: { price: bist.value, changePct: bist.changePct ?? 0, asOf: bist.asOf ?? bist.updatedAt, source: bist.feedSource, updatedAt: Date.parse(bist.updatedAt) || 0 } }
+        : r;
+      memo = merged; setB(merged);
+    });
     run();
     const t = window.setInterval(run, 60_000);
     return () => { alive = false; window.clearInterval(t); };
@@ -30,7 +38,7 @@ export function RegimeStrip({ className }: { className?: string }) {
   const tone = pct > 0.0001 ? 'text-success' : pct < -0.0001 ? 'text-danger' : 'text-neutral';
   const breadthPct = b.total > 0 ? Math.round((b.advancers / b.total) * 100) : 0;
   const breadthTone = breadthPct >= 60 ? 'bg-success' : breadthPct <= 40 ? 'bg-danger' : 'bg-warning';
-  const asOfIso = idx.updatedAt > 1e12 ? new Date(idx.updatedAt).toISOString() : idx.asOf;
+  const asOfIso = idx.asOf;
 
   return (
     <div

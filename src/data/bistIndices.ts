@@ -45,22 +45,21 @@ export const INDEX_TO_SECTORS = new Map(
 // BIST ana endeksleri — sembol bazlı kapsam (sektör değil).
 // Filtreleme: "BIST 100 hisselerini göster", "BIST 30 portföy" gibi sorgular.
 // Kaynak: Borsa İstanbul endeks kompozisyonu (2025 sonu — yıllık güncellenir).
+// 15 Eki 2026: KOZAA→TRMET (TR Anadolu Metal Madencilik), KOZAL→TRALT (Türk Altın İşletmeleri) — eski semboller işlem görmüyor.
 // ---------------------------------------------------------------------------
 
 /** BIST 30 — en yüksek piyasa değeri + likiditeye sahip 30 hisse (XU030). */
 export const BIST_30_SYMBOLS: ReadonlySet<string> = new Set([
   'AKBNK', 'ALARK', 'ASELS', 'ASTOR', 'BIMAS', 'CIMSA', 'DOAS', 'EKGYO',
-  'ENKAI', 'EREGL', 'FROTO', 'GARAN', 'HALKB', 'ISCTR', 'KCHOL', 'KOZAA',
-  'KOZAL', 'KRDMD', 'MGROS', 'PETKM', 'PGSUS', 'SAHOL', 'SASA', 'SISE',
-  'TAVHL', 'THYAO', 'TOASO', 'TUPRS', 'VAKBN', 'YKBNK',
+  'ENKAI', 'EREGL', 'FROTO', 'GARAN', 'HALKB', 'ISCTR', 'KCHOL', 'KRDMD', 'MGROS', 'PETKM', 'PGSUS', 'SAHOL', 'SASA', 'SISE',
+  'TAVHL', 'THYAO', 'TOASO', 'TRALT', 'TRMET', 'TUPRS', 'VAKBN', 'YKBNK',
 ]);
 
 /** BIST 100 — ana endeks (XU100). En kapsamlı 100 hisse. */
 export const BIST_100_SYMBOLS: ReadonlySet<string> = new Set([
   'AKBNK', 'ALARK', 'ASELS', 'ASTOR', 'BIMAS', 'CIMSA', 'DOAS', 'EKGYO',
-  'ENKAI', 'EREGL', 'FROTO', 'GARAN', 'HALKB', 'ISCTR', 'KCHOL', 'KOZAA',
-  'KOZAL', 'KRDMD', 'MGROS', 'PETKM', 'PGSUS', 'SAHOL', 'SASA', 'SISE',
-  'TAVHL', 'THYAO', 'TOASO', 'TUPRS', 'VAKBN', 'YKBNK',
+  'ENKAI', 'EREGL', 'FROTO', 'GARAN', 'HALKB', 'ISCTR', 'KCHOL', 'KRDMD', 'MGROS', 'PETKM', 'PGSUS', 'SAHOL', 'SASA', 'SISE',
+  'TAVHL', 'THYAO', 'TOASO', 'TRALT', 'TRMET', 'TUPRS', 'VAKBN', 'YKBNK',
   'AEFES', 'AGHOL', 'AKCNS', 'AKFGY', 'AKFYE', 'AKSA', 'AKSEN', 'ALBRK',
   'ALFAS', 'ANSGR', 'ARCLK', 'BERA', 'BFREN', 'BRSAN', 'BRYAT', 'BTCIM',
   'CANTE', 'CCOLA', 'CWENE', 'DOHOL', 'ECILC', 'ECZYT', 'EGEEN',

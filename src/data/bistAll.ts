@@ -231,8 +231,7 @@ export const BIST_ALL: BistStock[] = [
   // ===== Madencilik =====
   { symbol: 'IPEKE', name: 'İpek Doğal Enerji', sector: 'Madencilik' },
   { symbol: 'KCAER', name: 'Kocaer Çelik', sector: 'Madencilik' },
-  { symbol: 'KOZAA', name: 'Koza Madencilik', sector: 'Madencilik' },
-  { symbol: 'TRALT', name: 'Koza Altın', sector: 'Madencilik' },
+  { symbol: 'TRALT', name: 'Türk Altın İşletmeleri', sector: 'Madencilik' },
   { symbol: 'PARSN', name: 'Parsan Makina', sector: 'Madencilik' },
 
   // ===== İlaç & Sağlık =====
@@ -873,7 +872,7 @@ export const BIST_ALL: BistStock[] = [
   { symbol: 'TRIVE', name: 'TRIVE', sector: 'Diger' },
   { symbol: 'TRKFN', name: 'TRKFN', sector: 'Diger' },
   { symbol: 'TRKNT', name: 'TRKNT', sector: 'Diger' },
-  { symbol: 'TRMET', name: 'TRMET', sector: 'Diger' },
+  { symbol: 'TRMET', name: 'TR Anadolu Metal Madencilik', sector: 'Madencilik' },
   { symbol: 'TRYKI', name: 'TRYKI', sector: 'Diger' },
   { symbol: 'TSGYO', name: 'TSGYO', sector: 'Diger' },
   { symbol: 'TSPOR', name: 'TSPOR', sector: 'Diger' },

@@ -16,7 +16,7 @@ import { fetchIndexYahoo } from '@/data/api/yahoo';
 /** BIST 30 sembolleri (sabit liste — Borsa Istanbul'dan ana endeks). */
 export const BIST30_SYMBOLS = [
   'AKBNK', 'AKSEN', 'ALARK', 'ARCLK', 'ASELS', 'ASTOR', 'BIMAS', 'EKGYO', 'ENKAI',
-  'EREGL', 'FROTO', 'GARAN', 'HEKTS', 'ISCTR', 'KCHOL', 'KOZAA', 'KOZAL', 'KRDMD',
+  'EREGL', 'FROTO', 'GARAN', 'HEKTS', 'ISCTR', 'KCHOL', 'TRMET', 'TRALT', 'KRDMD',
   'MGROS', 'PETKM', 'PGSUS', 'SAHOL', 'SASA', 'SISE', 'TCELL', 'THYAO', 'TOASO',
   'TTKOM', 'TUPRS', 'YKBNK',
 ] as const;

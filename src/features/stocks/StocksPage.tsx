@@ -366,7 +366,7 @@ export function StocksPage() {
       //
       // Üç durum:
       //   A) Fiyatı 0 + getirisi yok        → hiç fiyatlanmamış, sil
-      //   B) Fiyatı var + Gün %=0 + getirisi yok → KOZAA/IPEKE gibi borsa
+      //   B) Fiyatı var + Gün %=0 + getirisi yok → IPEKE gibi borsa
       //      kotesinden çıkarılmış (fiyat MOCK'tan sabit kalmış, hareket yok), sil
       if (tab === 'all') {
         // BYF (6 harf, F sonlu: ZGOLDF, APX30F…) ve vadeli/sertifika kodları hisse değil.

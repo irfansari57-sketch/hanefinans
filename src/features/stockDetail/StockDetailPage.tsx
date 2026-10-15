@@ -29,6 +29,7 @@ import { fetchRegime, type RegimeApi } from '@/data/api/regime';
 import { buildChartEvents } from '@/lib/chartEvents';
 import { evaluateSignals, type Signal } from '@/lib/signals';
 import { KatilimBadge } from '@/components/domain/KatilimBadge';
+import { computeMetrics, type StockMetrics } from '@/lib/metrics';
 import { rsi, macd, ema, sma, bollinger, adx, rsiSignal, bollingerLabel, adxLabel, supportResistance, closedBarsOnly, type OHLC } from '@/lib/indicators';
 import { isBistOpen } from '@/lib/marketCalendar';
 import { analyzeTimeframe, aggregateTo4h, BIST_4H, computeBigPlayerLean, buildVerdict, type MultiTimeframeResult, type TimeframeAnalysis } from '@/lib/multiTimeframe';
@@ -270,6 +271,15 @@ export function StockDetailPage() {
     }));
     return evaluateSignals(bars, indexRegime?.trend.regime ?? null, 'yahoo 1y');
   }, [historical, indexRegime]);
+
+  // D13 (15 Eki 2026): Tarama ile aynı gösterge özeti — 52h konumu, hacim oranı, oynaklık, SMA200
+  const stockMetrics = useMemo<StockMetrics | null>(() => {
+    if (!historical || historical.bars.length < 30) return null;
+    const bars = closedBarsOnly(historical.bars, isBistOpen()).map((b) => ({
+      date: new Date(b.time).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume ?? 0,
+    }));
+    return computeMetrics(sym, bars, indexRegime?.trend.regime ?? null);
+  }, [historical, indexRegime, sym]);
 
   const stockRegime = useMemo<RegimeResult | null>(() => {
     if (!historical || historical.closes.length < 60) return null;
@@ -705,6 +715,38 @@ export function StockDetailPage() {
           iconColorClass="bg-accent/15 text-accent"
         >
           <div className="p-1">
+
+          {/* Konum özeti — Tarama metrikleriyle birebir (src/lib/metrics.ts) */}
+          {stockMetrics && (
+            <div className="grid gap-2 grid-cols-2 lg:grid-cols-4 mb-2">
+              <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">52 hafta konumu</div>
+                <div className={cn('mt-1 text-lg font-bold tabular-nums', stockMetrics.from52wHighPct == null ? 'text-slate-400' : stockMetrics.from52wHighPct >= -2 ? 'text-success' : 'text-slate-100')}>
+                  {stockMetrics.from52wHighPct == null ? '—' : `${stockMetrics.from52wHighPct.toFixed(1)}%`}
+                </div>
+                <div className="text-[10px] text-slate-400">zirveye uzaklık · dipten {stockMetrics.from52wLowPct == null ? '—' : `+${stockMetrics.from52wLowPct.toFixed(0)}%`}</div>
+              </div>
+              <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">Hacim / 20g ort.</div>
+                <div className={cn('mt-1 text-lg font-bold tabular-nums', stockMetrics.volRatio20 != null && stockMetrics.volRatio20 >= 2 ? 'text-warning' : 'text-slate-100')}>
+                  {stockMetrics.volRatio20 == null ? '—' : `${stockMetrics.volRatio20.toFixed(2)}×`}
+                </div>
+                <div className="text-[10px] text-slate-400">son kapanmış gün</div>
+              </div>
+              <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">20g oynaklık</div>
+                <div className="mt-1 text-lg font-bold tabular-nums text-slate-100">{stockMetrics.vol20 == null ? '—' : `%${stockMetrics.vol20.toFixed(0)}`}</div>
+                <div className="text-[10px] text-slate-400">gerçekleşmiş, yıllık</div>
+              </div>
+              <div className="rounded-lg border border-border bg-bg-soft p-2.5">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">Fiyat / SMA200</div>
+                <div className={cn('mt-1 text-lg font-bold tabular-nums', stockMetrics.sma200Pct == null ? 'text-slate-400' : stockMetrics.sma200Pct >= 0 ? 'text-success' : 'text-danger')}>
+                  {stockMetrics.sma200Pct == null ? '—' : `${stockMetrics.sma200Pct >= 0 ? '+' : ''}${stockMetrics.sma200Pct.toFixed(1)}%`}
+                </div>
+                <div className="text-[10px] text-slate-400">{stockMetrics.sma50Above200 == null ? 'SMA200 için 200 bar gerekli' : stockMetrics.sma50Above200 ? 'SMA50 > SMA200' : 'SMA50 < SMA200'}</div>
+              </div>
+            </div>
+          )}
 
           {/* RSI / MACD / Bollinger / ADX */}
           <div className="grid gap-2 grid-cols-2 lg:grid-cols-4 mb-4">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { RotateCcw, Link2, Check } from 'lucide-react';
+import { RotateCcw, Link2, Check, SlidersHorizontal, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { SeoHead } from '@/components/seo/SeoHead';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { SortableHeader } from '@/components/ui/SortableHeader';
@@ -78,6 +79,8 @@ export function TaramaPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [copied, setCopied] = useState(false);
   const { map: katilimMap } = useKatilim();
+  const isMobile = useIsMobile();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     if (memo) return;
@@ -139,6 +142,52 @@ export function TaramaPage() {
 
   const groupOptions = (kind: BistGroupKind) => BIST_GROUPS.filter((g) => g.kind === kind).map((g) => ({ value: g.slug, label: g.label, count: g.slug === 'katilim' ? Object.keys(katilimMap).length : g.symbols.length }));
 
+  const filterPanel = (
+      <div className={cn('grid grid-cols-2 gap-x-4 gap-y-3', isMobile ? 'pb-2' : 'mb-3 rounded-xl border border-border bg-bg-soft p-3 sm:grid-cols-3 lg:grid-cols-6')}>
+        <Field label="RSI(14)">
+          <NumInput value={filter.rsiMin} onChange={(v) => up({ rsiMin: v })} placeholder="min" />
+          <span className="text-fg-3">–</span>
+          <NumInput value={filter.rsiMax} onChange={(v) => up({ rsiMax: v })} placeholder="max" />
+        </Field>
+        <Field label="Fiyat / SMA50"><Tri value={filter.sma50} onChange={(v) => up({ sma50: v })} /></Field>
+        <Field label="Fiyat / SMA200"><Tri value={filter.sma200} onChange={(v) => up({ sma200: v })} /></Field>
+        <Field label="52h zirveye ≤ %">
+          <NumInput value={filter.near52wHighMax} onChange={(v) => up({ near52wHighMax: v })} placeholder="ör. 5" />
+          <label className="ml-2 inline-flex items-center gap-1 text-[11px] text-fg-2">
+            <input type="checkbox" checked={!!filter.goldenCross} onChange={(e) => up({ goldenCross: e.target.checked || undefined })} className="h-3.5 w-3.5 accent-[rgb(var(--c-accent))]" />
+            SMA50 &gt; 200
+          </label>
+        </Field>
+        <Field label="Hacim ≥ × (20g ort.)"><NumInput value={filter.volRatioMin} onChange={(v) => up({ volRatioMin: v })} placeholder="ör. 2" /></Field>
+        <Field label="20g oynaklık ≤ %"><NumInput value={filter.vol20Max} onChange={(v) => up({ vol20Max: v })} placeholder="ör. 35" /></Field>
+        <Field label="1 hafta %">
+          <NumInput value={filter.ret1wMin} onChange={(v) => up({ ret1wMin: v })} placeholder="min" /><span className="text-fg-3">–</span>
+          <NumInput value={filter.ret1wMax} onChange={(v) => up({ ret1wMax: v })} placeholder="max" />
+        </Field>
+        <Field label="1 ay %">
+          <NumInput value={filter.ret1mMin} onChange={(v) => up({ ret1mMin: v })} placeholder="min" /><span className="text-fg-3">–</span>
+          <NumInput value={filter.ret1mMax} onChange={(v) => up({ ret1mMax: v })} placeholder="max" />
+        </Field>
+        <Field label="3 ay %">
+          <NumInput value={filter.ret3mMin} onChange={(v) => up({ ret3mMin: v })} placeholder="min" /><span className="text-fg-3">–</span>
+          <NumInput value={filter.ret3mMax} onChange={(v) => up({ ret3mMax: v })} placeholder="max" />
+        </Field>
+        <Field label="Trend (SMA50/200)">
+          <MultiSelect label="Trend" options={TRENDS.map((t) => ({ value: t, label: t }))} selected={filter.trends} onChange={(v) => up({ trends: v as TrendRegime[] })} searchFrom={99} />
+        </Field>
+        <Field label="Sinyal">
+          <MultiSelect label="Sinyal" options={KINDS.map((k) => ({ value: k, label: SIGNAL_LABELS[k] }))} selected={filter.signals} onChange={(v) => up({ signals: v as SignalKind[] })} searchFrom={99} />
+        </Field>
+        <Field label="Grup">
+          <MultiSelect
+            label="Endeks / sektör"
+            options={(['index', 'main', 'sector'] as BistGroupKind[]).flatMap((k) => groupOptions(k).map((o) => ({ ...o, label: `${o.label} · ${BIST_GROUP_KIND_LABELS[k]}` })))}
+            selected={groups} onChange={setGroups}
+          />
+        </Field>
+      </div>
+  );
+
   return (
     <>
       <SeoHead title="Tarama" description="BIST hisselerini RSI, hareketli ortalama, 52 haftalık zirve, hacim ve getiri eşiklerine göre tarayın. Kurallar görünür, sonuç paylaşılabilir." path="/tarama" />
@@ -173,50 +222,31 @@ export function TaramaPage() {
         ))}
       </div>
 
-      {/* Filtre paneli */}
-      <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-border bg-bg-soft p-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Field label="RSI(14)">
-          <NumInput value={filter.rsiMin} onChange={(v) => up({ rsiMin: v })} placeholder="min" />
-          <span className="text-fg-3">–</span>
-          <NumInput value={filter.rsiMax} onChange={(v) => up({ rsiMax: v })} placeholder="max" />
-        </Field>
-        <Field label="Fiyat / SMA50"><Tri value={filter.sma50} onChange={(v) => up({ sma50: v })} /></Field>
-        <Field label="Fiyat / SMA200"><Tri value={filter.sma200} onChange={(v) => up({ sma200: v })} /></Field>
-        <Field label="52h zirveye ≤ %">
-          <NumInput value={filter.near52wHighMax} onChange={(v) => up({ near52wHighMax: v })} placeholder="ör. 5" />
-          <label className="ml-2 inline-flex items-center gap-1 text-[11px] text-fg-2">
-            <input type="checkbox" checked={!!filter.goldenCross} onChange={(e) => up({ goldenCross: e.target.checked || undefined })} className="h-3.5 w-3.5 accent-[#2DD4BF]" />
-            SMA50 &gt; 200
-          </label>
-        </Field>
-        <Field label="Hacim ≥ × (20g ort.)"><NumInput value={filter.volRatioMin} onChange={(v) => up({ volRatioMin: v })} placeholder="ör. 2" /></Field>
-        <Field label="20g oynaklık ≤ %"><NumInput value={filter.vol20Max} onChange={(v) => up({ vol20Max: v })} placeholder="ör. 35" /></Field>
-        <Field label="1 hafta %">
-          <NumInput value={filter.ret1wMin} onChange={(v) => up({ ret1wMin: v })} placeholder="min" /><span className="text-fg-3">–</span>
-          <NumInput value={filter.ret1wMax} onChange={(v) => up({ ret1wMax: v })} placeholder="max" />
-        </Field>
-        <Field label="1 ay %">
-          <NumInput value={filter.ret1mMin} onChange={(v) => up({ ret1mMin: v })} placeholder="min" /><span className="text-fg-3">–</span>
-          <NumInput value={filter.ret1mMax} onChange={(v) => up({ ret1mMax: v })} placeholder="max" />
-        </Field>
-        <Field label="3 ay %">
-          <NumInput value={filter.ret3mMin} onChange={(v) => up({ ret3mMin: v })} placeholder="min" /><span className="text-fg-3">–</span>
-          <NumInput value={filter.ret3mMax} onChange={(v) => up({ ret3mMax: v })} placeholder="max" />
-        </Field>
-        <Field label="Trend (SMA50/200)">
-          <MultiSelect label="Trend" options={TRENDS.map((t) => ({ value: t, label: t }))} selected={filter.trends} onChange={(v) => up({ trends: v as TrendRegime[] })} searchFrom={99} />
-        </Field>
-        <Field label="Sinyal">
-          <MultiSelect label="Sinyal" options={KINDS.map((k) => ({ value: k, label: SIGNAL_LABELS[k] }))} selected={filter.signals} onChange={(v) => up({ signals: v as SignalKind[] })} searchFrom={99} />
-        </Field>
-        <Field label="Grup">
-          <MultiSelect
-            label="Endeks / sektör"
-            options={(['index', 'main', 'sector'] as BistGroupKind[]).flatMap((k) => groupOptions(k).map((o) => ({ ...o, label: `${o.label} · ${BIST_GROUP_KIND_LABELS[k]}` })))}
-            selected={groups} onChange={setGroups}
-          />
-        </Field>
-      </div>
+      {/* Filtre paneli — masaüstü: satır içi; mobil (<768): "Filtreler" düğmesi + alt tabaka (D12, 15 Eki 2026) */}
+      {!isMobile && filterPanel}
+      {isMobile && (
+        <div className="mb-3">
+          <button type="button" onClick={() => setSheetOpen(true)} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-border bg-bg-soft text-[13px] text-fg">
+            <SlidersHorizontal size={14} /> Filtreler{active.length + groups.length > 0 && <span className="rounded-full bg-accent/15 px-1.5 font-mono text-[11px] text-accent">{active.length + groups.length}</span>}
+          </button>
+          {sheetOpen && (
+            <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={() => setSheetOpen(false)}>
+              <div className="flex max-h-[85vh] w-full flex-col rounded-t-2xl border-t border-border bg-bg-soft pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 pb-2 pt-3">
+                  <span className="text-sm font-semibold text-fg">Filtreler</span>
+                  <button type="button" onClick={() => setSheetOpen(false)} aria-label="Kapat" className="rounded p-1 text-fg-2 hover:text-fg"><X size={16} /></button>
+                </div>
+                <div className="overflow-y-auto px-4">{filterPanel}</div>
+                <div className="flex items-center gap-2 border-t border-border px-4 pt-2">
+                  <span className="text-[12px] text-fg-2"><span className="font-mono text-fg">{rows.length}</span> hisse</span>
+                  <button type="button" onClick={() => { setFilter({ ...EMPTY_FILTER, trends: [], signals: [] }); setGroups([]); }} className="ml-auto h-8 rounded-md border border-border px-3 text-[12px] text-fg-2">Temizle</button>
+                  <button type="button" onClick={() => setSheetOpen(false)} className="h-8 rounded-md bg-accent px-3 text-[12px] font-semibold text-accent-fg">Göster</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Aktif koşullar — kanıt */}
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px]">

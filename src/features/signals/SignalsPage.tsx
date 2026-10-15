@@ -98,7 +98,7 @@ export function SignalsPage() {
           ))}
         </span>
         <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-fg-2">
-          <input type="checkbox" checked={onlyFit} onChange={(e) => setOnlyFit(e.target.checked)} className="h-3.5 w-3.5 accent-[#2DD4BF]" />
+          <input type="checkbox" checked={onlyFit} onChange={(e) => setOnlyFit(e.target.checked)} className="h-3.5 w-3.5 accent-[rgb(var(--c-accent))]" />
           Yalnız rejime uyumlu
         </label>
         <span className="ml-auto text-[11px] text-fg-3">{rows.length} hisse</span>

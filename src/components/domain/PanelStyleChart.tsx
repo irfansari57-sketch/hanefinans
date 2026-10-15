@@ -210,7 +210,8 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
   const bottom = PAD_TOP + chartH;
   const area = `${line} L ${points[points.length - 1].x.toFixed(1)} ${bottom} L 0 ${bottom} Z`;
   // 15 Eki 2026 (kullanıcı kararı): çizgi rengi GÜNLÜK değişimin işareti — artı yeşil, eksi kırmızı; dolgu yok.
-  const stroke = positive ? '#22c55e' : '#ef4444';
+  // D11 (15 Eki 2026): tema token'ı — açık modda koyu yeşil/kırmızı (AA), karanlıkta parlak
+  const stroke = positive ? 'rgb(var(--c-success))' : 'rgb(var(--c-danger))';
   const fillId = positive ? 'psc-grad-pos' : 'psc-grad-neg';
   const fmt = formatValue ?? ((v: number) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 }));
 
@@ -278,8 +279,8 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
     >
       <defs>
         <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.30" />
-          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+          <stop offset="0%" style={{ stopColor: stroke, stopOpacity: 0.3 }} />
+          <stop offset="100%" style={{ stopColor: stroke, stopOpacity: 0 }} />
         </linearGradient>
       </defs>
       {yLevels.map((lv) => (
@@ -293,7 +294,7 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
         />
       ))}
       {variant === 'area' && <path d={area} fill={`url(#${fillId})`} />}
-      <path d={line} stroke={stroke} strokeWidth="2" fill="none" />
+      <path d={line} style={{ stroke }} strokeWidth="2" fill="none" />
       {yLevels.map((lv) => (
         <text
           key={`y-${lv.y}`}
@@ -343,8 +344,8 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
         return placed.map((m) => (
           <g key={`ev-${m.n}`} transform={`translate(${m.x.toFixed(1)}, ${m.y.toFixed(1)})`} style={{ pointerEvents: 'none' }}>
             <title>{`${m.n}. ${m.label} — ${m.title}`}</title>
-            <circle r="7" fill="#151A21" stroke="#2DD4BF" strokeWidth="1.3" />
-            <text y="3" textAnchor="middle" fill="#2DD4BF" fontSize="9" fontWeight="700" fontFamily="JetBrains Mono, monospace">{m.n}</text>
+            <circle r="7" style={{ fill: "rgb(var(--c-bg-soft))", stroke: "rgb(var(--c-accent))" }} strokeWidth="1.3" />
+            <text y="3" textAnchor="middle" style={{ fill: "rgb(var(--c-accent))" }} fontSize="9" fontWeight="700" fontFamily="JetBrains Mono, monospace">{m.n}</text>
           </g>
         ));
       })()}
@@ -354,7 +355,7 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
           <line
             x1={hover.p.x} x2={hover.p.x}
             y1={PAD_TOP} y2={bottom}
-            stroke={stroke}
+            style={{ stroke }}
             strokeOpacity="0.35"
             strokeWidth="1"
             strokeDasharray="3 3"
@@ -362,7 +363,7 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
           <circle
             cx={hover.p.x} cy={hover.p.y}
             r="4"
-            fill={stroke}
+            style={{ fill: stroke }}
             stroke="#0a0f14"
             strokeWidth="2"
           />
@@ -372,7 +373,7 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
               height={tooltipH}
               rx="4"
               fill="#0f172a"
-              stroke={stroke}
+              style={{ stroke }}
               strokeOpacity="0.4"
               strokeWidth="1"
             />
@@ -390,7 +391,7 @@ export function MiniAreaChart({ data, positive, formatValue, variant = 'area', e
             <text
               x={tooltipW / 2}
               y="32"
-              fill={stroke}
+              style={{ fill: stroke }}
               fontSize="12"
               fontWeight="700"
               textAnchor="middle"

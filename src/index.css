@@ -45,7 +45,7 @@ html.light {
   --c-bg-soft: 255 255 255;      /* #FFFFFF surface */
   --c-bg-card: 240 242 245;      /* #F0F2F5 surface-2 */
   --c-border: 227 230 234;       /* #E3E6EA */
-  --c-accent: 13 148 136;        /* #0D9488 teal koyu (AA) */
+  --c-accent: 15 118 110;        /* #0F766E teal-700 — beyazda 4.9:1 (AA metin); 0D9488 3.7 idi */
   --c-accent-fg: 255 255 255;
   --c-success: 21 128 61;        /* #15803D */
   --c-danger: 185 28 28;         /* #B91C1C */
@@ -53,7 +53,7 @@ html.light {
   --c-neutral: 148 163 184;
   --c-text-1: 20 24 29;          /* #14181D */
   --c-text-2: 91 102 115;        /* #5B6673 */
-  --c-text-3: 120 130 142;
+  --c-text-3: 100 110 122;       /* #646E7A — beyazda 4.9:1; 78828E 3.9 idi */
   color-scheme: light;
 }
 

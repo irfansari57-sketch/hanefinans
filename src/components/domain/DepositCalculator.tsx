@@ -28,7 +28,7 @@ const DEFAULT_STOPAJ_PCT = 17.5;
  * güncellenir (ayın 1'i ve 15'i, TCMB PPK kararı yayınlandıysa). Fallback
  * olarak 37 (2026-08 güncel oran).
  */
-const DEFAULT_AMOUNT = 1_000_000;
+const DEFAULT_AMOUNT = 1_000_000; // 21 Eki 2026: kullanıcı kararı — tüm hesaplayıcılarda 1.000.000 TL
 const DEFAULT_ANNUAL_RATE = typeof tcmbPolicyRate.rate === 'number' ? tcmbPolicyRate.rate : 37;
 const DEFAULT_TERM_DAYS = 32;
 

@@ -19,6 +19,7 @@ import { LiveBadge } from '@/components/domain/LiveBadge';
 import { loadStocks } from '@/data/services';
 import type { Stock } from '@/data/types';
 import { cn } from '@/lib/utils';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 // BIST'te işlem gören BYF sembolleri — 13 Eyl 2026 itibariyle 27 fonluk tam liste.
@@ -74,8 +75,9 @@ export function BorsaYatirimFundsPage() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<BYFCategory>('Tümü');
-  const [issuer, setIssuer] = useState<string>('Tümü');
+  // 21 Eki 2026: çoklu seçim (boş = tümü)
+  const [category, setCategory] = useState<string[]>([]);
+  const [issuer, setIssuer] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>('changePct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -161,10 +163,16 @@ export function BorsaYatirimFundsPage() {
     return () => { alive = false; };
   }, []);
 
-  const issuers = useMemo(
-    () => ['Tümü', ...Array.from(new Set(BYF_LIST.map((f) => f.issuer))).sort()],
-    [],
-  );
+  const issuers = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const f of BYF_LIST) counts.set(f.issuer, (counts.get(f.issuer) ?? 0) + 1);
+    return Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0], 'tr')).map(([name, count]) => ({ name, count }));
+  }, []);
+  const categoryCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const f of BYF_LIST) m[f.category] = (m[f.category] ?? 0) + 1;
+    return m;
+  }, []);
 
   const enriched = useMemo(() => {
     return BYF_LIST.map((f) => {
@@ -187,8 +195,8 @@ export function BorsaYatirimFundsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
     return enriched.filter((f) => {
-      if (category !== 'Tümü' && f.category !== category) return false;
-      if (issuer !== 'Tümü' && f.issuer !== issuer) return false;
+      if (category.length > 0 && !category.includes(f.category)) return false;
+      if (issuer.length > 0 && !issuer.includes(f.issuer)) return false;
       if (q) {
         const hay = `${f.symbol} ${f.name}`.toLocaleLowerCase('tr-TR');
         if (!hay.includes(q)) return false;
@@ -247,32 +255,31 @@ export function BorsaYatirimFundsPage() {
             className="w-full h-8 pl-8 pr-3 rounded-md bg-bg-soft border border-border text-xs text-slate-100 placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
           />
         </div>
-        <select
-          value={issuer}
-          onChange={(e) => setIssuer(e.target.value)}
-          className="h-8 px-2 rounded-md bg-bg-soft border border-border text-xs text-slate-200 focus:border-accent/50 focus:outline-none"
-        >
-          {issuers.map((i) => <option key={i} value={i}>{i}</option>)}
-        </select>
+        <MultiSelect
+          label="Kategori"
+          options={CATEGORIES.filter((c) => c !== 'Tümü').map((c) => ({ value: c, label: c, count: categoryCounts[c] ?? 0 }))}
+          selected={category}
+          onChange={setCategory}
+          searchFrom={99}
+        />
+        <MultiSelect
+          label="Kurucu"
+          options={issuers.map((i) => ({ value: i.name, label: i.name, count: i.count }))}
+          selected={issuer}
+          onChange={setIssuer}
+          searchFrom={99}
+        />
+        {(category.length > 0 || issuer.length > 0) && (
+          <button type="button" onClick={() => { setCategory([]); setIssuer([]); }} className="text-[11px] text-fg-2 hover:text-fg">Temizle</button>
+        )}
       </div>
 
-      {/* Kategori chip'ler */}
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={cn(
-              'px-2.5 h-7 rounded-md text-[11px] font-medium transition',
-              category === c
-                ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
-                : 'bg-bg-soft text-slate-400 hover:text-slate-200 hover:bg-bg-card',
-            )}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      {(category.length > 0 || issuer.length > 0) && (
+        <div className="mb-3 flex flex-wrap gap-1">
+          {category.map((c) => <button key={`c-${c}`} type="button" onClick={() => setCategory(category.filter((x) => x !== c))} className="inline-flex h-6 items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2 text-[11px] text-accent">{c} <span>×</span></button>)}
+          {issuer.map((i) => <button key={`i-${i}`} type="button" onClick={() => setIssuer(issuer.filter((x) => x !== i))} className="inline-flex h-6 items-center gap-1 rounded-md border border-border bg-bg-card px-2 text-[11px] text-fg-2">{i} <span>×</span></button>)}
+        </div>
+      )}
 
       {loading ? (
         <TableSkeleton rows={8} />

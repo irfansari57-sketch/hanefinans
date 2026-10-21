@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Home, Car, ShoppingBag, Info, TrendingDown, Wallet, Calendar, Percent } from 'lucide-react';
+import { Home, Car, ShoppingBag, Info, TrendingDown, Wallet, Calendar, Percent, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
  * Sadece bilgi amaçlı — kesin oran ve tutar için banka teklifi al.
  */
 
-type LoanKind = 'konut' | 'tasit' | 'ihtiyac';
+type LoanKind = 'konut' | 'tasit' | 'ihtiyac' | 'kmh';
 
 interface LoanConfig {
   label: string;
@@ -40,7 +40,7 @@ const LOANS: Record<LoanKind, LoanConfig> = {
     label: 'Konut Kredisi',
     icon: Home,
     color: 'text-emerald-400 bg-emerald-500/15',
-    defaultAmount: 2_000_000,
+    defaultAmount: 1_000_000,
     defaultTerm: 120,
     defaultRate: 2.99,
     maxTerm: 240,
@@ -52,9 +52,9 @@ const LOANS: Record<LoanKind, LoanConfig> = {
     label: 'Taşıt Kredisi',
     icon: Car,
     color: 'text-blue-400 bg-blue-500/15',
-    defaultAmount: 500_000,
+    defaultAmount: 1_000_000,
     defaultTerm: 36,
-    defaultRate: 4.29,
+    defaultRate: 3.50, // 21 Eki 2026 kullanıcı kararı
     maxTerm: 48,
     kkdf: 0.15,
     bsmv: 0.15,
@@ -64,15 +64,37 @@ const LOANS: Record<LoanKind, LoanConfig> = {
     label: 'İhtiyaç Kredisi',
     icon: ShoppingBag,
     color: 'text-amber-400 bg-amber-500/15',
-    defaultAmount: 100_000,
+    defaultAmount: 1_000_000,
     defaultTerm: 24,
-    defaultRate: 4.99,
+    defaultRate: 3.91, // 21 Eki 2026 kullanıcı kararı
     maxTerm: 36,
     kkdf: 0.15,
     bsmv: 0.15,
     note: 'KKDF %15 + BSMV %15 = toplam %30 vergi yükü. Vade en fazla 36 ay. Erken kapama tazminatı vade ve tutara göre %2 civarındadır.',
   },
+  // 21 Eki 2026: Kredili Mevduat Hesabı (KMH) — taksit yok; kullanılan tutara GÜNLÜK faiz işler.
+  // defaultTerm burada "gün" anlamındadır. Aylık akdi faiz üst sınırı TCMB tarafından belirlenir.
+  kmh: {
+    label: 'Kredili Mevduat (KMH)',
+    icon: CreditCard,
+    color: 'text-rose-400 bg-rose-500/15',
+    defaultAmount: 1_000_000,
+    defaultTerm: 30,
+    defaultRate: 4.00,
+    maxTerm: 365,
+    kkdf: 0.15,
+    bsmv: 0.15,
+    note: 'KMH\'da taksit yoktur: kullandığın tutar için gün bazında faiz işler, hesaba para girince kapanır. Faiz üzerine KKDF %15 + BSMV %15 eklenir. En pahalı tüketici kredisi türüdür; kısa süreli nakit açığı dışında kullanılmamalıdır.',
+  },
 };
+
+/** KMH: basit günlük faiz — faiz = tutar × (aylık % / 30) × gün; vergiler faiz üzerinden. */
+function computeKmh(amount: number, monthlyRate: number, days: number, kkdf: number, bsmv: number) {
+  const interest = amount * (monthlyRate / 100 / 30) * days;
+  const tax = interest * (kkdf + bsmv);
+  const total = interest + tax;
+  return { interest, tax, total, repay: amount + total, effectiveMonthly: (monthlyRate / 100) * (1 + kkdf + bsmv) * 100, dailyCost: days > 0 ? total / days : 0 };
+}
 
 function formatMoney(v: number): string {
   return new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(Math.round(v));
@@ -140,6 +162,8 @@ export function LoanCalculator() {
     () => computeLoan(amount, rate, term, cfg.kkdf, cfg.bsmv),
     [amount, rate, term, cfg.kkdf, cfg.bsmv],
   );
+  const kmh = useMemo(() => computeKmh(amount, rate, term, cfg.kkdf, cfg.bsmv), [amount, rate, term, cfg.kkdf, cfg.bsmv]);
+  const isKmh = kind === 'kmh';
 
   // Amortisman gösterim: ilk 6, son 3
   const amortDisplay = useMemo(() => {
@@ -162,7 +186,7 @@ export function LoanCalculator() {
       </div>
 
       {/* Tab seçici */}
-      <div className="mb-4 grid grid-cols-3 gap-1.5">
+      <div className="mb-4 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {(Object.keys(LOANS) as LoanKind[]).map((k) => {
           const c = LOANS[k];
           const Icon = c.icon;
@@ -205,17 +229,17 @@ export function LoanCalculator() {
           step={10_000}
         />
         <Field
-          label="Vade"
-          suffix="ay"
+          label={isKmh ? 'Kullanım Süresi' : 'Vade'}
+          suffix={isKmh ? 'gün' : 'ay'}
           value={term}
           onChange={setTerm}
-          min={3}
+          min={isKmh ? 1 : 3}
           max={cfg.maxTerm}
           step={1}
-          hint={`Max ${cfg.maxTerm} ay`}
+          hint={isKmh ? 'Borçlu kalınan gün sayısı' : `Max ${cfg.maxTerm} ay`}
         />
         <Field
-          label="Aylık Vade Farkı"
+          label={isKmh ? 'Aylık Akdi Faiz' : 'Aylık Vade Farkı'}
           suffix="%"
           value={rate}
           onChange={setRate}
@@ -226,6 +250,30 @@ export function LoanCalculator() {
         />
       </div>
 
+      {isKmh ? (
+        <>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
+            <StatChip label="KKDF" value={`%${(cfg.kkdf * 100).toFixed(0)}`} />
+            <StatChip label="BSMV" value={`%${(cfg.bsmv * 100).toFixed(0)}`} />
+            <StatChip label="Efektif Aylık" value={`%${kmh.effectiveMonthly.toFixed(3)}`} accent />
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3 [&>*]:min-w-0">
+            <ResultCard icon={<Percent size={14} />} label={`${term} Günlük Faiz`} value={formatMoney(kmh.interest)} suffix="₺" color="bg-orange-500/10 text-orange-400 border-orange-500/20" />
+            <ResultCard icon={<TrendingDown size={14} />} label="KKDF + BSMV" value={formatMoney(kmh.tax)} suffix="₺" color="bg-rose-500/10 text-rose-400 border-rose-500/20" />
+            <ResultCard icon={<Wallet size={14} />} label="Toplam Geri Ödeme" value={formatMoney(kmh.repay)} suffix="₺" color="bg-blue-500/10 text-blue-400 border-blue-500/20" />
+          </div>
+          <div className="mt-3 rounded-lg bg-slate-900/40 p-3 text-[11px] text-slate-400">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>Günlük maliyet: {formatMoney(kmh.dailyCost)} ₺</span>
+              <span>·</span>
+              <span>Toplam maliyet: {formatMoney(kmh.total)} ₺ (anaparanın %{amount > 0 ? ((kmh.total / amount) * 100).toFixed(2) : 0}'si)</span>
+              <span>·</span>
+              <span>Yıllık efektif: %{(kmh.effectiveMonthly * 12).toFixed(1)}</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
       {/* KKDF/BSMV özet */}
       <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
         <StatChip label="KKDF" value={`%${(cfg.kkdf * 100).toFixed(0)}`} muted={cfg.kkdf === 0} />
@@ -269,8 +317,11 @@ export function LoanCalculator() {
         </div>
       </div>
 
+        </>
+      )}
+
       {/* Amortisman */}
-      {result.amortization.length > 0 && (
+      {!isKmh && result.amortization.length > 0 && (
         <div className="mt-4">
           <button
             onClick={() => setShowAmortization((v) => !v)}

@@ -20,6 +20,7 @@ import { loadFundsAsPerformanceDetailed } from '@/data/api/tefasGithub';
 import type { FundPerformance } from '@/data/types';
 import { formatRelative } from '@/lib/date';
 import { cn } from '@/lib/utils';
+import { MultiSelect } from '@/components/ui/MultiSelect';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = 'code' | 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year' | 'threeYear';
@@ -178,8 +179,9 @@ export function BesFundsPage() {
   const [feedFailed, setFeedFailed] = useState(false);
 
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<BesCategoryChip>('Tümü');
-  const [founder, setFounder] = useState<string>('Tümü'); // Kurucu filter
+  // 21 Eki 2026: çoklu seçim (boş = tümü)
+  const [category, setCategory] = useState<string[]>([]);
+  const [founder, setFounder] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>('year');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
@@ -389,16 +391,21 @@ export function BesFundsPage() {
 
   // Kurucu (founder) listesi — dropdown icin unique + alfabetik sirali
   const founders = useMemo(() => {
-    const set = new Set<string>();
-    for (const f of funds) if (f.founder) set.add(f.founder);
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'tr'));
+    const counts = new Map<string, number>();
+    for (const f of funds) if (f.founder) counts.set(f.founder, (counts.get(f.founder) ?? 0) + 1);
+    return Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0], 'tr')).map(([name, count]) => ({ name, count }));
+  }, [funds]);
+  const categoryCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const c of BES_CATEGORIES) if (c !== 'Tümü') m[c] = funds.filter((f) => matchBesCategory(f, c)).length;
+    return m;
   }, [funds]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLocaleLowerCase('tr-TR');
     return funds.filter((f) => {
-      if (!matchBesCategory(f, category)) return false;
-      if (founder !== 'Tümü' && f.founder !== founder) return false;
+      if (category.length > 0 && !category.some((c) => matchBesCategory(f, c as BesCategoryChip))) return false;
+      if (founder.length > 0 && (!f.founder || !founder.includes(f.founder))) return false;
       if (q) {
         const hay = `${f.code} ${f.name ?? ''} ${f.founder ?? ''}`.toLocaleLowerCase('tr-TR');
         if (!hay.includes(q)) return false;
@@ -453,58 +460,32 @@ export function BesFundsPage() {
             className="w-full h-8 pl-8 pr-3 rounded-md bg-bg-soft border border-border text-xs text-slate-100 placeholder:text-slate-500 focus:border-accent/50 focus:outline-none"
           />
         </div>
+        <MultiSelect
+          label="Kategori"
+          options={BES_CATEGORIES.filter((c) => c !== 'Tümü').map((c) => ({ value: c, label: c, count: categoryCounts[c] ?? 0 }))}
+          selected={category}
+          onChange={setCategory}
+          searchFrom={99}
+        />
         {founders.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Kurucu:
-            </label>
-            <select
-              value={founder}
-              onChange={(e) => setFounder(e.target.value)}
-              className="h-8 px-2 rounded-md bg-bg-soft border border-border text-xs text-slate-100 focus:border-accent/50 focus:outline-none max-w-[260px]"
-              title="Kurucu emeklilik sirketine gore filtrele"
-            >
-              <option value="Tümü">Tümü ({funds.length})</option>
-              {founders.map((fn) => {
-                const count = funds.filter((f) => f.founder === fn).length;
-                return (
-                  <option key={fn} value={fn}>
-                    {fn} ({count})
-                  </option>
-                );
-              })}
-            </select>
-            {founder !== 'Tümü' && (
-              <button
-                type="button"
-                onClick={() => setFounder('Tümü')}
-                className="text-[11px] text-slate-500 hover:text-danger"
-                title="Kurucu filtresini temizle"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <MultiSelect
+            label="Kurucu"
+            options={founders.map((f) => ({ value: f.name, label: f.name, count: f.count }))}
+            selected={founder}
+            onChange={setFounder}
+          />
+        )}
+        {(category.length > 0 || founder.length > 0) && (
+          <button type="button" onClick={() => { setCategory([]); setFounder([]); }} className="text-[11px] text-fg-2 hover:text-fg">Temizle</button>
         )}
       </div>
 
-      {/* Kategori chip'ler */}
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {BES_CATEGORIES.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={cn(
-              'px-2.5 h-7 rounded-md text-[11px] font-medium transition',
-              category === c
-                ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
-                : 'bg-bg-soft text-slate-400 hover:text-slate-200 hover:bg-bg-card',
-            )}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      {(category.length > 0 || founder.length > 0) && (
+        <div className="mb-3 flex flex-wrap gap-1">
+          {category.map((c) => <button key={`c-${c}`} type="button" onClick={() => setCategory(category.filter((x) => x !== c))} className="inline-flex h-6 items-center gap-1 rounded-md border border-accent/40 bg-accent/10 px-2 text-[11px] text-accent">{c} <span>×</span></button>)}
+          {founder.map((f) => <button key={`f-${f}`} type="button" onClick={() => setFounder(founder.filter((x) => x !== f))} className="inline-flex h-6 items-center gap-1 rounded-md border border-border bg-bg-card px-2 text-[11px] text-fg-2">{f} <span>×</span></button>)}
+        </div>
+      )}
 
       {loading ? (
         <TableSkeleton rows={8} />
@@ -558,8 +539,8 @@ export function BesFundsPage() {
         <>
           <div className="mb-2 text-[11px] text-slate-500">
             {sorted.length} BES fonu
-            {category !== 'Tümü' ? ` · Kategori: ${category}` : ''}
-            {founder !== 'Tümü' ? ` · Kurucu: ${founder}` : ''}
+            {category.length > 0 ? ` · Kategori: ${category.join(' / ')}` : ''}
+            {founder.length > 0 ? ` · Kurucu: ${founder.join(' / ')}` : ''}
           </div>
           <DoubleScrollTable className="rounded-xl border border-border bg-bg-soft">
             {/* 8 return sutunu + Kod + Ad sutunu = 10 sutun. text-xs + kisa etiket

@@ -1239,6 +1239,88 @@ def main() -> int:
             print(f"  [bes-meta] {meta_ok + meta_fail}/{len(bes_target_indices)} — ok:{meta_ok} fail:{meta_fail}", flush=True)
     print(f"[bes-meta] Tamamlandi: {meta_ok} basarili, {meta_fail} basarisiz", flush=True)
 
+    # ------------------------------------------------------------------
+    # 21 Eki 2026 — YAT fonlari icin RISK DEGERI (1-7). Ayni BindHistoryInfo
+    # yolu, fontip=YAT. Risk nadiren degisir: data/fund-meta-cache.json'da
+    # saklanir, her fon 30 gunde bir yenilenir, kosu basina en fazla
+    # RISK_BATCH fon cekilir (toplam sure sinirli kalsin). Kaynak dusukse
+    # cache'teki eski deger kullanilir; hic yoksa alan yazilmaz (UI "—").
+    # VARSAYIM: fonInfo icinde RISK_DEGERI alani var (BES icin ayni varsayim
+    # calisiyor). Ilk kosuda [risk] log satirlari dogrular.
+    # ------------------------------------------------------------------
+    RISK_CACHE_PATH = "data/fund-meta-cache.json"
+    RISK_BATCH = int(os.environ.get("RISK_BATCH", "200"))
+    RISK_TTL_DAYS = 30
+    try:
+        with open(RISK_CACHE_PATH, encoding="utf-8") as cf:
+            risk_cache = json.load(cf)
+    except Exception:
+        risk_cache = {}
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    def _fetch_yat_meta(code: str) -> dict | None:
+        payload_y = {
+            'fonkod': code,
+            'fontip': 'YAT',
+            'bastarih': (anchors['last'] - timedelta(days=7)).strftime('%d.%m.%Y'),
+            'bittarih': anchors['last'].strftime('%d.%m.%Y'),
+        }
+        try:
+            if meta_session:
+                r_y = meta_session.post(meta_url, data=payload_y, headers=meta_headers, timeout=25)
+            else:
+                r_y = requests.post(meta_url, data=payload_y, headers=meta_headers, timeout=25)
+            if r_y.status_code != 200:
+                return None
+            j = r_y.json()
+            info_list = j.get('fonInfo') or j.get('fonInfoList') or j.get('data') or []
+            if isinstance(info_list, list) and info_list:
+                return info_list[0] if isinstance(info_list[0], dict) else None
+            return j if isinstance(j, dict) else None
+        except Exception:
+            return None
+
+    yat_indices = [i for i, f in enumerate(funds) if f.get('category') != 'Emeklilik']
+    due = []
+    for i in yat_indices:
+        code = funds[i]['code']
+        ent = risk_cache.get(code)
+        if ent and ent.get('riskValue') is not None:
+            funds[i]['riskValue'] = int(ent['riskValue'])
+        fresh = False
+        if ent and ent.get('at'):
+            try:
+                fresh = (datetime.now(timezone.utc) - datetime.fromisoformat(ent['at'])).days < RISK_TTL_DAYS
+            except Exception:
+                fresh = False
+        if not fresh:
+            due.append(i)
+    print(f"[risk] {len(yat_indices)} YAT fonu; cache'ten dolu: {sum(1 for i in yat_indices if funds[i].get('riskValue') is not None)}; bu kosuda cekilecek: {min(len(due), RISK_BATCH)}", flush=True)
+    r_ok = r_fail = r_norisk = 0
+    for i in due[:RISK_BATCH]:
+        code = funds[i]['code']
+        info = _fetch_yat_meta(code)
+        if info:
+            risk = _first_float(info, 'RISK_DEGERI', 'RISKDEGERI', 'RISK', 'riskdegeri')
+            if risk is not None and 1 <= risk <= 7:
+                funds[i]['riskValue'] = int(risk)
+                risk_cache[code] = {'riskValue': int(risk), 'at': now_iso}
+                r_ok += 1
+            else:
+                r_norisk += 1
+                if r_norisk == 1:
+                    print(f"[risk] ORNEK fonInfo anahtarlari ({code}): {sorted(list(info.keys()))[:40]}", flush=True)
+                risk_cache[code] = {'riskValue': risk_cache.get(code, {}).get('riskValue'), 'at': now_iso}
+        else:
+            r_fail += 1
+        time.sleep(0.3)
+    print(f"[risk] Tamamlandi: ok={r_ok} alan-yok={r_norisk} fail={r_fail}", flush=True)
+    try:
+        with open(RISK_CACHE_PATH, "w", encoding="utf-8") as cf:
+            json.dump(risk_cache, cf, ensure_ascii=False, separators=(",", ":"))
+    except Exception as e:
+        print(f"[risk] cache yazilamadi: {e}", flush=True)
+
     payload = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "count": len(funds),

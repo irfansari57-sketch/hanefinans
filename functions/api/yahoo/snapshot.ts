@@ -432,7 +432,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
       const sessionDate = lastBistSessionDateTR(new Date(nowMs));
       for (const row of iy?.rows ?? []) {
         const sym = row.symbol;
-        if (Math.abs(row.changePct) > 15) continue;
+        // İş Yatırım otoriter kaynak: tedbir/yeniden işlem açılışı gibi durumlarda ±%10 aşılabilir
+        // (MARKA +%28 vakası, 21 Eki). Yalnız aşırı uç (>%60) atılır; Günün Enleri kendi ±%10,5 filtresini uygular.
+        if (Math.abs(row.changePct) > 60) continue;
         const prev = row.price / (1 + row.changePct / 100);
         const key = `${sym}.IS`;
         const kind: QuoteOut['kind'] | undefined = /^[A-Z0-9]{5}F$/.test(sym) ? 'byf' : undefined;

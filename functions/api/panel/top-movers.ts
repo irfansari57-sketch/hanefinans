@@ -70,12 +70,30 @@ async function fetchBes(): Promise<{ gainers: MoverItem[]; losers: MoverItem[] }
   return { gainers: [], losers: [] };
 }
 
-/** Kripto — CoinGecko markets (USD), 24 saatlik değişim, ±%50 dışı elenir */
-async function fetchCrypto(): Promise<{ gainers: MoverItem[]; losers: MoverItem[] }> {
+const CRYPTO_YAHOO = ['BTC-USD', 'ETH-USD', 'BNB-USD', 'SOL-USD', 'XRP-USD', 'ADA-USD', 'DOGE-USD', 'AVAX-USD', 'DOT-USD', 'LINK-USD', 'MATIC-USD', 'TRX-USD', 'LTC-USD'];
+
+/** Kripto — CoinGecko markets (USD, ilk 100, 24s); erişilemezse kendi Yahoo snapshot'ımızdan 13 büyük coin */
+async function fetchCrypto(origin: string): Promise<{ gainers: MoverItem[]; losers: MoverItem[] }> {
+  const viaYahoo = async (): Promise<{ gainers: MoverItem[]; losers: MoverItem[] }> => {
+    try {
+      const r = await fetch(`${origin}/api/yahoo/snapshot?symbols=${CRYPTO_YAHOO.join(',')}`, { headers: { Accept: 'application/json' } });
+      if (!r.ok) return { gainers: [], losers: [] };
+      const j = (await r.json()) as { ok: boolean; quotes: Record<string, { price: number; changePct: number; name?: string }> };
+      const items: MoverItem[] = [];
+      for (const [k, q] of Object.entries(j.quotes ?? {})) {
+        if (!q || !(q.price > 0) || !Number.isFinite(q.changePct) || Math.abs(q.changePct) > 50) continue;
+        items.push({ kod: k.replace('-USD', '/USD'), ad: q.name ?? k.replace('-USD', ''), pct: q.changePct, fiyat: q.price });
+      }
+      return topBottom(items);
+    } catch { return { gainers: [], losers: [] }; }
+  };
   try {
     const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&price_change_percentage=24h';
-    const r = await fetch(url, { headers: { Accept: 'application/json' }, cf: { cacheTtl: 120, cacheEverything: true } as RequestInitCfProperties });
-    if (!r.ok) return { gainers: [], losers: [] };
+    const r = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; InvestliQ/1.0; +https://investliq.com)' },
+      cf: { cacheTtl: 120, cacheEverything: true } as RequestInitCfProperties,
+    });
+    if (!r.ok) return viaYahoo();
     const arr = (await r.json()) as Array<{ symbol: string; name: string; current_price: number; price_change_percentage_24h: number | null }>;
     const items: MoverItem[] = [];
     for (const c of arr) {
@@ -84,9 +102,10 @@ async function fetchCrypto(): Promise<{ gainers: MoverItem[]; losers: MoverItem[
       if (!c.current_price || c.current_price <= 0) continue;
       items.push({ kod: `${c.symbol.toUpperCase()}/USD`, ad: c.name, pct, fiyat: c.current_price });
     }
+    if (items.length === 0) return viaYahoo();
     return topBottom(items);
   } catch {
-    return { gainers: [], losers: [] };
+    return viaYahoo();
   }
 }
 
@@ -109,7 +128,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
     fetchStocks(waitUntil),
     fetchFunds(),
     fetchBes(),
-    fetchCrypto(),
+    fetchCrypto(url.origin),
   ]);
 
   // 13 Eki 2026: Hiçbir kategori veri getiremediyse bu bir hata — 502 + no-store,
@@ -128,7 +147,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
     ok: !allEmpty,
     source: 'isyatirim+tefas+coingecko',
     attribution: 'Hisse: İş Yatırım (~15 dk gecikmeli) · Fon: TEFAS (T-1) · Kripto: CoinGecko',
-    sources: { stocks: 'isyatirim', funds: 'tefas', bes: null, crypto: 'coingecko' },
+    sources: { stocks: 'isyatirim', funds: 'tefas', bes: null, crypto: crypto.gainers.some((c) => c.kod.includes('/')) ? 'coingecko|yahoo' : null },
     updatedAt: new Date().toISOString(),
     partial: emptyCats.length > 0 ? emptyCats : undefined,
     error: allEmpty ? 'Hiçbir kaynaktan veri alınamadı' : undefined,

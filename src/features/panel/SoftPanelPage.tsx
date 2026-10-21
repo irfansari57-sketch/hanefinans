@@ -250,9 +250,11 @@ export function SoftPanelPage() {
   }, [topMovers, enlerDir]);
 
   const topCrypto = useMemo(() => {
-    if (topMovers) {
+    // 21 Eki 2026: sunucu kripto listesi boşsa (CoinGecko erişilemedi) Yahoo yedeğine düş
+    if (topMovers && (topMovers.crypto.gainers.length > 0 || topMovers.crypto.losers.length > 0)) {
       const list = enlerDir === 'up' ? topMovers.crypto.gainers : topMovers.crypto.losers;
-      return list.map((c) => ({ symbol: c.kod + '/USD', price: c.fiyat, changePct: c.pct }));
+      // kod zaten "BTC/USD" biçiminde gelebilir (CoinGecko yolu) — çift ek engelle
+      return list.map((c) => ({ symbol: c.kod.includes('/') ? c.kod : c.kod + '/USD', price: c.fiyat, changePct: c.pct }));
     }
     // Fallback: Yahoo-based crypto quotes
     return sortByDir(

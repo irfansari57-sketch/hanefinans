@@ -10,7 +10,8 @@
  * Format: { ok: true, updatedAt: <ms>, quotes: { SYMBOL: { price, changePct, prev, updatedAt } } }
  */
 
-import { fvtJson, isBistSessionUtc, isFvtBistRow } from '../_fvt';
+import { isBistSessionUtc } from '../_fvt';
+import { fetchIsYatirimAll } from '../_isyatirim';
 
 interface Env {
   DB?: D1Database;
@@ -415,52 +416,40 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
   }
 
   // -------------------------------------------------------------------------
-  // 13 Eki 2026 — KENDİ KENDİNİ ONARAN YOL (TKFEN vakası): bist_snapshot boş
-  // veya bayatsa (cron düşmüş), FVT'den TEK istekle tüm BIST'i çek ve Yahoo'yu
-  // ez. Yahoo BIST'te gün atlıyor (12 Eki barı null) ve previousClose'u yanlış
-  // veriyor; FVT dunkuKapanis doğru. Bu endpoint 30sn edge cache'li olduğu için
-  // FVT'ye dakikada en fazla 2 istek gider.
-  // Bayat eşiği: seans içinde 20 dk, seans dışında 20 saat.
+  // 21 Eki 2026 — BIST TOPLU OVERRIDE: İş Yatırım günlük tablosu (FVT kapandı).
+  // Yahoo BIST'te gün atlıyor ve previousClose'u yanlış veriyor (GUNDG +%46 gibi
+  // imkânsız değerler); İş Yatırım tablosu Son Fiyat + Değişim % verir (~15 dk
+  // gecikmeli). bist_snapshot (cron) tazeyse ona dokunulmaz; bayatsa veya boşsa
+  // tüm BIST bu tablodan ezilir. Edge cache'li (seans içi 60 sn) → kaynağa yük yok.
   // -------------------------------------------------------------------------
   const nowMs = Date.now();
   const staleMs = isBistSessionUtc(new Date(nowMs)) ? 20 * 60_000 : 20 * 3_600_000;
   const bistStale = bistRowCount < 50 || nowMs - bistNewest > staleMs;
-  let fvtOverride = 0;
+  let fvtOverride = 0; // alan adı geriye dönük uyumluluk için korunuyor (debug çıktısı)
   if (bistStale) {
     try {
-      const d = await fvtJson<{ data?: Array<Record<string, unknown>> }>(
-        'https://fvt.com.tr/api/stocks?limit=5000&hissePazar=2',
-        8000,
-      );
+      const iy = await fetchIsYatirimAll(waitUntil);
       const sessionDate = lastBistSessionDateTR(new Date(nowMs));
-      for (const row of d?.data ?? []) {
-        if (!isFvtBistRow(row)) continue;
-        const sym = String(row.hisseKodu ?? '').toUpperCase();
-        if (!sym) continue;
-        const son = parseFloat(String(row.gunlukKapanis ?? ''));
-        const dun = parseFloat(String(row.dunkuKapanis ?? ''));
-        if (!Number.isFinite(son) || !Number.isFinite(dun) || son <= 0 || dun <= 0) continue;
-        const changePct = ((son - dun) / dun) * 100;
-        if (Math.abs(changePct) > 15) continue;
+      for (const row of iy?.rows ?? []) {
+        const sym = row.symbol;
+        if (Math.abs(row.changePct) > 15) continue;
+        const prev = row.price / (1 + row.changePct / 100);
         const key = `${sym}.IS`;
-        const rowDate = typeof row.tarih === 'string' ? row.tarih.slice(0, 10) : '';
-        const kat = Number(row.hisseKategori);
-        const kind: QuoteOut['kind'] | undefined =
-          kat === 45 || /^[A-Z0-9]{5}F$/.test(sym) ? 'byf' : kat === 51 ? 'cert' : undefined;
+        const kind: QuoteOut['kind'] | undefined = /^[A-Z0-9]{5}F$/.test(sym) ? 'byf' : undefined;
         quotes[key] = {
-          price: son,
-          prev: dun,
-          changePct,
+          price: row.price,
+          prev,
+          changePct: row.changePct,
           updatedAt: nowMs,
-          name: quotes[key]?.name ?? (typeof row.hisseAdi === 'string' ? row.hisseAdi.trim() : undefined),
-          source: 'fvt',
-          asOf: /^\d{4}-\d{2}-\d{2}$/.test(rowDate) ? rowDate : sessionDate,
+          name: quotes[key]?.name ?? row.name,
+          source: 'isyatirim',
+          asOf: sessionDate,
           ...(kind ? { kind } : {}),
         };
         fvtOverride++;
       }
     } catch (e) {
-      console.warn('[snapshot] FVT fallback failed:', (e as Error).message);
+      console.warn('[snapshot] İş Yatırım override failed:', (e as Error).message);
     }
   }
 

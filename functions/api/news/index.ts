@@ -373,7 +373,9 @@ function parseRss(xml: string, sourceName: string): NewsItem[] {
     // 15 Eki 2026: kritik rozeti yalnızca BIST sembolüne bağlanabilen haberlerde.
     // "60'tan fazla ülkeye ihracat yapan Türk şirketi iflas etti" gibi genel haberler
     // akışta kalır ama kırmızı rozet almaz (yatırımcı için eyleme dönük değil).
-    const critical = crit.critical && syms.length > 0;
+    // 21 Eki 2026: düzenleyici/piyasa geneli olaylar (SPK faaliyet durdurma, işlem
+    // yasağı, kot dışı) sembolsüz de kritik — "SPK'dan 3 aracı kuruma geçici durdurma".
+    const critical = crit.critical && (syms.length > 0 || crit.marketWide === true);
     items.push({
       id: `${sourceName}-${publishedAt}-${title.slice(0, 30)}`,
       title,
@@ -433,7 +435,7 @@ export const onRequestGet: PagesFunction = async ({ request, waitUntil }) => {
   // vermiyordu; her panel isteği 13 RSS kaynağını yeniden çekiyordu.
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '3');
+  cacheUrl.searchParams.set('cv', '4');
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit && hit.ok) return hit;

@@ -368,7 +368,9 @@ export function SoftPanelPage() {
   );
 
   const criticalNews = useMemo(() => news.filter((n) => n.critical).slice(0, 2), [news]);
-  const feedNews = useMemo(() => news.filter((n) => !n.critical).slice(0, 8), [news]);
+  // 21 Eki 2026: kritik haberler akıştan ÇIKARILMIYOR — akışta kronolojik, vurgulu
+  // (kırmızı sol çizgi + neden rozeti). Kritikler önce sıralanmaz; zaman sırası korunur.
+  const feedNews = useMemo(() => news.slice(0, 8), [news]);
 
   const Pct = ({ v, invert }: { v: number | null | undefined; invert?: boolean }) => {
     if (v == null || !Number.isFinite(v)) return <span className="font-mono text-fg-3">—</span>;
@@ -435,10 +437,15 @@ export function SoftPanelPage() {
               <button type="button" onClick={() => setEnlerDir('down')} className={cn('px-2 text-[11px]', enlerDir === 'down' ? 'bg-bg-card text-danger' : 'text-fg-2')}>▼</button>
             </div>
           </div>
-          <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-fg-3">{enlerDir === 'up' ? '▲ Yükselenler' : '▼ Düşenler'} · günlük %</div>
+          <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-fg-3">
+            {enlerDir === 'up' ? '▲ Yükselenler' : '▼ Düşenler'} · günlük %
+            <span className="ml-1.5 font-normal normal-case tracking-normal">
+              {enlerTab === 'stocks' ? '· İş Yatırım · ~15 dk gecikmeli' : enlerTab === 'funds' ? '· TEFAS · önceki gün NAV' : enlerTab === 'crypto' ? '· CoinGecko · 24s' : ''}
+            </span>
+          </div>
           <div className="mt-1">
             {enlerList.length === 0
-              ? <div className="py-4 text-[12px] text-fg-3">Veri kaynağından henüz gelmedi.</div>
+              ? <div className="py-4 text-[12px] text-fg-3">{enlerTab === 'bes' ? 'BES günlük verisi için kaynak geçici olarak yok (önceki sağlayıcı erişimi kapattı); alternatif bağlanınca açılacak.' : 'Veri kaynağından henüz gelmedi.'}</div>
               : enlerList.slice(0, 7).map((r) => <MoverRow key={r.key} to={r.to} code={r.code} name={r.name} pct={r.pct} />)}
           </div>
           {enlerTab === 'stocks' && <Link to="/stocks" className="mt-1 inline-block text-[11px] text-accent hover:underline">Tüm hisseler →</Link>}
@@ -465,9 +472,25 @@ export function SoftPanelPage() {
           <div className="flex items-center"><h2 className="text-base font-semibold text-fg">Haber akışı</h2><Link to="/news" className="ml-auto text-[11px] text-accent hover:underline">Tümü →</Link></div>
           <div className="mt-2">
             {feedNews.length === 0 ? <div className="py-3 text-[12px] text-fg-3">Haberler yükleniyor…</div> : feedNews.map((n) => (
-              <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex min-h-[40px] items-start gap-3 border-b border-border/60 py-2 last:border-0 text-[12px] hover:bg-bg-card -mx-1 px-1 rounded">
-                <span className="mt-0.5 shrink-0 font-mono text-[11px] text-fg-3">{new Date(n.publishedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
-                <span className="line-clamp-2 text-fg">{n.title}</span>
+              <a
+                key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer"
+                className={cn(
+                  'flex min-h-[40px] items-start gap-3 border-b border-border/60 py-2 last:border-0 text-[12px] -mx-1 px-1 rounded hover:bg-bg-card',
+                  n.critical && 'border-l-2 border-l-danger bg-danger/[0.06] pl-2 hover:bg-danger/10',
+                )}
+              >
+                <span className={cn('mt-0.5 shrink-0 font-mono text-[11px]', n.critical ? 'text-danger' : 'text-fg-3')}>{new Date(n.publishedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="min-w-0">
+                  {n.critical && (
+                    <span className="mr-1.5 inline-flex items-center gap-1 rounded border border-danger/40 bg-danger/15 px-1 py-px align-middle text-[9px] font-bold uppercase tracking-wider text-danger">
+                      ● Kritik{n.criticalReason ? ` · ${n.criticalReason}` : ''}
+                    </span>
+                  )}
+                  <span className={cn('line-clamp-2', n.critical ? 'font-semibold text-fg' : 'text-fg')}>{n.title}</span>
+                  {n.critical && n.symbols && n.symbols.length > 0 && (
+                    <span className="ml-1 font-mono text-[10px] text-fg-2">{n.symbols.slice(0, 3).join(' · ')}</span>
+                  )}
+                </span>
               </a>
             ))}
           </div>

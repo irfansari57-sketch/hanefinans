@@ -18,7 +18,7 @@
  *   ?scope=bist100|bist30|all|top50  (default: bist100 - hizli MVP)
  */
 
-import { fvtJson, isFvtBistRow } from '../_fvt';
+import { fetchIsYatirimAll } from '../_isyatirim';
 import { BIST_100_UNIVERSE } from '../_universe';
 
 interface Env {
@@ -127,7 +127,7 @@ async function upsertBatch(
   await db.batch(stmts);
 }
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   // Auth
   const secret = request.headers.get('x-cron-secret');
   if (!env.CRON_SECRET || secret !== env.CRON_SECRET) {
@@ -151,43 +151,28 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   let fail = 0;
   let primarySource = 'isyatirim';
 
-  // STRATEJI (11 Eki 2026 revizyon):
-  // 1. FVT batch endpoint deneme (tek fetch, 500+ hisse, hizli + guvenilir)
-  // 2. Fail olursa Is Yatirim per-symbol fallback (eski davranis)
-  // Boylece 9 Eki Cuma gibi Is Yatirim CF'den bloklanirsa snapshot yine guncellenir.
+  // STRATEJI (21 Eki 2026 revizyon): FVT API kapandı (401/429).
+  // 1. İş Yatırım toplu günlük tablo (tek fetch, ~630 hisse, _isyatirim.ts)
+  // 2. Eksik kalanlar için İş Yatırım per-symbol chart fallback (eski davranış)
   try {
-    // 13 Eki 2026: ortak header + 8sn timeout (_fvt.ts)
-    const fvtData = await fvtJson<{ data?: Array<Record<string, unknown>> }>(
-      'https://fvt.com.tr/api/stocks?limit=5000&hissePazar=2',
-      12000,
-    );
-    const items = fvtData?.data ?? [];
-    if (items.length > 0) {
-      primarySource = 'fvt';
+    const iy = await fetchIsYatirimAll(waitUntil);
+    if (iy && iy.rows.length > 0) {
+      primarySource = 'isyatirim-bulk';
       const now = Date.now();
-      // asOf = seans tarihi. UTC "bugün" DEĞİL: FVT satırındaki `tarih` alanı varsa o,
-      // yoksa TR saatiyle son iş günü (hafta sonu → Cuma). Tatil takvimi yok (bilinen sınır).
-      const fallbackSession = lastBistSessionDateTR();
-      for (const row of items) {
-        if (!isFvtBistRow(row)) continue;
-        const symbol = (row.hisseKodu as string)?.toUpperCase();
-        if (!symbol || !symbols.includes(symbol)) continue;
-        const son = parseFloat(String(row.gunlukKapanis ?? ''));
-        const dun = parseFloat(String(row.dunkuKapanis ?? ''));
-        if (!Number.isFinite(son) || !Number.isFinite(dun) || son <= 0 || dun <= 0) continue;
-        const changePct = ((son - dun) / dun) * 100;
-        if (Math.abs(changePct) > 15) continue; // outlier (BIST ±%10 limit + marj)
-        const rowDate = typeof row.tarih === 'string' ? row.tarih.slice(0, 10) : '';
-        const asOf = /^\d{4}-\d{2}-\d{2}$/.test(rowDate) ? rowDate : fallbackSession;
-        results.push({ symbol, price: son, prev: dun, changePct, asOf, updatedAt: now });
+      const asOf = lastBistSessionDateTR();
+      for (const row of iy.rows) {
+        if (!symbols.includes(row.symbol)) continue;
+        if (Math.abs(row.changePct) > 15) continue;
+        const prev = row.price / (1 + row.changePct / 100);
+        results.push({ symbol: row.symbol, price: row.price, prev, changePct: row.changePct, asOf, updatedAt: now });
         success++;
       }
     }
-  } catch { /* FVT fail — fallback'e dus */ }
+  } catch { /* toplu tablo fail — per-symbol fallback'e düş */ }
 
-  // FVT yetersizse veya fail oluysa — Is Yatirim per-symbol fallback
+  // Toplu tablo yetersizse — İş Yatırım per-symbol fallback
   if (results.length < symbols.length / 2) {
-    primarySource = results.length > 0 ? 'fvt+isyatirim' : 'isyatirim';
+    primarySource = results.length > 0 ? 'isyatirim-bulk+chart' : 'isyatirim-chart';
     const missing = symbols.filter((s) => !results.find((r) => r.symbol === s));
     const BATCH_SIZE = 20;
     for (let i = 0; i < missing.length; i += BATCH_SIZE) {

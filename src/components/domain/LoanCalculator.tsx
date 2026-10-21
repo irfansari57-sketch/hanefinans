@@ -247,6 +247,7 @@ export function LoanCalculator() {
           max={20}
           step={0.01}
           decimals={2}
+          hint={isKmh ? 'TCMB azami akdi faiz: %4,25 (Eyl 2026)' : undefined}
         />
       </div>
 

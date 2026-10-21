@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   BookOpen, TrendingUp, Landmark, Activity, ShieldAlert, Bitcoin, Calculator, GraduationCap,
-  Search, ExternalLink, ChevronRight, Briefcase, Wallet,
+  Search, ExternalLink, ChevronRight, Briefcase, Wallet, FileSpreadsheet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { BESCalculator } from '@/components/domain/BESCalculator';
@@ -147,6 +147,68 @@ const TOPICS: Topic[] = [
       {
         heading: 'Destek-direnç ve hacim',
         body: 'Destek, fiyatın takıldığı ve aşağı geçmediği seviyedir — alıcıların güçlü olduğu yer. Direnç, fiyatın geçmediği üst seviye — satıcıların aktif olduğu yer. Bir direnç kırılırsa eski direnç yeni destek olur. Hacim her zaman doğrulayıcıdır: yüksek hacimle gelen yükseliş güvenilir, düşük hacimde olan yükseliş "boş yükseliş" olabilir. Profesyoneller hacmi takip etmeden teknik analiz yapmaz. ADX (Average Directional Index) trend gücünü ölçer: 25 üstü güçlü trend, altı kararsız piyasa demektir.',
+      },
+    ],
+  },
+  {
+    slug: 'bilanco-okuryazarligi',
+    title: 'Bilanço Okuryazarlığı',
+    icon: FileSpreadsheet,
+    tone: 'accent',
+    description:
+      'Üç temel tablo (bilanço, gelir tablosu, nakit akış) nasıl okunur, hangi oranlara bakılır, rakamlarla oynandığında hangi izler kalır? KAP\'taki finansal raporu kendi başına okuyabilmen için.',
+    videoQuery: 'bilanço okuma rehberi temel analiz',
+    bullets: [
+      'Üç tablo tek hikâye anlatır: Bilanço = fotoğraf (an), Gelir tablosu = film (dönem), Nakit akış = gerçek para hareketi',
+      'Kâr görüş meselesidir, nakit gerçektir: Net kâr artarken faaliyet nakit akışı düşüyorsa dur ve sor',
+      'Dört kritik oran: Cari oran, Net borç/FAVÖK, Brüt kâr marjı, Faaliyet nakit akışı / Net kâr',
+      'En sık hile izleri: şişen alacaklar, biriken stoklar, "diğer gelirler"le kurtarılan kâr, aktifleştirilen giderler, sürekli tek seferlik kalemler',
+      'BIST şirketlerinde enflasyon muhasebesi (TMS 29) 2024\'ten beri uygulanıyor — "parasal kazanç/kayıp" satırını anlamadan net kârı yorumlama',
+      'Her zaman dipnotları oku: tablolar ne olduğunu, dipnotlar neden olduğunu söyler',
+    ],
+    keyTerms: [
+      { term: 'FAVÖK (EBITDA)', def: 'Faiz, amortisman ve vergi öncesi kâr — ana işin nakit üretme gücünün kaba ölçüsü' },
+      { term: 'İşletme sermayesi', def: 'Dönen varlıklar − kısa vadeli yükümlülükler; günlük faaliyeti çeviren para' },
+      { term: 'Faaliyet nakit akışı (FNA)', def: 'Ana faaliyetten kasaya gerçekten giren/çıkan para; kârdan farklı olarak manipüle etmesi zordur' },
+      { term: 'Serbest nakit akışı', def: 'FNA − yatırım harcamaları (capex); ortaklara/borçlulara dağıtılabilecek gerçek para' },
+      { term: 'Net borç', def: 'Toplam finansal borç − nakit ve benzerleri; borçluluğun gerçek büyüklüğü' },
+      { term: 'Alacak devir süresi (DSO)', def: 'Satışın tahsil edilmesi için geçen ortalama gün; uzuyorsa ya müşteri ödemiyor ya satış şişirilmiş' },
+      { term: 'Parasal kazanç/kayıp', def: 'Enflasyon muhasebesinde (TMS 29) net parasal pozisyondan doğan kalem; nakit tutan kaybeder, borçlu kazanır' },
+      { term: 'Tek seferlik kalem', def: 'Tekrarlanmayan gelir/gider (varlık satışı, dava, yeniden değerleme); normalleştirilmiş kârdan çıkarılmalı' },
+    ],
+    externalLinks: [
+      { label: 'KAP — Finansal Raporlar', url: 'https://www.kap.org.tr/tr/bildirim-sorgu' },
+      { label: 'SPK — Finansal Raporlama Tebliği (II-14.1)', url: 'https://www.spk.gov.tr/' },
+      { label: 'KGK — TFRS/TMS Standartları', url: 'https://www.kgk.gov.tr/' },
+    ],
+    sections: [
+      {
+        heading: 'Üç tablo, tek hikâye',
+        body: 'Bir şirketin finansal raporu üç ana tablodan oluşur ve üçü birbirini doğrular. **Bilanço (finansal durum tablosu)** belirli bir günün fotoğrafıdır: şirketin neye sahip olduğu (varlıklar), kime borçlu olduğu (yükümlülükler) ve ortaklara kalanı (özkaynak). Temel eşitlik: **Varlıklar = Yükümlülükler + Özkaynak**. **Gelir tablosu (kâr/zarar)** bir dönemin filmidir: satışlardan başlayıp maliyetleri, giderleri, finansman kalemlerini ve vergiyi düşerek net kâra ulaşır. **Nakit akış tablosu** ise aynı dönemde kasaya gerçekten ne girip çıktığını üç başlıkta gösterir: faaliyet, yatırım, finansman. Neden üçü birden? Çünkü gelir tablosu "tahakkuk esası"yla çalışır — mal teslim edildiğinde satış yazılır, para tahsil edilmese bile. Nakit akış tablosu bu boşluğu kapatır. **Altın kural: kâr bir görüştür, nakit bir gerçektir.** Bir şirketin net kârı yıllarca artarken faaliyet nakit akışı zayıfsa, kâr ya tahsil edilemeyen alacaklarda ya satılamayan stoklarda birikiyordur.',
+      },
+      {
+        heading: 'Bilanço: nereye bakılır?',
+        body: 'Bilançoyu yukarıdan aşağı değil, **sorularla** oku. (1) **Likidite:** Dönen varlıklar kısa vadeli borçları karşılıyor mu? *Cari oran* = Dönen varlık / KV yükümlülük; 1,2–2,0 arası genelde sağlıklı, 1\'in altı kısa vadeli sıkışma işareti. Stokları çıkarıp bakan *asit-test oranı* daha sert bir testtir. (2) **Borçluluk:** *Net borç* = finansal borçlar − nakit. Tek başına büyüklüğü değil, kazanca oranı önemlidir: *Net borç / FAVÖK* 3\'ün üzerindeyse şirket kârının üç yılını borca ayırmak zorunda demektir; sektöre göre değişir (GYO ve enerji daha yüksek taşır). Borcun vadesi de kritik: kısa vadeli borç ağırlıklıysa yenileme (refinansman) riski var. **Döviz borcu olan bir şirkette TL geliri varsa kur riski bilançonun ortasında durur.** (3) **Varlık kalitesi:** Ticari alacaklar ve stoklar satışlara göre hangi hızla büyüyor? Alacak satıştan hızlı büyüyorsa müşteriler ödemiyor ya da satış vadeli zorlanarak yapılıyor. *Şerefiye* ve *maddi olmayan duran varlıklar* özkaynağın büyük kısmını oluşturuyorsa, özkaynak kâğıt üstünde şişmiş olabilir; değer düşüklüğü testi dipnotunu oku. (4) **Özkaynak:** Geçmiş yıl kârları birikiyor mu, yoksa sürekli sermaye artırımıyla mı ayakta duruyor? Bedelli sermaye artırımı sık tekrarlanıyorsa işletme kendi nakdini üretemiyor demektir.',
+      },
+      {
+        heading: 'Gelir tablosu: kârın kalitesi',
+        body: 'Net kâr tek bir sayıdır ama ona giden yol her şeyi anlatır. Satır satır in: **Hasılat → Brüt kâr → Esas faaliyet kârı → FAVÖK → Vergi öncesi kâr → Net kâr.** *Brüt kâr marjı* (brüt kâr / hasılat) şirketin fiyatlama gücünü gösterir; birkaç çeyrek üst üste daralıyorsa maliyet artışını müşteriye yansıtamıyordur. *Esas faaliyet kârı* ana işin kârıdır; bunun altındaki "diğer faaliyetlerden gelirler", "yatırım faaliyetlerinden gelirler" ve "finansman gelirleri" ana iş değildir. **Kârın kalitesi testi:** Net kârın ne kadarı esas faaliyetten geliyor? Esas faaliyet zararda ama net kâr pozitifse, kâr kur farkı, faiz geliri, varlık satışı ya da yeniden değerleme gibi tekrarlanmayan kaynaklardan geliyordur — bu kâra çarpan uygulamak hatadır. *Normalleştirilmiş kâr* için tek seferlik kalemleri çıkar. Çeyrekleri **bir önceki yılın aynı çeyreğiyle** kıyasla (mevsimsellik); kümülatif 12 aylık (TTM) rakam dalgalanmayı yumuşatır. Son olarak hasılat büyümesini hacim mi fiyat mı sürüklüyor? Enflasyon dönemlerinde nominal hasılat artışı yanıltıcıdır — reel büyüme için enflasyondan arındır.',
+      },
+      {
+        heading: 'Nakit akış tablosu: gerçeğin tablosu',
+        body: 'Üç bölümünü ayrı oku. **Faaliyet nakit akışı (FNA):** Ana işin ürettiği nakit. Sağlıklı şirkette FNA, net kâra yakın ya da üstündedir (amortisman gayri nakdi gider olduğu için eklenir). **FNA / Net kâr oranı sürekli 1\'in çok altındaysa** kâr nakde dönmüyordur. Bu bölümde "işletme sermayesindeki değişimler" satırına bak: alacak ve stok artışı nakdi emer. **Yatırım nakit akışı:** Negatif olması normaldir (makine, tesis, satın alma). Ama büyük pozitif yatırım nakit akışı varlık satışı demektir — şirket büyümüyor, küçülüyor olabilir. *Serbest nakit akışı* = FNA − capex; pozitif ve istikrarlıysa temettü ve borç azaltma kapasitesi vardır. **Finansman nakit akışı:** Borç alma/ödeme, temettü, sermaye artırımı. Faaliyetten nakit üretmeyip sürekli borç ve sermaye artırımıyla yaşayan şirket, finansman bölümü hep pozitif olandır. **Tehlike kombinasyonu:** FNA negatif + yatırım pozitif (varlık satışı) + finansman pozitif (borçlanma) = işletme kendi kendini finanse edemiyor, varlık satıp borçlanarak ayakta duruyor.',
+      },
+      {
+        heading: 'Enflasyon muhasebesi (TMS 29) — 2024 sonrası BIST\'e özel',
+        body: 'Türkiye\'de 2024 yılından itibaren halka açık şirketler finansal tablolarını **enflasyona göre düzeltilmiş** sunuyor. Bu, karşılaştırmalı okumayı değiştirir: önceki dönem rakamları da bugünkü satın alma gücüne çekilir, bu yüzden "geçen yıla göre %40 büyüme" gibi nominal artışlar kaybolur; gerçek (reel) büyüme görünür. Gelir tablosuna **"net parasal pozisyon kazancı/kaybı"** satırı eklenir: nakit ve alacak gibi parasal varlık tutan şirket enflasyondan kaybeder (kayıp yazar), borçlu şirket kazanır (kazanç yazar). **Dikkat:** Yüksek borçlu bir şirketin net kârı bu kalemle "parlıyor" olabilir — bu bir nakit kazanç değildir. Stoklar ve maddi duran varlıklar endekslendiği için brüt kâr marjı da önceki yıllardan farklı görünür. Pratik kural: TMS 29 sonrası raporlarda **FAVÖK ve faaliyet nakit akışını** ana ölçüt al; net kârı parasal kazanç/kayıp satırını ayırarak oku. Şirketler arası kıyasta hepsinin aynı standartla raporladığından emin ol (dönem geçişlerinde karışık raporlar oldu).',
+      },
+      {
+        heading: 'Rakamlarla oynandığında kalan izler',
+        body: 'Finansal tablolar denetimden geçer ama muhasebe standartları yorum alanı bırakır; "yaratıcı muhasebe" çoğu zaman yasal sınırda, bazen ötesindedir. Yatırımcının görevi suç tespiti değil, **tutarsızlık yakalamaktır**. En sık görülen kalıplar: **(1) Erken/şişirilmiş hasılat:** Satış artıyor ama ticari alacaklar satıştan hızlı büyüyor; alacak devir süresi uzuyor; dönem sonu (özellikle 4. çeyrek) satışları anormal yüksek. Grup içi/ilişkili taraflara satış payı artıyorsa dipnotu oku. **(2) Stok oyunu:** Stoklar satıştan hızlı büyüyor ve stok devir hızı düşüyor; eskiyen stok için karşılık ayrılmıyor → brüt marj yapay yüksek kalır. **(3) Giderin aktifleştirilmesi:** Normalde gider yazılması gereken harcama (geliştirme, yazılım, bakım) "yatırım" diye bilançoya alınır; kâr artar, nakit akışı artmaz. Maddi olmayan duran varlıkların hızlı büyümesi ipucudur. **(4) Tek seferlik kalemlerin sürekliliği:** Her çeyrek "tek seferlik" bir gelir varsa tek seferlik değildir. Varlık satış kârı, yeniden değerleme kazancı, dava geliri esas faaliyete karıştırılmış olabilir. **(5) Karşılık ve amortisman ayarı:** Şüpheli alacak karşılığı azaltılır, faydalı ömür uzatılır (amortisman düşer) → kâr artar. Muhasebe politikası değişikliği dipnotu bunu açıklar. **(6) Bilanço dışı yükümlülük:** Kefaletler, teminatlar, türev pozisyonları, iştirak borçları; "Taahhütler ve koşullu yükümlülükler" dipnotunda saklanır. **(7) İlişkili taraf işlemleri:** Ortaklara/grup şirketlerine verilen borçlar, piyasa dışı fiyatla alım-satım. Nakit ana şirkete akıyorsa azınlık ortağı kaybeder. **Yakalama yöntemi:** FNA ile net kârın yönünü kıyasla; alacak/stok/hasılat büyümelerini yan yana koy; "diğer" başlıklı kalemlerin payına bak; bağımsız denetçi görüşünü oku (*şartlı görüş*, *görüş bildirmekten kaçınma* veya *"kilit denetim konuları"*ndaki uyarılar ciddi sinyaldir); denetçi değişikliği ve mali tablo yayın gecikmesi kırmızı bayraktır.',
+      },
+      {
+        heading: 'Beş dakikalık kontrol listesi',
+        body: 'Bir KAP raporunu açtığında şu sırayla git: **1)** Bağımsız denetçi görüşü ne? Olumlu dışındaysa dur. **2)** Hasılat, brüt kâr, esas faaliyet kârı, net kâr — dördü aynı yönde mi? Ayrışıyorsa nedenini gelir tablosunun alt satırlarında bul. **3)** Faaliyet nakit akışı / net kâr: 0,8\'in üzerinde mi? **4)** Ticari alacak ve stok büyümesi hasılat büyümesinin altında mı? **5)** Net borç / FAVÖK: 3\'ün altında mı, vade yapısı nasıl, döviz borcu var mı? **6)** Özkaynak kârla mı büyüyor, sermaye artırımıyla mı? **7)** İlişkili taraf dipnotunda alacak/borç büyük mü? **8)** Son 4 çeyrekte kaç "tek seferlik" kalem var? **9)** Parasal kazanç/kayıp net kârın ne kadarı? **10)** Muhasebe politikası değişikliği var mı? Bu on sorudan üçü ya da daha fazlası "sorunlu" çıkıyorsa, hisse ucuz görünse bile neden ucuz olduğunu anlamadan karar verme. **Bu bölüm eğitim amaçlıdır; yatırım tavsiyesi değildir.** Şirket finansallarını investliQ\'da hisse detayındaki "Temel" sekmesinden, ham raporu ise KAP\'tan okuyabilirsin.',
       },
     ],
   },

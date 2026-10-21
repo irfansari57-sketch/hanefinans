@@ -41,7 +41,7 @@ html[data-density="comfortable"] { --row-h: 48px; --table-fs: 14px; --table-lh: 
 
 /* 21 Eki 2026 — Yoğunluk anahtarını TÜM veri tablolarına yay (A seçeneği).
    .density-table: satır yüksekliği, yazı boyutu ve dikey padding tek değişkenden.
-   Specificity (.density-table td) Tailwind py-*/text-* utility'lerini ezer. */
+   Specificity (.density-table td) Tailwind py- ve text- utility sınıflarını ezer. */
 .density-table td,
 .density-table th {
   padding-top: max(2px, calc((var(--row-h) - var(--table-lh)) / 2));

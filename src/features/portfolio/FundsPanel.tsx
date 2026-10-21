@@ -331,7 +331,7 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-          <table className="min-w-full text-xs">
+          <table className="density-table min-w-full text-xs">
             <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
               <tr>
                 <th className="px-3 py-2.5 text-left">Fon</th>

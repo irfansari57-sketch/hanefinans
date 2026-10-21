@@ -39,6 +39,19 @@
 html[data-density="compact"]     { --row-h: 32px; --table-fs: 12px; --table-lh: 16px; --chip-h: 26px; }
 html[data-density="comfortable"] { --row-h: 48px; --table-fs: 14px; --table-lh: 22px; --chip-h: 32px; }
 
+/* 21 Eki 2026 — Yoğunluk anahtarını TÜM veri tablolarına yay (A seçeneği).
+   .density-table: satır yüksekliği, yazı boyutu ve dikey padding tek değişkenden.
+   Specificity (.density-table td) Tailwind py-*/text-* utility'lerini ezer. */
+.density-table td,
+.density-table th {
+  padding-top: max(2px, calc((var(--row-h) - var(--table-lh)) / 2));
+  padding-bottom: max(2px, calc((var(--row-h) - var(--table-lh)) / 2));
+}
+.density-table td {
+  font-size: var(--table-fs);
+  line-height: var(--table-lh);
+}
+
 html.light {
   /* Light — Design 03 acik tema (Faz 3'te varsayilan secenek olarak acilir) */
   --c-bg: 247 248 250;           /* #F7F8FA */

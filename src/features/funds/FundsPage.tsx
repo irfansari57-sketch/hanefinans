@@ -444,7 +444,7 @@ export function FundsPage() {
           </div>
 
           <DoubleScrollTable className="rounded-xl border border-border bg-bg-soft">
-            <table className="w-full min-w-[860px] text-base">
+            <table className="density-table w-full min-w-[860px] text-base">
               <thead className="border-b border-border bg-bg-soft text-[11px] uppercase tracking-widest font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>

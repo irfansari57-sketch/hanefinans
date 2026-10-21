@@ -622,7 +622,7 @@ export function PortfolioPage() {
         />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-          <table className="min-w-full text-xs">
+          <table className="density-table min-w-full text-xs">
             <thead className="bg-bg-card text-[10px] uppercase tracking-wider text-slate-400">
               <tr>
                 <th className="px-3 py-2.5 text-left">Hisse</th>
@@ -858,7 +858,7 @@ ASELS	250	75.20`}
             {validRows.length} geçerli / {preview.length} toplam satır
           </div>
           <div className="max-h-60 overflow-y-auto rounded-lg border border-border">
-            <table className="min-w-full text-xs">
+            <table className="density-table min-w-full text-xs">
               <thead className="bg-bg-card text-[10px] uppercase text-slate-500">
                 <tr>
                   <th className="px-2 py-1.5 text-left">Sembol</th>

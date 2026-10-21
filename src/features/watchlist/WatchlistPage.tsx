@@ -376,7 +376,7 @@ export function WatchlistPage() {
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-            <table className="w-full min-w-[860px] text-xs">
+            <table className="density-table w-full min-w-[860px] text-xs">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>
@@ -688,7 +688,7 @@ function FundsTab({ watchedFundsWithData }: FundsTabProps) {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-bg-soft">
-        <table className="w-full min-w-[860px] text-xs">
+        <table className="density-table w-full min-w-[860px] text-xs">
           <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider text-slate-500">
             <tr>
               <th className="sticky left-0 z-20 bg-bg-soft px-2 py-2.5 text-left">#</th>

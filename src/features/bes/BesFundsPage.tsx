@@ -566,7 +566,7 @@ export function BesFundsPage() {
                 (1H/1A/3A) + kompakt padding + fon adi max-w 220px ile 1080px'e
                 sigar. Genis ekran (>1200px) icin fon adi genisler; dar ekranda
                 yatay scroll kalir ama gorunur alan tam sigar. */}
-            <table className="w-full min-w-[1080px] text-xs">
+            <table className="density-table w-full min-w-[1080px] text-xs">
               <thead className="border-b border-border bg-bg-soft text-[10px] uppercase tracking-wider font-semibold text-slate-400 dark:text-slate-300">
                 <tr>
                   <th className="sticky left-0 z-20 bg-bg-soft px-1.5 py-2 text-left w-[2rem]">#</th>

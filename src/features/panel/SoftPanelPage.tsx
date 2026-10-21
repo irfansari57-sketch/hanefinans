@@ -381,8 +381,8 @@ export function SoftPanelPage() {
   };
 
   const MoverRow = ({ to, code, name, pct }: { to: string; code: string; name?: string; pct: number }) => (
-    <Link to={to} className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 hover:bg-bg-card -mx-1 px-1 rounded">
-      <span className="flex min-w-0 items-baseline gap-2"><span className="shrink-0 font-mono text-[13px] font-semibold text-fg">{code}</span>{name && <span className="hidden min-w-0 truncate text-[11px] text-fg-3 sm:inline">{name.replace(/\s+(A\.Ş\.|A\.S\.|AŞ|T\.A\.Ş\.|Sanayi ve Ticaret|San\. ve Tic\.).*$/i, '')}</span>}</span>
+    <Link to={to} className="flex h-row items-center justify-between border-b border-border/60 last:border-0 hover:bg-bg-card -mx-1 px-1 rounded text-table">
+      <span className="flex min-w-0 items-baseline gap-2"><span className="shrink-0 font-mono font-semibold text-fg">{code}</span>{name && <span className="hidden min-w-0 truncate text-[11px] text-fg-3 sm:inline">{name.replace(/\s+(A\.Ş\.|A\.S\.|AŞ|T\.A\.Ş\.|Sanayi ve Ticaret|San\. ve Tic\.).*$/i, '')}</span>}</span>
       <Pct v={pct} />
     </Link>
   );
@@ -456,7 +456,7 @@ export function SoftPanelPage() {
             <div className="mt-4">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-danger">● Kritik ({criticalNews.length})</div>
               {criticalNews.map((n) => (
-                <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 text-[12px] hover:bg-bg-card -mx-1 px-1 rounded">
+                <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex h-row items-center justify-between border-b border-border/60 last:border-0 text-table hover:bg-bg-card -mx-1 px-1 rounded">
                   <span className="min-w-0 truncate text-fg">
                     {n.symbols[0] && <span className="mr-2 font-mono font-semibold">{n.symbols[0]}</span>}
                     {n.criticalReason && <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-danger">{n.criticalReason}</span>}
@@ -477,7 +477,7 @@ export function SoftPanelPage() {
               <a
                 key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer"
                 className={cn(
-                  'flex min-h-[40px] items-start gap-3 border-b border-border/60 py-2 last:border-0 text-[12px] -mx-1 px-1 rounded hover:bg-bg-card',
+                  'flex min-h-[var(--row-h)] items-start gap-3 border-b border-border/60 py-2 last:border-0 text-table -mx-1 px-1 rounded hover:bg-bg-card',
                   n.critical && 'border-l-2 border-l-danger bg-danger/[0.06] pl-2 hover:bg-danger/10',
                 )}
               >
@@ -511,9 +511,9 @@ export function SoftPanelPage() {
             ) : watched.length === 0 ? (
               <div className="py-3 text-[12px] text-fg-3">Fiyatlar yükleniyor…</div>
             ) : watched.map((s) => (
-              <Link key={s.symbol} to={`/stock/${s.symbol}`} className="flex h-8 items-center justify-between border-b border-border/60 last:border-0 hover:bg-bg-card -mx-1 px-1 rounded">
-                <span className="min-w-0 truncate"><span className="font-mono text-[13px] font-semibold text-fg">{s.symbol}</span><span className="ml-2 hidden text-[11px] text-fg-3 sm:inline">{s.name}</span></span>
-                <span className="flex items-center gap-4"><span className="font-mono text-[13px] text-fg">{s.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><Pct v={s.changePct} /></span>
+              <Link key={s.symbol} to={`/stock/${s.symbol}`} className="flex h-row items-center justify-between border-b border-border/60 last:border-0 hover:bg-bg-card -mx-1 px-1 rounded text-table">
+                <span className="min-w-0 truncate"><span className="font-mono font-semibold text-fg">{s.symbol}</span><span className="ml-2 hidden text-[11px] text-fg-3 sm:inline">{s.name}</span></span>
+                <span className="flex items-center gap-4"><span className="font-mono text-fg">{s.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><Pct v={s.changePct} /></span>
               </Link>
             ))}
             {symbols.length > 6 && <Link to="/watchlist" className="mt-1 inline-block text-[11px] text-accent hover:underline">Tümü ({symbols.length}) →</Link>}

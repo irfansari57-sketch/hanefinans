@@ -68,3 +68,12 @@ jobs:
         run: |
           echo "::error::katilim_fetch.py hiçbir kaynaktan veri alamadı — log'daki [katilim] satırlarına bakın"
           exit 1
+
+      # 22 Eki 2026: jsDelivr @main dal referansini ~12 saat onbellekler; site feed'i jsDelivr'dan
+      # okudugu icin yeni veri saatlerce gorunmuyordu. Push sonrasi ilgili dosyalari purge et.
+      - name: Purge jsDelivr cache
+        if: always()
+        run: |
+          for f in katilim.json; do
+            curl -s --max-time 20 "https://purge.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/$f" | head -c 200; echo
+          done

@@ -68,3 +68,12 @@ jobs:
             echo "❌ 3 denemeden sonra push hala başarısız"
             exit 1
           fi
+
+      # 22 Eki 2026: jsDelivr @main dal referansini ~12 saat onbellekler; site feed'i jsDelivr'dan
+      # okudugu icin yeni veri saatlerce gorunmuyordu. Push sonrasi ilgili dosyalari purge et.
+      - name: Purge jsDelivr cache
+        if: always()
+        run: |
+          for f in tefas.json bes.json fund-meta-cache.json tefas-open-codes.json; do
+            curl -s --max-time 20 "https://purge.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/$f" | head -c 200; echo
+          done

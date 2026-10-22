@@ -8,6 +8,10 @@ Hızlı anchor-snapshot stratejisi (saatlik cron için):
   - Toplam ~7 POST, ~30-60 saniye (önceki 400 günlük all-history 18+ dk sürüyordu)
 
 Çıktı: data/tefas.json — src/data/api/tefasGithub.ts şemasıyla uyumlu
+Ek çıktı (22 Eki 2026): data/bes.json — BES (Emeklilik) fonları, aynı {updatedAt,count,funds}
+şeması; tefasfon fund_type='PEN' (+ get_returns RB, Takasbank BEFAS Excel). BES adımı
+başarısızsa tefas.json yazımı etkilenmez; bes.json 0 fonla üzerine yazılmaz.
+Log etiketleri: [allocation] [bes] [bes-meta] [risk]
 """
 
 from datetime import datetime, timedelta, timezone
@@ -230,6 +234,7 @@ def strictly_prior_business_day(d: datetime) -> datetime:
 
 
 _ALLOCATION_SESSION = None
+_ALLOC_FAIL_LOGGED = 0  # eski per-fon endpoint icin ilk 3 hatanin detayi loglanir
 
 
 def _get_alloc_session():
@@ -258,6 +263,7 @@ def fetch_fund_allocation(code: str, timeout: int = 30) -> "list[dict] | None":
     curl_cffi (chrome131 impersonation) kullanir — GitHub Actions'tan direkt requests
     ile timeout aliniyordu, TLS fingerprint korumasi. 30s timeout uzun tolerans.
     """
+    global _ALLOC_FAIL_LOGGED
     session = _get_alloc_session()
     headers = {
         'Accept': 'application/json, text/plain, */*',
@@ -285,9 +291,21 @@ def fetch_fund_allocation(code: str, timeout: int = 30) -> "list[dict] | None":
                 timeout=timeout,
             )
         if r.status_code != 200:
+            if _ALLOC_FAIL_LOGGED < 3:
+                _ALLOC_FAIL_LOGGED += 1
+                print(f"[allocation] {code} HTTP {r.status_code}, {len(r.content)} B, ilk200={r.text[:200]!r}", flush=True)
             return None
-        data = r.json()
+        try:
+            data = r.json()
+        except Exception:
+            if _ALLOC_FAIL_LOGGED < 3:
+                _ALLOC_FAIL_LOGGED += 1
+                print(f"[allocation] {code} JSON degil (HTTP 200, {len(r.content)} B): ilk200={r.text[:200]!r}", flush=True)
+            return None
         if not isinstance(data, list) or len(data) == 0:
+            if _ALLOC_FAIL_LOGGED < 3:
+                _ALLOC_FAIL_LOGGED += 1
+                print(f"[allocation] {code} bos/beklenmedik yanit: {str(data)[:200]!r}", flush=True)
             return None
         # Format: [{"VARLIK_ADI": "...", "ORAN": 0.0}, ...]
         result = []
@@ -306,7 +324,10 @@ def fetch_fund_allocation(code: str, timeout: int = 30) -> "list[dict] | None":
         result.sort(key=lambda x: x['pct'], reverse=True)
         return result if result else None
     except Exception as e:
-        print(f"[allocation] {code} fetch fail: {type(e).__name__}: {e}", file=sys.stderr)
+        # Timeout dahil her hata burada; GitHub Actions'ta eski endpoint 30 s timeout veriyordu.
+        if _ALLOC_FAIL_LOGGED < 3:
+            _ALLOC_FAIL_LOGGED += 1
+            print(f"[allocation] {code} fetch fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         return None
 
 
@@ -501,6 +522,616 @@ def detect_columns(df: pd.DataFrame) -> dict[str, str | None]:
                        'alimdurumu', 'alimsatim', 'fonisleme', 'tefasacik')
         )), None),
     }
+
+
+# ============================================================================
+# 22 Eki 2026 — BES (Emeklilik) + toplu allocation yardimcilari
+# ============================================================================
+#
+# BULGU 1 (BES neden 0 satir): tefasfon 1.1.0'da fund_type yalnizca
+#   SEC / PEN / ETF / RE / VC kabul eder ("EMK" -> ValueError "Invalid fund type").
+#   get_funds(fund_type='EMK') her kosuda ValueError firlatiyor, except blogu
+#   stderr'e tek satir yazip Adim 1'e geciyordu. Dogru deger: 'PEN' (tefasfon
+#   icerde fonTipi=EMK'ye cevirir). Ayni sebeple main()'deki ('SEC','YAT')
+#   denemesinde 'YAT' de gecersizdir; SEC ilk sirada oldugu icin fark edilmedi.
+# BULGU 2 (BES Adim 2 ve allocation neden bos): www.tefas.gov.tr/api/DB/* (eski
+#   ASP.NET: BindComparisonFundReturns, BindFonPortfoyDagilimi, BindHistoryInfo)
+#   endpoint'leri yeni portal (/api/funds/*) sonrasi GitHub Actions'tan yanit
+#   vermiyor; her cagri timeout (30 s) ile dusuyor ve None donuyor — hata loglanmiyor.
+#   500 fon x 30 s = ~4 saat; canli kosunun 16:30 cron -> 20:32 updatedAt suresi
+#   bununla birebir uyusuyor. Allocation icin artik tefasfon.get_portfolio
+#   (yeni /api/funds/dagilimSiraliGetirT, TEK toplu istek) kullanilir; eski yol
+#   yalnizca yedek ve ardisik 10 hatada kesilir.
+# BULGU 3: Adim 0 basarili olsa bile BES fonlarina returns={} yaziliyordu
+#   (hic hesaplanmiyordu). Simdi 1d/1w history'den, 1m..3y tefasfon.get_returns
+#   ('PEN', 'RB' = getiri bazli karsilastirma) ile doldurulur.
+#
+# BES ciktisi ayri dosyaya (data/bes.json) yazilir; tefas.json'a karismaz ve
+# BES adimindaki herhangi bir hata tefas.json yazimini etkilemez.
+
+BES_OUTPUT_PATH = "data/bes.json"
+
+
+def _norm_col(c) -> str:
+    return str(c).strip().lower().replace('_', '').replace(' ', '').replace('ı', 'i')
+
+
+def _find_col(df: pd.DataFrame, *keywords: str, exclude: tuple = ()) -> "str | None":
+    """Kolon adinda (normalize) anahtar kelimelerden biri gecen ilk kolon."""
+    for c in df.columns:
+        n = _norm_col(c)
+        if any(k in n for k in keywords) and not any(x in n for x in exclude):
+            return c
+    return None
+
+
+def _head(obj, n: int = 200) -> str:
+    try:
+        s = obj if isinstance(obj, str) else json.dumps(obj, ensure_ascii=False, default=str)
+    except Exception:
+        s = str(obj)
+    return s[:n].replace('\n', ' ')
+
+
+def _to_float(v) -> "float | None":
+    if v is None:
+        return None
+    try:
+        if isinstance(v, str):
+            v = v.strip().replace('%', '').replace(',', '.')
+            if not v or v.lower() in ('null', 'none', '-', 'nan'):
+                return None
+        f = float(v)
+        return f if f == f else None  # NaN filtre
+    except (ValueError, TypeError):
+        return None
+
+
+# TEFAS varlik kisaltmalari -> okunur etiket (yeni API kolon adlari dogrulanmadi;
+# eslesmeyen kolon adi oldugu gibi etiket olur, ilk kosuda [allocation] logu gosterir)
+ALLOC_LABELS = {
+    'HS': 'Hisse Senedi', 'YHS': 'Yabancı Hisse Senedi', 'DT': 'Devlet Tahvili', 'HB': 'Hazine Bonosu',
+    'OST': 'Özel Sektör Tahvili', 'FB': 'Finansman Bonosu', 'BB': 'Banka Bonosu', 'VDB': 'Varlığa Dayalı Menkul Kıymet',
+    'R': 'Repo', 'TR': 'Ters Repo', 'TPP': 'Takasbank Para Piyasası', 'VM': 'Vadeli Mevduat', 'VDM': 'Vadeli Mevduat (Döviz)',
+    'KH': 'Katılım Hesabı', 'KKS': 'Kamu Kira Sertifikası', 'OSKS': 'Özel Sektör Kira Sertifikası',
+    'KKA': 'Kamu Kira Sertifikası (Döviz)', 'OSKA': 'Özel Sektör Kira Sertifikası (Döviz)', 'YKS': 'Yabancı Kira Sertifikası',
+    'KM': 'Kıymetli Maden', 'KMKS': 'Kıymetli Maden Kira Sertifikası', 'KMKBA': 'Kıymetli Maden Kamu Borçlanma Aracı',
+    'EUT': 'Eurobond', 'DÖT': 'Döviz Ödemeli Tahvil', 'DOT': 'Döviz Ödemeli Tahvil', 'DB': 'Döviz Ödemeli Bono',
+    'KBA': 'Kamu Dış Borçlanma Aracı', 'YBA': 'Yabancı Borçlanma Aracı', 'YYF': 'Yabancı Yatırım Fonu',
+    'YMK': 'Yabancı Menkul Kıymet', 'BYF': 'Borsa Yatırım Fonu', 'YBYF': 'Yabancı Borsa Yatırım Fonu',
+    'FKB': 'Fon Katılma Belgesi', 'GSYF': 'Girişim Sermayesi Yatırım Fonu', 'GYF': 'Gayrimenkul Yatırım Fonu',
+    'GSE': 'Gayrimenkul Sertifikası', 'VİOP': 'VİOP Nakit Teminatı', 'VIOP': 'VİOP Nakit Teminatı',
+    'T': 'Türev Araçlar', 'D': 'Diğer', 'DİĞER': 'Diğer', 'DIGER': 'Diğer',
+}
+# Allocation df'inde yuzde OLMAYAN kolonlar (normalize ad icinde gecen parcalar)
+_ALLOC_SKIP_HINTS = ('kod', 'unvan', 'tarih', 'date', 'fiyat', 'pay', 'kisi', 'yatirimci', 'buyukluk',
+                     'toplam', 'tur', 'kategori', 'semsiye', 'kurucu', 'rn', 'sira', 'isin', 'ad')
+
+
+def _alloc_label(col) -> str:
+    key = str(col).strip()
+    return ALLOC_LABELS.get(key) or ALLOC_LABELS.get(key.upper()) or key
+
+
+def parse_bulk_allocation(df: pd.DataFrame) -> "dict[str, list[dict]]":
+    """tefasfon.get_portfolio df'ini kod -> [{label, pct}] haritasina cevirir.
+
+    Iki olasi bicim desteklenir:
+      - GENIS: her varlik sinifi ayri kolon (HS, DT, KH, ...), satir=fon-gun
+      - UZUN:  (fonKodu, varlikAdi, oran) satirlari
+    Ayni kod icin birden fazla tarih varsa en son tarih alinir.
+    """
+    out: dict[str, list[dict]] = {}
+    if df is None or df.empty:
+        return out
+    cols = detect_columns(df)
+    code_col = cols['code'] or _find_col(df, 'fonkod', 'kod')
+    date_col = cols['date'] or _find_col(df, 'tarih', 'date')
+    if not code_col:
+        print(f"[allocation] kod kolonu bulunamadi; kolonlar={list(df.columns)[:40]}", flush=True)
+        return out
+    label_col = _find_col(df, 'varlikadi', 'varliktur', 'varlik', 'kalem', 'dagilimadi')
+    pct_col = _find_col(df, 'oran', 'yuzde', 'pct', 'agirlik')
+    work = df
+    if date_col:
+        try:
+            work = df.assign(_d=pd.to_datetime(df[date_col], errors='coerce'))
+            latest = work.groupby(code_col)['_d'].transform('max')
+            work = work[work['_d'] == latest]
+        except Exception as e:
+            print(f"[allocation] tarih filtresi atlandi: {e}", flush=True)
+            work = df
+
+    if label_col and pct_col:
+        # UZUN bicim
+        for _, row in work.iterrows():
+            code = str(row.get(code_col, '')).strip().upper()
+            pct = _to_float(row.get(pct_col))
+            label = str(row.get(label_col, '') or '').strip()
+            if code and label and pct is not None and pct > 0:
+                out.setdefault(code, []).append({'label': _alloc_label(label), 'pct': round(pct, 2)})
+    else:
+        # GENIS bicim
+        skip = {code_col, date_col, cols.get('name'), cols.get('price'), cols.get('category'),
+                cols.get('mcap'), cols.get('investors'), cols.get('shares'), '_d'}
+        pct_cols = []
+        for c in work.columns:
+            if c in skip:
+                continue
+            n = _norm_col(c)
+            if any(h in n for h in _ALLOC_SKIP_HINTS) and len(str(c)) > 5:
+                continue
+            if pd.api.types.is_numeric_dtype(work[c]) or work[c].map(lambda v: _to_float(v) is not None).mean() > 0.8:
+                pct_cols.append(c)
+        print(f"[allocation] genis bicim: {len(pct_cols)} yuzde kolonu = {[str(c) for c in pct_cols][:40]}", flush=True)
+        for _, row in work.iterrows():
+            code = str(row.get(code_col, '')).strip().upper()
+            if not code:
+                continue
+            items = []
+            for c in pct_cols:
+                pct = _to_float(row.get(c))
+                if pct is not None and pct > 0:
+                    items.append({'label': _alloc_label(c), 'pct': pct})
+            if not items:
+                continue
+            total = sum(i['pct'] for i in items)
+            if 0.9 <= total <= 1.1:  # 0-1 araligi ise yuzdeye cevir
+                for i in items:
+                    i['pct'] = i['pct'] * 100
+            for i in items:
+                i['pct'] = round(i['pct'], 2)
+            out[code] = items
+    for code in out:
+        out[code].sort(key=lambda x: x['pct'], reverse=True)
+    return out
+
+
+def fetch_bulk_allocation(ftype: str, target_date: datetime, max_back: int = 5) -> "dict[str, list[dict]]":
+    """tefasfon.get_portfolio ile TUM fonlarin varlik dagilimi — tek toplu istek.
+    Is gunu degilse / bos donerse max_back gun geriye gider."""
+    try:
+        from tefasfon import get_portfolio
+    except ImportError as e:
+        print(f"[allocation] tefasfon.get_portfolio yok ({e}) — toplu yol atlandi", flush=True)
+        return {}
+    d = previous_business_day(target_date)
+    for _ in range(max_back):
+        t0 = time.time()
+        try:
+            df = get_portfolio(fund_type=ftype, start_date=fmt_tr_date(d), end_date=fmt_tr_date(d))
+            n = 0 if df is None else len(df)
+            print(f"[allocation] get_portfolio({ftype}, {fmt_tr_date(d)}): {n} satir ({time.time()-t0:.1f}s)", flush=True)
+            if df is not None and not df.empty:
+                print(f"[allocation] kolonlar ({len(df.columns)}): {list(df.columns)[:60]}", flush=True)
+                print(f"[allocation] ornek satir: {_head(df.iloc[0].to_dict(), 300)}", flush=True)
+                parsed = parse_bulk_allocation(df)
+                # Denetim (22 Eki 2026): toplam %95-105 araliginda degilse kolon sezgisi yanlis demektir
+                # -> o fonun dagilimini at; kullaniciya hatali "varlik sinifi" gosterilmesin.
+                bad = 0
+                for code in list(parsed.keys()):
+                    tot = sum(float(x.get('pct') or 0) for x in parsed[code])
+                    if not (95.0 <= tot <= 105.0):
+                        bad += 1
+                        del parsed[code]
+                print(f"[allocation] toplu parse: {len(parsed)} fon gecerli, {bad} fon toplam-kontrolunden elendi", flush=True)
+                if parsed:
+                    return parsed
+        except Exception as e:
+            print(f"[allocation] get_portfolio {fmt_tr_date(d)} fail: {type(e).__name__}: {e}", flush=True)
+        d = previous_business_day(d - timedelta(days=1))
+    return {}
+
+
+# ---------------------------------------------------------------------------
+# BES (Emeklilik) — tefasfon 'PEN'
+# ---------------------------------------------------------------------------
+_RET_KEY_MAP = [
+    # (normalize kolon sonu/parcasi, cikti anahtari)
+    (('getiri1a', 'getiri1ay', 'donemgetiri1a', '1aylik'), '1m'),
+    (('getiri3a', 'getiri3ay', 'donemgetiri3a', '3aylik'), '3m'),
+    (('getiri6a', 'getiri6ay', 'donemgetiri6a', '6aylik'), '6m'),
+    (('getiri1y', 'getiri1yil', 'donemgetiri1y', '1yillik'), '1y'),
+    (('getiriyb', 'getiriyilbasi', 'donemgetiriyb', 'yilbasi', 'ytd'), 'ytd'),
+    (('getiri3y', 'getiri3yil', 'donemgetiri3y', '3yillik'), '3y'),
+    (('getiri5y', 'getiri5yil', 'donemgetiri5y', '5yillik'), '5y'),
+    (('getirigunluk', 'gunlukgetiri', 'getiri1g', 'donemgetiri1g'), '1d'),
+    (('getiri1h', 'haftalik', 'getiri1hafta'), '1w'),
+]
+
+
+def _returns_columns(df: pd.DataFrame) -> "dict[str, str]":
+    """get_returns df kolonlarini {'1m': kolon, ...} eslemesine cevirir."""
+    found: dict[str, str] = {}
+    for c in df.columns:
+        n = _norm_col(c)
+        for keys, out_key in _RET_KEY_MAP:
+            if out_key in found:
+                continue
+            if any(n == k or n.endswith(k) for k in keys):
+                found[out_key] = c
+                break
+    return found
+
+
+def fetch_bes_returns(last: datetime) -> "dict[str, dict]":
+    """tefasfon.get_returns('PEN','RB') — tum BES fonlari icin 1m/3m/6m/1y/ytd/3y/5y
+    (TEFAS FonKarsilastirma 'getiri bazli', calismaTipi=2). Kod -> {returns, name, category}."""
+    try:
+        from tefasfon import get_returns
+    except ImportError as e:
+        print(f"[bes] tefasfon.get_returns yok ({e})", flush=True)
+        return {}
+    t0 = time.time()
+    df = None
+    try:
+        df = get_returns(fund_type='PEN', basis='RB')  # tarihsiz: TEFAS'in guncel donem getirileri
+    except Exception as e:
+        print(f"[bes] get_returns(PEN,RB) fail: {type(e).__name__}: {e}", flush=True)
+    if df is None or df.empty:
+        # Tarihli varyant (calismaTipi=1): son 1 yil
+        try:
+            df = get_returns(fund_type='PEN', basis='RB',
+                             start_date=fmt_tr_date(last - timedelta(days=366)), end_date=fmt_tr_date(last))
+        except Exception as e:
+            print(f"[bes] get_returns(PEN,RB,tarihli) fail: {type(e).__name__}: {e}", flush=True)
+    n = 0 if df is None else len(df)
+    print(f"[bes] get_returns(PEN,RB): {n} satir ({time.time()-t0:.1f}s)", flush=True)
+    if df is None or df.empty:
+        return {}
+    print(f"[bes] get_returns kolonlar ({len(df.columns)}): {list(df.columns)[:60]}", flush=True)
+    print(f"[bes] get_returns ornek satir: {_head(df.iloc[0].to_dict(), 300)}", flush=True)
+    cols = detect_columns(df)
+    code_col = cols['code'] or _find_col(df, 'fonkod', 'kod')
+    name_col = cols['name'] or _find_col(df, 'unvan', 'fonad')
+    cat_col = cols['category'] or _find_col(df, 'turaciklama', 'fontur', 'kategori', 'semsiye', exclude=('kod',))
+    rcols = _returns_columns(df)
+    print(f"[bes] get_returns getiri kolon eslemesi: {rcols} (kod={code_col}, tur={cat_col})", flush=True)
+    if not code_col or not rcols:
+        print(f"[bes] get_returns: kod veya getiri kolonu yok — getiriler bos kalacak", flush=True)
+        return {}
+    out: dict[str, dict] = {}
+    for _, row in df.iterrows():
+        code = str(row.get(code_col, '')).strip().upper()
+        if not code:
+            continue
+        rets = {k: (lambda v: None if v is None else round(v, 2))(_to_float(row.get(c))) for k, c in rcols.items()}
+        out[code] = {
+            'returns': rets,
+            'name': str(row.get(name_col, '') or '').strip() if name_col else '',
+            'category': str(row.get(cat_col, '') or '').strip() if cat_col else '',
+        }
+    return out
+
+
+def fetch_befas_list() -> "list[dict]":
+    """Takasbank BEFAS Excel (functions/api/befas/funds.ts'deki Takasbank kaynagi ile ayni
+    kurum): kod + ad + kurucu. Hata -> bos liste (loglanir)."""
+    url = ("https://www.takasbank.com.tr/plugins/"
+           "ExcelExportBefasFundsTradingInvestmentPlatform?language=tr")
+    headers = {
+        "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
+        "Accept": "*/*",
+        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+    }
+    content = None
+    try:
+        r = requests.get(url, headers=headers, timeout=30)
+        print(f"[bes] Takasbank BEFAS Excel (requests): HTTP {r.status_code}, {len(r.content)} B, ilk200={_head(r.content[:200].decode('latin-1', 'replace'))}", flush=True)
+        if r.status_code == 200 and r.content[:2] == b'PK':
+            content = r.content
+    except Exception as e:
+        print(f"[bes] Takasbank requests fail: {type(e).__name__}: {e}", flush=True)
+    if content is None:
+        try:
+            from curl_cffi import requests as cr
+            with cr.Session(impersonate="chrome131") as s:
+                r = s.get(url, headers=headers, timeout=30)
+            print(f"[bes] Takasbank BEFAS Excel (curl_cffi): HTTP {r.status_code}, {len(r.content)} B", flush=True)
+            if r.status_code == 200 and r.content[:2] == b'PK':
+                content = r.content
+        except Exception as e:
+            print(f"[bes] Takasbank curl_cffi fail: {type(e).__name__}: {e}", flush=True)
+    if not content:
+        print("[bes] Takasbank BEFAS Excel indirilemedi (xlsx degil veya HTTP hata)", flush=True)
+        return []
+    try:
+        import io, re as _re
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        ws = wb.active
+        rows_iter = ws.iter_rows(values_only=True)
+        header = next(rows_iter, None)
+        if not header:
+            raise ValueError("header satiri yok")
+
+        def _n(h):
+            return str(h or '').strip().lower().replace('ı', 'i').replace('ü', 'u').replace('ö', 'o')
+
+        hn = [_n(h) for h in header]
+        idx_code = idx_name = idx_founder = idx_type = -1
+        for i, h in enumerate(hn):
+            if idx_code < 0 and ('fon kodu' in h or h in ('kod', 'kodu')):
+                idx_code = i
+            if idx_name < 0 and ('fon adi' in h or 'unvan' in h):
+                idx_name = i
+            if idx_founder < 0 and ('kurucu' in h or 'sirket' in h or 'ihracci' in h):
+                idx_founder = i
+            if idx_type < 0 and (h in ('tip', 'tur') or 'segment' in h):
+                idx_type = i
+        print(f"[bes] Excel header={list(header)[:8]} -> code={idx_code} name={idx_name} founder={idx_founder} type={idx_type}", flush=True)
+        if idx_code < 0: idx_code = 0
+        if idx_type < 0: idx_type = 1
+        if idx_founder < 0: idx_founder = 2
+        if idx_name < 0: idx_name = 3
+        code_pat = _re.compile(r'^[A-ZÇĞİÖŞÜ0-9]{3,5}$')
+        out: list[dict] = []
+        for row in rows_iter:
+            if not row or len(row) <= max(idx_code, idx_name):
+                continue
+            code = str(row[idx_code] or '').strip().upper()
+            if not code_pat.match(code) or code in ('BES', 'DK', 'OKS', 'DKS', 'DKM'):
+                continue
+            founder = str(row[idx_founder] or '').strip() if 0 <= idx_founder < len(row) else ''
+            out.append({'code': code, 'name': str(row[idx_name] or code).strip(), 'founder': founder,
+                        'type': str(row[idx_type] or '').strip() if 0 <= idx_type < len(row) else ''})
+        print(f"[bes] Takasbank BEFAS Excel: {len(out)} gecerli fon; ornek={_head(out[:2])}", flush=True)
+        return out
+    except Exception as e:
+        print(f"[bes] Excel parse fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        return []
+
+
+def fetch_bes_legacy_comparison(last: datetime) -> "list[dict]":
+    """YEDEK: eski /api/DB/BindComparisonFundReturns (calismatipi=2, fontip=EMK).
+    Yeni portal sonrasi buyuk olasilikla yanit vermiyor; HTTP durumu ve ilk 200
+    karakter loglanir, 20 s timeout ile sinirli."""
+    url = 'https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns'
+    payload = {
+        'calismatipi': '2', 'fontip': 'EMK',
+        'bastarih': (last - timedelta(days=1)).strftime('%d.%m.%Y'), 'bittarih': last.strftime('%d.%m.%Y'),
+        'strperiod': '1,1,1,1,1,1,1', 'islemdurum': '1',
+        'fongrup': '', 'kurucukod': '', 'fonturkod': '', 'fonunvantip': '',
+    }
+    headers = {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Referer': 'https://www.tefas.gov.tr/FonKarsilastirma.aspx',
+        'Origin': 'https://www.tefas.gov.tr',
+        'X-Requested-With': 'XMLHttpRequest',
+    }
+    data = None
+    try:
+        from curl_cffi import requests as cr
+        with cr.Session(impersonate="chrome131") as s:
+            r = s.post(url, data=payload, headers=headers, timeout=20)
+        print(f"[bes] legacy BindComparisonFundReturns: HTTP {r.status_code}, {len(r.content)} B, ilk200={_head(r.text)}", flush=True)
+        if r.status_code == 200:
+            data = r.json()
+    except Exception as e:
+        print(f"[bes] legacy BindComparisonFundReturns fail: {type(e).__name__}: {e}", flush=True)
+    if not isinstance(data, dict):
+        return []
+    items = data.get('data') or data.get('Data') or []
+    print(f"[bes] legacy response: {len(items)} satir", flush=True)
+    out = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        code = str(it.get('FONKODU') or it.get('fonkodu') or '').strip().upper()
+        nav = _to_float(it.get('SONFIYAT') or it.get('sonfiyat'))
+        if not code or not nav or nav <= 0:
+            continue
+        out.append({
+            'code': code,
+            'name': str(it.get('FONUNVAN') or it.get('fonunvan') or code).strip(),
+            'category': str(it.get('KATEGORI') or it.get('kategori') or '').strip(),
+            'nav': nav,
+            'returns': {
+                '1d': _to_float(it.get('GETIRIGUNLUK')), '1w': None,
+                '1m': _to_float(it.get('GETIRI1AY')), '3m': _to_float(it.get('GETIRI3AY')),
+                '6m': _to_float(it.get('GETIRI6AY')), 'ytd': _to_float(it.get('GETIRIYILBASI')),
+                '1y': _to_float(it.get('GETIRI1YIL')), '3y': _to_float(it.get('GETIRI3YIL')),
+            },
+        })
+    return out
+
+
+def build_bes_funds(anchors: dict) -> "list[dict]":
+    """BES fon listesini uretir (data/bes.json icin). Her adim bagimsiz loglanir;
+    hicbir adim istisna firlatmaz (caller ayrica try/except ile sarar)."""
+    last = anchors['last']
+    bes: dict[str, dict] = {}
+
+    # ---- Adim 0: tefasfon get_funds('PEN') — NAV + kisa history (1d/1w) ----
+    print(f"\n[bes] Adim 0: tefasfon get_funds(fund_type='PEN') (eski kod 'EMK' gonderiyordu -> ValueError)", flush=True)
+    emk_end = previous_business_day(last)
+    emk_start = previous_business_day(emk_end - timedelta(days=21))
+    t0 = time.time()
+    pen_df = None
+    try:
+        pen_df = get_funds(fund_type='PEN', start_date=fmt_tr_date(emk_start), end_date=fmt_tr_date(emk_end))
+    except Exception as e:
+        print(f"[bes] get_funds(PEN) fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+    n = 0 if pen_df is None else len(pen_df)
+    print(f"[bes] get_funds(PEN, {fmt_tr_date(emk_start)}-{fmt_tr_date(emk_end)}): {n} satir ({time.time()-t0:.1f}s)", flush=True)
+    if pen_df is not None and not pen_df.empty:
+        print(f"[bes] PEN kolonlar ({len(pen_df.columns)}): {list(pen_df.columns)[:60]}", flush=True)
+        print(f"[bes] PEN ornek satir: {_head(pen_df.iloc[0].to_dict(), 300)}", flush=True)
+        pc = detect_columns(pen_df)
+        pc_cat = pc['category'] or _find_col(pen_df, 'turaciklama', 'fontur', 'kategori', 'semsiye', exclude=('kod',))
+        pc_founder = _find_col(pen_df, 'kurucuunvan', 'kurucuadi', 'kurucuad', 'kurucu', exclude=('kod',))
+        print(f"[bes] PEN kolon eslemesi: {pc} | tur={pc_cat} kurucu={pc_founder}", flush=True)
+        if pc['code'] and pc['price']:
+            df = pen_df
+            if pc['date']:
+                try:
+                    df = df.assign(_d=pd.to_datetime(df[pc['date']], errors='coerce')).sort_values('_d')
+                except Exception:
+                    df = pen_df
+            hist: dict[str, list[tuple[str, float]]] = {}
+            for _, row in df.iterrows():
+                code = str(row.get(pc['code'], '')).strip().upper()
+                price = _to_float(row.get(pc['price']))
+                if not code or price is None or price <= 0:
+                    continue
+                iso = None
+                if pc['date']:
+                    try:
+                        iso = pd.to_datetime(row.get(pc['date'])).strftime('%Y-%m-%d')
+                    except Exception:
+                        iso = None
+                ent = bes.setdefault(code, {
+                    'code': code, 'name': code, 'category': 'Emeklilik', 'besKategori': '', 'founder': '',
+                    'tefasOpen': False, 'befasOpen': True, 'nav': None, 'date': None,
+                    'marketCap': None, 'investorCount': None, 'shareCount': None,
+                    'returns': {}, 'history': [],
+                })
+                ent['nav'] = price
+                ent['date'] = iso or emk_end.strftime('%Y-%m-%d')
+                if pc['name']:
+                    ent['name'] = str(row.get(pc['name'], '') or '').strip() or code
+                if pc_cat:
+                    ent['besKategori'] = str(row.get(pc_cat, '') or '').strip()
+                if pc_founder:
+                    ent['founder'] = str(row.get(pc_founder, '') or '').strip()
+                mc = _to_float(row.get(pc['mcap'])) if pc['mcap'] else None
+                inv = _to_float(row.get(pc['investors'])) if pc['investors'] else None
+                sh = _to_float(row.get(pc['shares'])) if pc['shares'] else None
+                ent['marketCap'] = mc if mc and mc > 0 else None
+                ent['investorCount'] = int(inv) if inv and inv > 0 else None
+                ent['shareCount'] = int(sh) if sh and sh > 0 else None
+                if iso:
+                    hist.setdefault(code, []).append((iso, price))
+            for code, ent in bes.items():
+                h = sorted(set(hist.get(code, [])))
+                ent['history'] = [{'date': d, 'price': p} for d, p in h]
+                r1d = pct_change(h[-1][1], h[-2][1]) if len(h) >= 2 else None
+                r1w = None
+                if len(h) >= 2:
+                    try:
+                        target = datetime.strptime(h[-1][0], '%Y-%m-%d') - timedelta(days=7)
+                        best = None
+                        for d, p in h[:-1]:
+                            if datetime.strptime(d, '%Y-%m-%d') <= target:
+                                best = p
+                        if best is not None:
+                            r1w = pct_change(h[-1][1], best)
+                    except Exception:
+                        r1w = None
+                ent['returns'] = {'1d': r1d, '1w': r1w}
+            no_kw = sum(1 for e in bes.values()
+                        if 'EMEKL' not in e['name'].upper().replace('İ', 'I'))
+            print(f"[bes] Adim 0 sonucu: {len(bes)} fon (adinda EMEKLİLİK gecmeyen: {no_kw})", flush=True)
+        else:
+            print(f"[bes] PEN df'inde kod/fiyat kolonu bulunamadi — Adim 0 atlandi", flush=True)
+    else:
+        print(f"[bes] get_funds(PEN) bos — Adim 0 sonuc yok", flush=True)
+
+    # ---- Adim 1: tefasfon get_returns('PEN','RB') — 1m..3y getiriler ----
+    print(f"\n[bes] Adim 1: tefasfon get_returns(PEN, RB) donem getirileri", flush=True)
+    ret_map = {}
+    try:
+        ret_map = fetch_bes_returns(last)
+    except Exception as e:
+        print(f"[bes] Adim 1 fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+    matched = 0
+    for code, info in ret_map.items():
+        ent = bes.get(code)
+        if ent is None:
+            # Adim 0 bos kaldiysa getiri tablosundan iskelet olustur (NAV yok)
+            ent = bes.setdefault(code, {
+                'code': code, 'name': info.get('name') or code, 'category': 'Emeklilik',
+                'besKategori': info.get('category') or '', 'founder': '',
+                'tefasOpen': False, 'befasOpen': True, 'nav': None, 'date': emk_end.strftime('%Y-%m-%d'),
+                'marketCap': None, 'investorCount': None, 'shareCount': None, 'returns': {}, 'history': [],
+            })
+        else:
+            matched += 1
+        for k, v in info['returns'].items():
+            if k in ('1d', '1w') and ent['returns'].get(k) is not None:
+                continue  # history'den gelen daha guvenilir
+            ent['returns'][k] = v
+        if not ent['besKategori'] and info.get('category'):
+            ent['besKategori'] = info['category']
+    print(f"[bes] Adim 1 sonucu: {len(ret_map)} getiri satiri, {matched} fon ile eslesti", flush=True)
+
+    # ---- Adim 2: Takasbank BEFAS Excel — kurucu + listede olup TEFAS'ta olmayanlar ----
+    print(f"\n[bes] Adim 2: Takasbank BEFAS Excel (kurucu)", flush=True)
+    befas = []
+    try:
+        befas = fetch_befas_list()
+    except Exception as e:
+        print(f"[bes] Adim 2 fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+    added = enriched = 0
+    for bf in befas:
+        ent = bes.get(bf['code'])
+        if ent is None:
+            bes[bf['code']] = {
+                'code': bf['code'], 'name': bf['name'], 'category': 'Emeklilik', 'besKategori': bf.get('type') or '',
+                'founder': bf.get('founder') or '', 'tefasOpen': False, 'befasOpen': True,
+                'nav': None, 'date': emk_end.strftime('%Y-%m-%d'),
+                'marketCap': None, 'investorCount': None, 'shareCount': None, 'returns': {}, 'history': [],
+            }
+            added += 1
+        elif not ent.get('founder') and bf.get('founder'):
+            ent['founder'] = bf['founder']
+            enriched += 1
+    print(f"[bes] Adim 2 sonucu: {len(befas)} satir; kurucu eklenen={enriched}, yalniz-listede={added}", flush=True)
+
+    # ---- Adim 3 (YEDEK): eski BindComparisonFundReturns — yalniz NAV'li fon yoksa ----
+    with_nav = sum(1 for e in bes.values() if e.get('nav'))
+    if with_nav == 0:
+        print(f"\n[bes] Adim 3: NAV'li fon yok — eski BindComparisonFundReturns deneniyor", flush=True)
+        try:
+            for it in fetch_bes_legacy_comparison(last):
+                ent = bes.setdefault(it['code'], {
+                    'code': it['code'], 'name': it['name'], 'category': 'Emeklilik', 'besKategori': it['category'],
+                    'founder': '', 'tefasOpen': False, 'befasOpen': True, 'nav': None,
+                    'date': last.strftime('%Y-%m-%d'), 'marketCap': None, 'investorCount': None,
+                    'shareCount': None, 'returns': {}, 'history': [],
+                })
+                ent['nav'] = it['nav']
+                for k, v in it['returns'].items():
+                    if ent['returns'].get(k) is None:
+                        ent['returns'][k] = v
+        except Exception as e:
+            print(f"[bes] Adim 3 fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+    else:
+        print(f"[bes] Adim 3 (legacy) atlandi — {with_nav} fonun NAV'i var", flush=True)
+
+    # Returns anahtarlarini tamamla (sema: 1d,1w,1m,3m,6m,ytd,1y,3y)
+    for ent in bes.values():
+        r = ent['returns']
+        ent['returns'] = {k: r.get(k) for k in ('1d', '1w', '1m', '3m', '6m', 'ytd', '1y', '3y')}
+        if r.get('5y') is not None:
+            ent['returns']['5y'] = r['5y']
+        ent.setdefault('allocation', None)
+
+    out = sorted(bes.values(), key=lambda f: (f['returns'].get('1y') is None, -(f['returns'].get('1y') or 0)))
+    print(f"\n[bes] TOPLAM {len(out)} BES fonu; NAV'li={sum(1 for f in out if f.get('nav'))}, "
+          f"1y getirili={sum(1 for f in out if f['returns'].get('1y') is not None)}, "
+          f"kuruculu={sum(1 for f in out if f.get('founder'))}", flush=True)
+    return out
+
+
+def write_bes_json(bes_funds: "list[dict]") -> bool:
+    """data/bes.json yazar (sema: tefas.json ile ayni {updatedAt,count,funds}).
+    Bos liste ise mevcut dosyaya dokunmaz."""
+    if not bes_funds:
+        print(f"[bes] 0 fon — {BES_OUTPUT_PATH} DEGISTIRILMEDI", flush=True)
+        return False
+    payload = {
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "count": len(bes_funds),
+        "funds": bes_funds,
+    }
+    with open(BES_OUTPUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"✅ {BES_OUTPUT_PATH} yazildi ({os.path.getsize(BES_OUTPUT_PATH) // 1024} KB, {len(bes_funds)} fon)", flush=True)
+    return True
 
 
 def main() -> int:
@@ -757,384 +1388,76 @@ def main() -> int:
     # 1Y getiriye göre desc sırala
     funds.sort(key=lambda f: (f["returns"].get("1y") or -9999), reverse=True)
 
-    # ---------- Allocation fetch (top N by marketCap + tefasOpen) ----------
-    # TEFAS BindFonPortfoyDagilimi endpoint'i her fon icin ayri POST — rate limit
-    # koruma icin sadece TEFAS'a acik + market cap'i buyuk fonlara sinirlariz.
-    # Kucuk fonlar Worker fallback kaldi (dinamik fetch), buradan allocation almaz.
-    ALLOC_TOP_N = int(os.environ.get('TEFAS_ALLOC_TOP_N', '500'))
-    ALLOC_DELAY_MS = int(os.environ.get('TEFAS_ALLOC_DELAY_MS', '300'))
-    # marketCap kolonu tefasfon'dan gelmiyor (hep null) — shareCount * nav ile
-    # yaklasik portfoy buyuklugu hesapla, buna gore sirala.
-    def _size_proxy(f: dict) -> float:
-        mc = f.get('marketCap')
-        if mc and mc > 0:
-            return float(mc)
-        sc = f.get('shareCount') or 0
-        nav = f.get('nav') or 0
-        try:
-            return float(sc) * float(nav)
-        except (ValueError, TypeError):
-            return 0.0
-    alloc_candidates = [f for f in funds if f.get('tefasOpen')]
-    alloc_candidates.sort(key=_size_proxy, reverse=True)
-    alloc_targets = alloc_candidates[:ALLOC_TOP_N]
-    print(f"[allocation] {len(alloc_candidates)} tefasOpen aday -> top {len(alloc_targets)} secildi", flush=True)
-    print(f"\n[allocation] {len(alloc_targets)} fon icin varlik dagilimi cekiliyor...", flush=True)
+    # ---------- Allocation fetch ----------
+    # 22 Eki 2026: Oncelik tefasfon.get_portfolio (yeni /api/funds/dagilimSiraliGetirT,
+    # TEK toplu istek, tum fonlar). Eski per-fon BindFonPortfoyDagilimi yolu
+    # GitHub Actions'tan timeout'a dusuyordu (500 x 30 s ~ 4 saat, hepsi None) —
+    # artik yalnizca toplu yol bos donerse ve ardisik 10 hatada kesilerek denenir.
+    print(f"\n[allocation] Adim A: tefasfon get_portfolio({working_ftype}) toplu dagilim...", flush=True)
     alloc_ok, alloc_fail = 0, 0
-    for i, f in enumerate(alloc_targets):
-        alloc = fetch_fund_allocation(f['code'])
-        if alloc:
-            f['allocation'] = alloc
-            alloc_ok += 1
-        else:
-            alloc_fail += 1
-        # Rate limit protection
-        time.sleep(ALLOC_DELAY_MS / 1000.0)
-        if (i + 1) % 50 == 0:
-            print(f"  {i+1}/{len(alloc_targets)} — ok:{alloc_ok} fail:{alloc_fail}", flush=True)
-    print(f"[allocation] Tamamlandi: {alloc_ok} basarili, {alloc_fail} basarisiz", flush=True)
-
-    # ---------- BES (BEFAS) fetch — 4 strateji sirayla ----------
-    # 0. tefasfon get_funds(fund_type='EMK') — AYNI kutuphaneyi kullan (regular fonlarda calisiyor)
-    # 1. TAKASBANK BEFAS Excel (fon listesi: kod + isim + ihraccı) — TEFAS Excel
-    # 2. TEFAS BindComparisonFundReturns (calismatipi=2, fontip=EMK) — toplu fiyat+getiri
-    # 3. Ikisi de fail -> statik empty
-    print(f"\n[bes] Adim 0: tefasfon get_funds(fund_type='EMK') deneniyor...", flush=True)
-    bes_from_tefasfon = 0
+    bulk_alloc: dict[str, list[dict]] = {}
     try:
-        emk_end = anchors['last']
-        emk_start = emk_end - timedelta(days=int(90 * 1.6))
-        emk_start = previous_business_day(emk_start)
-        emk_end = previous_business_day(emk_end)
-        emk_df = get_funds(
-            fund_type='EMK',
-            start_date=fmt_tr_date(emk_start),
-            end_date=fmt_tr_date(emk_end),
-        )
-        if emk_df is not None and not emk_df.empty:
-            print(f"[bes] tefasfon EMK: {len(emk_df)} satir DONDU", flush=True)
-            # Kod->latest_nav map + kod->history map
-            emk_cols = detect_columns(emk_df)
-            if emk_cols['code'] and emk_cols['price']:
-                # Latest NAV per code
-                emk_df_sorted = emk_df.copy()
-                if emk_cols['date']:
-                    emk_df_sorted = emk_df_sorted.sort_values(emk_cols['date'])
-                latest_by_code: dict[str, dict] = {}
-                history_by_code_emk: dict[str, list[tuple[str, float]]] = {}
-                for _, row in emk_df_sorted.iterrows():
-                    try:
-                        code = str(row[emk_cols['code']]).strip().upper()
-                        price = float(row[emk_cols['price']])
-                        if not code or price <= 0:
-                            continue
-                        name_v = row.get(emk_cols['name']) if emk_cols['name'] else code
-                        cat_v = row.get(emk_cols['category']) if emk_cols['category'] else 'Emeklilik'
-                        date_v = row.get(emk_cols['date']) if emk_cols['date'] else None
-                        try:
-                            iso = pd.to_datetime(date_v).strftime('%Y-%m-%d') if date_v is not None else None
-                        except Exception:
-                            iso = None
-                        latest_by_code[code] = {
-                            'code': code,
-                            'name': str(name_v).strip() if name_v is not None else code,
-                            'category_raw': str(cat_v).strip() if cat_v is not None else 'Emeklilik',
-                            'nav': price,
-                            'date': iso,
-                        }
-                        if iso:
-                            history_by_code_emk.setdefault(code, []).append((iso, price))
-                    except Exception:
-                        continue
-                # Fund entries olustur — safeguard: sadece BES niteligindeki kodlari ekle.
-                # Bir kod hem YAT hem EMK response'unda cikarsa (kutuphane hatasi) atlanir.
-                existing_codes_pre = {f['code'] for f in funds}
-                for code, info in latest_by_code.items():
-                    if code in existing_codes_pre:
-                        continue
-                    # Sanity: fon adinda EMEKLİLİK/BES ipucu olmali (yanlisligi engelle)
-                    name_upper = info['name'].upper().replace('İ', 'I').replace('Ü', 'U').replace('Ö', 'O')
-                    if 'EMEKLILIK' not in name_upper and 'EMEKLİLİK' not in info['name'].upper():
-                        # Fon adi BES gostermiyorsa atla — yanlis kategorizasyon riski
-                        continue
-                    hist_arr = [{'date': d, 'price': p} for d, p in sorted(history_by_code_emk.get(code, []))]
-                    funds.append({
-                        "code": code,
-                        "name": info['name'],
-                        "category": 'Emeklilik',
-                        "besKategori": info['category_raw'],
-                        "tefasOpen": False,
-                        "befasOpen": True,
-                        "nav": info['nav'],
-                        "date": info['date'] or emk_end.strftime('%Y-%m-%d'),
-                        "marketCap": None,
-                        "investorCount": None,
-                        "shareCount": None,
-                        "returns": {},
-                        "history": hist_arr,
-                        "allocation": None,
-                    })
-                    bes_from_tefasfon += 1
-                print(f"[bes] tefasfon EMK'dan {bes_from_tefasfon} BES fonu eklendi (NAV + history)", flush=True)
-        else:
-            print(f"[bes] tefasfon EMK bos DataFrame dondu — Adim 1'e geciliyor", flush=True)
+        bulk_alloc = fetch_bulk_allocation(working_ftype, anchors['last'])
     except Exception as e:
-        print(f"[bes] tefasfon EMK fail: {type(e).__name__}: {e} — Adim 1'e geciliyor", file=sys.stderr, flush=True)
+        print(f"[allocation] toplu yol beklenmedik hata: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+    if bulk_alloc:
+        for f in funds:
+            a = bulk_alloc.get(f['code'])
+            if a:
+                f['allocation'] = a
+                alloc_ok += 1
+        sample = next((f for f in funds if f.get('allocation')), None)
+        print(f"[allocation] Adim A: {alloc_ok}/{len(funds)} fona dagilim yazildi; ornek "
+              f"{sample['code'] if sample else '-'}: {_head(sample['allocation'] if sample else None)}", flush=True)
+    else:
+        print(f"[allocation] Adim A sonuc yok — Adim B (eski per-fon endpoint, devre kesicili)", flush=True)
+        ALLOC_TOP_N = int(os.environ.get('TEFAS_ALLOC_TOP_N', '500'))
+        ALLOC_DELAY_MS = int(os.environ.get('TEFAS_ALLOC_DELAY_MS', '300'))
+        ALLOC_MAX_CONSEC_FAIL = int(os.environ.get('TEFAS_ALLOC_MAX_CONSEC_FAIL', '10'))
 
-    print(f"\n[bes] Adim 1: TAKASBANK BEFAS Excel indiriliyor...", flush=True)
-    bes_fund_list: list[dict] = []
-    try:
-        befas_excel_url = (
-            "https://www.takasbank.com.tr/plugins/"
-            "ExcelExportBefasFundsTradingInvestmentPlatform?language=tr"
-        )
-        excel_headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-            ),
-            "Accept": "*/*",
-            "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
-        }
-        excel_content = None
-        try:
-            r_excel = requests.get(befas_excel_url, headers=excel_headers, timeout=30)
-            if r_excel.status_code == 200:
-                excel_content = r_excel.content
-        except Exception as e:
-            print(f"[bes] Takasbank requests fail: {e}", flush=True)
-        # Fallback curl_cffi
-        if excel_content is None:
+        def _size_proxy(f: dict) -> float:
+            mc = f.get('marketCap')
+            if mc and mc > 0:
+                return float(mc)
             try:
-                from curl_cffi import requests as cr
-                session = cr.Session(impersonate="chrome131")
-                r_excel = session.get(befas_excel_url, headers=excel_headers, timeout=30)
-                if r_excel.status_code == 200:
-                    excel_content = r_excel.content
-            except Exception as e:
-                print(f"[bes] Takasbank curl_cffi fail: {e}", flush=True)
-        if excel_content:
-            try:
-                import io, openpyxl, re as _re
-                wb = openpyxl.load_workbook(io.BytesIO(excel_content), read_only=True, data_only=True)
-                ws = wb.active
-                # Header satirini oku ve kolon indexlerini tespit et
-                # Beklenen kolonlar (EGM BEFAS resmi format):
-                #   [Fon Kodu, TİP (BES/DK/OKS), Kurucu, Fon Adı]
-                # Ama sirasi degisebilir — header adiyla eslesme yapalim.
-                rows_iter = ws.iter_rows(values_only=True)
-                header = next(rows_iter, None)
-                if not header:
-                    raise ValueError("BEFAS Excel'de header satiri yok")
+                return float(f.get('shareCount') or 0) * float(f.get('nav') or 0)
+            except (ValueError, TypeError):
+                return 0.0
+        alloc_candidates = [f for f in funds if f.get('tefasOpen')]
+        alloc_candidates.sort(key=_size_proxy, reverse=True)
+        alloc_targets = alloc_candidates[:ALLOC_TOP_N]
+        print(f"[allocation] {len(alloc_candidates)} tefasOpen aday -> top {len(alloc_targets)} secildi", flush=True)
+        consec_fail = 0
+        for i, f in enumerate(alloc_targets):
+            alloc = fetch_fund_allocation(f['code'], timeout=15)
+            if alloc:
+                f['allocation'] = alloc
+                alloc_ok += 1
+                consec_fail = 0
+            else:
+                alloc_fail += 1
+                consec_fail += 1
+                if consec_fail >= ALLOC_MAX_CONSEC_FAIL:
+                    print(f"[allocation] ardisik {consec_fail} hata — eski endpoint yanit vermiyor, dongu kesildi "
+                          f"({i+1}/{len(alloc_targets)} denendi)", flush=True)
+                    break
+            time.sleep(ALLOC_DELAY_MS / 1000.0)
+            if (i + 1) % 50 == 0:
+                print(f"  {i+1}/{len(alloc_targets)} — ok:{alloc_ok} fail:{alloc_fail}", flush=True)
+    print(f"[allocation] Tamamlandi: {alloc_ok} basarili, {alloc_fail} basarisiz; "
+          f"allocation dolu fon={sum(1 for f in funds if f.get('allocation'))}", flush=True)
 
-                def _norm_hdr(h):
-                    return str(h or '').strip().lower().replace('ı', 'i').replace('ü', 'u').replace('ö', 'o')
-
-                headers_norm = [_norm_hdr(h) for h in header]
-                idx_code = idx_name = idx_founder = idx_type = -1
-                for i, h in enumerate(headers_norm):
-                    if idx_code < 0 and ('fon kodu' in h or h == 'kod' or h == 'kodu'):
-                        idx_code = i
-                    if idx_name < 0 and ('fon adi' in h or h == 'fon adı' or h == 'unvan' or 'unvani' in h):
-                        idx_name = i
-                    if idx_founder < 0 and ('kurucu' in h or 'sirket' in h or 'ihracci' in h):
-                        idx_founder = i
-                    if idx_type < 0 and (h == 'tip' or h == 'tıp' or 'segment' in h):
-                        idx_type = i
-
-                print(f"[bes] Excel header detect: code={idx_code} name={idx_name} founder={idx_founder} type={idx_type}", flush=True)
-
-                # Kolon tespit edilemezse pozisyon-bazli fallback:
-                # egm.org.tr sirasi: [kod, tip, kurucu, ad]
-                if idx_code < 0: idx_code = 0
-                if idx_type < 0: idx_type = 1
-                if idx_founder < 0: idx_founder = 2
-                if idx_name < 0: idx_name = 3
-
-                code_pat = _re.compile(r'^[A-ZÇĞİÖŞÜ0-9]{3,5}$')
-                for row in rows_iter:
-                    if not row or len(row) <= max(idx_code, idx_name):
-                        continue
-                    raw_code = row[idx_code] if idx_code < len(row) else None
-                    raw_name = row[idx_name] if idx_name < len(row) else None
-                    raw_founder = row[idx_founder] if 0 <= idx_founder < len(row) else None
-                    if raw_code is None:
-                        continue
-                    code = str(raw_code).strip().upper()
-                    # Kod 3-5 karakter alfanumerik olmali (KEA, THYAO vs.)
-                    if not code_pat.match(code):
-                        continue
-                    # 'BES', 'DK', 'OKS' gibi tip degerleri kod degil - filter et
-                    if code in ('BES', 'DK', 'OKS', 'DKS', 'DKM'):
-                        continue
-                    name = str(raw_name or code).strip()
-                    founder = str(raw_founder or '').strip() if raw_founder else ''
-                    bes_fund_list.append({'code': code, 'name': name, 'issuer': founder, 'founder': founder})
-                print(f"[bes] Takasbank BEFAS Excel: {len(bes_fund_list)} gecerli fon", flush=True)
-            except Exception as e:
-                print(f"[bes] Excel parse fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        else:
-            print(f"[bes] Takasbank BEFAS Excel indirilemedi", flush=True)
-    except Exception as e:
-        print(f"[bes] BEFAS Excel fetch exception: {e}", file=sys.stderr, flush=True)
-
-    # Adim 2: TEFAS BindComparisonFundReturns ile fiyat+getiri (opsiyonel)
-    print(f"[bes] Adim 2: TEFAS BindComparisonFundReturns (BEFAS/EMK) fiyat+getiri...", flush=True)
-    bes_added = 0
+    # ---------- BES (Emeklilik) — AYRI dosya: data/bes.json ----------
+    # tefas.json'a karismaz; buradaki herhangi bir hata tefas.json yazimini etkilemez.
+    bes_funds: list[dict] = []
     try:
-        bittarih = anchors['last'].strftime('%d.%m.%Y')
-        bastarih = (anchors['last'] - timedelta(days=1)).strftime('%d.%m.%Y')
-        bes_payload = {
-            'calismatipi': '2',
-            'fontip': 'EMK',
-            'bastarih': bastarih,
-            'bittarih': bittarih,
-            'strperiod': '1,1,1,1,1,1,1',
-            'islemdurum': '1',
-            'fongrup': '',
-            'kurucukod': '',
-            'fonturkod': '',
-            'fonunvantip': '',
-        }
-        bes_headers = {
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Referer': 'https://www.tefas.gov.tr/FonKarsilastirma.aspx',
-            'Origin': 'https://www.tefas.gov.tr',
-            'X-Requested-With': 'XMLHttpRequest',
-        }
-        bes_url = 'https://www.tefas.gov.tr/api/DB/BindComparisonFundReturns'
-        bes_data = None
-        # curl_cffi chrome131 impersonation - TEFAS bot koruma
-        try:
-            from curl_cffi import requests as cr
-            with cr.Session(impersonate="chrome131") as session:
-                r = session.post(bes_url, data=bes_payload, headers=bes_headers, timeout=60)
-                if r.status_code == 200:
-                    bes_data = r.json()
-                else:
-                    print(f"[bes] curl_cffi HTTP {r.status_code}", flush=True)
-        except Exception as e:
-            print(f"[bes] curl_cffi fail ({type(e).__name__}: {e}) - requests fallback", flush=True)
-        # Fallback: dogrudan requests
-        if bes_data is None:
-            r = requests.post(bes_url, data=bes_payload, headers=bes_headers, timeout=60)
-            if r.status_code == 200:
-                bes_data = r.json()
-        if bes_data and isinstance(bes_data, dict):
-            bes_list = bes_data.get('data') or bes_data.get('Data') or []
-            print(f"[bes] Response: {len(bes_list)} BES fonu", flush=True)
-            existing_codes = {f['code'] for f in funds}
-            for item in bes_list:
-                try:
-                    if not isinstance(item, dict):
-                        continue
-                    code = str(item.get('FONKODU') or item.get('fonkodu') or '').strip().upper()
-                    if not code or code in existing_codes:
-                        continue
-                    name = str(item.get('FONUNVAN') or item.get('fonunvan') or code).strip()
-                    nav = item.get('SONFIYAT') or item.get('sonfiyat') or 0
-                    try:
-                        nav_f = float(nav)
-                    except (ValueError, TypeError):
-                        nav_f = 0
-                    if nav_f <= 0:
-                        continue
-                    def get_ret(*keys):
-                        for k in keys:
-                            v = item.get(k)
-                            if v is not None:
-                                try:
-                                    fv = float(v)
-                                    if fv != 0 or v != 0:  # 0 valid ama None dondurme
-                                        return round(fv, 2)
-                                except (ValueError, TypeError):
-                                    pass
-                        return None
-                    returns_obj = {
-                        "1d":  get_ret('GETIRIGUNLUK', 'getirigunluk', 'GETIRI_GUNLUK'),
-                        "1w":  None,  # TEFAS bu endpoint'te 1w yok, 1m'den kucuk
-                        "1m":  get_ret('GETIRI1AY', 'getiri1ay', 'GETIRI_1AY'),
-                        "3m":  get_ret('GETIRI3AY', 'getiri3ay'),
-                        "6m":  get_ret('GETIRI6AY', 'getiri6ay'),
-                        "1y":  get_ret('GETIRI1YIL', 'GETIRI1YL', 'getiri1yil'),
-                        "ytd": get_ret('GETIRIYILBASI', 'getirivilbasi', 'GETIRI_YILBASI'),
-                    }
-                    kategori = str(item.get('KATEGORI') or item.get('kategori') or 'Emeklilik').strip() or 'Emeklilik'
-                    # Kurucu bilgisi Takasbank Excel'den gelen isimle eslesirse ekle
-                    bes_founder = ''
-                    for bf in bes_fund_list:
-                        if bf['code'] == code:
-                            bes_founder = bf.get('founder', '') or bf.get('issuer', '')
-                            break
-                    funds.append({
-                        "code": code,
-                        "name": name,
-                        "category": 'Emeklilik',  # frontend BES sayfasi bunu bekliyor
-                        "besKategori": kategori,  # TEFAS'tan gelen alt kategori (Değişken/Hisse vs)
-                        "founder": bes_founder,
-                        "tefasOpen": False,       # BES = TEFAS degil
-                        "befasOpen": True,        # BEFAS'ta islem gorur
-                        "nav": nav_f,
-                        "date": anchors['last'].strftime('%Y-%m-%d'),
-                        "marketCap": None,
-                        "investorCount": None,
-                        "shareCount": None,
-                        "returns": returns_obj,
-                        "history": [],
-                        "allocation": None,
-                    })
-                    bes_added += 1
-                    existing_codes.add(code)
-                except Exception as e:
-                    print(f"[bes] item parse fail: {e}", flush=True)
-            print(f"[bes] TEFAS'tan {bes_added} BES fonu fiyat+getiri ile eklendi", flush=True)
-        else:
-            print(f"[bes] TEFAS response bos veya format hatasi", flush=True)
+        bes_funds = build_bes_funds(anchors)
     except Exception as e:
-        print(f"[bes] BES TEFAS fetch fail: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        print(f"[bes] BES adimi beklenmedik hata (tefas.json etkilenmez): {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        traceback.print_exc()
+        bes_funds = []
 
-    # Adim 3: Takasbank BEFAS listesinde olan ama TEFAS'tan gelmemis fonlari da
-    # ekle (nav=null, returns bos). Kullanici en azindan fon adlarini gorur.
-    existing_codes_final = {f['code'] for f in funds}
-    takasbank_added = 0
-    for bes_fund in bes_fund_list:
-        if bes_fund['code'] in existing_codes_final:
-            continue
-        funds.append({
-            "code": bes_fund['code'],
-            "name": bes_fund['name'],
-            "category": 'Emeklilik',
-            "besIssuer": bes_fund.get('issuer', ''),
-            "founder": bes_fund.get('founder', '') or bes_fund.get('issuer', ''),
-            "tefasOpen": False,
-            "befasOpen": True,
-            "nav": None,
-            "date": anchors['last'].strftime('%Y-%m-%d'),
-            "marketCap": None,
-            "investorCount": None,
-            "shareCount": None,
-            "returns": {},
-            "history": [],
-            "allocation": None,
-        })
-        takasbank_added += 1
-        existing_codes_final.add(bes_fund['code'])
-    if takasbank_added > 0:
-        print(f"[bes] Takasbank listesinden ek {takasbank_added} BES fonu (fiyat/getiri henuz yok)", flush=True)
-
-    # ---------- BES metadata enrichment (EGM/BEFAS raporu benzeri) ----------
-    # TEFAS BindHistoryInfo endpoint'i her BES fonu icin:
-    #   - Kurucu, Yonetici, ISIN, SPK Kodu
-    #   - Risk Degeri, Halka Arz Tarihi, Faiz Iceigi
-    #   - Yonetim Ucreti (yillik), Toplam Gider Kesintisi
-    #   - Karsilastirma Olcutu (BIST KATILIM 100 %90 + ...)
-    # Rate limit: her fon icin 400ms bekle → 300 fon ~2 dk
-    print(f"\n[bes-meta] Metadata enrichment (BindHistoryInfo)...", flush=True)
-    bes_target_indices = [i for i, f in enumerate(funds) if f.get('category') == 'Emeklilik']
-    print(f"[bes-meta] {len(bes_target_indices)} BES fonu icin metadata cekilecek", flush=True)
-
+    # ---------- Ortak meta yardimcilari (BES meta + asagidaki [risk] blogu kullanir) ----------
     meta_url = 'https://www.tefas.gov.tr/api/DB/BindHistoryInfo'
     meta_headers = {
         'Accept': 'application/json, text/plain, */*',
@@ -1144,39 +1467,12 @@ def main() -> int:
         'Origin': 'https://www.tefas.gov.tr',
         'X-Requested-With': 'XMLHttpRequest',
     }
-    meta_ok = 0
-    meta_fail = 0
     meta_session = None
     try:
         from curl_cffi import requests as cr
         meta_session = cr.Session(impersonate="chrome131")
     except Exception:
         meta_session = None
-
-    def _fetch_bes_meta(code: str) -> dict | None:
-        payload_m = {
-            'fonkod': code,
-            'fontip': 'EMK',
-            'bastarih': (anchors['last'] - timedelta(days=7)).strftime('%d.%m.%Y'),
-            'bittarih': anchors['last'].strftime('%d.%m.%Y'),
-        }
-        try:
-            if meta_session:
-                r_m = meta_session.post(meta_url, data=payload_m, headers=meta_headers, timeout=25)
-            else:
-                r_m = requests.post(meta_url, data=payload_m, headers=meta_headers, timeout=25)
-            if r_m.status_code != 200:
-                return None
-            j = r_m.json()
-            # Response yapisi: { fonInfo: [...], fonInfo2: [...], ... }
-            info_list = j.get('fonInfo') or j.get('fonInfoList') or j.get('data') or []
-            if isinstance(info_list, list) and info_list:
-                return info_list[0] if isinstance(info_list[0], dict) else None
-            if isinstance(j, dict) and any(k for k in j.keys() if 'KURUCU' in k.upper() or 'YONETICI' in k.upper()):
-                return j
-            return None
-        except Exception:
-            return None
 
     def _first_str(d: dict, *keys) -> str | None:
         for k in keys:
@@ -1202,7 +1498,6 @@ def main() -> int:
     def _parse_tefas_date(s: str | None) -> str | None:
         if not s:
             return None
-        # Tipik formatlar: "16.07.2014", "2014-07-16T00:00:00", "16/07/2014"
         for fmt in ('%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y', '%Y-%m-%dT%H:%M:%S'):
             try:
                 return datetime.strptime(s[:19] if 'T' in s else s, fmt).strftime('%Y-%m-%d')
@@ -1210,34 +1505,85 @@ def main() -> int:
                 continue
         return None
 
-    for idx in bes_target_indices:
-        code = funds[idx]['code']
-        info = _fetch_bes_meta(code)
-        if info:
-            funds[idx]['founder']      = _first_str(info, 'KURUCU', 'FONKURUCU', 'kurucu')
-            funds[idx]['manager']      = _first_str(info, 'YONETICI', 'FONYONETICI', 'yonetici')
-            funds[idx]['isin']         = _first_str(info, 'ISIN', 'ISINKODU', 'isin')
-            funds[idx]['spkCode']      = _first_str(info, 'SPKKODU', 'SPK_KODU', 'spkkodu')
-            risk = _first_float(info, 'RISK_DEGERI', 'RISKDEGERI', 'RISK', 'riskdegeri')
-            if risk is not None and 1 <= risk <= 7:
-                funds[idx]['riskValue'] = int(risk)
-            funds[idx]['benchmark']    = _first_str(info, 'KARSILASTIRMA_OLCUTU', 'KARSILASTIRMAOLCUTU', 'benchmark')
-            funds[idx]['managementFeeYearly'] = _first_float(info, 'YONETIM_UCRETI_YILLIK', 'YONETIM_UCRETI', 'YIL_YONETIM_UCRETI')
-            funds[idx]['totalExpenseRatio']   = _first_float(info, 'TOPLAM_GIDER_KESINTISI', 'FONTOPLAMGIDER', 'TOPLAM_GIDER')
-            hat = _first_str(info, 'HALKA_ARZ_TARIHI', 'HALKAARZTARIHI', 'ILK_ISLEM_TARIHI')
-            po_date = _parse_tefas_date(hat)
-            if po_date:
-                funds[idx]['publicOfferDate'] = po_date
-            faiz = _first_str(info, 'FAIZ_ICERIGI', 'FAIZICERIK', 'FAIZ')
-            if faiz:
-                funds[idx]['isInterestFree'] = 'içermez' in faiz.lower() or 'icermez' in faiz.lower()
-            meta_ok += 1
-        else:
-            meta_fail += 1
-        time.sleep(0.4)
-        if (meta_ok + meta_fail) % 50 == 0:
-            print(f"  [bes-meta] {meta_ok + meta_fail}/{len(bes_target_indices)} — ok:{meta_ok} fail:{meta_fail}", flush=True)
-    print(f"[bes-meta] Tamamlandi: {meta_ok} basarili, {meta_fail} basarisiz", flush=True)
+    # ---------- BES metadata enrichment (BindHistoryInfo — eski endpoint, devre kesicili) ----------
+    # Kurucu/yonetici/ISIN/risk/ucret. Eski /api/DB yolu buyuk olasilikla yanit vermiyor;
+    # ilk hatada HTTP durumu + ilk 200 karakter loglanir, ardisik 5 hatada dongu kesilir.
+    # BES_META=0 ile tamamen kapatilabilir.
+    if bes_funds and os.environ.get('BES_META', '1') != '0':
+        print(f"\n[bes-meta] {len(bes_funds)} BES fonu icin BindHistoryInfo (fontip=EMK)...", flush=True)
+        meta_ok = meta_fail = 0
+        meta_consec_fail = 0
+        meta_logged = 0
+
+        def _fetch_bes_meta(code: str) -> dict | None:
+            nonlocal meta_logged
+            payload_m = {
+                'fonkod': code,
+                'fontip': 'EMK',
+                'bastarih': (anchors['last'] - timedelta(days=7)).strftime('%d.%m.%Y'),
+                'bittarih': anchors['last'].strftime('%d.%m.%Y'),
+            }
+            try:
+                if meta_session:
+                    r_m = meta_session.post(meta_url, data=payload_m, headers=meta_headers, timeout=15)
+                else:
+                    r_m = requests.post(meta_url, data=payload_m, headers=meta_headers, timeout=15)
+                if meta_logged < 2:
+                    meta_logged += 1
+                    print(f"[bes-meta] {code}: HTTP {r_m.status_code}, {len(r_m.content)} B, ilk200={_head(r_m.text)}", flush=True)
+                if r_m.status_code != 200:
+                    return None
+                j = r_m.json()
+                info_list = j.get('fonInfo') or j.get('fonInfoList') or j.get('data') or []
+                if isinstance(info_list, list) and info_list:
+                    return info_list[0] if isinstance(info_list[0], dict) else None
+                if isinstance(j, dict) and any(k for k in j.keys() if 'KURUCU' in k.upper() or 'YONETICI' in k.upper()):
+                    return j
+                return None
+            except Exception as e:
+                if meta_logged < 2:
+                    meta_logged += 1
+                    print(f"[bes-meta] {code}: HATA {type(e).__name__}: {e}", flush=True)
+                return None
+
+        for fund in bes_funds:
+            info = _fetch_bes_meta(fund['code'])
+            if info:
+                meta_consec_fail = 0
+                fund['founder'] = _first_str(info, 'KURUCU', 'FONKURUCU', 'kurucu') or fund.get('founder') or ''
+                fund['manager'] = _first_str(info, 'YONETICI', 'FONYONETICI', 'yonetici')
+                fund['isin'] = _first_str(info, 'ISIN', 'ISINKODU', 'isin')
+                fund['spkCode'] = _first_str(info, 'SPKKODU', 'SPK_KODU', 'spkkodu')
+                risk = _first_float(info, 'RISK_DEGERI', 'RISKDEGERI', 'RISK', 'riskdegeri')
+                if risk is not None and 1 <= risk <= 7:
+                    fund['riskValue'] = int(risk)
+                fund['benchmark'] = _first_str(info, 'KARSILASTIRMA_OLCUTU', 'KARSILASTIRMAOLCUTU', 'benchmark')
+                fund['managementFeeYearly'] = _first_float(info, 'YONETIM_UCRETI_YILLIK', 'YONETIM_UCRETI', 'YIL_YONETIM_UCRETI')
+                fund['totalExpenseRatio'] = _first_float(info, 'TOPLAM_GIDER_KESINTISI', 'FONTOPLAMGIDER', 'TOPLAM_GIDER')
+                po_date = _parse_tefas_date(_first_str(info, 'HALKA_ARZ_TARIHI', 'HALKAARZTARIHI', 'ILK_ISLEM_TARIHI'))
+                if po_date:
+                    fund['publicOfferDate'] = po_date
+                faiz = _first_str(info, 'FAIZ_ICERIGI', 'FAIZICERIK', 'FAIZ')
+                if faiz:
+                    fund['isInterestFree'] = 'içermez' in faiz.lower() or 'icermez' in faiz.lower()
+                meta_ok += 1
+            else:
+                meta_fail += 1
+                meta_consec_fail += 1
+                if meta_consec_fail >= 5:
+                    print(f"[bes-meta] ardisik {meta_consec_fail} hata — eski endpoint yanit vermiyor, dongu kesildi", flush=True)
+                    break
+            time.sleep(0.4)
+            if (meta_ok + meta_fail) % 50 == 0:
+                print(f"  [bes-meta] {meta_ok + meta_fail}/{len(bes_funds)} — ok:{meta_ok} fail:{meta_fail}", flush=True)
+        print(f"[bes-meta] Tamamlandi: {meta_ok} basarili, {meta_fail} basarisiz", flush=True)
+    else:
+        print(f"[bes-meta] atlandi (bes_funds={len(bes_funds)}, BES_META={os.environ.get('BES_META', '1')})", flush=True)
+
+    try:
+        write_bes_json(bes_funds)
+    except Exception as e:
+        print(f"[bes] {BES_OUTPUT_PATH} yazilamadi (tefas.json etkilenmez): {type(e).__name__}: {e}", file=sys.stderr, flush=True)
 
     # ------------------------------------------------------------------
     # 21 Eki 2026 — YAT fonlari icin RISK DEGERI (1-7). Ayni BindHistoryInfo

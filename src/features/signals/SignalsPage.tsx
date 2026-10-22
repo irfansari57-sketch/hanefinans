@@ -70,6 +70,7 @@ export function SignalsPage() {
       <SeoHead title="Sinyaller" description="BIST hisseleri için tanımlı teknik kurallardan geçen durumlar — kanıt satırlarıyla." path="/signals" />
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <h1 className="text-[22px] font-semibold leading-[30px] text-fg">Sinyaller</h1>
+        <Link to="/signals/defter" className="text-[12px] text-fg-2 hover:text-accent">Kanıt Defteri →</Link>
         {data && (
           <span className="text-[12px] text-fg-2">
             {data.evaluated} hisse tarandı · <span className="font-mono text-fg">{data.withSignals}</span> hissede sinyal

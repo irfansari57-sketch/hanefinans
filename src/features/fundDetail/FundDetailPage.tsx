@@ -920,7 +920,7 @@ function FundAllocationDonut({ fundCode, allocation, navReturn, category: _categ
           </div>
           <div className="mt-2 text-[11px] leading-relaxed">
             Bu fon için {platformName}'ın açıkladığı resmi varlık dağılımı henüz veri kaynağımıza yansımadı.
-            Otomatik güncelleme her saat başı çalışır — kısa süre sonra bu ekran dolacaktır.
+            Otomatik güncelleme günde iki kez (sabah ve akşam) çalışır — bir sonraki güncellemede bu ekran dolacaktır.
           </div>
           <div className="mt-3">
             <a

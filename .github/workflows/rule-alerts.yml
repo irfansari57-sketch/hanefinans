@@ -1,0 +1,51 @@
+name: Rule Alerts (kural tabanlı alarm)
+
+# rule_alerts tablosundaki gösterge koşullarını (RSI/SMA kesişimi/sinyal/filtre)
+# günlük kapanış barlarıyla değerlendirir, sağlananlara push gönderir.
+# bars-warm (16:40 UTC) bitiminden sonra çalışmalı → 17:20 UTC (20:20 TR), hafta içi.
+# Tablo: functions/migrations/021_rule_alerts.sql (yoksa endpoint 503 + hint → job fail).
+
+on:
+  schedule:
+    - cron: '20 17 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rule-alerts
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call rule-alerts endpoint
+        id: run
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+          if [ -z "$CRON_SECRET" ]; then echo "::error::CRON_SECRET secret yok"; exit 1; fi
+          resp=$(curl -sS -w "\n%{http_code}" -X POST \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -H "Accept: application/json" \
+            --max-time 280 \
+            "https://investliq.com/api/cron/rule-alerts")
+          body=$(echo "$resp" | head -n -1); code=$(echo "$resp" | tail -n 1)
+          echo "HTTP $code"; echo "$body" | head -c 1200; echo
+          echo "summary=HTTP $code $(echo "$body" | head -c 300)" >> "$GITHUB_OUTPUT"
+          if [ "$code" -ne 200 ]; then echo "::error::rule-alerts HTTP $code"; exit 1; fi
+          if ! echo "$body" | grep -q '"ok":true'; then echo "::error::rule-alerts ok:false"; exit 1; fi
+          echo "::notice::rule-alerts: $(echo "$body" | grep -o '"stats":{[^}]*}' | head -1)"
+
+      - name: Telegram alarm (hata)
+        if: failure() && env.TELEGRAM_BOT_TOKEN != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          msg="🚨 InvestliQ rule-alerts BAŞARISIZ%0A${{ steps.run.outputs.summary }}%0Ahttps://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=${msg}" > /dev/null || true

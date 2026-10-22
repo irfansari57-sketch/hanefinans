@@ -195,6 +195,13 @@ export function Layout() {
         const cloudData = await cloudFetch();
         const mig = await migrateDexieToCloud(cloudData.positions);
         if (mig.migrated > 0) console.info(`[portfolio-sync] ${mig.migrated} anonim pozisyon buluta taşındı`);
+        if (mig.failed > 0) {
+          // Taşınamayan anonim satır varsa yerel KOPYAYI SİLME (denetim bulgusu #2) — kullanıcı uyarılır
+          console.warn(`[portfolio-sync] ${mig.failed} pozisyon buluta taşınamadı; yerel kopya korunuyor`);
+          const { toast } = await import('@/components/ui/Toast');
+          toast.error('Portföy senkronu eksik', `${mig.failed} pozisyon buluta taşınamadı. Portföy sayfasından tekrar deneyin.`);
+          return;
+        }
         // 2. Cloud authoritative: Dexie'yi cloud ile yenile
         const fresh = await cloudFetch();
         if (!alive) return;

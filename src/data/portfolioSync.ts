@@ -166,7 +166,7 @@ export async function recalcPositionFromTxns(positionId: number): Promise<void> 
   // Hicbir islem kalmadi -> pozisyonu sil
   if (txns.length === 0) {
     if (shouldUseCloud()) {
-      try { await cloudDeletePosition(positionId); } catch { /* ignore, Dexie temizle */ }
+      await cloudDeletePosition(positionId); // 22 Eki 2026: bulut otoriter — hata yutulmaz
     }
     await db.portfolio.delete(positionId);
     return;
@@ -183,7 +183,7 @@ export async function recalcPositionFromTxns(positionId: number): Promise<void> 
   if (totalLot <= 0) {
     // Net pozisyon 0 veya negatif -> kapali pozisyon. Sil.
     if (shouldUseCloud()) {
-      try { await cloudDeletePosition(positionId); } catch { /* */ }
+      await cloudDeletePosition(positionId); // 22 Eki 2026: bulut otoriter — hata yutulmaz
     }
     await db.portfolio.delete(positionId);
     return;
@@ -209,8 +209,11 @@ export async function migrateDexieToCloud(cloudPositions: CloudPosition[] = []):
   const all = await db.portfolio.toArray();
   // 22 Eki 2026: yalnız ANONİM satırlar (origin !== 'cloud') taşınır; bulutta aynı kind+symbol
   // zaten varsa bu bir ayna kopyasıdır (eski sürümden kalan) — taşınmaz, çoğaltma olmaz.
-  const inCloud = new Set(cloudPositions.map((c) => `${c.kind}:${c.symbol.toUpperCase()}`));
-  const positions = all.filter((p) => p.origin !== 'cloud' && !inCloud.has(`${p.kind ?? 'stock'}:${p.symbol.toUpperCase()}`));
+  // Ayna tespiti (denetim bulgusu #2): yalnız kind+symbol değil, lot ve ortalama da birebir aynıysa
+  // eski sürümden kalan ayna kopyasıdır → taşınmaz. Lot/ortalama farklıysa gerçek anonim giriş →
+  // taşınır (sunucu aynı sembolde ağırlıklı ortalama alır).
+  const mirror = new Set(cloudPositions.map((c) => `${c.kind}:${c.symbol.toUpperCase()}:${c.lot}:${Math.round(c.avg_price * 1e4)}`));
+  const positions = all.filter((p) => p.origin !== 'cloud' && !mirror.has(`${p.kind ?? 'stock'}:${p.symbol.toUpperCase()}:${p.lot}:${Math.round(p.avgPrice * 1e4)}`));
   if (positions.length === 0) return { migrated: 0, failed: 0, skipped: all.length };
 
   let migrated = 0;

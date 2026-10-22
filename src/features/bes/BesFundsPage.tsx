@@ -206,6 +206,51 @@ export function BesFundsPage() {
      */
     (async () => {
       try {
+        // 22 Eki 2026: ÖNCE kendi BES feed'imiz (data/bes.json — scraper 'PEN' adımı, gece güncellenir).
+        // FVT kapandı; tefas.json'da BES satırı yok. bes.json yoksa/boşsa eski zincir devam eder.
+        try {
+          const besUrl = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/bes.json';
+          const rb = await fetch(besUrl, { cache: 'no-cache' });
+          if (rb.ok) {
+            const jb = (await rb.json()) as { updatedAt?: string; count?: number; funds?: Array<{
+              code: string; name: string; founder?: string; besKategori?: string; nav?: number | null; date?: string;
+              returns?: Record<string, number | null | undefined>;
+            }> };
+            const rows = (jb.funds ?? []).filter((f) => f.code && f.name);
+            if (alive && rows.length >= 50) {
+              const mapped: FundPerformance[] = rows.map((f) => ({
+                code: f.code,
+                name: f.name,
+                category: 'Emeklilik' as const,
+                tefas: false,
+                tefasOpen: false,
+                befasOpen: true,
+                founder: f.founder,
+                besKategori: f.besKategori,
+                nav: f.nav ?? undefined,
+                navDate: f.date,
+                day: f.returns?.['1d'] ?? NaN,
+                week: f.returns?.['1w'] ?? NaN,
+                month: f.returns?.['1m'] ?? NaN,
+                threeMonth: f.returns?.['3m'] ?? NaN,
+                sixMonth: f.returns?.['6m'] ?? NaN,
+                ytd: f.returns?.ytd ?? NaN,
+                year: f.returns?.['1y'] ?? NaN,
+                threeYear: f.returns?.['3y'] ?? undefined,
+              }));
+              console.info(`[bes] bes.json: ${mapped.length} BES fonu (${jb.updatedAt ?? '?'})`);
+              setFunds(mapped);
+              setFeedUpdatedAt(jb.updatedAt ?? null);
+              return;
+            }
+            console.info(`[bes] bes.json: ${rows.length} satır (<50) — eski zincire düşülüyor`);
+          } else {
+            console.info(`[bes] bes.json HTTP ${rb.status} — eski zincire düşülüyor`);
+          }
+        } catch (e) {
+          console.warn('[bes] bes.json alınamadı:', e);
+        }
+
         const feedRes = await loadFundsAsPerformanceDetailed();
         if (!alive) return;
         let besFundsFromFeed: FundPerformance[] = [];

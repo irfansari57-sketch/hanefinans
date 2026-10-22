@@ -59,6 +59,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     'portfolio_snapshots',
     'portfolio_health_scores',
     'price_alerts',
+    'rule_alerts',             // 22 Eki 2026: kural alarmları (denetim bulgusu)
     'push_subscriptions',
     'predictions',
     'user_watchlist',

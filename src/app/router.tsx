@@ -99,6 +99,7 @@ const HistoryPage           = lazyWithRetry(() => import('@/features/history/His
 const PortfolioHistoryPage  = lazyWithRetry(() => import('@/features/portfolio/PortfolioHistoryPage').then((m) => ({ default: m.PortfolioHistoryPage })));
 const MorningReportPage     = lazyWithRetry(() => import('@/features/morning/MorningReportPage').then((m) => ({ default: m.MorningReportPage })));
 const SignalsPage           = lazyWithRetry(() => import('@/features/signals/SignalsPage').then((m) => ({ default: m.SignalsPage })));
+const LedgerPage            = lazyWithRetry(() => import('@/features/signals/LedgerPage').then((m) => ({ default: m.LedgerPage })));
 const RecommendationsPage   = lazyWithRetry(() => import('@/features/recommendations/RecommendationsPage').then((m) => ({ default: m.RecommendationsPage })));
 const LoginPage             = lazyWithRetry(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage            = lazyWithRetry(() => import('@/features/auth/AuthPage').then((m) => ({ default: m.SignupPage })));
@@ -136,6 +137,7 @@ export const router = createBrowserRouter([
       { path: 'morning', element: withSuspense(<MorningReportPage />) },
       { path: 'recommendations', element: withSuspense(<RecommendationsPage />) },
       { path: 'signals', element: withSuspense(<SignalsPage />) },
+      { path: 'signals/defter', element: withSuspense(<LedgerPage />) },
       { path: 'tarama', element: withSuspense(<TaramaPage />) },
       { path: 'egitim', element: withSuspense(<FinancialLiteracyPage />) },
       { path: 'uyelik', element: withSuspense(<MembershipPage />) },

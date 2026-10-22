@@ -1,11 +1,14 @@
 /**
  * BIST Katılım endeksleri üyelikleri — statik yedek.
  *
- * Kaynak: BIST endeks bileşimleri (FVT /api/stocks/katilim-endeks üzerinden
- * alınmış anlık görüntü, 13 Eki 2026, 238 sembol). Canlı veri
- * /api/bist/katilim endpoint'inden gelir; bu dosya yalnızca o endpoint
- * ulaşılamazsa devreye girer. BIST bileşimi çeyreklik revize eder —
- * endpoint günlük yenilenir, bu yedek ise elle güncellenmeli.
+ * Kaynak: BIST endeks bileşimleri anlık görüntüsü (13 Eki 2026, 238 sembol;
+ * o tarihte FVT üzerinden alınmıştı — FVT API'si 22 Eki 2026'da kapandı, artık
+ * kullanılmıyor). Canlı veri /api/bist/katilim endpoint'inden gelir; endpoint
+ * repo'daki data/katilim.json'u (jsDelivr) sunar, o dosyayı da GitHub Actions'taki
+ * scripts/katilim_fetch.py haftalık üretir (katilimendeksi.org → borsaistanbul.com
+ * → KAP). Bu dosya yalnızca endpoint ulaşılamazsa devreye girer. BIST bileşimi
+ * çeyreklik revize eder — bu yedek elle güncellenmeli
+ * (python scripts/katilim_fetch.py --from-static ile data/katilim.json yeniden üretilir).
  */
 
 export type KatilimIndex = 'XKTUM' | 'XK030' | 'XK050' | 'XK100' | 'XKTMT' | 'XSRDK';

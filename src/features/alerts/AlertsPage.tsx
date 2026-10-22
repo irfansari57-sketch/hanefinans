@@ -26,6 +26,7 @@ import {
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 import { SeoHead } from '@/components/seo/SeoHead';
+import { RuleAlertsSection } from './RuleAlertsSection';
 
 function formatAge(ts: number | null): string {
   if (!ts) return '—';
@@ -194,6 +195,9 @@ export function AlertsPage() {
       <p className="mt-4 text-[10px] text-slate-500">
         ⚠️ Alarm sistemi cron tabanlıdır — yaklaşık 5 dk gecikme ile tetiklenir. Saniye-bazlı tetikleme garanti edilemez.
       </p>
+
+      {/* Kural tabanlı alarmlar (RSI / SMA kesişimi / sinyal / filtre) — günlük değerlendirme */}
+      <RuleAlertsSection />
     </>
   );
 }

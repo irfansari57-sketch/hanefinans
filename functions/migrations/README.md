@@ -30,8 +30,12 @@ npx wrangler d1 execute hanefinans-db --remote --file=functions/migrations/<dosy
 | 017 | agent_cache | ✅ 13 Eki 2026 | AI agent yanıt cache'i |
 | 018 | token_version | ✅ 13 Eki 2026 | JWT iptali |
 | 019 | bars_daily | ⏳ | Sinyal motoru bar deposu + bars_meta — **uygulanmalı**, sonra Actions → "Bars Daily Warmer" → Run workflow (range=3y) |
+| 021 | rule_alerts | ⏳ | Kural tabanlı alarmlar (RSI/SMA kesişimi/sinyal/filtre) — 019 sonrası uygulanmalı; cron: Actions → "Rule Alerts" (bars-warm'dan 40 dk sonra) |
+| 022 | signal_ledger | ⏳ | Kanıt Defteri (sinyal → 5/20/60g ileri getiri) — 019 sonrası uygulanmalı; cron: Actions → "Signal Ledger" (bars-warm'dan 30 dk sonra); ilk anlamlı istatistik ~60 işlem günü sonra |
 
 Doğrulama:
 ```powershell
 npx wrangler d1 execute hanefinans-db --remote --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
 ```
+
+- 023_bars_meta_heal.sql — bars_meta.healed_count/last_heal_at (ALTER TABLE; ikinci koşuda 'duplicate column' normal)

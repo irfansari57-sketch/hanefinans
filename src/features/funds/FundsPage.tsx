@@ -16,6 +16,7 @@ import type { FundPerformance, FundCategory } from '@/data/types';
 import { formatRelative } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { resolveFundRisk } from '@/lib/fundRisk';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year'> | 'code';
@@ -545,7 +546,7 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
         </div>
       </td>
       <td className="px-2 py-2 text-center">
-        <RiskBadge value={fund.riskValue} />
+        <RiskBadge value={fund.riskValue} category={fund.category} name={fund.name} />
       </td>
       <PerfCell value={fund.day} />
       <PerfCell value={fund.week} />
@@ -576,28 +577,24 @@ function PerfCell({ value }: { value: number | undefined }) {
  * kaldiracli serbest fon) arasinda bir risk degeri bildirir. Renk kodu:
  *   1-2 yesil (dusuk)  |  3-4 sari (orta)  |  5-7 kirmizi (yuksek)
  */
-function RiskBadge({ value }: { value: number | undefined }) {
-  if (value == null || !Number.isFinite(value)) {
-    return <span className="text-[11px] text-slate-500">—</span>;
-  }
-  const v = Math.max(1, Math.min(7, Math.round(value)));
-  const tone =
-    v <= 2 ? 'bg-success/15 text-success ring-success/30'
+function RiskBadge({ value, category, name }: { value: number | undefined; category?: string; name?: string }) {
+  // 22 Eki 2026: resmî TEFAS değeri yoksa kategori tahmini — soluk ve "~" ile, tooltip'te açıkça
+  const r = resolveFundRisk(value, category, name);
+  const v = r.value;
+  const tone = r.estimated
+    ? 'bg-bg-card text-fg-3 ring-border'
+    : v <= 2 ? 'bg-success/15 text-success ring-success/30'
     : v <= 4 ? 'bg-warning/15 text-warning ring-warning/30'
     : 'bg-danger/15 text-danger ring-danger/30';
-  const label =
-    v <= 2 ? 'Düşük risk'
-    : v <= 4 ? 'Orta risk'
-    : 'Yüksek risk';
   return (
     <span
-      title={`${label} (${v}/7)`}
+      title={r.estimated ? `${r.label} (${v}/7) — kategoriye göre TAHMİNİ; TEFAS resmî değeri yüklenince güncellenir` : `${r.label} (${v}/7) — TEFAS resmî risk değeri`}
       className={cn(
         'inline-flex items-center justify-center min-w-[36px] rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ring-1',
         tone,
       )}
     >
-      {v}/7
+      {r.estimated ? '~' : ''}{v}/7
     </span>
   );
 }

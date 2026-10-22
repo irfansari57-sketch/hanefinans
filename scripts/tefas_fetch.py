@@ -1123,6 +1123,20 @@ def write_bes_json(bes_funds: "list[dict]") -> bool:
     if not bes_funds:
         print(f"[bes] 0 fon — {BES_OUTPUT_PATH} DEGISTIRILMEDI", flush=True)
         return False
+    # 22 Eki 2026: kurucu bos ise fon adindan tuket — BES fon adlari "KURUCU ... A.S. ... FONU"
+    # kalibindadir ("BNP PARIBAS CARDIF EMEKLILIK A.S. OKS ..." -> "BNP PARIBAS CARDIF EMEKLILIK A.S.").
+    import re as _re
+    filled = 0
+    for f in bes_funds:
+        if f.get('founder'):
+            continue
+        name = str(f.get('name') or '')
+        m = _re.match(r"^(.{3,80}?\bA\.\s?[SŞ]\.)", name)
+        if m:
+            f['founder'] = m.group(1).strip()
+            filled += 1
+    if filled:
+        print(f"[bes] kurucu adi fon adindan turetildi: {filled} fon", flush=True)
     payload = {
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "count": len(bes_funds),

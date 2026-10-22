@@ -218,6 +218,12 @@ export function BesFundsPage() {
             }> };
             const rows = (jb.funds ?? []).filter((f) => f.code && f.name);
             if (alive && rows.length >= 50) {
+              // Kurucu boşsa fon adından türet ("BNP PARİBAS CARDİF EMEKLİLİK A.Ş. OKS …" → "… A.Ş.")
+              const founderOf = (f: { founder?: string; name: string }) => {
+                if (f.founder) return f.founder;
+                const m = f.name.match(/^(.{3,80}?\bA\.\s?[SŞ]\.)/);
+                return m ? m[1].trim() : undefined;
+              };
               const mapped: FundPerformance[] = rows.map((f) => ({
                 code: f.code,
                 name: f.name,
@@ -225,7 +231,7 @@ export function BesFundsPage() {
                 tefas: false,
                 tefasOpen: false,
                 befasOpen: true,
-                founder: f.founder,
+                founder: founderOf(f),
                 besKategori: f.besKategori,
                 nav: f.nav ?? undefined,
                 navDate: f.date,

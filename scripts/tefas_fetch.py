@@ -1609,7 +1609,7 @@ def main() -> int:
     # calisiyor). Ilk kosuda [risk] log satirlari dogrular.
     # ------------------------------------------------------------------
     RISK_CACHE_PATH = "data/fund-meta-cache.json"
-    RISK_BATCH = int(os.environ.get("RISK_BATCH", "200"))
+    RISK_BATCH = int(os.environ.get("RISK_BATCH", "400"))
     RISK_TTL_DAYS = 30
     try:
         with open(RISK_CACHE_PATH, encoding="utf-8") as cf:
@@ -1618,26 +1618,43 @@ def main() -> int:
         risk_cache = {}
     now_iso = datetime.now(timezone.utc).isoformat()
 
+    # 22 Eki 2026: BindHistoryInfo yeni portalda yanit vermiyor. Risk degeri, fonun detay
+    # sayfasinda SUNUCU TARAFINDA render ediliyor (dogrulandi, AES/TTE):
+    #   GET https://www.tefas.gov.tr/tr/fon-detayli-analiz/{KOD}
+    #   ... <p ...>Fon Risk Değeri</p><p ...>7 / 7</p> ...
+    import re as _re_risk
+    _RISK_RE = _re_risk.compile(r"Fon Risk De[ğg]eri</p>\s*<p[^>]*>\s*(\d)\s*/\s*7", _re_risk.I)
+    _RISK_RE2 = _re_risk.compile(r"Risk De[ğg]eri[\s\S]{0,300}?(\d)\s*/\s*7", _re_risk.I)
+    _risk_fail_streak = 0
+
     def _fetch_yat_meta(code: str) -> dict | None:
-        payload_y = {
-            'fonkod': code,
-            'fontip': 'YAT',
-            'bastarih': (anchors['last'] - timedelta(days=7)).strftime('%d.%m.%Y'),
-            'bittarih': anchors['last'].strftime('%d.%m.%Y'),
+        nonlocal _risk_fail_streak
+        url = f"https://www.tefas.gov.tr/tr/fon-detayli-analiz/{code}"
+        hdrs = {
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+            'Referer': 'https://www.tefas.gov.tr/tr/fon-detayli-analiz',
         }
         try:
             if meta_session:
-                r_y = meta_session.post(meta_url, data=payload_y, headers=meta_headers, timeout=25)
+                r_y = meta_session.get(url, headers=hdrs, timeout=20)
             else:
-                r_y = requests.post(meta_url, data=payload_y, headers=meta_headers, timeout=25)
+                r_y = requests.get(url, headers=hdrs, timeout=20)
             if r_y.status_code != 200:
+                _risk_fail_streak += 1
+                if _risk_fail_streak <= 3:
+                    print(f"[risk] {code}: HTTP {r_y.status_code} {str(r_y.text)[:120]!r}", flush=True)
                 return None
-            j = r_y.json()
-            info_list = j.get('fonInfo') or j.get('fonInfoList') or j.get('data') or []
-            if isinstance(info_list, list) and info_list:
-                return info_list[0] if isinstance(info_list[0], dict) else None
-            return j if isinstance(j, dict) else None
-        except Exception:
+            html = r_y.text or ''
+            m = _RISK_RE.search(html) or _RISK_RE2.search(html)
+            _risk_fail_streak = 0
+            if not m:
+                return {'_nomatch': True, '_len': len(html)}
+            return {'RISK_DEGERI': m.group(1)}
+        except Exception as e:
+            _risk_fail_streak += 1
+            if _risk_fail_streak <= 3:
+                print(f"[risk] {code}: {type(e).__name__}: {e}", flush=True)
             return None
 
     yat_indices = [i for i, f in enumerate(funds) if f.get('category') != 'Emeklilik']
@@ -1658,6 +1675,9 @@ def main() -> int:
     print(f"[risk] {len(yat_indices)} YAT fonu; cache'ten dolu: {sum(1 for i in yat_indices if funds[i].get('riskValue') is not None)}; bu kosuda cekilecek: {min(len(due), RISK_BATCH)}", flush=True)
     r_ok = r_fail = r_norisk = 0
     for i in due[:RISK_BATCH]:
+        if _risk_fail_streak >= 8:
+            print(f"[risk] 8 ardisik hata — bu kosuda risk adimi kesildi", flush=True)
+            break
         code = funds[i]['code']
         info = _fetch_yat_meta(code)
         if info:
@@ -1668,12 +1688,12 @@ def main() -> int:
                 r_ok += 1
             else:
                 r_norisk += 1
-                if r_norisk == 1:
-                    print(f"[risk] ORNEK fonInfo anahtarlari ({code}): {sorted(list(info.keys()))[:40]}", flush=True)
+                if r_norisk <= 2:
+                    print(f"[risk] {code}: sayfada risk degeri bulunamadi (html {info.get('_len')} byte)", flush=True)
                 risk_cache[code] = {'riskValue': risk_cache.get(code, {}).get('riskValue'), 'at': now_iso}
         else:
             r_fail += 1
-        time.sleep(0.3)
+        time.sleep(0.25)
     print(f"[risk] Tamamlandi: ok={r_ok} alan-yok={r_norisk} fail={r_fail}", flush=True)
     try:
         with open(RISK_CACHE_PATH, "w", encoding="utf-8") as cf:

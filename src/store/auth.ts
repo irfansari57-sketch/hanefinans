@@ -82,11 +82,11 @@ async function parseJsonSafe<T>(r: Response): Promise<T & { ok: boolean; error?:
   }
 }
 
-async function apiGet<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+async function apiGet<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; error: string; status?: number }> {
   try {
     const r = await fetch(path, { credentials: 'same-origin' });
     const j = await parseJsonSafe<T>(r);
-    if (!j.ok) return { ok: false, error: j.error ?? `HTTP ${r.status}` };
+    if (!j.ok) return { ok: false, error: j.error ?? `HTTP ${r.status}`, status: r.status };
     return { ok: true, data: j };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
@@ -126,6 +126,15 @@ export const useAuth = create<AuthState>()(
 
       logout: async () => {
         await apiPost('/api/auth/logout', {}).catch(() => null);
+        // 22 Eki 2026: bulut aynası yerelde kalmasın — çıkış sonrası yapılan yerel
+        // düzenlemeler "silinen pozisyon geri geldi" karışıklığı yaratıyordu.
+        try {
+          const { db } = await import('@/data/db');
+          await db.transaction('rw', db.portfolio, db.portfolioTxns, async () => {
+            await db.portfolio.filter((p) => p.origin === 'cloud').delete();
+            await db.portfolioTxns.clear();
+          });
+        } catch { /* */ }
         set({ user: null, lastError: null });
       },
 
@@ -162,8 +171,13 @@ export const useAuth = create<AuthState>()(
         const r = await apiGet<{ user: SessionUser | null }>('/api/auth/me');
         if (r.ok) {
           set({ user: r.data.user });
+        } else if (r.status === 401 || r.status === 403) {
+          // 22 Eki 2026: sunucu oturumu TANIMIYOR (çerez silinmiş/süresi dolmuş) → yerel
+          // kopyayı temizle. Eskiden dokunulmuyordu; kullanıcı "giriş yapmış" görünürken tüm
+          // bulut çağrıları 401 alıyor, portföy yazımları sessizce kayboluyordu.
+          set({ user: null });
         } else {
-          // Network hatası — mevcut cache'lenmiş user'a dokunma
+          // Gerçek ağ hatası (offline, 5xx) — mevcut cache'lenmiş user'a dokunma
         }
       },
     }),

@@ -51,13 +51,45 @@ interface ApiResponse<T> {
   [k: string]: T | unknown;
 }
 
+/**
+ * 22 Eki 2026 — VERİ KAYBI DÜZELTMESİ. Eski davranış: bulut çağrısı başarısız olunca
+ * sessizce Dexie'ye yazılıyor, sonraki yüklemede "bulut otoriter" senkronu Dexie'yi
+ * silip bulutu geri koyuyordu → silinen pozisyonlar geri geliyor, yeni girdiler
+ * kayboluyordu (özellikle çerez düşmüş ama auth store'da kullanıcı görünürken: 401).
+ * Yeni davranış: giriş yapılmışken bulut TEK gerçek; hata kullanıcıya gösterilir,
+ * 401'de oturum durumu yenilenir. Yerel yedek yazımı yapılmaz.
+ */
+export class CloudError extends Error {
+  status: number;
+  constructor(message: string, status: number) { super(message); this.status = status; this.name = 'CloudError'; }
+}
+
 async function api<T = unknown>(url: string, init?: RequestInit): Promise<ApiResponse<T>> {
   const r = await fetch(url, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     ...init,
   });
-  return r.json() as Promise<ApiResponse<T>>;
+  let j: ApiResponse<T>;
+  try {
+    j = (await r.json()) as ApiResponse<T>;
+  } catch {
+    throw new CloudError(`Sunucu yanıtı okunamadı (HTTP ${r.status})`, r.status);
+  }
+  if (r.status === 401) {
+    // Çerez düşmüş/oturum bitmiş: store'u gerçekle hizala (user → null) ki UI Dexie moduna geçsin
+    useAuth.getState().refresh().catch(() => { /* */ });
+    throw new CloudError('Oturum süresi dolmuş — lütfen yeniden giriş yapın', 401);
+  }
+  if (!r.ok && !j.ok) throw new CloudError(j.error ?? `HTTP ${r.status}`, r.status);
+  return j;
+}
+
+/** Kullanıcıya gösterilecek kısa bulut hata metni */
+export function cloudErrorMessage(e: unknown): string {
+  if (e instanceof CloudError) return e.message;
+  if (e instanceof Error) return e.message;
+  return 'Bilinmeyen hata';
 }
 
 /** Cloud'dan tum pozisyonlari + islem gecmisini cek */
@@ -161,7 +193,8 @@ export async function recalcPositionFromTxns(positionId: number): Promise<void> 
     try {
       await cloudUpdatePosition(positionId, { lot: totalLot, avgPrice });
     } catch (e) {
-      console.warn('[recalc] cloud update fail, Dexie fallback:', e);
+      console.warn('[recalc] cloud update fail:', e);
+      throw e; // 22 Eki 2026: bulut otoriter — yerel yedek yazımı yok, çağıran kullanıcıya gösterir
     }
   }
   await db.portfolio.update(positionId, { lot: totalLot, avgPrice });
@@ -172,9 +205,13 @@ export async function recalcPositionFromTxns(positionId: number): Promise<void> 
  * Sadece anonim kullaniciyken kaydedilmis veriyi koruma garantisi icin.
  * Tasinma sonrasi Dexie kayitlari KORUNUR (kullanicinin guvenligi icin).
  */
-export async function migrateDexieToCloud(): Promise<{ migrated: number; failed: number }> {
-  const positions = await db.portfolio.toArray();
-  if (positions.length === 0) return { migrated: 0, failed: 0 };
+export async function migrateDexieToCloud(cloudPositions: CloudPosition[] = []): Promise<{ migrated: number; failed: number; skipped: number }> {
+  const all = await db.portfolio.toArray();
+  // 22 Eki 2026: yalnız ANONİM satırlar (origin !== 'cloud') taşınır; bulutta aynı kind+symbol
+  // zaten varsa bu bir ayna kopyasıdır (eski sürümden kalan) — taşınmaz, çoğaltma olmaz.
+  const inCloud = new Set(cloudPositions.map((c) => `${c.kind}:${c.symbol.toUpperCase()}`));
+  const positions = all.filter((p) => p.origin !== 'cloud' && !inCloud.has(`${p.kind ?? 'stock'}:${p.symbol.toUpperCase()}`));
+  if (positions.length === 0) return { migrated: 0, failed: 0, skipped: all.length };
 
   let migrated = 0;
   let failed = 0;
@@ -193,7 +230,7 @@ export async function migrateDexieToCloud(): Promise<{ migrated: number; failed:
       failed++;
     }
   }
-  return { migrated, failed };
+  return { migrated, failed, skipped: all.length - positions.length };
 }
 
 /** Cloud kaydini Dexie-uyumlu PortfolioPosition'a cevir */
@@ -206,6 +243,7 @@ export function cloudToDexiePosition(c: CloudPosition): PortfolioPosition & { id
     avgPrice: c.avg_price,
     note: c.note ?? undefined,
     addedAt: c.added_at,
+    origin: 'cloud',
   };
 }
 
@@ -292,7 +330,8 @@ export async function mergeDuplicateGroup(
         if (d.id) await cloudDeletePosition(d.id);
       }
     } catch (e) {
-      console.warn('[dedupe] cloud merge failed, Dexie fallback:', e);
+      console.warn('[dedupe] cloud merge failed:', e);
+      throw e; // 22 Eki 2026: bulut otoriter
     }
   }
 

@@ -1,9 +1,9 @@
 /**
  * FinancialStatementsCard — Hisse detay sayfasında şirket finansalları.
  *
- * Veri: /api/stocks/:symbol/financials (FVT proxy)
- *   - Son 11 çeyrek: Net Satış, Brüt Kar, FAVÖK, Net Kar, Toplam Varlık, Özsermaye, Net Borç
- *   - Çarpanlar: FK, PDDD, FD/FAVÖK, Piyasa Değeri, Ödenmiş Sermaye, Fiili Dolaşım
+ * Veri: /api/stocks/:symbol/financials (İş Yatırım mali tablolar proxy — FVT kapandı, 21 Eki 2026)
+ *   - Son 8 çeyrek: Net Satış, Brüt Kar, FAVÖK, Net Kar, Toplam Varlık, Özsermaye, Net Borç
+ *   - Çarpanlar (FK, PDDD, FD/FAVÖK...) İş Yatırım kaynağında yok → carpanlar null gelir, blok gizlenir
  *
  * UI felsefesi: FVT'nin ağaç-ağır tablosundan farklı — çeyreklik mini-bar
  * grafikleri + metrik kartları ile görsel özet.
@@ -52,6 +52,12 @@ interface FinancialsResp {
   ok: boolean;
   symbol?: string;
   source?: string;
+  attribution?: string;
+  asOf?: string;
+  /** TMS 29 — 2024+ dönemler enflasyon muhasebesine göre düzeltilmiş */
+  inflationAdjusted?: boolean;
+  /** Gelir tablosu / nakit akış kalemleri yılbaşından kümülatif */
+  cumulativeIncome?: boolean;
   updatedAt?: string;
   lastReport?: string | null;
   periods?: Period[];
@@ -176,6 +182,16 @@ export function FinancialStatementsCard({ symbol }: Props) {
           {data.lastReport ? `Son rapor: ${data.lastReport}` : ''}
         </div>
       </div>
+
+      {(data.attribution || data.inflationAdjusted || data.cumulativeIncome) && (
+        <div className="border-b border-border px-5 py-1.5 text-[10px] text-slate-500">
+          {[
+            data.attribution ? `Kaynak: ${data.attribution}` : null,
+            data.inflationAdjusted ? 'TMS 29 enflasyon düzeltmeli (2024+)' : null,
+            data.cumulativeIncome ? 'Gelir/nakit akış kalemleri yılbaşından kümülatif' : null,
+          ].filter(Boolean).join(' · ')}
+        </div>
+      )}
 
       {/* View tabs */}
       <div className="flex flex-wrap gap-1 border-b border-border px-5 py-2">

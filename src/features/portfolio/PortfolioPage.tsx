@@ -25,6 +25,7 @@ import {
   cloudAddPosition,
   cloudUpdatePosition,
   cloudDeletePosition,
+  cloudErrorMessage,
   cloudFetch,
   cloudToDexiePosition,
   cloudToDexieTxn,
@@ -268,7 +269,7 @@ export function PortfolioPage() {
 
       <PageHeader
         title="Portföyüm"
-        subtitle="Pozisyonlarını ekle, canlı kâr/zarar takibi yap. Veriler tarayıcına kaydedilir."
+        subtitle={user ? 'Pozisyonlarını ekle, canlı kâr/zarar takibi yap. Veriler bulutta saklanır (tüm cihazlarında aynı).' : 'Pozisyonlarını ekle, canlı kâr/zarar takibi yap. Giriş yapmadın: veriler yalnız bu tarayıcıda saklanır; giriş yapınca buluta taşınır.'}
         actions={
           tab === 'stocks' ? (
             <div className="flex items-center gap-2">
@@ -743,8 +744,10 @@ export function PortfolioPage() {
                 await cloudDeletePosition(toDelete.id);
                 await syncFromCloud();
               } catch (e) {
-                console.warn('[portfolio] cloud delete failed, falling back to Dexie:', e);
-                await db.portfolio.delete(toDelete.id);
+                console.warn('[portfolio] cloud delete failed:', e);
+                toast.error('Buluttan silinemedi', cloudErrorMessage(e));
+                setToDelete(null);
+                return; // 22 Eki 2026: yerel yedek silme YOK — bulut otoriter
               }
             } else {
               await db.portfolio.delete(toDelete.id);
@@ -931,7 +934,9 @@ function EditPositionForm({ position, currentPrice, name, onClose }: {
           onClose();
           return;
         } catch (e) {
-          console.warn('[portfolio] cloud update failed, falling back to Dexie:', e);
+          console.warn('[portfolio] cloud update failed:', e);
+          toast.error('Bulutta güncellenemedi', cloudErrorMessage(e));
+          return; // 22 Eki 2026: yerel yedek yazımı YOK
         }
       }
       await db.portfolio.update(position.id, {
@@ -1402,8 +1407,9 @@ function AddPositionForm({ onClose }: { onClose: () => void }) {
           onClose();
           return;
         } catch (e) {
-          console.warn('[portfolio] cloud add failed, falling back to Dexie:', e);
-          // Cloud fail — Dexie path'ine düş
+          console.warn('[portfolio] cloud add failed:', e);
+          toast.error('Buluta kaydedilemedi', cloudErrorMessage(e));
+          return; // 22 Eki 2026: yerel yedek yazımı YOK — aksi halde sonraki senkron kaydı siler
         }
       }
 

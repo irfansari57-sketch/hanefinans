@@ -187,14 +187,14 @@ export function Layout() {
           await import('@/data/portfolioSync');
         const { db } = await import('@/data/db');
 
-        // 1. Dexie'de cloud'a tasinmamis veri var mi?
-        const localCount = await db.portfolio.count();
+        // 1. 22 Eki 2026: Dexie'deki ANONİM satırları (origin !== 'cloud') buluta taşı.
+        // Eskiden "bulut boşsa Dexie'yi taşı" her girişte çalışıyordu; kullanıcı çıkış
+        // yapmışken yerelde silip/ekleyince (a) silinenler buluttan geri geliyor,
+        // (b) eklenenler senkronda siliniyordu. Artık: çıkışta ayna temizlenir, girişte
+        // yalnız gerçekten anonim girişler (bulutta olmayan kind+symbol) buluta eklenir.
         const cloudData = await cloudFetch();
-        if (localCount > 0 && cloudData.positions.length === 0) {
-          // Anonim olarak girilen veri var, cloud bos -> tasi
-          await migrateDexieToCloud();
-        }
-
+        const mig = await migrateDexieToCloud(cloudData.positions);
+        if (mig.migrated > 0) console.info(`[portfolio-sync] ${mig.migrated} anonim pozisyon buluta taşındı`);
         // 2. Cloud authoritative: Dexie'yi cloud ile yenile
         const fresh = await cloudFetch();
         if (!alive) return;

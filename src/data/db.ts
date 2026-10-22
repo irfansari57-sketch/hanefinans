@@ -105,6 +105,8 @@ export interface PortfolioPosition {
   avgPrice: number;
   addedAt: number;
   note?: string;
+  /** 22 Eki 2026: 'cloud' = buluttan aynalanan kopya; yoksa anonim (yerel) giriş. Dexie indeksi gerekmez. */
+  origin?: 'cloud';
 }
 
 /**

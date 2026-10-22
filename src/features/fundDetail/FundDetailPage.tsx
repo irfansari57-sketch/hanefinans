@@ -34,9 +34,10 @@ export function FundDetailPage() {
   const [liveData, setLiveData] = useState<TefasFundDetail | null>(null);
   const [githubData, setGithubData] = useState<TefasFundData | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
-  // Portföy Ağı tab için detaylı FVT distribution verisi (hisse bazli breakdown).
-  // TEFAS allocation yetersiz kalirsa (sadece varlık sınıfı yüzdesi veriyor),
-  // FVT /api/funds/{code}/distribution tam portfoy icerigi veriyor.
+  // Portföy Ağı tab için /api/funds/{code}/distribution verisi.
+  // 21 Eki 2026: kaynak kendi TEFAS feed'imiz (varlık sınıfı dağılımı: `allocation`).
+  // Hisse-bazli `items` (KAP aylık rapor) için kaynak geçici olarak yok -> boş dizi,
+  // `itemsAvailable: false`. Şema eski FVT sürümüyle geriye uyumlu.
   interface DistributionItem {
     kod: string; ad: string; sektor: string;
     agirlik: number; eskiAgirlik: number; fark: number;
@@ -49,6 +50,12 @@ export function FundDetailPage() {
     itemCount: number;
     items: DistributionItem[];
     sektorler: Array<{ ad: string; pct: number }>;
+    /** Yeni alanlar (TEFAS feed sürümü); eski yanıtlarda bulunmayabilir. */
+    itemsAvailable?: boolean;
+    note?: string | null;
+    allocationAvailable?: boolean;
+    allocation?: Array<{ label: string; pct: number }> | null;
+    navDate?: string | null;
   }
   const [distribution, setDistribution] = useState<DistributionPayload | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
@@ -157,8 +164,9 @@ export function FundDetailPage() {
     })();
   }, [fundCode]);
 
-  // Portföy Ağı tab için FVT distribution verisi (hisse-bazli breakdown).
-  // CF Function /api/funds/:code/distribution 1h edge cache, SPK aylik aciklama.
+  // Portföy Ağı tab için /api/funds/:code/distribution (1h edge cache).
+  // items dolu -> bubble chart + hisse tablosu; items boş -> varlık sınıfı donut'u
+  // (yanıttaki `allocation`, yoksa githubData/liveData allocation) + dürüst not.
   useEffect(() => {
     if (!fundCode) return;
     let cancelled = false;
@@ -166,15 +174,24 @@ export function FundDetailPage() {
     setDistributionLoading(true);
     (async () => {
       try {
-        const r = await fetch(`/api/funds/${encodeURIComponent(fundCode)}/distribution`);
-        if (!r.ok) return;
+        const r = await fetch(`/api/funds/${encodeURIComponent(fundCode)}/distribution`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (!r.ok) return; // 404/503 -> donut fallback (githubData/liveData allocation)
+        const ct = r.headers.get('content-type') ?? '';
+        if (!ct.includes('json')) return; // CF hata sayfası (HTML) -> JSON.parse'a girme
         const j = (await r.json()) as DistributionPayload;
         if (cancelled) return;
-        if (j.ok && j.items && j.items.length > 0) {
-          setDistribution(j);
+        if (j && j.ok) {
+          setDistribution({
+            ...j,
+            items: Array.isArray(j.items) ? j.items : [],
+            sektorler: Array.isArray(j.sektorler) ? j.sektorler : [],
+            itemCount: typeof j.itemCount === 'number' ? j.itemCount : (j.items?.length ?? 0),
+          });
         }
       } catch {
-        /* FVT yok veya fon fon_tipi degil - silent, Portföy Ağı donut'u korur */
+        /* kaynak yok / ağ hatası - silent, Portföy Ağı donut'u korur */
       } finally {
         if (!cancelled) setDistributionLoading(false);
       }
@@ -674,33 +691,42 @@ export function FundDetailPage() {
       {/* PORTFOY AGI TAB — Varlık Dağılımı Donut (FVT tarzı).
           Allocation datası varsa gerçek TEFAS oranları, yoksa fon kategorisine
           göre tahmini dağılım — kullanıcı her fonda görsel geribildirim alır. */}
-      {activeTab === 'agi' && (
+      {activeTab === 'agi' && (() => {
+        const hasItems = !!distribution && distribution.items.length > 0;
+        // Varlık sınıfı dağılımı: önce distribution yanıtı (TEFAS feed), sonra
+        // githubData / liveData allocation. Hepsi aynı { label, pct } şeması.
+        const distAlloc = distribution?.allocation;
+        const assetAlloc: Array<{ label: string; pct: number }> =
+          (distAlloc && distAlloc.length > 0 ? distAlloc : null)
+          ?? githubData?.allocation
+          ?? liveData?.allocation
+          ?? [];
+        // Hisse-bazli kaynak yok notu: yanıt geldi ama items boş
+        const itemsUnavailable = !!distribution && !hasItems;
+        return (
         <div className="mb-4 card p-4">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-semibold text-slate-200">
               Portföy Ağı
               <span className="ml-2 text-[10px] font-normal text-slate-500">
-                {distribution ? `${distribution.itemCount} varlık · hisse-bazli ağırlık ve değişim` : 'varlık dağılımı'}
+                {hasItems ? `${distribution!.itemCount} varlık · hisse-bazli ağırlık ve değişim` : 'varlık dağılımı'}
               </span>
             </h2>
-            {!distribution && (() => {
-              const alloc = githubData?.allocation ?? liveData?.allocation ?? [];
-              return alloc.length > 0 ? (
-                <span className="text-[10px] text-slate-500">
-                  {alloc.length} varlık sınıfı · {isBesFund ? 'BEFAS' : 'TEFAS'}
-                </span>
-              ) : null;
-            })()}
+            {!hasItems && assetAlloc.length > 0 && (
+              <span className="text-[10px] text-slate-500">
+                {assetAlloc.length} varlık sınıfı · {isBesFund ? 'BEFAS' : 'TEFAS'}
+              </span>
+            )}
           </div>
 
-          {/* Yeni görsel: distribution verisi varsa Radial Bubble Network goster;
-              yoksa (BES/eski fonlar) donut chart fallback. */}
-          {distribution && distribution.items.length > 0 ? (
+          {/* Yeni görsel: hisse-bazli items varsa Radial Bubble Network goster;
+              yoksa varlık sınıfı donut chart (TEFAS/BEFAS allocation). */}
+          {hasItems ? (
             <>
               <FundDistributionBubbleChart
                 fundCode={fundCode}
                 oneYearReturn={githubData?.returns?.['1y'] ?? null}
-                items={distribution.items}
+                items={distribution!.items}
               />
               <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
                 Balon alanı hissenin fondaki ağırlığıyla orantılı; içindeki yüzde = ağırlık, küçük sayı = aylık fark (puan).
@@ -708,11 +734,13 @@ export function FundDetailPage() {
                 Merkezdeki değer = fonun 1 yıllık getirisi.
               </p>
             </>
+          ) : distributionLoading && assetAlloc.length === 0 ? (
+            <div className="h-48 skeleton rounded" />
           ) : (
             <>
               <FundAllocationDonut
                 fundCode={fundCode}
-                allocation={githubData?.allocation ?? liveData?.allocation ?? []}
+                allocation={assetAlloc}
                 navReturn={githubData?.returns?.['1y'] ?? null}
                 category={githubData?.category ?? ''}
                 isBes={isBesFund}
@@ -721,6 +749,12 @@ export function FundDetailPage() {
                 Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
                 Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
               </p>
+              {itemsUnavailable && (
+                <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
+                  Hisse bazlı dağılım geçici olarak sunulamıyor; varlık sınıfı dağılımı TEFAS.
+                  {distribution?.navDate && ` Veri tarihi: ${new Date(distribution.navDate).toLocaleDateString('tr-TR')}.`}
+                </p>
+              )}
             </>
           )}
 
@@ -730,7 +764,8 @@ export function FundDetailPage() {
             data={distribution}
           />
         </div>
-      )}
+        );
+      })()}
 
       {/* BILGI TAB — Dis kaynaklar + Notlarim */}
       {activeTab === 'bilgi' && (
@@ -1599,7 +1634,7 @@ function FundDistributionDetails({ loading, data }: {
 
       <p className="mt-3 text-[9px] text-slate-500 leading-relaxed">
         Önceki Ay = {oncekiAyLabel} dönemi portföy ağırlıkları. Fark pozitif ise fon o hissedeki pozisyonunu artırmış, negatif ise azaltmıştır.
-        Veri kaynağı: fvt.com.tr (SPK aylik portföy açıklamaları).
+        Veri kaynağı: KAP/SPK aylık portföy açıklamaları.
       </p>
     </div>
   );

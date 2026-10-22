@@ -19,6 +19,7 @@ import {
   cloudAddPosition,
   cloudUpdatePosition,
   cloudDeletePosition,
+  cloudErrorMessage,
   cloudFetch,
   cloudToDexiePosition,
   cloudToDexieTxn,
@@ -476,8 +477,10 @@ export function FundsPanel({ onTotalsChange }: Props = {}) {
                 await cloudDeletePosition(toDelete.id);
                 await syncFundsFromCloud();
               } catch (e) {
-                console.warn('[funds] cloud delete failed, falling back to Dexie:', e);
-                await db.portfolio.delete(toDelete.id);
+                console.warn('[funds] cloud delete failed:', e);
+                toast.error('Buluttan silinemedi', cloudErrorMessage(e));
+                setToDelete(null);
+                return; // 22 Eki 2026: yerel yedek silme YOK — bulut otoriter
               }
             } else {
               await db.portfolio.delete(toDelete.id);
@@ -547,7 +550,9 @@ function EditFundForm({ position, currentNav, fundName, onClose }: {
           onClose();
           return;
         } catch (e) {
-          console.warn('[funds] cloud update failed, falling back to Dexie:', e);
+          console.warn('[funds] cloud update failed:', e);
+          toast.error('Bulutta güncellenemedi', cloudErrorMessage(e));
+          return; // 22 Eki 2026: yerel yedek yazımı YOK
         }
       }
       await db.portfolio.update(position.id, {
@@ -683,7 +688,9 @@ function AddFundForm({ funds, onClose }: { funds: FundPerformance[]; onClose: ()
           onClose();
           return;
         } catch (e) {
-          console.warn('[funds] cloud add failed, falling back to Dexie:', e);
+          console.warn('[funds] cloud add failed:', e);
+          toast.error('Buluta kaydedilemedi', cloudErrorMessage(e));
+          return; // 22 Eki 2026: yerel yedek yazımı YOK — aksi halde sonraki senkron kaydı siler
         }
       }
 

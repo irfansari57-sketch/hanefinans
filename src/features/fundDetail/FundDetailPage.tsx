@@ -704,41 +704,51 @@ export function FundDetailPage() {
             )}
           </div>
 
-          {/* Yeni görsel: hisse-bazli items varsa Radial Bubble Network goster;
-              yoksa varlık sınıfı donut chart (TEFAS/BEFAS allocation). */}
-          {hasItems ? (
-            <>
-              <FundDistributionBubbleChart
-                fundCode={fundCode}
-                oneYearReturn={githubData?.returns?.['1y'] ?? null}
-                items={distribution!.items}
-              />
-              <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
-                Balon alanı hissenin fondaki ağırlığıyla orantılı; içindeki yüzde = ağırlık, küçük sayı = aylık fark (puan).
-                Yeşil = önceki aya göre fon pozisyonunu arttırdı, kırmızı = azalttı.
-                Merkezdeki değer = fonun 1 yıllık getirisi.
-              </p>
-            </>
-          ) : distributionLoading && assetAlloc.length === 0 ? (
+          {/* 23 Eki 2026 (kullanıcı kararı: E): Donut (varlık sınıfı) + Balon halkası BİRLİKTE.
+              Balon halkası hisse-bazlı items varsa onları, yoksa varlık sınıflarını balon olarak
+              çizer (kısa kod + %; fark bilgisi yok → gri). Uydurma hisse listesi gösterilmez. */}
+          {distributionLoading && assetAlloc.length === 0 && !hasItems ? (
             <div className="h-48 skeleton rounded" />
           ) : (
             <>
-              <FundAllocationDonut
-                fundCode={fundCode}
-                allocation={assetAlloc}
-                navReturn={githubData?.returns?.['1y'] ?? null}
-                category={githubData?.category ?? ''}
-                isBes={isBesFund}
-              />
-              <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-                Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
-                Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
-              </p>
-              {itemsUnavailable && (
-                <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
-                  Hisse bazlı dağılım geçici olarak sunulamıyor; varlık sınıfı dağılımı TEFAS.
-                  {distribution?.navDate && ` Veri tarihi: ${new Date(distribution.navDate).toLocaleDateString('tr-TR')}.`}
-                </p>
+              {assetAlloc.length > 0 && (
+                <>
+                  <FundAllocationDonut
+                    fundCode={fundCode}
+                    allocation={assetAlloc}
+                    navReturn={githubData?.returns?.['1y'] ?? null}
+                    category={githubData?.category ?? ''}
+                    isBes={isBesFund}
+                  />
+                  <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
+                    Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
+                    Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
+                  </p>
+                </>
+              )}
+              {(hasItems || assetAlloc.length > 0) && (
+                <div className="mt-6 border-t border-border pt-5">
+                  <h3 className="mb-2 text-sm font-semibold text-slate-200">
+                    Ağırlık Balonları
+                    <span className="ml-2 text-[10px] font-normal text-slate-500">
+                      {hasItems ? 'hisse bazlı · balon alanı = ağırlık' : 'varlık sınıfı bazlı · balon alanı = ağırlık'}
+                    </span>
+                  </h3>
+                  <FundDistributionBubbleChart
+                    fundCode={fundCode}
+                    oneYearReturn={githubData?.returns?.['1y'] ?? null}
+                    items={hasItems ? distribution!.items : allocToItems(assetAlloc)}
+                  />
+                  <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
+                    {hasItems
+                      ? 'Balon alanı hissenin fondaki ağırlığıyla orantılı; içindeki yüzde = ağırlık, küçük sayı = aylık fark (puan). Yeşil = önceki aya göre fon pozisyonunu arttırdı, kırmızı = azalttı.'
+                      : 'Balon alanı varlık sınıfının fondaki ağırlığıyla orantılı. Hisse bazlı dağılım için kaynak geçici olarak yok; bağlandığında balonlar hisse bazına geçer.'}
+                    {distribution?.navDate && ` Veri tarihi: ${new Date(distribution.navDate).toLocaleDateString('tr-TR')}.`}
+                  </p>
+                </div>
+              )}
+              {!hasItems && assetAlloc.length === 0 && (
+                <p className="py-6 text-center text-[12px] text-slate-500">Bu fon için dağılım verisi henüz yok.</p>
               )}
             </>
           )}
@@ -1365,6 +1375,25 @@ function FundLineSvg({
       formatValue={(v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
     />
   );
+}
+
+/** Varlık sınıfı dağılımını balon halkası girdisine çevirir (kısa kod + tam ad). Fark bilgisi yok → 0 (gri). */
+const ALLOC_SHORT: Array<[RegExp, string]> = [
+  [/hisse/i, 'HİSSE'], [/ters\s*repo/i, 'T.REPO'], [/repo/i, 'REPO'], [/devlet\s*tahvil|kamu\s*borç|dibs|hazine\s*bonosu/i, 'DİBS'],
+  [/özel\s*sektör\s*(borç|tahvil|bono)/i, 'ÖST'], [/kira\s*sertifika/i, 'KİRA S.'], [/katılma\s*hesab/i, 'KATILMA'],
+  [/vadeli\s*mevduat|mevduat/i, 'MEVDUAT'], [/takasbank\s*para|para\s*piyasas/i, 'TPP'], [/borsa\s*yatırım\s*fonu|\bbyf\b/i, 'BYF'],
+  [/yabancı\s*yatırım\s*fonu|yabancı\s*byf/i, 'Y.FON'], [/yabancı\s*hisse/i, 'Y.HİSSE'], [/yabancı\s*borç/i, 'Y.TAHVİL'],
+  [/yatırım\s*fonu|fon\s*katılma/i, 'FON'], [/altın/i, 'ALTIN'], [/gümüş/i, 'GÜMÜŞ'], [/kıymetli/i, 'K.MADEN'],
+  [/vadeli\s*işlem|viop|türev/i, 'VİOP'], [/döviz/i, 'DÖVİZ'], [/gayrimenkul/i, 'GYO'], [/girişim/i, 'GSYF'],
+];
+function allocToItems(alloc: Array<{ label: string; pct: number }>) {
+  return alloc
+    .filter((a) => Number.isFinite(a.pct) && a.pct > 0)
+    .map((a) => {
+      const hit = ALLOC_SHORT.find(([re]) => re.test(a.label));
+      const kod = hit ? hit[1] : a.label.toUpperCase().slice(0, 7);
+      return { kod, ad: a.label, sektor: '', agirlik: a.pct, eskiAgirlik: a.pct, fark: 0, etf: false, yabanci: false };
+    });
 }
 
 /**

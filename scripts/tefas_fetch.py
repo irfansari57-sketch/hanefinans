@@ -602,6 +602,9 @@ ALLOC_LABELS = {
     'FKB': 'Fon Katılma Belgesi', 'GSYF': 'Girişim Sermayesi Yatırım Fonu', 'GYF': 'Gayrimenkul Yatırım Fonu',
     'GSE': 'Gayrimenkul Sertifikası', 'VİOP': 'VİOP Nakit Teminatı', 'VIOP': 'VİOP Nakit Teminatı',
     'T': 'Türev Araçlar', 'D': 'Diğer', 'DİĞER': 'Diğer', 'DIGER': 'Diğer',
+    # 23 Eki 2026 — yeni API kucuk harf kolonlari (canlida gorulen): gsykb, kmbyf, btas
+    'GSYKB': 'Girişim Sermayesi Yatırım Fonu Katılma Payı', 'KMBYF': 'Kıymetli Maden BYF',
+    'GYKB': 'Gayrimenkul Yatırım Fonu Katılma Payı', 'YKB': 'Yatırım Fonu Katılma Payı',
 }
 # Allocation df'inde yuzde OLMAYAN kolonlar (normalize ad icinde gecen parcalar)
 _ALLOC_SKIP_HINTS = ('kod', 'unvan', 'tarih', 'date', 'fiyat', 'pay', 'kisi', 'yatirimci', 'buyukluk',
@@ -610,7 +613,8 @@ _ALLOC_SKIP_HINTS = ('kod', 'unvan', 'tarih', 'date', 'fiyat', 'pay', 'kisi', 'y
 
 def _alloc_label(col) -> str:
     key = str(col).strip()
-    return ALLOC_LABELS.get(key) or ALLOC_LABELS.get(key.upper()) or key
+    # Bilinmeyen kod: uydurma ad yazma, BUYUK HARF kodla goster (ornek: BTAS)
+    return ALLOC_LABELS.get(key) or ALLOC_LABELS.get(key.upper()) or key.upper()
 
 
 def parse_bulk_allocation(df: pd.DataFrame) -> "dict[str, list[dict]]":

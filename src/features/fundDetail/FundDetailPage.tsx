@@ -12,6 +12,8 @@ import { MiniAreaChart } from '@/components/domain/PanelStyleChart';
 import { fundsRepo, notesRepo, activityRepo } from '@/data/repositories';
 import type { FundEntry } from '@/data/db';
 import { formatDateTR, formatRelative } from '@/lib/date';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { X } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { fetchTefasFund, isTefasWorkerConfigured, type TefasFundDetail } from '@/data/api/tefasWorker';
 import { fetchTefasFundByCode, isTefasGithubConfigured, computeTefasOpenClient, type TefasFundData } from '@/data/api/tefasGithub';
@@ -60,6 +62,9 @@ export function FundDetailPage() {
   }
   const [distribution, setDistribution] = useState<DistributionPayload | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
+  // 23 Eki 2026 (E+I): seçili balon → yan panel (masaüstü sağ / mobil alt tabaka)
+  const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
+  const isMobile = useIsMobile();
   // Tab yapisi — A+B hibrit (kullanici talebi 12 Eyl 2026):
   // Ozet (kapsamli) + Portfoy Agi (network diagram bize ozgu) + Getiri + Bilgi
   type FundTab = 'ozet' | 'agi' | 'getiri' | 'bilgi';
@@ -734,11 +739,38 @@ export function FundDetailPage() {
                       {hasItems ? 'hisse bazlı · balon alanı = ağırlık' : 'varlık sınıfı bazlı · balon alanı = ağırlık'}
                     </span>
                   </h3>
-                  <FundDistributionBubbleChart
-                    fundCode={fundCode}
-                    oneYearReturn={githubData?.returns?.['1y'] ?? null}
-                    items={hasItems ? distribution!.items : allocToItems(assetAlloc)}
-                  />
+                  {(() => {
+                    const bubbleItems: DistItem[] = hasItems ? distribution!.items : allocToItems(assetAlloc);
+                    const sel = selectedBubble ? bubbleItems.find((x) => x.kod === selectedBubble) ?? null : null;
+                    const panel = sel && (
+                      <HoldingPanel
+                        item={sel}
+                        mode={hasItems ? 'stock' : 'class'}
+                        navDate={distribution?.navDate ?? null}
+                        onClose={() => setSelectedBubble(null)}
+                      />
+                    );
+                    return (
+                      <div className={cn('grid gap-4', !isMobile && sel ? 'lg:grid-cols-[1fr_320px]' : 'grid-cols-1')}>
+                        <FundDistributionBubbleChart
+                          fundCode={fundCode}
+                          oneYearReturn={githubData?.returns?.['1y'] ?? null}
+                          items={bubbleItems}
+                          selected={selectedBubble}
+                          onSelect={(k) => setSelectedBubble((cur) => (cur === k ? null : k))}
+                        />
+                        {sel && !isMobile && <div className="self-start">{panel}</div>}
+                        {sel && isMobile && (
+                          <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={() => setSelectedBubble(null)}>
+                            <div className="w-full rounded-t-2xl border-t border-border bg-bg-soft p-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]" onClick={(e) => e.stopPropagation()}>
+                              {panel}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                  {!selectedBubble && <p className="mt-2 text-center text-[10px] text-slate-500">Bir balona tıklayarak ayrıntısını aç.</p>}
                   <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
                     {hasItems
                       ? 'Balon alanı hissenin fondaki ağırlığıyla orantılı; içindeki yüzde = ağırlık, küçük sayı = aylık fark (puan). Yeşil = önceki aya göre fon pozisyonunu arttırdı, kırmızı = azalttı.'
@@ -1409,12 +1441,66 @@ function allocToItems(alloc: Array<{ label: string; pct: number }>) {
  *
  * TOP-N (25) hisse — kalanlar tabloda.
  */
+type DistItem = { kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean };
+
+/**
+ * HoldingPanel — seçili balonun ayrıntısı (I tasarımı, 23 Eki 2026).
+ *  mode 'stock': hisse-bazlı satır (ağırlık, önceki ay, fark, hisse sayfası linki)
+ *  mode 'class': varlık sınıfı — enstrüman listesi için kaynak henüz yok; dürüstçe söylenir
+ */
+function HoldingPanel({ item, mode, navDate, onClose }: { item: DistItem; mode: 'stock' | 'class'; navDate: string | null; onClose: () => void }) {
+  const tone = item.fark > 0.05 ? 'text-success' : item.fark < -0.05 ? 'text-danger' : 'text-fg-2';
+  const isBist = mode === 'stock' && !item.yabanci && /^[A-Z0-9]{3,6}$/.test(item.kod);
+  return (
+    <div className="rounded-xl border border-border bg-bg-card p-3 text-[12px]">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-mono text-[15px] font-bold text-fg">{item.kod}</div>
+          {item.ad && item.ad !== item.kod && <div className="truncate text-[11px] text-fg-2" title={item.ad}>{item.ad}</div>}
+          {item.sektor && <div className="text-[10px] text-fg-3">{item.sektor}</div>}
+        </div>
+        <button type="button" onClick={onClose} aria-label="Kapat" className="rounded p-1 text-fg-2 hover:text-fg"><X size={14} /></button>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border bg-bg-soft p-2">
+          <div className="text-[10px] uppercase tracking-wider text-fg-3">Fondaki ağırlık</div>
+          <div className="mt-0.5 font-mono text-[16px] font-bold text-fg">%{item.agirlik.toFixed(2)}</div>
+        </div>
+        {mode === 'stock' && (
+          <div className="rounded-lg border border-border bg-bg-soft p-2">
+            <div className="text-[10px] uppercase tracking-wider text-fg-3">Önceki ay</div>
+            <div className="mt-0.5 font-mono text-[16px] font-bold text-fg">%{item.eskiAgirlik.toFixed(2)}</div>
+            <div className={cn('font-mono text-[11px]', tone)}>{item.fark > 0 ? '+' : ''}{item.fark.toFixed(2)} puan</div>
+          </div>
+        )}
+      </div>
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-bg-soft">
+        <div className="h-full rounded bg-accent" style={{ width: `${Math.min(100, item.agirlik)}%` }} />
+      </div>
+      {mode === 'stock' ? (
+        <div className="mt-3 flex items-center gap-2">
+          {isBist && <Link to={`/stock/${item.kod}`} className="btn-secondary h-7 px-2 text-[11px]">Hisse sayfası →</Link>}
+          <span className="text-[10px] text-fg-3">Kaynak: KAP aylık portföy raporu{navDate ? ` · ${new Date(navDate).toLocaleDateString('tr-TR')}` : ''}</span>
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] leading-relaxed text-fg-2">
+          Bu sınıfın içindeki enstrümanlar (ör. tek tek hisseler) için kaynak henüz bağlı değil; TEFAS yalnız varlık sınıfı toplamını yayınlar.
+          Hisse-bazlı liste KAP aylık portföy raporu kaynağı bağlandığında burada görünecek.
+          {navDate ? ` Veri tarihi: ${new Date(navDate).toLocaleDateString('tr-TR')}.` : ''}
+        </p>
+      )}
+    </div>
+  );
+}
 function FundDistributionBubbleChart({
-  fundCode, oneYearReturn, items,
+  fundCode, oneYearReturn, items, selected, onSelect,
 }: {
   fundCode: string;
   oneYearReturn: number | null | undefined;
-  items: Array<{ kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean; }>;
+  items: DistItem[];
+  /** 23 Eki 2026 (E+I): seçili balon vurgulanır; tıklama yan paneli açar */
+  selected?: string | null;
+  onSelect?: (kod: string) => void;
 }) {
   const TOP_N = 25;
   const all = [...items].sort((a, b) => b.agirlik - a.agirlik);
@@ -1503,9 +1589,14 @@ function FundDistributionBubbleChart({
           const kodFs = big ? 11 : mid ? 9.5 : 8;
           const wFs = big ? 14 : mid ? 11 : 8.5;
           return (
-            <g key={`b-${it.kod}-${i}`}>
+            <g
+              key={`b-${it.kod}-${i}`}
+              onClick={onSelect ? () => onSelect(it.kod) : undefined}
+              style={onSelect ? { cursor: 'pointer' } : undefined}
+              opacity={selected && selected !== it.kod ? 0.45 : 1}
+            >
               <title>{hasFark ? `${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}\nÖnceki ay: %${it.eskiAgirlik.toFixed(2)}\nFark: ${sign}${it.fark.toFixed(2)} puan` : `${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}`}</title>
-              <circle cx={bx} cy={by} r={r} style={{ fill: c.fill, stroke: c.stroke }} strokeWidth={big ? 1.8 : 1.3} />
+              <circle cx={bx} cy={by} r={r} style={{ fill: c.fill, stroke: selected === it.kod ? 'rgb(var(--c-accent))' : c.stroke }} strokeWidth={selected === it.kod ? 3 : big ? 1.8 : 1.3} />
               {mid ? (
                 <>
                   <text x={bx} y={by - (big ? 9 : 5)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={kodFs} fontWeight="700" fontFamily="Inter, system-ui">{it.kod}</text>

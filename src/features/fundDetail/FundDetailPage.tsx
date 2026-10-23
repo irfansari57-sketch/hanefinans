@@ -1423,12 +1423,16 @@ function FundDistributionBubbleChart({
   const shownTotal = sorted.reduce((a, x) => a + x.agirlik, 0);
   const restTotal = all.slice(TOP_N).reduce((a, x) => a + x.agirlik, 0);
 
-  const SIZE = 640;
+  // 23 Eki 2026: az öğede (varlık sınıfı modu, <8) halka daraltılır — balonlar seyrek durmasın
+  const compact = sorted.length < 8;
+  const SIZE = compact ? 480 : 640;
   const CX = SIZE / 2;
   const CY = SIZE / 2;
-  const CENTER_R = 70;
-  const RING_R = 236;
+  const CENTER_R = compact ? 60 : 70;
+  const RING_R = compact ? 160 : 236;
   const GAP = 6;
+  // Fark bilgisi yoksa (eski = yeni ağırlık, varlık sınıfı modu) fark satırı yazılmaz
+  const hasFark = sorted.some((x) => x.eskiAgirlik !== x.agirlik);
 
   // Yarıçap ∝ √ağırlık (alan ∝ ağırlık). 14..62 px aralığı, sonra sığdırma ölçeği.
   const maxW = Math.max(...sorted.map((x) => x.agirlik));
@@ -1458,7 +1462,7 @@ function FundDistributionBubbleChart({
 
   return (
     <div className="flex justify-center">
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-[600px] h-auto" role="img" aria-label={`${fundCode} portföy ağı — ${sorted.length} hisse, balon alanı ağırlıkla orantılı`}>
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className={cn('w-full h-auto', compact ? 'max-w-[440px]' : 'max-w-[600px]')} role="img" aria-label={`${fundCode} portföy ağı — ${sorted.length} hisse, balon alanı ağırlıkla orantılı`}>
         {/* Bağlantılar — kalınlık ağırlıkla orantılı */}
         {sorted.map((it, i) => {
           const a = angles[i], r = radii[i];
@@ -1500,13 +1504,13 @@ function FundDistributionBubbleChart({
           const wFs = big ? 14 : mid ? 11 : 8.5;
           return (
             <g key={`b-${it.kod}-${i}`}>
-              <title>{`${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}\nÖnceki ay: %${it.eskiAgirlik.toFixed(2)}\nFark: ${sign}${it.fark.toFixed(2)} puan`}</title>
+              <title>{hasFark ? `${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}\nÖnceki ay: %${it.eskiAgirlik.toFixed(2)}\nFark: ${sign}${it.fark.toFixed(2)} puan` : `${it.kod}${it.ad ? ' — ' + it.ad : ''}\nAğırlık: %${it.agirlik.toFixed(2)}`}</title>
               <circle cx={bx} cy={by} r={r} style={{ fill: c.fill, stroke: c.stroke }} strokeWidth={big ? 1.8 : 1.3} />
               {mid ? (
                 <>
                   <text x={bx} y={by - (big ? 9 : 5)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={kodFs} fontWeight="700" fontFamily="Inter, system-ui">{it.kod}</text>
                   <text x={bx} y={by + (big ? 6 : 6)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={wFs} fontWeight="800" fontFamily="JetBrains Mono, monospace">{fmtPct(it.agirlik, big ? 2 : 1)}</text>
-                  {big && (
+                  {big && hasFark && (
                     <text x={bx} y={by + 20} textAnchor="middle" style={{ fill: c.text }} fontSize="9" fontWeight="600" fontFamily="JetBrains Mono, monospace">{sign}{it.fark.toFixed(2)}</text>
                   )}
                 </>

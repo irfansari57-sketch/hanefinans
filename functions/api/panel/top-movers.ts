@@ -18,11 +18,19 @@
 
 import { fetchIsYatirimAll } from '../_isyatirim';
 
-interface Env {}
+interface Env { DB?: D1Database }
 
 interface MoverItem { kod: string; ad: string; pct: number; fiyat: number }
 
 const TEFAS_FEED = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/tefas.json';
+
+/** TR saatiyle son BIST iş günü (hafta sonu → Cuma; tatil takvimi yok). Seans 10:00 öncesinde dünkü gün. */
+function trSessionDate(now = new Date()): string {
+  const tr = new Date(now.getTime() + 3 * 3_600_000);
+  if (tr.getUTCHours() < 10) tr.setUTCDate(tr.getUTCDate() - 1);
+  while (tr.getUTCDay() === 0 || tr.getUTCDay() === 6) tr.setUTCDate(tr.getUTCDate() - 1);
+  return tr.toISOString().slice(0, 10);
+}
 
 function topBottom(items: MoverItem[]) {
   return {
@@ -109,13 +117,13 @@ async function fetchCrypto(origin: string): Promise<{ gainers: MoverItem[]; lose
   }
 }
 
-export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
+export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const url = new URL(request.url);
   const force = url.searchParams.get('force') === '1';
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '2');
+  cacheUrl.searchParams.set('cv', '3');
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
   if (!force) {
@@ -124,11 +132,42 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
   }
 
   // Paralel 4 kategori fetch — tek endpoint, tek roundtrip client için
-  const [stocks, funds, bes, crypto] = await Promise.all([
+  const [stocksLive, fundsLive, bes, cryptoLive] = await Promise.all([
     fetchStocks(waitUntil),
     fetchFunds(),
     fetchBes(),
     fetchCrypto(url.origin),
+  ]);
+
+  // 23 Eki 2026 — SON İYİ KOPYA (D1 daily_movers). Seans öncesi (İş Yatırım tablosu 0 değişim),
+  // tatil veya kaynak hatasında liste boş/çok kısa geliyordu; istemci de küçük bir yedek
+  // kümeyi "Yükselenler" diye gösteriyordu (itibar riski). Kural: kategori ≥ 10 kayıt getirdiyse
+  // D1'e yaz; getirmediyse D1'deki son dolu kopyayı `stale:true` + tarih etiketiyle sun.
+  const MIN_FULL = 10;
+  const sessionDate = trSessionDate();
+  type Cat = { gainers: MoverItem[]; losers: MoverItem[]; asOf?: string; stale?: boolean; staleDate?: string };
+  const withFallback = async (cat: string, live: Cat): Promise<Cat> => {
+    const full = live.gainers.length >= MIN_FULL && live.losers.length >= MIN_FULL;
+    if (!env.DB) return live;
+    if (full) {
+      waitUntil(env.DB.prepare(
+        'INSERT INTO daily_movers (cat, as_of, session_date, payload, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(cat) DO UPDATE SET as_of = excluded.as_of, session_date = excluded.session_date, payload = excluded.payload, updated_at = excluded.updated_at',
+      ).bind(cat, live.asOf ?? null, sessionDate, JSON.stringify({ gainers: live.gainers, losers: live.losers }), Date.now()).run().catch(() => null));
+      return live;
+    }
+    try {
+      const row = await env.DB.prepare('SELECT as_of, session_date, payload FROM daily_movers WHERE cat = ?').bind(cat).first<{ as_of: string | null; session_date: string | null; payload: string }>();
+      if (row) {
+        const p = JSON.parse(row.payload) as { gainers: MoverItem[]; losers: MoverItem[] };
+        return { gainers: p.gainers, losers: p.losers, asOf: row.as_of ?? undefined, stale: true, staleDate: row.session_date ?? undefined };
+      }
+    } catch { /* tablo yoksa (migration 024) canlıya düş */ }
+    return live;
+  };
+  const [stocks, funds, crypto] = await Promise.all([
+    withFallback('stocks', stocksLive),
+    withFallback('funds', fundsLive),
+    withFallback('crypto', cryptoLive),
   ]);
 
   // 13 Eki 2026: Hiçbir kategori veri getiremediyse bu bir hata — 502 + no-store,
@@ -149,6 +188,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, waitUntil }) => {
     attribution: 'Hisse: İş Yatırım (~15 dk gecikmeli) · Fon: TEFAS (T-1) · Kripto: CoinGecko',
     sources: { stocks: 'isyatirim', funds: 'tefas', bes: null, crypto: crypto.gainers.some((c) => c.kod.includes('/')) ? 'coingecko|yahoo' : null },
     updatedAt: new Date().toISOString(),
+    sessionDate,
     partial: emptyCats.length > 0 ? emptyCats : undefined,
     error: allEmpty ? 'Hiçbir kaynaktan veri alınamadı' : undefined,
     stocks,

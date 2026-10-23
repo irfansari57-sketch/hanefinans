@@ -77,10 +77,10 @@ export function SoftPanelPage() {
   // Her kategori: pre-sorted top 10 gainers + top 10 losers. FVT paritesi, edge cache 60sn.
   interface Mover { kod: string; ad: string; pct: number; fiyat: number }
   interface TopMoversPayload {
-    stocks: { gainers: Mover[]; losers: Mover[] };
-    funds:  { gainers: Mover[]; losers: Mover[] };
+    stocks: { gainers: Mover[]; losers: Mover[]; stale?: boolean; staleDate?: string; asOf?: string };
+    funds:  { gainers: Mover[]; losers: Mover[]; stale?: boolean; staleDate?: string; asOf?: string };
     bes:    { gainers: Mover[]; losers: Mover[] };
-    crypto: { gainers: Mover[]; losers: Mover[] };
+    crypto: { gainers: Mover[]; losers: Mover[]; stale?: boolean; staleDate?: string; asOf?: string };
   }
   const [topMovers, setTopMovers] = useState<TopMoversPayload | null>(null);
   const loadTopMovers = useCallback(async () => {
@@ -210,12 +210,11 @@ export function SoftPanelPage() {
       const list = enlerDir === 'up' ? topMovers.stocks.gainers : topMovers.stocks.losers;
       if (list.length > 0) return list.map(moverToStock);
     }
-    // Fallback: priority stocks
-    return sortByDir(
-      stocks.filter((s) => s.price > 0 && Number.isFinite(s.changePct) && s.changePct !== 0 && Math.abs(s.changePct) <= 10),
-      (s) => s.changePct,
-    ).slice(0, 10);
-  }, [stocks, topMovers, enlerDir]);
+    // 23 Eki 2026: küçük "öncelikli hisse" kümesine DÜŞÜLMEZ — "Yükselenler" diye yanlış
+    // sıralama göstermek itibar riski. Sunucu seans öncesi/tatilde son kapanış kopyasını verir;
+    // o da yoksa liste boş kalır ve açıklama gösterilir.
+    return [];
+  }, [topMovers, enlerDir]);
 
   // Fonlar — FVT top-movers endpoint'inden pre-sorted + outlier filtered
   const topFundsSorted = useMemo(() => {
@@ -442,12 +441,19 @@ export function SoftPanelPage() {
           <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-fg-3">
             {enlerDir === 'up' ? '▲ Yükselenler' : '▼ Düşenler'} · günlük %
             <span className="ml-1.5 font-normal normal-case tracking-normal">
-              {enlerTab === 'stocks' ? '· İş Yatırım · ~15 dk gecikmeli' : enlerTab === 'funds' ? '· TEFAS · önceki gün NAV' : enlerTab === 'crypto' ? '· CoinGecko · 24s' : ''}
+              {(() => {
+                const cat = enlerTab === 'stocks' ? topMovers?.stocks : enlerTab === 'funds' ? topMovers?.funds : enlerTab === 'crypto' ? topMovers?.crypto : undefined;
+                if (cat?.stale) {
+                  const d = cat.staleDate ? new Date(cat.staleDate + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : 'önceki';
+                  return <span className="text-warning">· {d} kapanışı (seans öncesi)</span>;
+                }
+                return enlerTab === 'stocks' ? '· İş Yatırım · ~15 dk gecikmeli' : enlerTab === 'funds' ? '· TEFAS · önceki gün NAV' : enlerTab === 'crypto' ? '· CoinGecko · 24s' : '';
+              })()}
             </span>
           </div>
           <div className="mt-1">
             {enlerList.length === 0
-              ? <div className="py-4 text-[12px] text-fg-3">{enlerTab === 'bes' ? 'BES günlük verisi için kaynak geçici olarak yok (önceki sağlayıcı erişimi kapattı); alternatif bağlanınca açılacak.' : 'Veri kaynağından henüz gelmedi.'}</div>
+              ? <div className="py-4 text-[12px] text-fg-3">{enlerTab === 'bes' ? 'BES günlük verisi için kaynak geçici olarak yok (önceki sağlayıcı erişimi kapattı); alternatif bağlanınca açılacak.' : 'Seans verisi henüz oluşmadı; son kapanış kopyası da yok. Seans 10:00\'da başlar.'}</div>
               : enlerList.slice(0, 7).map((r) => <MoverRow key={r.key} to={r.to} code={r.code} name={r.name} pct={r.pct} />)}
           </div>
           {enlerTab === 'stocks' && <Link to="/stocks" className="mt-1 inline-block text-[11px] text-accent hover:underline">Tüm hisseler →</Link>}

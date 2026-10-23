@@ -39,3 +39,4 @@ npx wrangler d1 execute hanefinans-db --remote --command "SELECT name FROM sqlit
 ```
 
 - 023_bars_meta_heal.sql — bars_meta.healed_count/last_heal_at (ALTER TABLE; ikinci koşuda 'duplicate column' normal)
+- 024_daily_movers.sql — Günün Enleri son iyi kopyası (seans öncesi/tatil için)

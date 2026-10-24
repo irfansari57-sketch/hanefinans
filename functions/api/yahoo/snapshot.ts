@@ -430,7 +430,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
     try {
       const iy = await fetchIsYatirimAll(waitUntil);
       const sessionDate = lastBistSessionDateTR(new Date(nowMs));
-      for (const row of iy?.rows ?? []) {
+      // 24 Eki 2026: seans öncesi tablo (satırların ≥%90'ı %0) → veri yok sayılır, mevcut
+      // (D1 son kapanış) değerler korunur; %0 ile ezilip "GÜN % 0,00" yayınlanmaz.
+      const rowsAll = iy?.rows ?? [];
+      const nonZero = rowsAll.filter((r) => r.changePct !== 0).length;
+      const preOpen = rowsAll.length > 0 && nonZero / rowsAll.length < 0.1;
+      for (const row of preOpen ? [] : rowsAll) {
         const sym = row.symbol;
         // İş Yatırım otoriter kaynak: tedbir/yeniden işlem açılışı gibi durumlarda ±%10 aşılabilir
         // (MARKA +%28 vakası, 21 Eki). Yalnız aşırı uç (>%60) atılır; Günün Enleri kendi ±%10,5 filtresini uygular.

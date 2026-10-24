@@ -160,9 +160,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
       primarySource = 'isyatirim-bulk';
       const now = Date.now();
       const asOf = lastBistSessionDateTR();
-      for (const row of iy.rows) {
-        if (!symbols.includes(row.symbol)) continue;
-        if (Math.abs(row.changePct) > 15) continue;
+      // 24 Eki 2026: yalnız BIST100 değil, tablodaki TÜM hisseler yazılır → seans dışı
+      // (08:30, hafta sonu) snapshot tüm BIST için "son kapanış" sunar; İş Yatırım'ın
+      // seans öncesi %0 satırları ezmez. Seans öncesi (hepsi 0) koşuda tablo yazılmaz.
+      const nonZero = iy.rows.filter((r) => r.changePct !== 0).length;
+      const preOpen = iy.rows.length > 0 && nonZero / iy.rows.length < 0.1;
+      for (const row of preOpen ? [] : iy.rows) {
+        if (row.symbol.length > 5 && !symbols.includes(row.symbol)) continue; // BYF/sertifika hariç
+        if (Math.abs(row.changePct) > 60) continue;
         const prev = row.price / (1 + row.changePct / 100);
         results.push({ symbol: row.symbol, price: row.price, prev, changePct: row.changePct, asOf, updatedAt: now });
         success++;
@@ -171,7 +176,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
   } catch { /* toplu tablo fail — per-symbol fallback'e düş */ }
 
   // Toplu tablo yetersizse — İş Yatırım per-symbol fallback
-  if (results.length < symbols.length / 2) {
+  if (results.length < symbols.length / 2 && !(results.length === 0 && primarySource === 'isyatirim-bulk')) {
     primarySource = results.length > 0 ? 'isyatirim-bulk+chart' : 'isyatirim-chart';
     const missing = symbols.filter((s) => !results.find((r) => r.symbol === s));
     const BATCH_SIZE = 20;

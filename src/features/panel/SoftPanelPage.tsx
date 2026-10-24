@@ -368,7 +368,6 @@ export function SoftPanelPage() {
     [symbols, stockMap],
   );
 
-  const criticalNews = useMemo(() => news.filter((n) => n.critical).slice(0, 2), [news]);
   // 21 Eki 2026: kritik haberler akıştan ÇIKARILMIYOR — akışta kronolojik, vurgulu
   // (kırmızı sol çizgi + neden rozeti). Kritikler önce sıralanmaz; zaman sırası korunur.
   const feedNews = useMemo(() => news.slice(0, 8), [news]);
@@ -458,21 +457,7 @@ export function SoftPanelPage() {
           </div>
           {enlerTab === 'stocks' && <Link to="/stocks" className="mt-1 inline-block text-[11px] text-accent hover:underline">Tüm hisseler →</Link>}
 
-          {criticalNews.length > 0 && (
-            <div className="mt-4">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-danger">● Kritik ({criticalNews.length})</div>
-              {criticalNews.map((n) => (
-                <a key={n.id ?? n.url} href={n.url} target="_blank" rel="noopener noreferrer" className="flex h-row items-center justify-between border-b border-border/60 last:border-0 text-table hover:bg-bg-card -mx-1 px-1 rounded">
-                  <span className="min-w-0 truncate text-fg">
-                    {n.symbols[0] && <span className="mr-2 font-mono font-semibold">{n.symbols[0]}</span>}
-                    {n.criticalReason && <span className="mr-2 text-[10px] font-semibold uppercase tracking-wider text-danger">{n.criticalReason}</span>}
-                    {n.title}
-                  </span>
-                  <span className="ml-2 shrink-0 text-[11px] text-fg-3">{new Date(n.publishedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</span>
-                </a>
-              ))}
-            </div>
-          )}
+          {/* 24 Eki 2026: 'Kritik' bloğu kaldırıldı — aynı haber Haber akışında zaten vurgulu (çift gösterim) */}
         </section>
 
         {/* 15 Eki 2026: Haber + takvim, Takip/Portföy üstüne alındı (kullanıcı talebi) */}

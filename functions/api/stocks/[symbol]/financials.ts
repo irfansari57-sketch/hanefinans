@@ -228,10 +228,15 @@ const MATCHERS = {
     'Dönem Karı (Zararı)',
     'Net Dönem Karı/Zararı',
     'SÜRDÜRÜLEN FAALİYETLER DÖNEM KARI/ZARARI',
+    'NET DÖNEM KARI/ZARARI', // banka (UFRS) — "XXIII. NET DÖNEM KARI/ZARARI (XVII+XXII)"
   ),
+  // Banka gelir tablosu: hasılat karşılığı = net faiz geliri + net ücret/komisyon (aşağıda toplanır)
+  bankNetFaiz: M(['3'], 'NET FAİZ GELİRİ/GİDERİ'),
+  bankNetKomisyon: M(['3'], 'NET ÜCRET VE KOMİSYON GELİRLERİ/GİDERLERİ'),
+  bankFaaliyetKari: M(['3'], 'NET FAALİYET KARI/ZARARI'),
   toplamVarliklar: M(['1', '2'], 'TOPLAM VARLIKLAR', 'Toplam Varlıklar', 'AKTİF TOPLAMI', 'Toplam Aktifler', 'VARLIKLAR TOPLAMI'),
   ozsermaye: M(['2', '1'], 'ÖZKAYNAKLAR', 'Özkaynaklar', 'TOPLAM ÖZKAYNAKLAR', 'Toplam Özkaynaklar', 'Ana Ortaklığa Ait Özkaynaklar'),
-  nakit: M(['1'], 'Nakit ve Nakit Benzerleri', 'NAKİT VE NAKİT BENZERLERİ', 'Nakit Değerler ve Merkez Bankası'),
+  nakit: M(['1'], 'Nakit ve Nakit Benzerleri', 'NAKİT VE NAKİT BENZERLERİ', 'Nakit Değerler ve Merkez Bankası', 'NAKİT DEĞERLER VE MERKEZ BANKASI'),
   amortisman: M(
     ['4', '3'],
     'Amortisman ve İtfa Gideri İle İlgili Düzeltmeler',
@@ -256,10 +261,25 @@ const FIN_BORC_NAMES = new Set(
 
 const VALUE_KEYS = ['value1', 'value2', 'value3', 'value4'] as const;
 
+/** Banka (UFRS) kalemleri "XXIII. NET DÖNEM KARI/ZARARI (XVII+XXII)" / "16.4.2 Dönem Net Kar/Zararı" biçiminde:
+ *  roma rakamı / madde numarası öneki ve sondaki formül parantezi atılır (24 Eki 2026, AKBNK ile doğrulandı). */
+function normLoose(s: string): string {
+  return norm(
+    s.replace(/^\s*[IVXLC]+\.\s*/i, '').replace(/^\s*\d+(?:\.\d+)*\.?\s*/, '').replace(/\([^)]*\)\s*$/, ''),
+  );
+}
+
 function findItem(items: IsyMaliTabloItem[], m: ItemMatcher): IsyMaliTabloItem | null {
   for (const name of m.names) {
     const hit = items.find(
       (it) => (m.sections.length === 0 || m.sections.includes(it.itemCode.charAt(0))) && norm(it.itemDescTr) === name,
+    );
+    if (hit) return hit;
+  }
+  // İkinci geçiş: gevşek normalize (banka tabloları)
+  for (const name of m.names) {
+    const hit = items.find(
+      (it) => (m.sections.length === 0 || m.sections.includes(it.itemCode.charAt(0))) && normLoose(it.itemDescTr) === name,
     );
     if (hit) return hit;
   }
@@ -307,9 +327,15 @@ function buildTree(items: IsyMaliTabloItem[], sectionChars: string[], rootLabel:
 }
 
 function buildPeriod(items: IsyMaliTabloItem[], q: QuarterRef, idx: number): PeriodOut {
-  const netSatis = valueAt(findItem(items, MATCHERS.netSatis), idx);
+  let netSatis = valueAt(findItem(items, MATCHERS.netSatis), idx);
   const brutKar = valueAt(findItem(items, MATCHERS.brutKar), idx);
-  const faaliyetKari = valueAt(findItem(items, MATCHERS.faaliyetKari), idx);
+  // Banka: hasılat yok → bankacılık geliri (net faiz + net ücret/komisyon) ile doldur
+  if (netSatis == null) {
+    const nf = valueAt(findItem(items, MATCHERS.bankNetFaiz), idx);
+    const nk = valueAt(findItem(items, MATCHERS.bankNetKomisyon), idx);
+    if (nf != null) netSatis = nf + (nk ?? 0);
+  }
+  const faaliyetKari = valueAt(findItem(items, MATCHERS.faaliyetKari), idx) ?? valueAt(findItem(items, MATCHERS.bankFaaliyetKari), idx);
   const netKar = valueAt(findItem(items, MATCHERS.netKar), idx);
   const toplamVarliklar = valueAt(findItem(items, MATCHERS.toplamVarliklar), idx);
   const ozsermaye = valueAt(findItem(items, MATCHERS.ozsermaye), idx);
@@ -377,7 +403,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
   // cv=3: kaynak İş Yatırım'a taşındı (FVT kapandı)
-  cacheUrl.searchParams.set('cv', '3');
+  cacheUrl.searchParams.set('cv', '4');
   cacheUrl.searchParams.delete('force');
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 

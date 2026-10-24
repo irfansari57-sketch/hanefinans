@@ -21,6 +21,7 @@ import { readRiskProfile, evaluateFundSuitability, type SuitabilityLevel } from 
 import { CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveFundRisk } from '@/lib/fundRisk';
+import { liquidationOf } from '@/data/liquidatedManagers';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
 
@@ -383,6 +384,25 @@ export function FundDetailPage() {
         );
       })()}
 
+      {/* 24 Eki 2026: Tasfiye uyarısı — kurucu SPK tasfiye kapsamındaysa fon TEFAS'ta işlem görmez */}
+      {(() => {
+        const liq = liquidationOf(githubData?.name ?? fund.name);
+        if (!liq) return null;
+        return (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-danger/50 bg-danger/10 p-3 text-[12px]">
+            <AlertCircle size={16} className="mt-0.5 shrink-0 text-danger" />
+            <div>
+              <div className="font-semibold uppercase tracking-wide text-danger">Tasfiye halinde</div>
+              <p className="mt-0.5 text-fg-2">
+                {liq.manager === 'TASFİYE'
+                  ? 'Bu fon TEFAS kayıtlarında tasfiye sürecinde görünüyor.'
+                  : `Kurucu ${liq.manager} SPK kararıyla tasfiye kapsamına alındı${liq.since ? ` (${liq.since})` : ''}.`}
+                {' '}Fon TEFAS'ta işlem görmüyor; gösterilen NAV ve getiriler bilgi amaçlıdır, alım-satım yapılamaz. Pay sahipleri için süreç SPK ve kurucu duyurularıyla yürütülür.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
       {/* Tab strip — Ozet / Getiri Detayi / Portfoy Dagilimi / Bilgi */}
       <div className="mb-4 -mx-4 sm:mx-0">
         <div className="scrollbar-none flex gap-1.5 overflow-x-auto px-4 sm:px-0 pb-1.5">

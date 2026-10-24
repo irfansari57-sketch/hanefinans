@@ -17,6 +17,7 @@
  */
 
 import { fetchIsYatirimAll } from '../_isyatirim';
+import { isLiquidatedFund } from '../../../src/data/liquidatedManagers';
 
 interface Env { DB?: D1Database }
 
@@ -64,6 +65,7 @@ async function fetchFunds(): Promise<{ gainers: MoverItem[]; losers: MoverItem[]
       const pct = f.returns?.['1d'];
       if (pct == null || !Number.isFinite(pct) || pct === 0 || Math.abs(pct) > 15) continue;
       if (!f.nav || f.nav <= 0) continue;
+      if (isLiquidatedFund(f.name)) continue; // 24 Eki 2026: tasfiye halindeki kurucuların fonları enlere girmez
       if (!asOf && f.date) asOf = f.date;
       items.push({ kod: f.code, ad: f.name, pct, fiyat: f.nav });
     }

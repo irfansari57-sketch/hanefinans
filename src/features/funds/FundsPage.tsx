@@ -17,6 +17,7 @@ import { formatRelative } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { resolveFundRisk } from '@/lib/fundRisk';
+import { liquidationOf } from '@/data/liquidatedManagers';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year'> | 'code';
@@ -519,8 +520,9 @@ interface FundTableRowProps {
 }
 
 function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
+  const liq = liquidationOf(fund.name);
   return (
-    <tr className="border-b border-border/60 transition hover:bg-bg-card">
+    <tr className={cn('border-b border-border/60 transition hover:bg-bg-card', liq && 'bg-danger/[0.07] hover:bg-danger/10')} title={liq ? `Tasfiye halinde — ${liq.manager}` : undefined}>
       <td className="sticky left-0 z-10 bg-bg-soft px-2 py-2 text-[11px] text-slate-500 tabular-nums">{rank}</td>
       <td className="sticky left-8 z-10 bg-bg-soft px-2 py-2">
         <div className="flex items-center gap-1.5">
@@ -543,6 +545,11 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
             <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-300 whitespace-nowrap">{fund.category}</span>
           )}
           <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[200px]">{fund.name}</span>
+          {liq && (
+            <span className="shrink-0 rounded border border-danger/50 bg-danger/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger" title={`Kurucu tasfiye kapsamında (${liq.manager}); fon TEFAS'ta işlem görmüyor`}>
+              Tasfiye
+            </span>
+          )}
         </div>
       </td>
       <td className="px-2 py-2 text-center">

@@ -741,23 +741,18 @@ export function FundDetailPage() {
             <div className="h-48 skeleton rounded" />
           ) : (
             <>
-              {assetAlloc.length > 0 && (
-                <>
-                  <FundAllocationDonut
-                    fundCode={fundCode}
-                    allocation={assetAlloc}
-                    navReturn={githubData?.returns?.['1y'] ?? null}
-                    category={githubData?.category ?? ''}
-                    isBes={isBesFund}
-                  />
-                  <p className="mt-3 text-[10px] text-slate-500 leading-relaxed">
-                    Halka dilimleri = fon içindeki varlık sınıflarının % ağırlığı.
-                    Merkezdeki değer fonun 1 yıllık getirisi (yeşil = pozitif, kırmızı = negatif).
-                  </p>
-                </>
+              {/* 24 Eki 2026 (kullanıcı): donut kaldırıldı — yalnız balon görünümü + kompakt lejant. */}
+              {!hasItems && assetAlloc.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                  {assetAlloc.map((a) => (
+                    <span key={a.label} className="text-slate-400">
+                      {a.label} <span className="font-semibold tabular-nums text-slate-200">%{a.pct.toFixed(2)}</span>
+                    </span>
+                  ))}
+                </div>
               )}
               {(hasItems || assetAlloc.length > 0) && (
-                <div className="mt-6 border-t border-border pt-5">
+                <div>
                   <h3 className="mb-2 text-sm font-semibold text-slate-200">
                     Ağırlık Balonları
                     <span className="ml-2 text-[10px] font-normal text-slate-500">
@@ -943,7 +938,9 @@ function allocationColor(label: string): string {
 // yanlış bilgi riski var. Sadece TEFAS resmi verisi gösterilir, yoksa empty state.
 
 /**
- * FundAllocationDonut — TEFAS varlık dağılımı FVT tarzı donut chart.
+ * FundAllocationDonut — TEFAS varlık dağılımı donut chart.
+ * 24 Eki 2026: Portföy Ağı sekmesinden kaldırıldı (kullanıcı: balon görünümü yeterli).
+ * Bileşen Özet sekmesi / ileride tekrar kullanım için tutuluyor.
  * SADECE gerçek TEFAS datası varsa gösterilir. Tahmini dağılım kaldırıldı —
  * kategori bazlı tahmin gerçek dağılımdan %10-15 sapabiliyor, yanlış bilgi
  * riski var. Data yoksa empty state gösterilir, kullanıcı TEFAS güncellemesi

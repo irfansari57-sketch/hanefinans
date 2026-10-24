@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { loadMarketBreadth, loadMacroAll, type MarketBreadth } from '@/data/services';
 import { fetchTrCds, type TrCdsData } from '@/data/api/trCds';
-import { fetchRegime, type RegimeApi } from '@/data/api/regime';
 import { macroKeyToRoute } from '@/lib/macroRoutes';
 import type { MacroIndicator } from '@/data/types';
 import { DataFreshness } from '@/components/ui/DataFreshness';
@@ -19,7 +18,6 @@ import { cn } from '@/lib/utils';
 let memo: MarketBreadth | null = null;
 let macroMemo: MacroIndicator[] = [];
 let cdsMemo: TrCdsData | null = null;
-let regimeMemo: RegimeApi | null = null;
 
 /** Şeritteki piyasa kalemleri — sabit sıra; 15 Eki 2026: VIX yerine TR CDS */
 const MARKET_KEYS = ['USD/TRY', 'EUR/TRY', 'Gram Altın', 'Gram Gümüş', 'BTC/USD', 'Brent'] as const;
@@ -42,11 +40,10 @@ export function RegimeStrip({ className }: { className?: string }) {
   const [b, setB] = useState<MarketBreadth | null>(memo);
   const [macro, setMacro] = useState<MacroIndicator[]>(macroMemo);
   const [cds, setCds] = useState<TrCdsData | null>(cdsMemo);
-  const [regime, setRegime] = useState<RegimeApi | null>(regimeMemo);
   useEffect(() => {
     let alive = true;
     // Endeks değeri hero grafikle AYNI kaynaktan (loadMacroAll → BIST 100); genişlik snapshot'tan.
-    const run = () => Promise.all([loadMarketBreadth(), loadMacroAll().catch(() => null), fetchTrCds().catch(() => null), fetchRegime('XU100')]).then(([r, m, c, rg]) => {
+    const run = () => Promise.all([loadMarketBreadth(), loadMacroAll().catch(() => null), fetchTrCds().catch(() => null)]).then(([r, m, c]) => {
       if (!alive || !r) return;
       const bist = m?.data.find((x) => x.key === 'BIST 100');
       const merged: MarketBreadth = bist && bist.value > 0
@@ -55,7 +52,6 @@ export function RegimeStrip({ className }: { className?: string }) {
       memo = merged; setB(merged);
       if (m) { macroMemo = m.data; setMacro(m.data); }
       if (c) { cdsMemo = c; setCds(c); }
-      if (rg) { regimeMemo = rg; setRegime(rg); }
     });
     run();
     const t = window.setInterval(run, 60_000);
@@ -100,23 +96,8 @@ export function RegimeStrip({ className }: { className?: string }) {
           ]}
         />
       </span>
-      {regime && regime.bars >= 60 && (
-        <span className="hidden md:inline-flex items-center gap-1 text-fg-2" title="Piyasa rejimi — deterministik (SMA50/200 eğimi, 20g gerçekleşmiş oynaklık)">
-          <span className={cn('font-medium', regime.trend.regime === 'yükseliş' ? 'text-success' : regime.trend.regime === 'düşüş' ? 'text-danger' : 'text-fg')}>
-            {regime.trend.regime === 'yükseliş' ? 'Yükseliş' : regime.trend.regime === 'düşüş' ? 'Düşüş' : 'Yatay'}
-          </span>
-          {/* Oynaklık yalnız normalden sapınca yazılır (normal = varsayılan durum, yer kaplamasın) */}
-          {regime.vol.percentile1y != null && regime.vol.regime !== 'normal' && (
-            <span className={cn(regime.vol.regime === 'yüksek' ? 'text-warning' : 'text-fg-2')}>
-              · {regime.vol.regime === 'yüksek' ? 'yüksek' : 'düşük'} oynaklık
-            </span>
-          )}
-          <EvidenceLink
-            title={`Rejim · ${regime.asOfDate ?? ''}`}
-            rows={[...regime.trend.evidence, ...regime.vol.evidence]}
-          />
-        </span>
-      )}
+      {/* 24 Eki 2026 (kullanıcı kararı): rejim etiketi (Yükseliş/Düşüş/Yatay) şeritten kaldırıldı —
+          piyasa yorumu bar'da görünmesin. Rejim verisi hisse detayı ve Sinyaller sayfasında kalır. */}
       <span className="h-4 w-px bg-border" aria-hidden />
       {MARKET_KEYS.map((k) => {
         const m = macroMap.get(k);

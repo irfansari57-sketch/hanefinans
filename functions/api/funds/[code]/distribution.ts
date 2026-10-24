@@ -7,9 +7,11 @@
  *   TEFAS BindFonPortfoyDagilimi -> [{ label: "Hisse Senedi", pct: 59.03 }, ...] | null)
  *
  * NOT: TEFAS yalnizca VARLIK SINIFI dagilimi yayinlar (Hisse %, Tahvil %, Ters Repo %...).
- * Hisse-bazli dagilim (ASELS %20 gibi) KAP aylik portfoy raporundan gelir; onceki
- * saglayici (fvt.com.tr) 19 Eki 2026'da erisimi kapatti (401/429) ve bu kontrolu
- * asmiyoruz. Bu nedenle `items` su an bos dizi + `itemsAvailable: false` doner.
+ * Hisse-bazli dagilim (ASELS %4,50 gibi) — 24 Eki 2026'dan itibaren KAP aylik "Portfoy Dagilim
+ * Raporu" PDF'lerinden (scripts/kap_holdings_fetch.py, workflow kap-holdings-fetch.yml) uretilen
+ * data/holdings/{KOD}.json dosyasindan okunur; dosya yoksa `items: []`, `itemsAvailable: false`.
+ * Agirlik = raporun "Fon Toplam Degerine gore %" sutunu (FVT ile birebir dogrulandi: KTJ Eyl-2026).
+ * Onceki ay = bir onceki rapor (ilk raporda yok → fark 0, UI "Onceki rapor henuz yok").
  *
  * Response (sema onceki FVT surumuyle uyumlu; yeni alanlar eklendi):
  *   {
@@ -35,6 +37,8 @@
  * Basarili yanit: edge cache (caches.default) 1 saat.
  */
 
+import { fetchIsYatirimAll } from '../../_isyatirim';
+
 interface Env {}
 
 interface FeedAllocationItem { label?: unknown; pct?: unknown }
@@ -55,8 +59,47 @@ interface FeedPayload {
 }
 
 const TEFAS_FEED = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/tefas.json';
-const ITEMS_NOTE = 'Hisse bazlı dağılım için kaynak geçici olarak yok (önceki sağlayıcı erişimi kapattı)';
+/** 24 Eki 2026: KAP aylık Portföy Dağılım Raporu (scripts/kap_holdings_fetch.py) → data/holdings/{KOD}.json */
+const HOLDINGS_BASE = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/holdings/';
+const ITEMS_NOTE = 'Bu fon için KAP aylık portföy dağılım raporu henüz işlenmedi (rapor ay başında yayımlanır)';
 const EDGE_TTL = 3600;
+
+interface HoldingItem {
+  kod: string; ad?: string | null; isin?: string | null; cur?: string; tur?: string;
+  adet?: number | null; fiyat?: number | null; deger?: number | null;
+  pct: number; pctFpd?: number; pctGrup?: number;
+}
+interface HoldingsFile {
+  code: string; name?: string | null; fundType?: string; updatedAt?: string; source?: string;
+  current?: { period?: string | null; publishDate?: string | null; disclosureIndex?: number; items?: HoldingItem[] } | null;
+  previous?: { period?: string | null; items?: Array<{ kod: string; pct: number }> } | null;
+}
+
+const TUR_LABEL: Record<string, string> = {
+  hisse: 'Hisse (BIST)', yabanci_hisse: 'Yabancı Hisse', fon: 'Yatırım Fonu / BYF', yabanci_fon: 'Yabancı Fon',
+  borclanma: 'Borçlanma Aracı', kira: 'Kira Sertifikası', repo: 'Repo / Taahhütlü', doviz: 'Döviz',
+  kiymetli_maden: 'Kıymetli Maden', mevduat: 'Mevduat / Katılım', turev: 'Türev', diger: 'Diğer',
+};
+
+/** "08.10.2026 16:54:43" → "2026-10-08" */
+function kapDateToIso(s: string | null | undefined): string | null {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(String(s ?? ''));
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+
+async function fetchHoldings(code: string): Promise<HoldingsFile | null> {
+  try {
+    const r = await fetch(`${HOLDINGS_BASE}${code}.json`, {
+      headers: { Accept: 'application/json' },
+      cf: { cacheTtl: 3600, cacheEverything: true } as RequestInitCfProperties,
+    });
+    if (!r.ok) return null;
+    const j = (await r.json()) as HoldingsFile;
+    return j && j.current && Array.isArray(j.current.items) ? j : null;
+  } catch {
+    return null;
+  }
+}
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 
@@ -98,7 +141,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '3'); // bump: FVT -> TEFAS feed (varlik sinifi), 21 Eki 2026
+  cacheUrl.searchParams.set('cv', '4'); // bump: KAP holdings items, 24 Eki 2026
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
   if (!force) {
@@ -134,28 +177,64 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
     const allocation = normalizeAllocation(fund.allocation);
     const sektorler = allocation.map((a) => ({ ad: a.label, pct: a.pct }));
 
+    // KAP aylık portföy dağılım raporu (hisse/varlık bazlı) — varsa items doldurulur
+    const holdings = await fetchHoldings(code);
+    const cur = holdings?.current ?? null;
+    // BIST hisse adları: PDF'te çok satırlı hücre güvenilir birleşmiyor → İş Yatırım tablosundan (edge cache) zenginleştir
+    const bistNames = new Map<string, string>();
+    if (cur?.items?.some((h) => h.tur === 'hisse')) {
+      const isy = await fetchIsYatirimAll(waitUntil).catch(() => null);
+      for (const r of isy?.rows ?? []) if (r.name) bistNames.set(r.symbol, r.name);
+    }
+    const prevMap = new Map<string, number>();
+    for (const p of holdings?.previous?.items ?? []) prevMap.set(p.kod, p.pct);
+    const items = (cur?.items ?? [])
+      .filter((h) => Number.isFinite(h.pct) && h.pct > 0)
+      .map((h) => {
+        // Önceki rapor yoksa fark hesaplanamaz → eski = yeni (UI gri gösterir). Önceki rapor var ama kayıt yoksa → yeni pozisyon (eski 0).
+        const hasPrev = !!holdings?.previous;
+        const eski = hasPrev ? (prevMap.get(h.kod) ?? 0) : h.pct;
+        const yabanci = h.tur === 'yabanci_hisse' || h.tur === 'yabanci_fon' || (h.cur != null && h.cur !== 'TL');
+        return {
+          kod: h.kod,
+          ad: (h.tur === 'hisse' ? bistNames.get(h.kod) : null) ?? ((h.ad ?? '').trim() || h.kod),
+          sektor: TUR_LABEL[h.tur ?? 'diger'] ?? 'Diğer',
+          tur: h.tur ?? 'diger',
+          isin: h.isin ?? null,
+          agirlik: h.pct,
+          eskiAgirlik: eski,
+          fark: Math.round((h.pct - eski) * 100) / 100,
+          yeni: hasPrev && !prevMap.has(h.kod),
+          kategori: null as number | null,
+          etf: h.tur === 'fon' || h.tur === 'yabanci_fon',
+          yabanci,
+        };
+      })
+      .sort((a, b) => b.agirlik - a.agirlik);
+
     const body = {
       ok: true,
       code,
       name: fund.name ?? null,
       category: fund.category ?? null,
-      source: 'tefas.gov.tr',
-      attribution: 'Veri kaynağı: TEFAS (varlık sınıfı dağılımı, günlük feed)',
+      source: items.length ? 'tefas.gov.tr + kap.org.tr' : 'tefas.gov.tr',
+      attribution: items.length
+        ? 'Veri kaynağı: KAP aylık Portföy Dağılım Raporu (hisse bazlı) · TEFAS (varlık sınıfı)'
+        : 'Veri kaynağı: TEFAS (varlık sınıfı dağılımı, günlük feed)',
       updatedAt: new Date().toISOString(),
       feedUpdatedAt: feed.updatedAt ?? null,
       navDate: fund.date ?? null,
-      // KAP aylik portfoy raporu alanlari — kaynak yok
-      aciklamaTarihi: null as string | null,
+      // KAP aylık rapor alanları
+      aciklamaTarihi: kapDateToIso(cur?.publishDate),
+      period: cur?.period ?? null,
+      previousPeriod: holdings?.previous?.period ?? null,
+      kapSource: holdings?.source ?? null,
       oncekiAy: null as number | null,
       oncekiYil: null as number | null,
-      itemCount: 0,
-      items: [] as Array<{
-        kod: string; ad: string; sektor: string;
-        agirlik: number; eskiAgirlik: number; fark: number;
-        kategori: number | null; etf: boolean; yabanci: boolean;
-      }>,
-      itemsAvailable: false,
-      note: ITEMS_NOTE,
+      itemCount: items.length,
+      items,
+      itemsAvailable: items.length > 0,
+      note: items.length ? null : ITEMS_NOTE,
       allocationAvailable: allocation.length > 0,
       allocation,
       sektorler,

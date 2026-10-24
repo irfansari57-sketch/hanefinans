@@ -1,0 +1,63 @@
+name: KAP Fon Portfoy Dagilim Fetch
+
+# KAP aylık "Portföy Dağılım Raporu" PDF'lerinden hisse/varlık bazlı fon dağılımı.
+# Raporlar ay başında (çoğunlukla 1–12'si) yayımlanır → ayın 2–15'i her gece 02:40 UTC + elle.
+# Çıktı: data/holdings/{KOD}.json + data/holdings/index.json (jsDelivr üzerinden Functions okur).
+on:
+  schedule:
+    - cron: '40 2 2-15 * *'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Yalnız bu fon kodları (virgülle; boş = tümü)'
+        required: false
+        default: ''
+      days_back:
+        description: 'Kaç gün geriye bildirim taransın'
+        required: false
+        default: '40'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kap-holdings
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install curl_cffi requests pdfplumber
+      - name: Fetch KAP holdings
+        env:
+          KAP_ONLY: ${{ github.event.inputs.only }}
+          KAP_DAYS_BACK: ${{ github.event.inputs.days_back || '40' }}
+          KAP_TIME_BUDGET_SEC: '5400'
+        run: python -u scripts/kap_holdings_fetch.py
+      - name: Commit if changed
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash origin main || true
+          git add data/holdings
+          if git diff --staged --quiet; then
+            echo "Degisiklik yok"
+          else
+            git commit -m "data: KAP fon portfoy dagilimi $(date -u +%Y-%m-%d) [skip ci]"
+            for i in 1 2 3; do
+              if git push; then exit 0; fi
+              git pull --rebase --autostash origin main || true
+              sleep 3
+            done
+            exit 1
+          fi
+      - name: Purge jsDelivr cache (index)
+        if: always()
+        run: curl -s --max-time 20 "https://purge.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/holdings/index.json" | head -c 200; echo

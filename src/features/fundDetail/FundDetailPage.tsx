@@ -62,6 +62,10 @@ export function FundDetailPage() {
     allocationAvailable?: boolean;
     allocation?: Array<{ label: string; pct: number }> | null;
     navDate?: string | null;
+    /** 24 Eki 2026: KAP aylık rapor dönemi ("2026-09") ve önceki dönem */
+    period?: string | null;
+    previousPeriod?: string | null;
+    kapSource?: string | null;
   }
   const [distribution, setDistribution] = useState<DistributionPayload | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
@@ -767,6 +771,8 @@ export function FundDetailPage() {
                         item={sel}
                         mode={hasItems ? 'stock' : 'class'}
                         navDate={distribution?.navDate ?? null}
+                        hasPrev={!!distribution?.previousPeriod}
+                        periodLabel={distribution?.period ? periodLabelTr(distribution.period) : null}
                         onClose={() => setSelectedBubble(null)}
                       />
                     );
@@ -793,9 +799,9 @@ export function FundDetailPage() {
                   {!selectedBubble && <p className="mt-2 text-center text-[10px] text-slate-500">Bir balona tıklayarak ayrıntısını aç.</p>}
                   <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
                     {hasItems
-                      ? 'Balon alanı hissenin fondaki ağırlığıyla orantılı; içindeki yüzde = ağırlık, küçük sayı = aylık fark (puan). Yeşil = önceki aya göre fon pozisyonunu arttırdı, kırmızı = azalttı.'
-                      : 'Balon alanı varlık sınıfının fondaki ağırlığıyla orantılı. Hisse bazlı dağılım için kaynak geçici olarak yok; bağlandığında balonlar hisse bazına geçer.'}
-                    {distribution?.navDate && ` Veri tarihi: ${new Date(distribution.navDate).toLocaleDateString('tr-TR')}.`}
+                      ? `Balon alanı varlığın fondaki ağırlığıyla orantılı (KAP "Fon Toplam Değeri"ne göre); küçük sayı = önceki aya göre fark (puan). Yeşil = pozisyon arttı, kırmızı = azaldı.${distribution?.period ? ` Dönem: ${periodLabelTr(distribution.period)}` : ''}${distribution?.aciklamaTarihi ? ` · KAP'ta ${new Date(distribution.aciklamaTarihi).toLocaleDateString('tr-TR')} açıklandı.` : '.'}${distribution?.previousPeriod ? '' : ' Önceki ay verisi henüz yok; farklar bir sonraki raporla gelir.'}`
+                      : 'Balon alanı varlık sınıfının fondaki ağırlığıyla orantılı. Bu fon için KAP aylık portföy dağılım raporu henüz işlenmedi; işlendiğinde balonlar hisse bazına geçer.'}
+                    {!hasItems && distribution?.navDate && ` Veri tarihi: ${new Date(distribution.navDate).toLocaleDateString('tr-TR')}.`}
                   </p>
                 </div>
               )}
@@ -1463,16 +1469,24 @@ function allocToItems(alloc: Array<{ label: string; pct: number }>) {
  *
  * TOP-N (25) hisse — kalanlar tabloda.
  */
-type DistItem = { kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean };
+type DistItem = { kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean; yeni?: boolean };
+
+/** "2026-09" → "Eylül 2026" */
+function periodLabelTr(p: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(p);
+  if (!m) return p;
+  const ay = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][Number(m[2]) - 1];
+  return ay ? `${ay} ${m[1]}` : p;
+}
 
 /**
  * HoldingPanel — seçili balonun ayrıntısı (I tasarımı, 23 Eki 2026).
  *  mode 'stock': hisse-bazlı satır (ağırlık, önceki ay, fark, hisse sayfası linki)
  *  mode 'class': varlık sınıfı — enstrüman listesi için kaynak henüz yok; dürüstçe söylenir
  */
-function HoldingPanel({ item, mode, navDate, onClose }: { item: DistItem; mode: 'stock' | 'class'; navDate: string | null; onClose: () => void }) {
+function HoldingPanel({ item, mode, navDate, hasPrev, periodLabel, onClose }: { item: DistItem; mode: 'stock' | 'class'; navDate: string | null; hasPrev?: boolean; periodLabel?: string | null; onClose: () => void }) {
   const tone = item.fark > 0.05 ? 'text-success' : item.fark < -0.05 ? 'text-danger' : 'text-fg-2';
-  const isBist = mode === 'stock' && !item.yabanci && /^[A-Z0-9]{3,6}$/.test(item.kod);
+  const isBist = mode === 'stock' && !item.yabanci && item.sektor === 'Hisse (BIST)' && /^[A-Z0-9]{3,6}$/.test(item.kod);
   return (
     <div className="rounded-xl border border-border bg-bg-card p-3 text-[12px]">
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -1491,8 +1505,18 @@ function HoldingPanel({ item, mode, navDate, onClose }: { item: DistItem; mode: 
         {mode === 'stock' && (
           <div className="rounded-lg border border-border bg-bg-soft p-2">
             <div className="text-[10px] uppercase tracking-wider text-fg-3">Önceki ay</div>
-            <div className="mt-0.5 font-mono text-[16px] font-bold text-fg">%{item.eskiAgirlik.toFixed(2)}</div>
-            <div className={cn('font-mono text-[11px]', tone)}>{item.fark > 0 ? '+' : ''}{item.fark.toFixed(2)} puan</div>
+            {hasPrev ? (
+              item.yeni ? (
+                <div className="mt-0.5 text-[12px] font-semibold text-success">Yeni pozisyon</div>
+              ) : (
+                <>
+                  <div className="mt-0.5 font-mono text-[16px] font-bold text-fg">%{item.eskiAgirlik.toFixed(2)}</div>
+                  <div className={cn('font-mono text-[11px]', tone)}>{item.fark > 0 ? '+' : ''}{item.fark.toFixed(2)} puan</div>
+                </>
+              )
+            ) : (
+              <div className="mt-0.5 text-[11px] text-fg-3">Önceki rapor henüz yok</div>
+            )}
           </div>
         )}
       </div>
@@ -1502,12 +1526,12 @@ function HoldingPanel({ item, mode, navDate, onClose }: { item: DistItem; mode: 
       {mode === 'stock' ? (
         <div className="mt-3 flex items-center gap-2">
           {isBist && <Link to={`/stock/${item.kod}`} className="btn-secondary h-7 px-2 text-[11px]">Hisse sayfası →</Link>}
-          <span className="text-[10px] text-fg-3">Kaynak: KAP aylık portföy raporu{navDate ? ` · ${new Date(navDate).toLocaleDateString('tr-TR')}` : ''}</span>
+          <span className="text-[10px] text-fg-3">Kaynak: KAP aylık Portföy Dağılım Raporu{periodLabel ? ` · ${periodLabel}` : navDate ? ` · ${new Date(navDate).toLocaleDateString('tr-TR')}` : ''}</span>
         </div>
       ) : (
         <p className="mt-3 text-[11px] leading-relaxed text-fg-2">
-          Bu sınıfın içindeki enstrümanlar (ör. tek tek hisseler) için kaynak henüz bağlı değil; TEFAS yalnız varlık sınıfı toplamını yayınlar.
-          Hisse-bazlı liste KAP aylık portföy raporu kaynağı bağlandığında burada görünecek.
+          Bu sınıfın içindeki enstrümanlar için KAP aylık portföy dağılım raporu bu fonda henüz işlenmedi; TEFAS yalnız varlık sınıfı toplamını yayınlar.
+          Rapor işlendiğinde balonlar hisse/varlık bazına geçer.
           {navDate ? ` Veri tarihi: ${new Date(navDate).toLocaleDateString('tr-TR')}.` : ''}
         </p>
       )}

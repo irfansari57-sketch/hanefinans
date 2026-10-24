@@ -43,3 +43,6 @@ hanefinans-plugin/
 plugins-ref/
 
 hanefinans-plugin/
+
+# yerel test PDF ornekleri (KAP) — commit edilmez
+data/samples/

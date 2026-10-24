@@ -16,6 +16,10 @@ on:
         description: 'Kaç gün geriye bildirim taransın'
         required: false
         default: '40'
+      transport:
+        description: 'auto | direct | proxy (Cloudflare üzerinden)'
+        required: false
+        default: 'auto'
 
 permissions:
   contents: write
@@ -39,6 +43,10 @@ jobs:
           KAP_ONLY: ${{ github.event.inputs.only }}
           KAP_DAYS_BACK: ${{ github.event.inputs.days_back || '40' }}
           KAP_TIME_BUDGET_SEC: '5400'
+          # Alternatif taşıma (Actions IP'si KAP'ta engelliyse): repo secret KAP_PROXY_KEY = Pages secret KAP_PROXY_KEY
+          KAP_PROXY_URL: 'https://investliq.com/api/kap/proxy'
+          KAP_PROXY_KEY: ${{ secrets.KAP_PROXY_KEY }}
+          KAP_TRANSPORT: ${{ github.event.inputs.transport || 'auto' }}
         run: python -u scripts/kap_holdings_fetch.py
       - name: Commit if changed
         if: always()

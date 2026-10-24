@@ -60,6 +60,66 @@ HEADERS = {
     "Origin": BASE,
 }
 
+# Alternatif taşıma: GitHub Actions IP'si KAP'ta engelliyse Cloudflare Pages proxy'si (functions/api/kap/proxy.ts).
+# KAP_PROXY_URL=https://investliq.com/api/kap/proxy  KAP_PROXY_KEY=<Pages secret>  KAP_TRANSPORT=auto|direct|proxy
+PROXY_URL = os.environ.get("KAP_PROXY_URL", "").rstrip("/")
+PROXY_KEY = os.environ.get("KAP_PROXY_KEY", "")
+TRANSPORT = os.environ.get("KAP_TRANSPORT", "auto").lower()
+_use_proxy = TRANSPORT == "proxy"
+
+
+class _Resp:
+    def __init__(self, status: int, content: bytes):
+        self.status_code = status
+        self.content = content
+
+    @property
+    def text(self) -> str:
+        return self.content.decode("utf-8", "replace")
+
+    def json(self):
+        return json.loads(self.text)
+
+
+def kap_request(sess, method: str, path: str, *, body: dict | None = None, accept: str = "*/*", timeout: int = 60) -> _Resp:
+    """KAP'a doğrudan ya da proxy üzerinden istek. auto: doğrudan başarısızsa (≠200 / hata) proxy'ye geçer ve orada kalır."""
+    global _use_proxy
+    hdrs = {**HEADERS, "Accept": accept}
+
+    def direct() -> _Resp:
+        if method == "POST":
+            r = sess.post(BASE + path, json=body, headers=hdrs, timeout=timeout)
+        else:
+            r = sess.get(BASE + path, headers=hdrs, timeout=timeout)
+        return _Resp(r.status_code, r.content)
+
+    def via_proxy() -> _Resp:
+        if not PROXY_URL or not PROXY_KEY:
+            raise RuntimeError("proxy yapılandırılmamış (KAP_PROXY_URL/KAP_PROXY_KEY)")
+        ph = {"X-Proxy-Key": PROXY_KEY}
+        u = f"{PROXY_URL}?path={path}"
+        if method == "POST":
+            r = sess.post(u, json=body, headers=ph, timeout=timeout + 30)
+        else:
+            r = sess.get(u, headers=ph, timeout=timeout + 30)
+        up = r.headers.get("X-Upstream-Status")
+        return _Resp(int(up) if up else r.status_code, r.content)
+
+    if _use_proxy:
+        return via_proxy()
+    try:
+        r = direct()
+        if r.status_code == 200 or TRANSPORT == "direct" or not (PROXY_URL and PROXY_KEY):
+            return r
+        log(f"doğrudan {method} {path}: HTTP {r.status_code} → proxy'ye geçiliyor")
+    except Exception as e:  # noqa: BLE001
+        if TRANSPORT == "direct" or not (PROXY_URL and PROXY_KEY):
+            raise
+        log(f"doğrudan {method} {path}: {e} → proxy'ye geçiliyor")
+    _use_proxy = True
+    return via_proxy()
+
+
 NUM_RE = re.compile(r"^-?\d{1,3}(\.\d{3})*(,\d+)?$|^-?\d+(,\d+)?$")
 ISIN_RE = re.compile(r"\b([A-Z]{2}[A-Z0-9]{9}\d)\b")
 DATE_RE = re.compile(r"^\d{2}/\d{2}/\d{2}$")
@@ -110,7 +170,7 @@ def list_pdr(sess, d: date, fund_type: str) -> list[dict]:
     }
     for attempt in range(3):
         try:
-            r = sess.post(BASE + "/tr/api/disclosure/funds/byCriteria", json=body, headers=HEADERS, timeout=60)
+            r = kap_request(sess, "POST", "/tr/api/disclosure/funds/byCriteria", body=body, accept="application/json, text/plain, */*")
             if r.status_code == 200:
                 arr = r.json()
                 if isinstance(arr, list):
@@ -127,7 +187,7 @@ def list_pdr(sess, d: date, fund_type: str) -> list[dict]:
 def file_id_for(sess, idx: int) -> str | None:
     for attempt in range(3):
         try:
-            r = sess.get(f"{BASE}/tr/Bildirim/{idx}", headers={**HEADERS, "Accept": "text/html"}, timeout=60)
+            r = kap_request(sess, "GET", f"/tr/Bildirim/{idx}", accept="text/html")
             if r.status_code == 200:
                 m = re.search(r"api/file/download/([0-9a-fA-F]{16,40})", r.text)
                 return m.group(1) if m else None
@@ -141,7 +201,7 @@ def file_id_for(sess, idx: int) -> str | None:
 def download_pdf(sess, file_id: str) -> bytes | None:
     for attempt in range(3):
         try:
-            r = sess.get(f"{BASE}/tr/api/file/download/{file_id}", headers={**HEADERS, "Accept": "*/*"}, timeout=120)
+            r = kap_request(sess, "GET", f"/tr/api/file/download/{file_id}", accept="*/*", timeout=120)
             if r.status_code == 200 and r.content:
                 b = r.content
                 off = b.find(b"%PDF")

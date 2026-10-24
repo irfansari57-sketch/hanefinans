@@ -1,0 +1,44 @@
+name: SPK PYS Yetki Belgesi Fetch
+
+# SPK portföy yönetim şirketi yetki belgesi durumları (Faaliyette / Geçici İptal / İptal).
+# Haftada bir Pazartesi 05:30 UTC + elle. Çıktı: data/spk-pys.json (jsDelivr üzerinden site okur).
+on:
+  schedule:
+    - cron: '30 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install curl_cffi requests
+      - name: Fetch SPK registry
+        run: python -u scripts/spk_pys_fetch.py
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash origin main || true
+          git add data/spk-pys.json
+          if git diff --staged --quiet; then
+            echo "Degisiklik yok"
+          else
+            git commit -m "data: SPK PYS yetki durumlari $(date -u +%Y-%m-%d) [skip ci]"
+            for i in 1 2 3; do
+              if git push; then exit 0; fi
+              git pull --rebase --autostash origin main || true
+              sleep 3
+            done
+            exit 1
+          fi
+      - name: Purge jsDelivr cache
+        if: always()
+        run: curl -s --max-time 20 "https://purge.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/spk-pys.json" | head -c 200; echo

@@ -17,7 +17,7 @@
  */
 
 import { fetchIsYatirimAll } from '../_isyatirim';
-import { isLiquidatedFund } from '../../../src/data/liquidatedManagers';
+import { isLiquidatedFund, loadSpkRegistry } from '../../../src/data/liquidatedManagers';
 
 interface Env { DB?: D1Database }
 
@@ -56,7 +56,10 @@ async function fetchStocks(waitUntil: (p: Promise<unknown>) => void): Promise<{ 
 /** YAT fonlar — kendi TEFAS feed'imiz (1d getiri, NAV T-1). ±%15 dışı elenir. */
 async function fetchFunds(): Promise<{ gainers: MoverItem[]; losers: MoverItem[]; asOf?: string }> {
   try {
-    const r = await fetch(TEFAS_FEED, { cf: { cacheTtl: 900, cacheEverything: true } as RequestInitCfProperties });
+    const [r] = await Promise.all([
+      fetch(TEFAS_FEED, { cf: { cacheTtl: 900, cacheEverything: true } as RequestInitCfProperties }),
+      loadSpkRegistry((u) => fetch(u, { cf: { cacheTtl: 3600, cacheEverything: true } as RequestInitCfProperties })), // SPK yetki kaydı (Faaliyette olmayanlar)
+    ]);
     if (!r.ok) return { gainers: [], losers: [] };
     const j = (await r.json()) as { funds?: Array<{ code: string; name: string; nav?: number; date?: string; returns?: { '1d'?: number | null } }> };
     const items: MoverItem[] = [];

@@ -17,12 +17,15 @@ import { formatRelative } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { resolveFundRisk } from '@/lib/fundRisk';
-import { liquidationOf } from '@/data/liquidatedManagers';
+import { liquidationOf, subscribeSpkRegistry } from '@/data/liquidatedManagers';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year'> | 'code';
 
 export function FundsPage() {
+  // 24 Eki 2026: SPK yetki kaydı (Faaliyette olmayan kurucular) yüklenince satır etiketleri güncellensin
+  const [, setSpkTick] = useState(0);
+  useEffect(() => subscribeSpkRegistry(() => setSpkTick((t) => t + 1)), []);
   const watched = useLiveQuery(() => fundsRepo.list(), []) ?? [];
   const watchedCodes = useMemo(() => new Set(watched.map((f) => f.code)), [watched]);
 
@@ -546,8 +549,8 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
           )}
           <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[200px]">{fund.name}</span>
           {liq && (
-            <span className="shrink-0 rounded border border-danger/50 bg-danger/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger" title={`Kurucu tasfiye kapsamında (${liq.manager}); fon TEFAS'ta işlem görmüyor`}>
-              Tasfiye
+            <span className="shrink-0 rounded border border-danger/50 bg-danger/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger" title={`${liq.status} — ${liq.manager} · Kaynak: ${liq.source}`}>
+              {liq.status}
             </span>
           )}
         </div>

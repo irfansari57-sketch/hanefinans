@@ -21,7 +21,7 @@ import { readRiskProfile, evaluateFundSuitability, type SuitabilityLevel } from 
 import { CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveFundRisk } from '@/lib/fundRisk';
-import { liquidationOf } from '@/data/liquidatedManagers';
+import { liquidationOf, subscribeSpkRegistry } from '@/data/liquidatedManagers';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
 
@@ -29,6 +29,8 @@ export function FundDetailPage() {
   const { code = '' } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const fundCode = code.toUpperCase();
+  const [, setSpkTick] = useState(0);
+  useEffect(() => subscribeSpkRegistry(() => setSpkTick((t) => t + 1)), []); // SPK yetki kaydı → tasfiye/iptal uyarısı
 
   const watchedFund = useLiveQuery(async () => {
     const list = await fundsRepo.list();
@@ -392,13 +394,16 @@ export function FundDetailPage() {
           <div className="mb-4 flex items-start gap-3 rounded-xl border border-danger/50 bg-danger/10 p-3 text-[12px]">
             <AlertCircle size={16} className="mt-0.5 shrink-0 text-danger" />
             <div>
-              <div className="font-semibold uppercase tracking-wide text-danger">Tasfiye halinde</div>
+              <div className="font-semibold uppercase tracking-wide text-danger">{liq.status === 'Tasfiye' ? 'Tasfiye halinde' : `Kurucu yetkisi: ${liq.status}`}</div>
               <p className="mt-0.5 text-fg-2">
                 {liq.manager === 'TASFİYE'
                   ? 'Bu fon TEFAS kayıtlarında tasfiye sürecinde görünüyor.'
-                  : `Kurucu ${liq.manager} SPK kararıyla tasfiye kapsamına alındı${liq.since ? ` (${liq.since})` : ''}.`}
-                {' '}Fon TEFAS'ta işlem görmüyor; gösterilen NAV ve getiriler bilgi amaçlıdır, alım-satım yapılamaz. Pay sahipleri için süreç SPK ve kurucu duyurularıyla yürütülür.
+                  : liq.status === 'Tasfiye'
+                    ? `Kurucu ${liq.manager} SPK kararıyla tasfiye kapsamına alındı${liq.since ? ` (${liq.since})` : ''}.`
+                    : `Kurucu ${liq.manager} için SPK yetki belgesi durumu "${liq.status}"${liq.since ? ` (${liq.since})` : ''}.`}
+                {' '}Fon TEFAS'ta işlem görmüyor olabilir; gösterilen NAV ve getiriler bilgi amaçlıdır. Pay sahipleri için süreç SPK ve kurucu duyurularıyla yürütülür.
               </p>
+              <div className="mt-1 text-[10px] text-fg-3">Kaynak: {liq.source}</div>
             </div>
           </div>
         );

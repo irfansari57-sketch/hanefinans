@@ -1,13 +1,13 @@
 {
   "ok": true,
-  "value": 35.84,
+  "value": 33.01,
   "unit": "%",
   "changeAbs": null,
   "changePct": null,
   "changeWindow": null,
-  "asOfDate": "24 Oct 2026 2:15 GMT+0",
+  "asOfDate": "25 Oct 2026 3:15 GMT+0",
   "history": null,
   "source": "worldgovernmentbonds.com",
   "parser": "any-tag-decimal",
-  "updatedAt": "2026-10-24T18:37:22.187504+00:00"
+  "updatedAt": "2026-10-25T08:59:25.963346+00:00"
 }

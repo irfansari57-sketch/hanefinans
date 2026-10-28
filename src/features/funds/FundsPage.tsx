@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { resolveFundRisk } from '@/lib/fundRisk';
 import { liquidationOf, subscribeSpkRegistry } from '@/data/liquidatedManagers';
+import { EligibilityBadge } from '@/components/domain/EligibilityBadge';
+import { eligibilityOf } from '@/lib/investorEligibility';
 import { SeoHead } from '@/components/seo/SeoHead';
 
 type SortKey = keyof Pick<FundPerformance, 'day' | 'week' | 'month' | 'threeMonth' | 'sixMonth' | 'ytd' | 'year'> | 'code';
@@ -49,6 +51,11 @@ export function FundsPage() {
   // 21 Eki 2026: tek seçim → çoklu seçim (MultiSelect); boş dizi = tümü
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [brokerFilter, setBrokerFilter] = useState<string[]>([]);
+  // 28 Eki 2026: yatırımcı uygunluğu filtresi (SPK 50 milyon TL nitelikli yatırımcı eşiği) — kalıcı tercih
+  const [eligFilter, setEligFilter] = useState<'all' | 'genel' | 'nitelikli'>(() => {
+    try { const v = localStorage.getItem('iq.funds.elig'); return v === 'genel' || v === 'nitelikli' ? v : 'all'; } catch { return 'all'; }
+  });
+  useEffect(() => { try { localStorage.setItem('iq.funds.elig', eligFilter); } catch { /* noop */ } }, [eligFilter]);
   const PAGE_SIZE = 50;
   const [liveFunds, setLiveFunds] = useState<FundPerformance[] | null>(null);
   const [feedUpdatedAt, setFeedUpdatedAt] = useState<string | null>(null);
@@ -157,6 +164,7 @@ export function FundsPage() {
     const q = search.trim().toLowerCase();
     return universe.filter((f) => {
       if (categoryFilter.length > 0 && !categoryFilter.includes((f.category ?? '').trim())) return false;
+      if (eligFilter !== 'all' && eligibilityOf(f.name, f.category).kind !== eligFilter) return false;
       if (brokerFilter.length > 0) {
         const b = extractBroker(f.name);
         if (!b || !brokerFilter.includes(b)) return false;
@@ -167,7 +175,7 @@ export function FundsPage() {
       }
       return true;
     });
-  }, [universe, search, categoryFilter, brokerFilter]);
+  }, [universe, search, categoryFilter, brokerFilter, eligFilter]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -303,6 +311,16 @@ export function FundsPage() {
             selected={brokerFilter}
             onChange={setBrokerFilter}
           />
+          {/* Yatırımcı uygunluğu: Genel / Nitelikli (serbest, özel, GYF, GSYF) */}
+          <div className="inline-flex h-8 items-center rounded-lg border border-border bg-bg-card p-0.5 text-[11px]" role="radiogroup" aria-label="Yatırımcı uygunluğu"
+            title="SPK 26 Eki 2026: nitelikli yatırımcı eşiği 50 milyon TL. Serbest/özel fonlar yalnız nitelikli yatırımcıya satılır.">
+            {([['all', 'Tüm fonlar'], ['genel', 'Genel yatırımcı'], ['nitelikli', 'Nitelikli']] as const).map(([k, l]) => (
+              <button key={k} type="button" role="radio" aria-checked={eligFilter === k} onClick={() => { setEligFilter(k); setCurrentPage(1); }}
+                className={cn('h-7 rounded-md px-2.5 font-medium transition', eligFilter === k ? (k === 'nitelikli' ? 'bg-warning/20 text-warning' : 'bg-accent/15 text-accent') : 'text-fg-2 hover:text-fg')}>
+                {l}
+              </button>
+            ))}
+          </div>
           <span className="text-[11px] text-fg-3">
             {categoryFilter.length === 0 && brokerFilter.length === 0 ? <>Tümü · <span className="font-mono text-fg-2">{universe.length}</span> fon</> : <><span className="font-mono text-fg-2">{filtered.length}</span> fon</>}
           </span>
@@ -547,6 +565,7 @@ function FundTableRow({ fund, rank, isWatched, onToggle }: FundTableRowProps) {
           {fund.category && (
             <span className="rounded border border-border bg-bg-card px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:text-slate-300 whitespace-nowrap">{fund.category}</span>
           )}
+          <EligibilityBadge name={fund.name} category={fund.category} />
           <span className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-200 max-w-[200px]">{fund.name}</span>
           {liq && (
             <span className="shrink-0 rounded border border-danger/50 bg-danger/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-danger" title={`${liq.status} — ${liq.manager} · Kaynak: ${liq.source}`}>

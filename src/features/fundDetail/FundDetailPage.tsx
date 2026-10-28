@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   ArrowLeft, Landmark, ExternalLink, BarChart3, StickyNote, Trash2, AlertCircle, Radio, TrendingUp,
-} from 'lucide-react';
+ Lock } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { NoteButton } from '@/components/domain/NoteButton';
@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { resolveFundRisk } from '@/lib/fundRisk';
 import { liquidationOf, subscribeSpkRegistry } from '@/data/liquidatedManagers';
 import { FundClusterBubbleChart, FundStripBubbleChart } from './FundClusterBubbleChart';
+import { EligibilityBadge } from '@/components/domain/EligibilityBadge';
+import { eligibilityOf, QUALIFIED_RULE_NOTE } from '@/lib/investorEligibility';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
 
@@ -294,6 +296,8 @@ export function FundDetailPage() {
                   {fund.category}
                 </span>
               )}
+              {/* 28 Eki 2026: yatırımcı uygunluğu — SPK 50 milyon TL nitelikli yatırımcı eşiği */}
+              {!isBesFund && <EligibilityBadge name={githubData?.name ?? fund.name} category={fund.category} size="md" showGenel />}
               {(() => {
                 // BES fonlari: BEFAS acik/kapali rozeti (TEFAS'in emeklilik karsiligi)
                 if (isBesFund) {
@@ -392,6 +396,18 @@ export function FundDetailPage() {
         );
       })()}
 
+      {/* 28 Eki 2026: Nitelikli yatırımcı uyarısı (serbest/özel/GYF/GSYF) */}
+      {!isBesFund && eligibilityOf(githubData?.name ?? fund.name, fund.category).kind === 'nitelikli' && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/[0.07] p-3 text-[12px]">
+          <Lock size={16} className="mt-0.5 shrink-0 text-warning" />
+          <div>
+            <div className="font-semibold uppercase tracking-wide text-warning">Yalnız nitelikli yatırımcı</div>
+            <p className="mt-0.5 text-fg-2">
+              {eligibilityOf(githubData?.name ?? fund.name, fund.category).reason}. {QUALIFIED_RULE_NOTE} Nitelikli yatırımcı tespiti aracı kurumunuz tarafından yapılır; bu sayfa yatırım tavsiyesi değildir.
+            </p>
+          </div>
+        </div>
+      )}
       {/* 24 Eki 2026: Tasfiye uyarısı — kurucu SPK tasfiye kapsamındaysa fon TEFAS'ta işlem görmez */}
       {(() => {
         const liq = liquidationOf(githubData?.name ?? fund.name);

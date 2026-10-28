@@ -94,6 +94,9 @@ async function fetchCrypto(origin: string): Promise<{ gainers: MoverItem[]; lose
       const j = (await r.json()) as { ok: boolean; quotes: Record<string, { price: number; changePct: number; name?: string }> };
       const items: MoverItem[] = [];
       for (const [k, q] of Object.entries(j.quotes ?? {})) {
+        // 28 Eki 2026: /api/yahoo/snapshot `symbols` parametresine bakmaksızın TÜM kotasyonları döndürüyor
+        // (BIST dahil) → kripto kümesine MARKA.IS gibi hisseler sızıyordu. Yalnız kripto sembolleri.
+        if (!CRYPTO_YAHOO.includes(k) || !k.endsWith('-USD')) continue;
         if (!q || !(q.price > 0) || !Number.isFinite(q.changePct) || Math.abs(q.changePct) > 50) continue;
         items.push({ kod: k.replace('-USD', '/USD'), ad: q.name ?? k.replace('-USD', ''), pct: q.changePct, fiyat: q.price });
       }
@@ -128,7 +131,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '3');
+  cacheUrl.searchParams.set('cv', '4'); // 28 Eki: kripto filtresi + diag
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
 
   if (!force) {

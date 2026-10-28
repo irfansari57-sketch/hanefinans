@@ -487,17 +487,24 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
             );
           }
         }
-        const changePct = iy.prev > 0 && iy.prev !== iy.price
-          ? ((iy.price - iy.prev) / iy.prev) * 100
-          : 0;
+        // 28 Eki 2026: İş Yatırım günlük seri gün içinde bugünün barını içermiyor → endeks seans
+        // boyunca "dünkü kapanış" olarak kalıyordu (hisseler güncelken XU100 bir gün geride).
+        // Düzeltme: Yahoo'nun fiyatı daha yeni bir güne aitse fiyat = Yahoo (anlık), prev = İş Yatırım
+        // son günlük kapanış (güvenilir) → değişim doğru ve güncel. Yoksa eski davranış.
+        const yahooDay = yahoo?.asOf ?? (yahoo?.updatedAt ? new Date(yahoo.updatedAt).toISOString().slice(0, 10) : undefined);
+        const yahooNewer = !!yahoo && yahoo.price > 0 && !!yahooDay && yahooDay > iy.asOf
+          && Math.abs(yahoo.price - iy.price) / iy.price < 0.08; // %8 üstü fark = veri hatası, güvenme
+        const price = yahooNewer ? yahoo!.price : iy.price;
+        const prev = yahooNewer ? iy.price : iy.prev;
+        const changePct = prev > 0 && prev !== price ? ((price - prev) / prev) * 100 : 0;
         quotes[symbol] = {
-          price: iy.price,
-          prev: iy.prev,
+          price,
+          prev,
           changePct,
-          updatedAt: iy.updatedAt,
+          updatedAt: yahooNewer ? yahoo!.updatedAt : iy.updatedAt,
           name: yahoo?.name ?? symbol.replace(/\.IS$/i, ''),
-          source: 'isyatirim',
-          asOf: iy.asOf,
+          source: yahooNewer ? 'yahoo+isyatirim' : 'isyatirim',
+          asOf: yahooNewer ? yahooDay! : iy.asOf,
         };
         // Eger Yahoo entry'si yoksa parsedCount'a ekle
         if (!yahoo) parsedCount++;

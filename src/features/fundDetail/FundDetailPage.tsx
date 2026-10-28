@@ -22,7 +22,7 @@ import { CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveFundRisk } from '@/lib/fundRisk';
 import { liquidationOf, subscribeSpkRegistry } from '@/data/liquidatedManagers';
-import { FundClusterBubbleChart } from './FundClusterBubbleChart';
+import { FundClusterBubbleChart, FundStripBubbleChart } from './FundClusterBubbleChart';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
 
@@ -780,7 +780,15 @@ export function FundDetailPage() {
                     );
                     return (
                       <div className={cn('grid gap-4', !isMobile && sel ? 'lg:grid-cols-[1fr_320px]' : 'grid-cols-1')}>
-                        {hasItems ? (
+                        {hasItems && isMobile ? (
+                          /* 28 Eki 2026: mobilde model E (tür şeritleri) — dar ekranda en okunur */
+                          <FundStripBubbleChart
+                            fundCode={fundCode}
+                            items={bubbleItems}
+                            selected={selectedBubble}
+                            onSelect={(k) => setSelectedBubble((cur) => (cur === k ? null : k))}
+                          />
+                        ) : hasItems ? (
                           /* 28 Eki 2026 (kullanıcı kararı D): hisse bazlı veri varsa TÜR KÜMELERİ modeli */
                           <FundClusterBubbleChart
                             fundCode={fundCode}

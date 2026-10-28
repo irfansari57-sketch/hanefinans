@@ -11,6 +11,9 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
+/** Uzun ISIN/kod (TRD200127T10) balona sığmaz → kısalt; tam kod tooltip'te */
+const shortKod = (k: string) => (k.length > 7 ? k.slice(0, 6) + '…' : k);
+
 export type ClusterItem = { kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; yabanci: boolean; yeni?: boolean };
 
 const GROUP_STYLE: Record<string, { color: string; order: number }> = {
@@ -27,7 +30,7 @@ const GROUP_STYLE: Record<string, { color: string; order: number }> = {
   'Türev': { color: '#F472B6', order: 10 },
   'Diğer': { color: '#64748B', order: 11 },
 };
-const styleOf = (sektor: string) => GROUP_STYLE[sektor] ?? GROUP_STYLE['Diğer'];
+export const styleOf = (sektor: string) => GROUP_STYLE[sektor] ?? GROUP_STYLE['Diğer'];
 
 type Placed = { x: number; y: number; r: number };
 
@@ -177,7 +180,7 @@ export function FundClusterBubbleChart({
               <circle cx={bx} cy={by} r={r} style={{ fill: col, stroke: isSel ? 'rgb(var(--c-accent))' : col }} fillOpacity={isSel ? 0.3 : 0.13} strokeWidth={isSel ? 3 : big ? 1.8 : 1.3} />
               {mid ? (
                 <>
-                  <text x={bx} y={by - (big ? 8 : 4)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={big ? 11 : 9} fontWeight="700" fontFamily="Inter, system-ui">{it.kod}</text>
+                  <text x={bx} y={by - (big ? 8 : 4)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={big ? 11 : 9} fontWeight="700" fontFamily="Inter, system-ui">{shortKod(it.kod)}</text>
                   <text x={bx} y={by + (big ? 7 : 7)} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={big ? 13 : 10} fontWeight="800" fontFamily="JetBrains Mono, monospace">{fmt(it.agirlik, big ? 2 : 1)}</text>
                   {big && hasFark && !it.yeni && (
                     <text x={bx} y={by + 20} textAnchor="middle" style={{ fill: farkCol }} fontSize="8.5" fontWeight="600" fontFamily="JetBrains Mono, monospace">{sign}{it.fark.toFixed(2)}</text>
@@ -187,7 +190,7 @@ export function FundClusterBubbleChart({
                   )}
                 </>
               ) : (
-                <text x={bx} y={by + 3} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-2))' }} fontSize={r >= 15 ? 7.5 : 6.5} fontWeight="700" fontFamily="Inter, system-ui">{it.kod}</text>
+                <text x={bx} y={by + 3} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-2))' }} fontSize={r >= 15 ? 7.5 : 6.5} fontWeight="700" fontFamily="Inter, system-ui">{shortKod(it.kod)}</text>
               )}
             </g>
           );
@@ -203,5 +206,73 @@ export function FundClusterBubbleChart({
         ))}
       </div>
     </div>
+  );
+}
+
+
+/**
+ * FundStripBubbleChart — Model E "şerit" (mobil, 28 Eki 2026): her tür bir yatay şerit, balonlar
+ * soldan sağa büyükten küçüğe; şeride sığmazsa yarıçaplar ölçeklenir. Dar ekranda en okunur düzen.
+ */
+export function FundStripBubbleChart({
+  fundCode, items, selected, onSelect, maxItems = 40,
+}: { fundCode: string; items: ClusterItem[]; selected?: string | null; onSelect?: (kod: string) => void; maxItems?: number }) {
+  const W = 360, PAD_L = 8, PAD_R = 8;
+  const all = [...items].filter((x) => x.agirlik > 0).sort((a, b) => b.agirlik - a.agirlik).slice(0, maxItems);
+  if (all.length === 0) return null;
+  const maxW = all[0].agirlik;
+  const R_MIN = 9, R_MAX = 30;
+  const rad = (w: number) => R_MIN + Math.sqrt(w / maxW) * (R_MAX - R_MIN);
+  const byGroup = new Map<string, ClusterItem[]>();
+  for (const it of all) { const g = it.sektor || 'Diğer'; (byGroup.get(g) ?? byGroup.set(g, []).get(g)!).push(it); }
+  const groups = [...byGroup.entries()].map(([name, its]) => ({ name, its, total: its.reduce((a, x) => a + x.agirlik, 0) })).sort((a, b) => b.total - a.total);
+  const fmt = (v: number, d = 1) => `%${v.toLocaleString('tr-TR', { minimumFractionDigits: d, maximumFractionDigits: d })}`;
+  // şerit yerleşimi (satır kaydırma: sığmayanlar alt satıra)
+  type Row = { y: number; bubbles: Array<{ it: ClusterItem; x: number; r: number }> };
+  const lanes: Array<{ name: string; total: number; color: string; rows: Row[]; top: number; height: number }> = [];
+  let y = 0;
+  for (const g of groups) {
+    const col = styleOf(g.name).color;
+    const top = y; y += 22; // başlık
+    const rows: Row[] = [];
+    let x = PAD_L, rowMaxR = 0, rowItems: Row['bubbles'] = [];
+    const flush = () => { if (!rowItems.length) return; const ry = y + rowMaxR + 4; rows.push({ y: ry, bubbles: rowItems }); y = ry + rowMaxR + 8; rowItems = []; rowMaxR = 0; x = PAD_L; };
+    for (const it of g.its) {
+      const r = rad(it.agirlik);
+      if (x + 2 * r > W - PAD_R && rowItems.length) flush();
+      rowItems.push({ it, x: x + r, r }); rowMaxR = Math.max(rowMaxR, r); x += 2 * r + 8;
+    }
+    flush();
+    lanes.push({ name: g.name, total: g.total, color: col, rows, top, height: y - top });
+    y += 10;
+  }
+  const H = y + 4;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`${fundCode} portföy ağı — tür şeritleri, ${all.length} varlık`}>
+      {lanes.map((l) => (
+        <g key={`lane-${l.name}`}>
+          <text x={PAD_L} y={l.top + 14} style={{ fill: l.color }} fontSize="11" fontWeight="700" fontFamily="Inter, system-ui">{l.name}</text>
+          <text x={W - PAD_R} y={l.top + 14} textAnchor="end" style={{ fill: 'rgb(var(--c-text-2))' }} fontSize="11" fontWeight="700" fontFamily="JetBrains Mono, monospace">{fmt(l.total)} · {l.rows.reduce((a, r) => a + r.bubbles.length, 0)}</text>
+          <line x1={PAD_L} y1={l.top + 19} x2={W - PAD_R} y2={l.top + 19} style={{ stroke: l.color }} strokeOpacity={0.35} />
+          {l.rows.map((row, ri) => row.bubbles.map(({ it, x, r }) => {
+            const isSel = selected === it.kod; const mid = r >= 17;
+            return (
+              <g key={`sb-${l.name}-${ri}-${it.kod}`} onClick={onSelect ? () => onSelect(it.kod) : undefined} style={onSelect ? { cursor: 'pointer' } : undefined} opacity={selected && !isSel ? 0.4 : 1}>
+                <title>{`${it.kod}${it.ad && it.ad !== it.kod ? ' — ' + it.ad : ''}\n${l.name}\nAğırlık: %${it.agirlik.toFixed(2)}`}</title>
+                <circle cx={x} cy={row.y} r={r} style={{ fill: l.color, stroke: isSel ? 'rgb(var(--c-accent))' : l.color }} fillOpacity={isSel ? 0.3 : 0.13} strokeWidth={isSel ? 2.5 : 1.2} />
+                {mid ? (
+                  <>
+                    <text x={x} y={row.y - 2} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={r >= 24 ? 9.5 : 8} fontWeight="700" fontFamily="Inter, system-ui">{shortKod(it.kod)}</text>
+                    <text x={x} y={row.y + 9} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-1))' }} fontSize={r >= 24 ? 10 : 8} fontWeight="800" fontFamily="JetBrains Mono, monospace">{fmt(it.agirlik, 1)}</text>
+                  </>
+                ) : (
+                  <text x={x} y={row.y + 2.5} textAnchor="middle" style={{ fill: 'rgb(var(--c-text-2))' }} fontSize="6.5" fontWeight="700" fontFamily="Inter, system-ui">{shortKod(it.kod)}</text>
+                )}
+              </g>
+            );
+          }))}
+        </g>
+      ))}
+    </svg>
   );
 }

@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { EligibilityBadge } from '@/components/domain/EligibilityBadge';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart3, Search, X, Plus, Landmark, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -204,6 +205,7 @@ export function FundComparePage() {
                     <span className="rounded bg-slate-800/60 px-1.5 py-0.5 text-[10px] text-slate-500">
                       {f.category}
                     </span>
+                    <EligibilityBadge name={f.name} category={f.category} />
                     {f.tefasOpen === false && (
                       <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-400">
                         TEFAS Kapalı

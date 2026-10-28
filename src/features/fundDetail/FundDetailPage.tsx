@@ -588,6 +588,13 @@ export function FundDetailPage() {
                     : <span className="font-semibold text-danger">✗ Kapalı</span>;
                 })()}
               </div>
+              {/* 28 Eki 2026: Yatırımcı uygunluğu satırı (SPK 50 mn TL nitelikli yatırımcı eşiği) */}
+              {!isBesFund && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Yatırımcı</span>
+                  <EligibilityBadge name={githubData.name ?? fund.name} category={githubData.category ?? fund.category} showGenel />
+                </div>
+              )}
               {/* Katılım endeksi uygunluğu — kategori/isim ile hızlı kontrol */}
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">Katılım Endeksi</span>

@@ -358,6 +358,35 @@ def sanity(items: list[dict]) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------- ana akış
+def build_by_stock() -> None:
+    """Ters indeks: hisse → bu hisseyi tutan fonlar (BIST + yabancı hisse + fon payı). data/holdings/by-stock.json
+    { updatedAt, funds: N, stocks: { "ASELS": [{"f":"KTJ","n":"KUVEYT TÜRK…","p":4.5,"per":"2026-09"}, …] } }  (p = fon toplam değerine göre %)"""
+    stocks: dict[str, list] = {}
+    nfund = 0
+    for fn in os.listdir(OUT_DIR):
+        if not fn.endswith(".json") or fn in ("index.json", "by-stock.json"):
+            continue
+        try:
+            j = json.load(open(os.path.join(OUT_DIR, fn), encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        cur = j.get("current") or {}
+        nfund += 1
+        for it in cur.get("items", []):
+            if it.get("tur") not in ("hisse", "yabanci_hisse", "fon", "yabanci_fon"):
+                continue
+            kod = str(it.get("kod") or "").split(" ")[0].upper()  # "MSFT US" → MSFT
+            if not kod or not (it.get("pct") or 0) > 0:
+                continue
+            stocks.setdefault(kod, []).append({"f": j.get("code"), "n": (j.get("name") or "")[:70], "p": it["pct"], "per": cur.get("period"), "t": it.get("tur")})
+    for k in stocks:
+        stocks[k].sort(key=lambda x: -x["p"])
+    out = {"updatedAt": datetime.now(timezone.utc).isoformat(), "funds": nfund, "stocks": stocks}
+    with open(os.path.join(OUT_DIR, "by-stock.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    log(f"by-stock.json: {len(stocks)} enstrüman, {nfund} fon")
+
+
 def main() -> int:
     t0 = time.time()
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -488,6 +517,7 @@ def main() -> int:
     if time.time() - t0 > TIME_BUDGET:
         log("süre bütçesi doldu — kalanlar bir sonraki çalışmada (index artımlı)")
 
+    build_by_stock()
     index["updatedAt"] = datetime.now(timezone.utc).isoformat()
     json.dump(index, open(INDEX_PATH, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     log(f"BİTTİ: {done} yazıldı, {skipped} güncel, {failed} hata, {len(found)} bulunan, {int(time.time()-t0)} sn")

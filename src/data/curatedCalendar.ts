@@ -524,7 +524,7 @@ export const CURATED_CALENDAR: CalendarEvent[] = [
   },
   {
     id: 'fomc-2026-09',
-    date: '2026-09-17',
+    date: '2026-09-16',
     time: '21:00',
     title: 'FED FOMC Faiz Kararı + SEP + Dot Plot',
     category: 'monetary',
@@ -632,7 +632,9 @@ export const CURATED_CALENDAR: CalendarEvent[] = [
   },
   {
     id: 'fomc-2026-10',
-    date: '2026-10-29',
+    // 28 Eki 2026 düzeltme: FOMC Ekim toplantısı 27–28 Ekim; karar 28 Ekim 21:00 TSİ (kullanıcı doğruladı).
+    // Fed 2026 resmi takvimi: Oca 27-28, Mar 17-18, Nis 28-29, Haz 16-17, Tem 28-29, Eyl 15-16, Eki 27-28, Ara 8-9.
+    date: '2026-10-28',
     time: '21:00',
     title: 'FED FOMC Faiz Kararı',
     category: 'monetary',
@@ -650,6 +652,17 @@ export const CURATED_CALENDAR: CalendarEvent[] = [
     country: 'US',
     importance: 'high',
     description: 'FED çekirdek enflasyon göstergesi.',
+    impact: 'unknown',
+  },
+  {
+    id: 'fomc-2026-12',
+    date: '2026-12-09',
+    time: '21:00',
+    title: 'FED FOMC Faiz Kararı + Dot Plot (Aralık)',
+    category: 'monetary',
+    country: 'US',
+    importance: 'high',
+    description: 'FOMC Aralık toplantısı ikinci günü (8–9 Aralık) — faiz + SEP/dot plot; Powell basın 21:30.',
     impact: 'unknown',
   },
   // ============ ABD TAHVİL İHALELERİ ============

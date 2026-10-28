@@ -36,6 +36,7 @@ import { analyzeTimeframe, aggregateTo4h, BIST_4H, computeBigPlayerLean, buildVe
 import { MultiTimeframeCard } from '@/components/domain/MultiTimeframeCard';
 import { DeepAnalysisCard } from './sections/DeepAnalysisCard';
 import { FinancialStatementsCard } from './sections/FinancialStatementsCard';
+import { FundHoldersCard } from './sections/FundHoldersCard';
 import { PinnableAccordion } from '@/components/domain/PinnableAccordion';
 import { Sparkles as SparklesIcon } from 'lucide-react';
 import { notesRepo, alertsRepo, activityRepo } from '@/data/repositories';
@@ -840,6 +841,12 @@ export function StockDetailPage() {
       {!isUs && !bistIndexMeta[sym] && (
         <div className="mb-4">
           <FinancialStatementsCard symbol={sym} />
+        </div>
+      )}
+      {/* 28 Eki 2026: KAP portföy raporlarından — bu hisseyi tutan fonlar (BIST + ABD hisseleri) */}
+      {!bistIndexMeta[sym] && (
+        <div className="mb-4">
+          <FundHoldersCard symbol={sym} />
         </div>
       )}
 

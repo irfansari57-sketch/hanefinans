@@ -66,6 +66,8 @@ jobs:
             done
             exit 1
           fi
-      - name: Purge jsDelivr cache (index)
+      - name: Purge jsDelivr cache (index + by-stock)
         if: always()
-        run: curl -s --max-time 20 "https://purge.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/holdings/index.json" | head -c 200; echo
+        run: |
+          curl -s --max-time 20 "https://purge.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/holdings/index.json" | head -c 200; echo
+          curl -s --max-time 20 "https://purge.jsdelivr.net/gh/irfansari57-sketch/hanefinans@main/data/holdings/by-stock.json" | head -c 200; echo

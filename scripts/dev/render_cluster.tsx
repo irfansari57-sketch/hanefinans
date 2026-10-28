@@ -1,0 +1,11 @@
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import fs from 'node:fs';
+import { FundClusterBubbleChart } from '../../src/features/fundDetail/FundClusterBubbleChart';
+const d = JSON.parse(fs.readFileSync('marketing/video/data.json','utf8')).ktj;
+const TUR: Record<string,string> = { yh:'Yabancı Hisse', h:'Hisse (BIST)', fon:'Yatırım Fonu / BYF', repo:'Repo / Taahhütlü', dv:'Döviz' };
+const items = d.items.map((x: any) => ({ kod: x[0], ad: x[1], sektor: TUR[x[3]], agirlik: x[2], eskiAgirlik: x[2], fark: 0, yabanci: x[3]==='yh' }));
+const html = renderToStaticMarkup(<FundClusterBubbleChart fundCode="KTJ" oneYearReturn={54.56} items={items} selected="MSFT" />);
+const css = `:root{--c-accent:45 212 191;--c-success:34 197 94;--c-danger:239 68 68;--c-text-1:241 245 249;--c-text-2:148 163 184;--c-text-3:100 116 139}@page{size:820px 760px;margin:0}body{margin:0;background:#0E1116;color:#F1F5F9;font-family:Lato}.text-fg-2{color:#94A3B8}.text-fg{color:#F1F5F9}.text-fg-3{color:#64748B}.font-mono{font-family:DejaVu Sans Mono}svg{width:800px;height:auto;display:block;margin:10px}`;
+fs.writeFileSync('/tmp/cluster.html', `<html><head><meta charset="utf-8"><style>${css}</style></head><body>${html}</body></html>`);
+console.log('ok', html.length);

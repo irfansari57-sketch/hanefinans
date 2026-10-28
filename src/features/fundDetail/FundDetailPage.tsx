@@ -22,6 +22,7 @@ import { CheckCircle2, AlertTriangle, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveFundRisk } from '@/lib/fundRisk';
 import { liquidationOf, subscribeSpkRegistry } from '@/data/liquidatedManagers';
+import { FundClusterBubbleChart } from './FundClusterBubbleChart';
 import { MiniMarkdown } from '@/lib/miniMarkdown';
 import { FundComparisonChart } from '@/components/domain/FundComparisonChart';
 
@@ -761,7 +762,7 @@ export function FundDetailPage() {
                   <h3 className="mb-2 text-sm font-semibold text-slate-200">
                     Ağırlık Balonları
                     <span className="ml-2 text-[10px] font-normal text-slate-500">
-                      {hasItems ? 'hisse bazlı · balon alanı = ağırlık' : 'varlık sınıfı bazlı · balon alanı = ağırlık'}
+                      {hasItems ? 'tür kümeleri · hisse bazlı · balon alanı = ağırlık' : 'varlık sınıfı bazlı · balon alanı = ağırlık'}
                     </span>
                   </h3>
                   {(() => {
@@ -779,13 +780,24 @@ export function FundDetailPage() {
                     );
                     return (
                       <div className={cn('grid gap-4', !isMobile && sel ? 'lg:grid-cols-[1fr_320px]' : 'grid-cols-1')}>
-                        <FundDistributionBubbleChart
-                          fundCode={fundCode}
-                          oneYearReturn={githubData?.returns?.['1y'] ?? null}
-                          items={bubbleItems}
-                          selected={selectedBubble}
-                          onSelect={(k) => setSelectedBubble((cur) => (cur === k ? null : k))}
-                        />
+                        {hasItems ? (
+                          /* 28 Eki 2026 (kullanıcı kararı D): hisse bazlı veri varsa TÜR KÜMELERİ modeli */
+                          <FundClusterBubbleChart
+                            fundCode={fundCode}
+                            oneYearReturn={githubData?.returns?.['1y'] ?? null}
+                            items={bubbleItems}
+                            selected={selectedBubble}
+                            onSelect={(k) => setSelectedBubble((cur) => (cur === k ? null : k))}
+                          />
+                        ) : (
+                          <FundDistributionBubbleChart
+                            fundCode={fundCode}
+                            oneYearReturn={githubData?.returns?.['1y'] ?? null}
+                            items={bubbleItems}
+                            selected={selectedBubble}
+                            onSelect={(k) => setSelectedBubble((cur) => (cur === k ? null : k))}
+                          />
+                        )}
                         {sel && !isMobile && <div className="self-start">{panel}</div>}
                         {sel && isMobile && (
                           <div className="fixed inset-0 z-50 flex items-end bg-black/50" onClick={() => setSelectedBubble(null)}>

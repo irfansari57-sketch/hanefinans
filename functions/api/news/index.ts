@@ -435,7 +435,7 @@ export const onRequestGet: PagesFunction = async ({ request, waitUntil }) => {
   // vermiyordu; her panel isteği 13 RSS kaynağını yeniden çekiyordu.
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '4');
+  cacheUrl.searchParams.set('cv', '5'); // 28 Eki: Faiz Kararı + Kredi Notu kritik kalıpları
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit && hit.ok) return hit;

@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-23T17:55:17.753863+00:00",
+  "fetchedAt": "2026-10-28T13:31:50.808778+00:00",
   "model": "claude-haiku-4-5-20251001",
   "brokers": [
     {
@@ -8,38 +8,38 @@
       "initials": "İY",
       "colorSeed": "#0ea5e9",
       "sourceUrl": "https://www.isyatirim.com.tr/tr-tr/analiz/Sayfalar/is-yatirimin-onerileri.aspx",
-      "lastUpdate": "2026-10-23",
+      "lastUpdate": "2026-10-28",
       "recommendations": [
         {
           "symbol": "MPARK",
           "rating": "GÜÇLÜ AL",
           "targetPrice": 700.24,
           "stopLoss": null,
-          "thesis": "Mevcut 387.00₺ → hedef 700.24₺ (%81 potansiyel)",
+          "thesis": "Mevcut 384.75₺ → hedef 700.24₺ (%82 potansiyel)",
           "updatedAt": "2025-12-23"
+        },
+        {
+          "symbol": "ASELS",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 535.0,
+          "stopLoss": null,
+          "thesis": "Mevcut 340.75₺ → hedef 535.00₺ (%57 potansiyel)",
+          "updatedAt": "2025-01-16"
         },
         {
           "symbol": "THYAO",
           "rating": "GÜÇLÜ AL",
           "targetPrice": 455.0,
           "stopLoss": null,
-          "thesis": "Mevcut 258.00₺ → hedef 455.00₺ (%76 potansiyel)",
+          "thesis": "Mevcut 253.00₺ → hedef 455.00₺ (%80 potansiyel)",
           "updatedAt": "2026-07-03"
-        },
-        {
-          "symbol": "ASELS",
-          "rating": "GÜÇLÜ AL",
-          "targetPrice": 450.0,
-          "stopLoss": null,
-          "thesis": "Mevcut 338.00₺ → hedef 450.00₺ (%33 potansiyel)",
-          "updatedAt": "2025-01-16"
         },
         {
           "symbol": "TUPRS",
           "rating": "AL",
           "targetPrice": 365.25,
           "stopLoss": null,
-          "thesis": "Mevcut 360.75₺ → hedef 365.25₺ (%1 potansiyel)",
+          "thesis": "Mevcut 361.50₺ → hedef 365.25₺ (%1 potansiyel)",
           "updatedAt": "2026-04-09"
         },
         {
@@ -47,7 +47,7 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 365.09,
           "stopLoss": null,
-          "thesis": "Mevcut 142.60₺ → hedef 365.09₺ (%156 potansiyel)",
+          "thesis": "Mevcut 172.40₺ → hedef 365.09₺ (%112 potansiyel)",
           "updatedAt": "2025-10-20"
         },
         {
@@ -55,34 +55,34 @@
           "rating": "GÜÇLÜ AL",
           "targetPrice": 195.0,
           "stopLoss": null,
-          "thesis": "Mevcut 126.50₺ → hedef 195.00₺ (%54 potansiyel)",
+          "thesis": "Mevcut 127.30₺ → hedef 195.00₺ (%53 potansiyel)",
           "updatedAt": "2024-07-08"
-        },
-        {
-          "symbol": "SAHOL",
-          "rating": "GÜÇLÜ AL",
-          "targetPrice": 181.0,
-          "stopLoss": null,
-          "thesis": "Mevcut 87.00₺ → hedef 181.00₺ (%108 potansiyel)",
-          "updatedAt": "2026-10-20"
         },
         {
           "symbol": "ENJSA",
           "rating": "GÜÇLÜ AL",
           "targetPrice": 173.54,
           "stopLoss": null,
-          "thesis": "Mevcut 112.90₺ → hedef 173.54₺ (%54 potansiyel)",
+          "thesis": "Mevcut 112.30₺ → hedef 173.54₺ (%55 potansiyel)",
           "updatedAt": "2026-03-12"
+        },
+        {
+          "symbol": "AKSEN",
+          "rating": "GÜÇLÜ AL",
+          "targetPrice": 117.5,
+          "stopLoss": null,
+          "thesis": "Mevcut 65.10₺ → hedef 117.50₺ (%80 potansiyel)",
+          "updatedAt": "2026-10-02"
         }
       ],
       "portfolio": [
         {
           "symbol": "AKSEN",
-          "weight": 8.0
+          "weight": 10.0
         },
         {
           "symbol": "ASELS",
-          "weight": 10.0
+          "weight": 12.0
         },
         {
           "symbol": "ASTOR",
@@ -90,7 +90,7 @@
         },
         {
           "symbol": "ENJSA",
-          "weight": 8.0
+          "weight": 10.0
         },
         {
           "symbol": "GARAN",
@@ -98,15 +98,11 @@
         },
         {
           "symbol": "MPARK",
-          "weight": 7.0
-        },
-        {
-          "symbol": "SAHOL",
-          "weight": 12.0
+          "weight": 9.0
         },
         {
           "symbol": "SOKM",
-          "weight": 9.0
+          "weight": 11.0
         },
         {
           "symbol": "THYAO",
@@ -114,7 +110,7 @@
         },
         {
           "symbol": "TUPRS",
-          "weight": 7.0
+          "weight": 9.0
         }
       ],
       "ok": true
@@ -125,17 +121,17 @@
       "initials": "OY",
       "colorSeed": "#10b981",
       "sourceUrl": "https://www.osmanlimenkul.com.tr/finansal-planlama/egitim/bulten-talep",
-      "lastUpdate": "2026-10-23",
+      "lastUpdate": "2026-10-28",
       "recommendations": [],
       "ok": false,
       "debugLog": [
         "GET https://www.osmanlimenkul.com.tr/upload/CmsBulletin/Gunluk_Bulten.pdf",
         "HTTP 200, 4433475 bytes, type=application/pdf",
         "PDF text: 11493 chars",
-        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CgKbg7dpKe1mKdnsKXCF8'}",
+        "Claude: Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CgUidT9bWDoKd3afpdYtE'}",
         "Result: 0 recommendations"
       ],
-      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CgKbg7dpKe1mKdnsKXCF8'}"
+      "error": "Claude exception: BadRequestError: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CgUidT9bWDoKd3afpdYtE'}"
     },
     {
       "brokerId": "kt-yatirim",
@@ -143,7 +139,7 @@
       "initials": "KT",
       "colorSeed": "#ec4899",
       "sourceUrl": "https://kuveytturkyatirim.com.tr/arastirma-raporlari/?category=G%C3%BCnl%C3%BCk+B%C3%BClten",
-      "lastUpdate": "2026-10-23",
+      "lastUpdate": "2026-10-28",
       "recommendations": [],
       "portfolio": [],
       "ok": false,

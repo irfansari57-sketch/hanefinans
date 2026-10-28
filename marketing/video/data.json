@@ -1,0 +1,67 @@
+{
+  "capturedAt": "2026-10-27T18:22Z",
+  "note": "Tüm değerler investliq.com API'lerinden 27 Eki 2026 18:22 (TSİ 21:22) alındı. Portföy sahnesi ÖRNEK etiketlidir.",
+  "strip": [
+    {"k": "XU100", "p": "11.151", "c": -0.01},
+    {"k": "XU030", "p": "13.935", "c": -0.10},
+    {"k": "BTC", "p": "80.520", "c": -0.68},
+    {"k": "ETH", "p": "2.345", "c": -1.65},
+    {"k": "ASELS", "p": "344,25", "c": 2.76},
+    {"k": "THYAO", "p": "256,50", "c": -0.68},
+    {"k": "EREGL", "p": "31,84", "c": 3.18},
+    {"k": "TOASO", "p": "228,40", "c": 4.15},
+    {"k": "GARAN", "p": "128,00", "c": -0.62},
+    {"k": "FROTO", "p": "70,30", "c": 3.46}
+  ],
+  "today": [
+    {"k": "XU100", "name": "BIST 100", "p": "11.151,03", "c": -0.01, "src": "İş Yatırım · 26 Eki kapanış"},
+    {"k": "BTC", "name": "Bitcoin / USD", "p": "80.519,74", "c": -0.68, "src": "Yahoo · 27 Eki"},
+    {"k": "ETH", "name": "Ethereum / USD", "p": "2.344,80", "c": -1.65, "src": "Yahoo · 27 Eki"},
+    {"k": "ASELS", "name": "Aselsan", "p": "344,25", "c": 2.76, "src": "İş Yatırım · ~15 dk gecikmeli"}
+  ],
+  "gainers": [["ISFIN","İş Finansal Kiralama",10.0,"15,84"],["DOGUB","Doğusan",9.99,"16,63"],["GRTHO","GrainTurk Tarım",9.99,"68,25"],["AYES","Ayes Çelik Hasır",9.98,"6,61"],["INTEK","Innosa Teknoloji",9.97,"159,90"]],
+  "losers": [["TEHOL","Tera Holding",-10.0,"2,07"],["MANAS","Manas Enerji",-10.0,"2,25"],["BARMA","Barem Ambalaj",-10.0,"4,50"],["MAGEN","Margün Enerji",-10.0,"4,77"],["TRHOL","Tera Finansal Yat.",-9.99,"192,00"]],
+  "fundGainers": [["FSM","One Portföy 5. Hisse Senedi Serbest",8.89],["SIS","Sparta Portföy 2. Hisse Serbest",7.87],["PPS","Phillip Portföy 1. Serbest",7.60]],
+  "news": [
+    {"t": "Borsa İstanbul'dan Tera Portföy kararı — üç Tera fonunda işlemler kapatıldı", "s": "Habertürk", "h": "10:06", "critical": true, "reason": "Faaliyet Durdurma"},
+    {"t": "ASELSAN'ın 9 aylık cirosu 151,5 milyar lira oldu", "s": "Dünya", "h": "21:05", "critical": false, "sym": "ASELS"},
+    {"t": "Borsa salı gününü yatay seyirle tamamladı", "s": "CNN Türk", "h": "21:38", "critical": false, "sym": "XU100"},
+    {"t": "Çitlekçi Mağazacılık 2026/9 döneminde 1,098 milyar TL kâr açıkladı", "s": "BorsaGündem", "h": "21:09", "critical": false},
+    {"t": "Kasım ayı kira artış oranı ne zaman açıklanacak?", "s": "CNN Türk", "h": "22:17", "critical": false},
+    {"t": "Emekli maaşlarına refah payı mı geliyor?", "s": "CNN Türk", "h": "22:34", "critical": false}
+  ],
+  "bars": [13703,13799,13779,13812,13705,14110,14132,14172,14132,14128,14459,14397,14515,14501,14473,14611,14576,14642,14334,14229,14051,13932,14012,14152,14405,14505,14394,14467,14236,13892,13123,13510,13284,13338,13199,13252,12888,12899,12593,12291,11947,12249,12270,12444,12374,12123,12214,12266,12151,12251,12118,12070,11722,11430,11798,11577,11220,11117,11152,11151],
+  "ktj": {
+    "code": "KTJ", "name": "KUVEYT TÜRK PORTFÖY TEKNOLOJİ KATILIM FONU", "period": "Eylül 2026", "aciklama": "08.10.2026", "ret1y": 54.56,
+    "alloc": [["Yabancı Hisse Senedi",73.26],["Hisse Senedi",9.88],["BTAS",9.49],["Yabancı Yatırım Fonu",7.37]],
+    "items": [["MSFT","Microsoft",9.77,"yh"],["TSM","Taiwan Semiconductor",9.02,"yh"],["KSV","Kuveyt Türk Kısa Vadeli Katılım",8.28,"fon"],["MU","Micron",7.61,"yh"],["AVGO","Broadcom",7.13,"yh"],["ASML","ASML",4.84,"yh"],["CRWD","CrowdStrike",4.80,"yh"],["TRD200127T10","Hazine · taahhütlü",4.75,"repo"],["AMD","AMD",4.60,"yh"],["ASELS","Aselsan",4.50,"h"],["AAPL","Apple",4.41,"yh"],["ANET","Arista",4.16,"yh"],["USD","Döviz",3.45,"dv"],["KLAC","KLA",3.18,"yh"],["AMAT","Applied Materials",2.86,"yh"],["LOGO","Logo Yazılım",2.26,"h"],["KEYS","Keysight",1.89,"yh"],["QCOM","Qualcomm",1.51,"yh"],["NOW","ServiceNow",1.48,"yh"],["CDNS","Cadence",1.46,"yh"],["INTC","Intel",1.32,"yh"],["TEL","TE Connectivity",1.32,"yh"],["PANW","Palo Alto",1.19,"yh"],["KZL","Kuveyt Türk Altın Katılım",1.15,"fon"],["ARDYZ","ARD Bilişim",1.12,"h"]]
+  },
+  "thyao": {
+    "code": "THYAO", "name": "Türk Hava Yolları", "p": "256,50", "c": -0.68, "asOf": "2026/6 · İş Yatırım mali tablolar (enflasyon düzeltmeli)",
+    "periods": [["2026/6","585,1","53,6","18,8"],["2026/3","258,0","25,9","9,9"],["2025/12","1.125,1","217,6","139,1"],["2025/9","690,8","135,4","81,0"],["2025/6","408,0","67,5","24,9"],["2025/3","176,7","17,5","-1,9"]],
+    "cols": ["Dönem","Net Satış (mr ₺)","FAVÖK (mr ₺)","Net Kâr (mr ₺)"]
+  },
+  "literacy": ["Bilanço: varlık = borç + özkaynak", "Gelir tablosu: ciro → FAVÖK → net kâr", "Nakit akım: kâr var, nakit var mı?", "Alacak/stok şişmesi — erken uyarı", "Tek seferlik gelirleri ayıkla", "Serbest nakit akışı vs net kâr", "Dipnotları oku: ilişkili taraf, teminat"],
+  "screener": {
+    "asOf": "23 Eki 2026", "universe": 129,
+    "filters": ["RSI(14) < 40", "SMA50 altında", "Trend: düşüş"],
+    "cols": ["Hisse","Kapanış","Gün %","RSI 14","SMA50 %","1A %","Hacim ×"],
+    "rows": [["ZOREN","1,36",-8.72,12.8,-35.0,-33.7,1.79],["KATMR","1,10",-3.51,17.3,-35.3,-29.5,1.29],["EUREN","2,09",-3.69,17.5,-36.1,-31.3,1.67],["ODAS","4,65",-0.85,18.5,-29.3,-32.1,1.38],["BINHO","3,57",-4.55,19.2,-53.8,-48.6,0.66],["VESTL","12,96",-8.28,19.4,-37.8,-38.3,1.61],["BTCIM","1,56",-2.50,20.1,-48.6,-31.6,1.49],["ECZYT","168,70",-1.75,20.5,-35.2,-27.6,0.99],["TTRAK","353,00",-2.75,21.4,-13.8,-13.4,0.86],["ISFIN","16,51",-1.55,22.3,-12.9,-13.5,0.36]]
+  },
+  "portfolio": {
+    "label": "ÖRNEK PORTFÖY",
+    "rows": [["THYAO","Hisse",120,"256,50","30.780",-0.68],["ASELS","Hisse",60,"344,25","20.655",2.76],["KTJ","Fon",8000,"2,65","21.200",1.08],["EREGL","Hisse",500,"31,84","15.920",3.18],["BTC","Kripto",0.01,"80.520 $","33.400",-0.68]],
+    "total": "121.955 ₺",
+    "risk": [["Konsantrasyon (ilk 2)", "%45", "orta"], ["Sektör: Savunma+Havacılık", "%42", "yüksek"], ["Kripto payı", "%27", "yüksek"], ["Fon çeşitliliği", "1 fon", "düşük"]]
+  },
+  "vo": [
+    [0.0, 4.0, "Piyasayı veriyle mi okuyorsun, söylentiyle mi?"],
+    [4.0, 12.0, "InvestliQ; BIST hisselerini, TEFAS fonlarını, kripto ve döviz piyasalarını tek panelde toplar. Her kartta kaynak ve veri saati yazar."],
+    [12.0, 22.0, "Bir fonun içinde gerçekten ne olduğunu merak ettin mi? Portföy Ağı, KAP aylık raporlarından hisse hisse ağırlıkları gösterir."],
+    [22.0, 30.0, "Hisse sayfasında fiyatın yanında bilanço var. Bilanço Okuryazarlığı rehberiyle rakamları okumayı öğren."],
+    [30.0, 40.0, "Tarayıcıda kendi kriterlerini kur; sonuçlar deterministik, her satırın kanıtı var. Kural tabanlı alarmlarla koşul oluştuğunda haberin olsun."],
+    [40.0, 50.0, "KAP ve ekonomi haberleri akışta; faaliyet durdurma, pay alım teklifi gibi kritik başlıklar otomatik etiketlenir."],
+    [50.0, 58.0, "Portföyünü ekle, risk raporunu al; telefon, tablet, bilgisayar — hepsinde aynı hesap."],
+    [58.0, 68.0, "InvestliQ. Yatırımcılar için akıllı veri platformu. investliq.com’da ücretsiz başla."]
+  ]
+}

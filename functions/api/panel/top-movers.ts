@@ -151,22 +151,50 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
   const MIN_FULL = 10;
   const sessionDate = trSessionDate();
   type Cat = { gainers: MoverItem[]; losers: MoverItem[]; asOf?: string; stale?: boolean; staleDate?: string };
+  // 28 Eki 2026: sabah saatlerinde liste boş geliyordu → iki katmanlı son-iyi-kopya + teşhis alanı.
+  //   Katman 1: D1 daily_movers (kalıcı, tüm colo'lar). Katman 2: Cache API uzun ömürlü anahtar (D1 yoksa/hatalıysa).
+  //   `diag` yanıtta: hangi kategori live/stale/none ve D1 durumu — sabah boş gelirse nedeni görünür olsun.
+  const diag: Record<string, string> = {};
+  const lastGoodKey = (cat: string) => new Request(`${url.origin}/api/panel/top-movers/_lastgood/${cat}`, { method: 'GET' });
   const withFallback = async (cat: string, live: Cat): Promise<Cat> => {
     const full = live.gainers.length >= MIN_FULL && live.losers.length >= MIN_FULL;
-    if (!env.DB) return live;
     if (full) {
-      waitUntil(env.DB.prepare(
-        'INSERT INTO daily_movers (cat, as_of, session_date, payload, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(cat) DO UPDATE SET as_of = excluded.as_of, session_date = excluded.session_date, payload = excluded.payload, updated_at = excluded.updated_at',
-      ).bind(cat, live.asOf ?? null, sessionDate, JSON.stringify({ gainers: live.gainers, losers: live.losers }), Date.now()).run().catch(() => null));
+      const payload = JSON.stringify({ gainers: live.gainers, losers: live.losers, asOf: live.asOf ?? null, sessionDate });
+      if (env.DB) {
+        waitUntil(env.DB.prepare(
+          'INSERT INTO daily_movers (cat, as_of, session_date, payload, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(cat) DO UPDATE SET as_of = excluded.as_of, session_date = excluded.session_date, payload = excluded.payload, updated_at = excluded.updated_at',
+        ).bind(cat, live.asOf ?? null, sessionDate, payload, Date.now()).run().then(() => { diag.d1 = 'ok'; }).catch((e: unknown) => { diag.d1 = `write-error: ${e instanceof Error ? e.message : String(e)}`.slice(0, 120); }));
+      }
+      waitUntil(cache.put(lastGoodKey(cat), new Response(payload, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=604800' } })).catch(() => null));
+      diag[cat] = 'live';
       return live;
     }
-    try {
-      const row = await env.DB.prepare('SELECT as_of, session_date, payload FROM daily_movers WHERE cat = ?').bind(cat).first<{ as_of: string | null; session_date: string | null; payload: string }>();
-      if (row) {
-        const p = JSON.parse(row.payload) as { gainers: MoverItem[]; losers: MoverItem[] };
-        return { gainers: p.gainers, losers: p.losers, asOf: row.as_of ?? undefined, stale: true, staleDate: row.session_date ?? undefined };
+    // Katman 1: D1
+    if (env.DB) {
+      try {
+        const row = await env.DB.prepare('SELECT as_of, session_date, payload FROM daily_movers WHERE cat = ?').bind(cat).first<{ as_of: string | null; session_date: string | null; payload: string }>();
+        if (row) {
+          const p = JSON.parse(row.payload) as { gainers: MoverItem[]; losers: MoverItem[] };
+          diag[cat] = 'stale-d1';
+          return { gainers: p.gainers, losers: p.losers, asOf: row.as_of ?? undefined, stale: true, staleDate: row.session_date ?? undefined };
+        }
+        diag.d1 = diag.d1 ?? 'ok-empty';
+      } catch (e) {
+        diag.d1 = `read-error: ${e instanceof Error ? e.message : String(e)}`.slice(0, 120); // tablo yoksa (migration 024) buraya düşer
       }
-    } catch { /* tablo yoksa (migration 024) canlıya düş */ }
+    } else diag.d1 = 'no-binding';
+    // Katman 2: Cache API son iyi kopya
+    try {
+      const c = await cache.match(lastGoodKey(cat));
+      if (c) {
+        const p = (await c.json()) as { gainers: MoverItem[]; losers: MoverItem[]; asOf?: string | null; sessionDate?: string };
+        if (p.gainers?.length) {
+          diag[cat] = 'stale-cache';
+          return { gainers: p.gainers, losers: p.losers, asOf: p.asOf ?? undefined, stale: true, staleDate: p.sessionDate };
+        }
+      }
+    } catch { /* noop */ }
+    diag[cat] = live.gainers.length ? 'live-partial' : 'none';
     return live;
   };
   const [stocks, funds, crypto] = await Promise.all([
@@ -195,6 +223,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
     updatedAt: new Date().toISOString(),
     sessionDate,
     partial: emptyCats.length > 0 ? emptyCats : undefined,
+    diag,
     error: allEmpty ? 'Hiçbir kaynaktan veri alınamadı' : undefined,
     stocks,
     funds,

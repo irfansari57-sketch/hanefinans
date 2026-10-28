@@ -82,14 +82,41 @@ export function SoftPanelPage() {
     bes:    { gainers: Mover[]; losers: Mover[] };
     crypto: { gainers: Mover[]; losers: Mover[]; stale?: boolean; staleDate?: string; asOf?: string };
   }
-  const [topMovers, setTopMovers] = useState<TopMoversPayload | null>(null);
+  // 28 Eki 2026: sabah (seans öncesi) kategori boş gelirse ekranda boşluk yerine SON DOLU kopya kalır:
+  //  1) ilk açılışta localStorage'daki son iyi kopya hemen gösterilir (stale etiketiyle),
+  //  2) yeni yanıtta boş gelen kategori, eldeki dolu kopyayla değiştirilmez (stale işaretlenir),
+  //  3) dolu gelen kategoriler localStorage'a yazılır.
+  const LS_KEY = 'iq.topMovers.lastGood.v1';
+  const [topMovers, setTopMovers] = useState<TopMoversPayload | null>(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return null;
+      const j = JSON.parse(raw) as TopMoversPayload & { savedDate?: string };
+      const mark = <T extends { gainers: Mover[]; losers: Mover[]; stale?: boolean; staleDate?: string }>(c: T): T =>
+        ({ ...c, stale: true, staleDate: c.staleDate ?? j.savedDate });
+      return { stocks: mark(j.stocks), funds: mark(j.funds), bes: j.bes, crypto: mark(j.crypto) };
+    } catch { return null; }
+  });
   const loadTopMovers = useCallback(async () => {
     try {
       const r = await fetch('/api/panel/top-movers');
       if (!r.ok) return;
-      const j = (await r.json()) as { ok: boolean } & TopMoversPayload;
+      const j = (await r.json()) as { ok: boolean; sessionDate?: string } & TopMoversPayload;
       if (!j.ok) return;
-      setTopMovers({ stocks: j.stocks, funds: j.funds, bes: j.bes, crypto: j.crypto });
+      setTopMovers((prev) => {
+        const pick = <T extends { gainers: Mover[]; losers: Mover[]; stale?: boolean; staleDate?: string }>(next: T, old: T | undefined): T => {
+          if (next.gainers.length > 0 || !old || old.gainers.length === 0) return next;
+          return { ...old, stale: true, staleDate: old.staleDate ?? j.sessionDate };
+        };
+        const merged: TopMoversPayload = {
+          stocks: pick(j.stocks, prev?.stocks), funds: pick(j.funds, prev?.funds), bes: j.bes, crypto: pick(j.crypto, prev?.crypto),
+        };
+        try {
+          const good = { ...merged, savedDate: j.sessionDate };
+          if (merged.stocks.gainers.length && !merged.stocks.stale) localStorage.setItem(LS_KEY, JSON.stringify(good));
+        } catch { /* quota */ }
+        return merged;
+      });
     } catch { /* silent */ }
   }, []);
   useEffect(() => {

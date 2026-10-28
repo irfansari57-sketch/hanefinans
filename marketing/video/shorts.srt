@@ -1,0 +1,16 @@
+1
+00:00:00,000 --> 00:00:03,000
+Fonun içinde NE var, biliyor musun?
+
+2
+00:00:03,000 --> 00:00:12,000
+KAP raporundan hisse hisse ağırlık. Tıkla, önceki aya göre farkı gör.
+
+3
+00:00:12,000 --> 00:00:20,000
+Kendi kriterini kur, sonucu kanıtıyla gör.
+
+4
+00:00:20,000 --> 00:00:28,000
+investliq.com — ücretsiz. Yatırım tavsiyesi değildir.
+

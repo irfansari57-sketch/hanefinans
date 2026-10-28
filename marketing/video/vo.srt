@@ -1,0 +1,32 @@
+1
+00:00:00,000 --> 00:00:04,000
+Piyasayı veriyle mi okuyorsun, söylentiyle mi?
+
+2
+00:00:04,000 --> 00:00:12,000
+InvestliQ; BIST hisselerini, TEFAS fonlarını, kripto ve döviz piyasalarını tek panelde toplar. Her kartta kaynak ve veri saati yazar.
+
+3
+00:00:12,000 --> 00:00:22,000
+Bir fonun içinde gerçekten ne olduğunu merak ettin mi? Portföy Ağı, KAP aylık raporlarından hisse hisse ağırlıkları gösterir.
+
+4
+00:00:22,000 --> 00:00:30,000
+Hisse sayfasında fiyatın yanında bilanço var. Bilanço Okuryazarlığı rehberiyle rakamları okumayı öğren.
+
+5
+00:00:30,000 --> 00:00:40,000
+Tarayıcıda kendi kriterlerini kur; sonuçlar deterministik, her satırın kanıtı var. Kural tabanlı alarmlarla koşul oluştuğunda haberin olsun.
+
+6
+00:00:40,000 --> 00:00:50,000
+KAP ve ekonomi haberleri akışta; faaliyet durdurma, pay alım teklifi gibi kritik başlıklar otomatik etiketlenir.
+
+7
+00:00:50,000 --> 00:00:58,000
+Portföyünü ekle, risk raporunu al; telefon, tablet, bilgisayar — hepsinde aynı hesap.
+
+8
+00:00:58,000 --> 00:01:08,000
+InvestliQ. Yatırımcılar için akıllı veri platformu. investliq.com’da ücretsiz başla.
+

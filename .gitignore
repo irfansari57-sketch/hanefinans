@@ -48,3 +48,8 @@ hanefinans-plugin/
 data/samples/
 
 __pycache__/
+
+# video render ara dosyalari
+marketing/video/plates/
+marketing/video/*.mp4
+marketing/video/*.jpg

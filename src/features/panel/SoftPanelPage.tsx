@@ -278,9 +278,10 @@ export function SoftPanelPage() {
   const topCrypto = useMemo(() => {
     // 21 Eki 2026: sunucu kripto listesi boşsa (CoinGecko erişilemedi) Yahoo yedeğine düş
     if (topMovers && (topMovers.crypto.gainers.length > 0 || topMovers.crypto.losers.length > 0)) {
-      const list = enlerDir === 'up' ? topMovers.crypto.gainers : topMovers.crypto.losers;
+      // 28 Eki 2026: savunma — hisse kodu (".IS") kripto kümesine sızarsa gösterme (sunucu tarafı da filtreler)
+      const list = (enlerDir === 'up' ? topMovers.crypto.gainers : topMovers.crypto.losers).filter((c) => !c.kod.includes('.IS'));
       // kod zaten "BTC/USD" biçiminde gelebilir (CoinGecko yolu) — çift ek engelle
-      return list.map((c) => ({ symbol: c.kod.includes('/') ? c.kod : c.kod + '/USD', price: c.fiyat, changePct: c.pct }));
+      if (list.length > 0) return list.map((c) => ({ symbol: c.kod.includes('/') ? c.kod : c.kod + '/USD', price: c.fiyat, changePct: c.pct }));
     }
     // Fallback: Yahoo-based crypto quotes
     return sortByDir(
@@ -473,7 +474,7 @@ export function SoftPanelPage() {
                   const d = cat.staleDate ? new Date(cat.staleDate + 'T12:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : 'önceki';
                   return <span className="text-warning">· {d} kapanışı (seans öncesi)</span>;
                 }
-                return enlerTab === 'stocks' ? '· İş Yatırım · ~15 dk gecikmeli' : enlerTab === 'funds' ? '· TEFAS · önceki gün NAV' : enlerTab === 'crypto' ? '· CoinGecko · 24s' : '';
+                return enlerTab === 'stocks' ? '· İş Yatırım · ~15 dk gecikmeli' : enlerTab === 'funds' ? '· TEFAS · önceki gün NAV' : enlerTab === 'crypto' ? ((topMovers?.crypto.gainers.length ?? 0) > 6 ? '· CoinGecko · 24s' : '· Yahoo · 24s · 4 büyük coin') : '';
               })()}
             </span>
           </div>

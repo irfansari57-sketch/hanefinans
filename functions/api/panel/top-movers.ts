@@ -158,9 +158,15 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
   //   Katman 1: D1 daily_movers (kalıcı, tüm colo'lar). Katman 2: Cache API uzun ömürlü anahtar (D1 yoksa/hatalıysa).
   //   `diag` yanıtta: hangi kategori live/stale/none ve D1 durumu — sabah boş gelirse nedeni görünür olsun.
   const diag: Record<string, string> = {};
-  const lastGoodKey = (cat: string) => new Request(`${url.origin}/api/panel/top-movers/_lastgood/${cat}`, { method: 'GET' });
-  const withFallback = async (cat: string, live: Cat): Promise<Cat> => {
-    const full = live.gainers.length >= MIN_FULL && live.losers.length >= MIN_FULL;
+  // v2: ilk sürüm filtre öncesi BIST'li kripto kümesini yazmıştı → anahtar değişti + okurken içerik doğrulanır.
+  const lastGoodKey = (cat: string) => new Request(`${url.origin}/api/panel/top-movers/_lastgood_v2/${cat}`, { method: 'GET' });
+  // Kategori bazlı "dolu" eşiği: kripto Yahoo'dan yalnız 4 büyük coin gelebiliyor (CoinGecko CF'den engelli)
+  const minFull = (cat: string) => (cat === 'crypto' ? 4 : MIN_FULL);
+  const validItem = (cat: string, it: MoverItem) => cat === 'crypto' ? it.kod.includes('/USD') : !it.kod.includes('/');
+  const clean = (cat: string, c: Cat): Cat => ({ ...c, gainers: c.gainers.filter((i) => validItem(cat, i)), losers: c.losers.filter((i) => validItem(cat, i)) });
+  const withFallback = async (cat: string, liveRaw: Cat): Promise<Cat> => {
+    const live = clean(cat, liveRaw);
+    const full = live.gainers.length >= minFull(cat) && live.losers.length >= minFull(cat);
     if (full) {
       const payload = JSON.stringify({ gainers: live.gainers, losers: live.losers, asOf: live.asOf ?? null, sessionDate });
       if (env.DB) {
@@ -177,9 +183,11 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
       try {
         const row = await env.DB.prepare('SELECT as_of, session_date, payload FROM daily_movers WHERE cat = ?').bind(cat).first<{ as_of: string | null; session_date: string | null; payload: string }>();
         if (row) {
-          const p = JSON.parse(row.payload) as { gainers: MoverItem[]; losers: MoverItem[] };
-          diag[cat] = 'stale-d1';
-          return { gainers: p.gainers, losers: p.losers, asOf: row.as_of ?? undefined, stale: true, staleDate: row.session_date ?? undefined };
+          const p = clean(cat, JSON.parse(row.payload) as Cat);
+          if (p.gainers.length) {
+            diag[cat] = 'stale-d1';
+            return { gainers: p.gainers, losers: p.losers, asOf: row.as_of ?? undefined, stale: true, staleDate: row.session_date ?? undefined };
+          }
         }
         diag.d1 = diag.d1 ?? 'ok-empty';
       } catch (e) {
@@ -190,8 +198,9 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
     try {
       const c = await cache.match(lastGoodKey(cat));
       if (c) {
-        const p = (await c.json()) as { gainers: MoverItem[]; losers: MoverItem[]; asOf?: string | null; sessionDate?: string };
-        if (p.gainers?.length) {
+        const raw = (await c.json()) as { gainers: MoverItem[]; losers: MoverItem[]; asOf?: string | null; sessionDate?: string };
+        const p = { ...raw, ...clean(cat, { gainers: raw.gainers ?? [], losers: raw.losers ?? [] }) };
+        if (p.gainers.length) {
           diag[cat] = 'stale-cache';
           return { gainers: p.gainers, losers: p.losers, asOf: p.asOf ?? undefined, stale: true, staleDate: p.sessionDate };
         }
@@ -222,7 +231,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
     ok: !allEmpty,
     source: 'isyatirim+tefas+coingecko',
     attribution: 'Hisse: İş Yatırım (~15 dk gecikmeli) · Fon: TEFAS (T-1) · Kripto: CoinGecko',
-    sources: { stocks: 'isyatirim', funds: 'tefas', bes: null, crypto: crypto.gainers.some((c) => c.kod.includes('/')) ? 'coingecko|yahoo' : null },
+    sources: { stocks: 'isyatirim', funds: 'tefas', bes: null, crypto: crypto.gainers.length ? (crypto.gainers.length > 6 ? 'coingecko' : 'yahoo') : null },
     updatedAt: new Date().toISOString(),
     sessionDate,
     partial: emptyCats.length > 0 ? emptyCats : undefined,

@@ -66,6 +66,7 @@ export function FundDetailPage() {
     period?: string | null;
     previousPeriod?: string | null;
     kapSource?: string | null;
+    coverage?: number | null;
   }
   const [distribution, setDistribution] = useState<DistributionPayload | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
@@ -799,7 +800,7 @@ export function FundDetailPage() {
                   {!selectedBubble && <p className="mt-2 text-center text-[10px] text-slate-500">Bir balona tıklayarak ayrıntısını aç.</p>}
                   <p className="mt-3 text-[10px] text-slate-500 leading-relaxed text-center">
                     {hasItems
-                      ? `Balon alanı varlığın fondaki ağırlığıyla orantılı (KAP "Fon Toplam Değeri"ne göre); küçük sayı = önceki aya göre fark (puan). Yeşil = pozisyon arttı, kırmızı = azaldı.${distribution?.period ? ` Dönem: ${periodLabelTr(distribution.period)}` : ''}${distribution?.aciklamaTarihi ? ` · KAP'ta ${new Date(distribution.aciklamaTarihi).toLocaleDateString('tr-TR')} açıklandı.` : '.'}${distribution?.previousPeriod ? '' : ' Önceki ay verisi henüz yok; farklar bir sonraki raporla gelir.'}`
+                      ? `Balon alanı varlığın fondaki ağırlığıyla orantılı (KAP "Fon Toplam Değeri"ne göre); küçük sayı = önceki aya göre fark (puan). Yeşil = pozisyon arttı, kırmızı = azaldı.${distribution?.period ? ` Dönem: ${periodLabelTr(distribution.period)}` : ''}${distribution?.aciklamaTarihi ? ` · KAP'ta ${new Date(distribution.aciklamaTarihi).toLocaleDateString('tr-TR')} açıklandı.` : '.'}${distribution?.previousPeriod ? '' : ' Önceki rapor henüz yok; farklar bir sonraki raporla gelir.'}${distribution?.coverage != null && distribution.coverage < 90 ? ` Rapor satırlarının %${distribution.coverage.toFixed(0)}'ı ayrıştırıldı; mevduat/katılım hesabı gibi kalemler listede olmayabilir.` : ''}`
                       : 'Balon alanı varlık sınıfının fondaki ağırlığıyla orantılı. Bu fon için KAP aylık portföy dağılım raporu henüz işlenmedi; işlendiğinde balonlar hisse bazına geçer.'}
                     {!hasItems && distribution?.navDate && ` Veri tarihi: ${new Date(distribution.navDate).toLocaleDateString('tr-TR')}.`}
                   </p>
@@ -1471,10 +1472,13 @@ function allocToItems(alloc: Array<{ label: string; pct: number }>) {
  */
 type DistItem = { kod: string; ad: string; sektor: string; agirlik: number; eskiAgirlik: number; fark: number; etf: boolean; yabanci: boolean; yeni?: boolean };
 
-/** "2026-09" → "Eylül 2026" */
+/** "2026-09" → "Eylül 2026" · "2026-W41" → "41. hafta 2026" (serbest fonlar haftalık rapor verir) */
 function periodLabelTr(p: string): string {
+  const w = /^(\d{4})-W(\d{2})$/.exec(p);
+  if (w) return `${Number(w[2])}. hafta ${w[1]}`;
   const m = /^(\d{4})-(\d{2})$/.exec(p);
   if (!m) return p;
+  if (Number(m[2]) > 12) return `${Number(m[2])}. hafta ${m[1]}`; // eski kayıt biçimi (W öneksiz hafta no)
   const ay = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][Number(m[2]) - 1];
   return ay ? `${ay} ${m[1]}` : p;
 }

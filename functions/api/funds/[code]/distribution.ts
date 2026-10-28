@@ -71,7 +71,7 @@ interface HoldingItem {
 }
 interface HoldingsFile {
   code: string; name?: string | null; fundType?: string; updatedAt?: string; source?: string;
-  current?: { period?: string | null; publishDate?: string | null; disclosureIndex?: number; items?: HoldingItem[] } | null;
+  current?: { period?: string | null; publishDate?: string | null; disclosureIndex?: number; coverage?: number; items?: HoldingItem[] } | null;
   previous?: { period?: string | null; items?: Array<{ kod: string; pct: number }> } | null;
 }
 
@@ -227,6 +227,8 @@ export const onRequest: PagesFunction<Env> = async ({ request, params, waitUntil
       // KAP aylık rapor alanları
       aciklamaTarihi: kapDateToIso(cur?.publishDate),
       period: cur?.period ?? null,
+      // rapordan ayrıştırılan satırların toplam ağırlığı (%); <90 ise mevduat/katılım hesabı gibi satırlar ayrıştırılamamış olabilir
+      coverage: cur?.coverage ?? (items.length ? Math.round(items.reduce((a, i) => a + i.agirlik, 0) * 100) / 100 : null),
       previousPeriod: holdings?.previous?.period ?? null,
       kapSource: holdings?.source ?? null,
       oncekiAy: null as number | null,

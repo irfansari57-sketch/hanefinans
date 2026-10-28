@@ -1,11 +1,11 @@
 name: KAP Fon Portfoy Dagilim Fetch
 
 # KAP aylık "Portföy Dağılım Raporu" PDF'lerinden hisse/varlık bazlı fon dağılımı.
-# Raporlar ay başında (çoğunlukla 1–12'si) yayımlanır → ayın 2–15'i her gece 02:40 UTC + elle.
+# Aylık raporlar ay başında, haftalık (serbest fon) raporlar her hafta yayımlanır → her gece 02:40 UTC + elle; artımlı.
 # Çıktı: data/holdings/{KOD}.json + data/holdings/index.json (jsDelivr üzerinden Functions okur).
 on:
   schedule:
-    - cron: '40 2 2-15 * *'
+    - cron: '40 2 * * *'   # her gece; index artımlı (yeni bildirim yoksa saniyeler sürer)
   workflow_dispatch:
     inputs:
       only:

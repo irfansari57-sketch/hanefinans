@@ -52,7 +52,8 @@ FUND_TYPES = os.environ.get("KAP_FUND_TYPES", "YF,EYF").split(",")
 ONLY_CODES = {c.strip().upper() for c in os.environ.get("KAP_ONLY", "").split(",") if c.strip()}
 MAX_FUNDS = int(os.environ.get("KAP_MAX_FUNDS", "2500"))
 TIME_BUDGET = int(os.environ.get("KAP_TIME_BUDGET_SEC", "4800"))  # 80 dk
-SLEEP = 0.4
+SLEEP = 0.3
+WORKERS = int(os.environ.get("KAP_WORKERS", "4"))
 HEADERS = {
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "tr-TR,tr;q=0.9",
@@ -394,40 +395,52 @@ def main() -> int:
             break
     log(f"PDR bildirimi bulunan fon: {len(found)}")
 
-    # 2-4) her fon için PDF
-    done = skipped = failed = 0
+    # 2-4) her fon için PDF — 4 paralel işçi (25 Eki: tek iş parçacığında 90 dk'da 515 fon; bütçe doldu)
+    import threading
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    lock = threading.Lock()
+    counters = {"done": 0, "skipped": 0, "failed": 0}
+    todo = []
     for code, info in sorted(found.items()):
-        if done + failed >= MAX_FUNDS or time.time() - t0 > TIME_BUDGET:
-            log("süre/adet bütçesi doldu")
-            break
         ent = index["funds"].get(code)
         if ent and int(ent.get("disclosureIndex") or 0) >= info["idx"]:
-            skipped += 1
+            counters["skipped"] += 1
             continue
+        todo.append((code, info))
+    todo = todo[:MAX_FUNDS]
+    log(f"indirilecek: {len(todo)} fon ({counters['skipped']} güncel)")
+
+    def period_of(info) -> str | None:
         yr, per = info.get("year"), info.get("period")
-        period = f"{yr}-{int(per):02d}" if yr and per else None
-        fid = file_id_for(sess, info["idx"])
+        if not (yr and per):
+            return None
+        per = int(per)
+        # KAP: aylık raporlarda period = ay (1-12); haftalık raporlarda (serbest fonlar) = hafta no (13-53) → "2026-W41"
+        return f"{yr}-W{per:02d}" if per > 12 else f"{yr}-{per:02d}"
+
+    def work(code, info):
+        if time.time() - t0 > TIME_BUDGET:
+            return ("budget", code)
+        wsess = _session()
+        period = period_of(info)
+        fid = file_id_for(wsess, info["idx"])
         time.sleep(SLEEP)
         if not fid:
             log(f"{code}: dosya id yok (bildirim {info['idx']})")
-            failed += 1
-            continue
-        pdf = download_pdf(sess, fid)
+            return ("fail", code)
+        pdf = download_pdf(wsess, fid)
         time.sleep(SLEEP)
         if not pdf:
-            failed += 1
-            continue
+            return ("fail", code)
         try:
             items, _meta = parse_pdf(pdf)
         except Exception as e:  # noqa: BLE001
             log(f"{code}: PDF ayrıştırma hatası: {e}")
-            failed += 1
-            continue
+            return ("fail", code)
         ok, why = sanity(items)
         if not ok:
             log(f"{code}: ATLANDI — {why}")
-            failed += 1
-            continue
+            return ("fail", code)
         path = os.path.join(OUT_DIR, f"{code}.json")
         previous = None
         if os.path.exists(path):
@@ -440,23 +453,40 @@ def main() -> int:
                     previous = old.get("previous")
             except Exception:  # noqa: BLE001
                 previous = None
+        coverage = round(sum(i["pct"] for i in items), 2)
         payload = {
             "code": code, "name": info.get("kapTitle"), "fundType": info["fundType"],
             "updatedAt": datetime.now(timezone.utc).isoformat(),
             "source": f"{BASE}/tr/Bildirim/{info['idx']}",
             "current": {"period": period, "publishDate": info.get("publishDate"), "disclosureIndex": info["idx"],
-                        "fileId": fid, "items": items},
+                        "fileId": fid, "coverage": coverage, "items": items},
             "previous": previous,
         }
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
-        index["funds"][code] = {"period": period, "disclosureIndex": info["idx"], "itemCount": len(items),
-                                "publishDate": info.get("publishDate")}
-        done += 1
-        if done % 25 == 0:
-            log(f"ilerleme: {done} yazıldı, {skipped} atlandı, {failed} hata ({int(time.time()-t0)} sn)")
-            index["updatedAt"] = datetime.now(timezone.utc).isoformat()
-            json.dump(index, open(INDEX_PATH, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+        with lock:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
+            index["funds"][code] = {"period": period, "disclosureIndex": info["idx"], "itemCount": len(items),
+                                    "coverage": coverage, "publishDate": info.get("publishDate")}
+            counters["done"] += 1
+            if counters["done"] % 25 == 0:
+                log(f"ilerleme: {counters['done']} yazıldı, {counters['failed']} hata ({int(time.time()-t0)} sn)")
+                index["updatedAt"] = datetime.now(timezone.utc).isoformat()
+                json.dump(index, open(INDEX_PATH, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+        return ("ok", code)
+
+    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+        futs = [ex.submit(work, c, i) for c, i in todo]
+        for fu in as_completed(futs):
+            try:
+                st, _ = fu.result()
+            except Exception as e:  # noqa: BLE001
+                log(f"işçi hatası: {e}"); st = "fail"
+            if st == "fail":
+                with lock:
+                    counters["failed"] += 1
+    done, skipped, failed = counters["done"], counters["skipped"], counters["failed"]
+    if time.time() - t0 > TIME_BUDGET:
+        log("süre bütçesi doldu — kalanlar bir sonraki çalışmada (index artımlı)")
 
     index["updatedAt"] = datetime.now(timezone.utc).isoformat()
     json.dump(index, open(INDEX_PATH, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))

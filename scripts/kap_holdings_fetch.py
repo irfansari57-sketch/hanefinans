@@ -45,6 +45,7 @@ except Exception:  # pragma: no cover
 import pdfplumber
 
 BASE = "https://kap.org.tr"
+PDR_SUBJECT_OID = "8aca490d502e34b801502e380044002b"  # "Portföy Dağılım Raporu" (KAP subjects listesi, 29 Eki 2026)
 OUT_DIR = "data/holdings"
 INDEX_PATH = os.path.join(OUT_DIR, "index.json")
 DAYS_BACK = int(os.environ.get("KAP_DAYS_BACK", "40"))
@@ -166,7 +167,9 @@ def list_pdr(sess, d: date, fund_type: str) -> list[dict]:
     body = {
         "fromDate": d.isoformat(), "toDate": d.isoformat(), "fundTypeList": [fund_type],
         "mkkMemberOidList": [], "fundOidList": [], "passiveFundOidList": [],
-        "disclosureClass": "", "isLate": "", "subjectList": [], "discIndex": [],
+        # 29 Eki 2026: konu filtresi — filtresiz listede günlük 2000 kayıt sınırı "Fon Gider Bilgileri" seliyle
+        # PDR'leri kesiyordu (8 Eki: filtresiz 208, filtreli 275 PDR). subjectOid KAP /api/disclosure/subjects/ALL/N
+        "disclosureClass": "", "isLate": "", "subjectList": [PDR_SUBJECT_OID], "discIndex": [],
         "fromSrc": False, "srcCategory": "",
     }
     for attempt in range(3):
@@ -176,7 +179,7 @@ def list_pdr(sess, d: date, fund_type: str) -> list[dict]:
                 arr = r.json()
                 if isinstance(arr, list):
                     if len(arr) >= 2000:
-                        log(f"UYARI {d} {fund_type}: 2000 sınırına takıldı (bazı bildirimler eksik olabilir)")
+                        log(f"UYARI {d} {fund_type}: 2000 sınırına takıldı (konu filtresine rağmen — gün bölünmeli)")
                     return [x for x in arr if str(x.get("subject") or "").strip() == "Portföy Dağılım Raporu"]
             log(f"liste {d} {fund_type}: HTTP {r.status_code} (deneme {attempt+1})")
         except Exception as e:  # noqa: BLE001

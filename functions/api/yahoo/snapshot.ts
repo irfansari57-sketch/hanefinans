@@ -132,7 +132,7 @@ async function fetchIsYatirimIndex(
       price: last[1],
       prev: prev[1],
       updatedAt: last[0] || Date.now(),
-      asOf: new Date(last[0]).toISOString().slice(0, 10),
+      asOf: new Date(last[0] + 3 * 3_600_000).toISOString().slice(0, 10), // 29 Eki 2026: TR günü (bar damgası TR 00:00 → UTC'de önceki gün çıkıyordu)
     };
   } catch (e) {
     console.warn(`[isYatirim] ${sym} fail:`, e);
@@ -237,6 +237,30 @@ interface YahooChartResult {
  * +6%, +7% gibi yanlis degerler donduruyor. Bu sembollerde sanity check
  * yapariz.
  */
+
+/** 29 Eki 2026: Seans içinde endeks için CANLI Yahoo kotasyonu (yahoo_cache seans boyunca tazelenmiyordu →
+ *  XU100 gün boyu dünkü kapanışta kalıyordu). Yalnız XU100/XU030; cf cache 60 sn; hata → null. */
+async function fetchYahooIndexLive(symbol: string): Promise<{ price: number; updatedAt: number; asOf: string } | null> {
+  try {
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36', Accept: 'application/json' },
+      cf: { cacheTtl: 60, cacheEverything: true } as RequestInitCfProperties,
+    });
+    if (!r.ok) return null;
+    const j = (await r.json()) as { chart?: { result?: Array<{ meta?: { regularMarketPrice?: number; regularMarketTime?: number } }> } };
+    const m = j.chart?.result?.[0]?.meta;
+    if (!m?.regularMarketPrice || !m.regularMarketTime) return null;
+    const updatedAt = m.regularMarketTime * 1000;
+    return { price: m.regularMarketPrice, updatedAt, asOf: new Date(updatedAt + 3 * 3_600_000).toISOString().slice(0, 10) };
+  } catch { return null; }
+}
+
+function isBistSessionNowUtc(now = new Date()): boolean {
+  const d = now.getUTCDay(); if (d === 0 || d === 6) return false;
+  const h = now.getUTCHours() + now.getUTCMinutes() / 60; // TR 09:55–18:20 ≈ UTC 06:55–15:20
+  return h >= 6.9 && h <= 15.35;
+}
+
 function isBistIndex(symbol: string | undefined): boolean {
   if (!symbol) return false;
   return /^XU\d{3}/i.test(symbol) || symbol.startsWith('^XU');
@@ -491,20 +515,26 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
         // boyunca "dünkü kapanış" olarak kalıyordu (hisseler güncelken XU100 bir gün geride).
         // Düzeltme: Yahoo'nun fiyatı daha yeni bir güne aitse fiyat = Yahoo (anlık), prev = İş Yatırım
         // son günlük kapanış (güvenilir) → değişim doğru ve güncel. Yoksa eski davranış.
-        const yahooDay = yahoo?.asOf ?? (yahoo?.updatedAt ? new Date(yahoo.updatedAt).toISOString().slice(0, 10) : undefined);
-        const yahooNewer = !!yahoo && yahoo.price > 0 && !!yahooDay && yahooDay > iy.asOf
-          && Math.abs(yahoo.price - iy.price) / iy.price < 0.08; // %8 üstü fark = veri hatası, güvenme
-        const price = yahooNewer ? yahoo!.price : iy.price;
+        // Aday canlı kotasyon: önce cache'teki Yahoo, seans içinde XU100/XU030 için canlı Yahoo (29 Eki 2026)
+        let liveP: { price: number; updatedAt: number; asOf: string } | null =
+          yahoo && yahoo.price > 0 ? { price: yahoo.price, updatedAt: yahoo.updatedAt, asOf: yahoo.asOf ?? new Date(yahoo.updatedAt).toISOString().slice(0, 10) } : null;
+        const trToday = new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 10);
+        if ((symbol === 'XU100.IS' || symbol === 'XU030.IS') && isBistSessionNowUtc() && (!liveP || liveP.asOf < trToday)) {
+          const fresh = await fetchYahooIndexLive(symbol);
+          if (fresh) liveP = fresh;
+        }
+        const yahooNewer = !!liveP && liveP.asOf > iy.asOf && Math.abs(liveP.price - iy.price) / iy.price < 0.08; // %8 üstü fark = veri hatası
+        const price = yahooNewer ? liveP!.price : iy.price;
         const prev = yahooNewer ? iy.price : iy.prev;
         const changePct = prev > 0 && prev !== price ? ((price - prev) / prev) * 100 : 0;
         quotes[symbol] = {
           price,
           prev,
           changePct,
-          updatedAt: yahooNewer ? yahoo!.updatedAt : iy.updatedAt,
+          updatedAt: yahooNewer ? liveP!.updatedAt : iy.updatedAt,
           name: yahoo?.name ?? symbol.replace(/\.IS$/i, ''),
           source: yahooNewer ? 'yahoo+isyatirim' : 'isyatirim',
-          asOf: yahooNewer ? yahooDay! : iy.asOf,
+          asOf: yahooNewer ? liveP!.asOf : iy.asOf,
         };
         // Eger Yahoo entry'si yoksa parsedCount'a ekle
         if (!yahoo) parsedCount++;

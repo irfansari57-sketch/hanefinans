@@ -214,6 +214,11 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, waitUntil })
     withFallback('funds', fundsLive),
     withFallback('crypto', cryptoLive),
   ]);
+  // 29 Eki 2026: teşhis — canlıyken de D1 tablosunun varlığını raporla (migration 024 uygulandı mı?)
+  if (!diag.d1 && env.DB) {
+    try { await env.DB.prepare('SELECT 1 FROM daily_movers LIMIT 1').first(); diag.d1 = 'ok'; }
+    catch (e) { diag.d1 = `missing: ${e instanceof Error ? e.message : String(e)}`.slice(0, 100); }
+  }
 
   // 13 Eki 2026: Hiçbir kategori veri getiremediyse bu bir hata — 502 + no-store,
   // edge cache'e yazılmaz. Kısmi veri (örn. sadece kripto düştü) cache'lenir ama

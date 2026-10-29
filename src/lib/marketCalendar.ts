@@ -10,14 +10,12 @@
 /** BIST tatilleri 2026 (kaynak: borsaistanbul.com/official-holidays). */
 const BIST_HOLIDAYS_2026 = new Set<string>([
   '2026-01-01', // Yilbasi
-  '2026-03-20', // Ramazan Bayrami arefe (yarim gun) — gun sayilmasi opsiyonel
   '2026-03-21', // Ramazan Bayrami 1
   '2026-03-22', // Ramazan Bayrami 2
   '2026-03-23', // Ramazan Bayrami 3
   '2026-04-23', // Ulusal Egemenlik
   '2026-05-01', // Isci Bayrami
   '2026-05-19', // Genclik ve Spor Bayrami
-  '2026-05-27', // Kurban Bayrami arefe (yarim gun)
   '2026-05-28', // Kurban Bayrami 1
   '2026-05-29', // Kurban Bayrami 2
   '2026-05-30', // Kurban Bayrami 3
@@ -25,6 +23,13 @@ const BIST_HOLIDAYS_2026 = new Set<string>([
   '2026-07-15', // Demokrasi ve Milli Birlik
   '2026-08-30', // Zafer Bayrami
   '2026-10-29', // Cumhuriyet Bayrami
+]);
+
+/** 29 Eki 2026: yarım gün seanslar (arefe + 28 Ekim) — seans 13:00 TR'de biter (Borsa İstanbul takvimi) */
+const BIST_HALF_DAYS_2026 = new Set<string>([
+  '2026-03-20', // Ramazan Bayrami arefe
+  '2026-05-27', // Kurban Bayrami arefe
+  '2026-10-28', // Cumhuriyet Bayrami arefe
 ]);
 
 /**
@@ -64,6 +69,22 @@ export function isBistHoliday(date: Date = new Date()): boolean {
   return BIST_HOLIDAYS_2026.has(toIstanbulDateString(date));
 }
 
+export function isBistHalfDay(date: Date = new Date()): boolean {
+  return BIST_HALF_DAYS_2026.has(toIstanbulDateString(date));
+}
+
+/** Son BIST işlem günü (YYYY-MM-DD, TR takvimi). Seans 10:00 öncesinde / hafta sonu / tatilde bir önceki iş günü. */
+export function lastBistSessionDate(now: Date = new Date()): string {
+  const d = new Date(now.getTime());
+  const { hour } = getIstanbulHourMinute(d);
+  if (hour < 10) d.setUTCDate(d.getUTCDate() - 1);
+  for (let i = 0; i < 10; i++) {
+    if (!isWeekend(d) && !isBistHoliday(d)) break;
+    d.setUTCDate(d.getUTCDate() - 1);
+  }
+  return toIstanbulDateString(d);
+}
+
 export function isWeekend(date: Date = new Date()): boolean {
   const { weekday } = getIstanbulHourMinute(date);
   return weekday === 0 || weekday === 6; // Pazar / Cumartesi
@@ -78,8 +99,8 @@ export function isBistOpen(date: Date = new Date()): boolean {
   if (isBistHoliday(date)) return false;
   const { hour, minute } = getIstanbulHourMinute(date);
   const minutes = hour * 60 + minute;
-  // 10:00 (600) - 18:00 (1080) — final bitisi 18:00 dahil degil, defansif olarak 18:05
-  return minutes >= 600 && minutes <= 1085;
+  // 10:00 (600) - 18:00 (1080) — final bitisi 18:00 dahil degil, defansif olarak 18:05; yarım günde 13:05
+  return minutes >= 600 && minutes <= (isBistHalfDay(date) ? 785 : 1085);
 }
 
 /**

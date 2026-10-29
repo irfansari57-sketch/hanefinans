@@ -438,7 +438,7 @@ export function SoftPanelPage() {
             <h2 className="text-base font-semibold text-fg">BIST 100</h2>
             <span className="font-mono text-xl font-semibold text-fg">{fmtValue(bist100?.value)}</span>
             <Pct v={bist100?.changePct} />
-            {bist100 && <DataFreshness source={bist100.feedSource} asOf={bist100.asOf ?? bist100.updatedAt} delayMin={15} compact />}
+            {bist100 && <DataFreshness source={bist100.feedSource} asOf={bist100.asOf ?? bist100.updatedAt} delayMin={15} compact market="bist" />}
             <div className="ml-auto flex gap-0.5">
               {(['1mo', '3mo', '6mo', 'ytd', '1y'] as const).map((p) => (
                 <button key={p} onClick={() => setHeroPeriod(p)} className={cn('rounded px-2 py-0.5 text-[11px]', heroPeriod === p ? 'bg-bg-card text-fg' : 'text-fg-2 hover:text-fg')}>

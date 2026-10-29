@@ -18,6 +18,7 @@
 
 import { fetchIsYatirimAll } from '../_isyatirim';
 import { isLiquidatedFund, loadSpkRegistry } from '../../../src/data/liquidatedManagers';
+import { lastBistSessionDate } from '../../../src/lib/marketCalendar';
 
 interface Env { DB?: D1Database }
 
@@ -27,10 +28,7 @@ const TEFAS_FEED = 'https://cdn.jsdelivr.net/gh/irfansari57-sketch/hanefinans@ma
 
 /** TR saatiyle son BIST iş günü (hafta sonu → Cuma; tatil takvimi yok). Seans 10:00 öncesinde dünkü gün. */
 function trSessionDate(now = new Date()): string {
-  const tr = new Date(now.getTime() + 3 * 3_600_000);
-  if (tr.getUTCHours() < 10) tr.setUTCDate(tr.getUTCDate() - 1);
-  while (tr.getUTCDay() === 0 || tr.getUTCDay() === 6) tr.setUTCDate(tr.getUTCDate() - 1);
-  return tr.toISOString().slice(0, 10);
+  return lastBistSessionDate(now); // 29 Eki 2026: tatil takvimi farkında (29 Ekim → 28 Ekim)
 }
 
 function topBottom(items: MoverItem[]) {

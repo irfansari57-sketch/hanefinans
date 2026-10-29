@@ -13,6 +13,8 @@
 
 const PAGE_URL = 'https://www.isyatirim.com.tr/tr-tr/analiz/hisse/Sayfalar/default.aspx';
 
+import { isBistHoliday, isBistHalfDay, isWeekend } from '../../src/lib/marketCalendar';
+
 export interface IsYatirimRow {
   symbol: string;
   name?: string;
@@ -80,9 +82,11 @@ export function parseIsYatirimPage(html: string): IsYatirimAll {
 }
 
 export function isBistSessionNowUtc(now = new Date()): boolean {
+  // 29 Eki 2026: tatil + yarım gün farkında (src/lib/marketCalendar ile aynı takvim); 09:00–18:59 TR geniş pencere
+  if (isWeekend(now) || isBistHoliday(now)) return false;
   const h = now.getUTCHours();
-  const d = now.getUTCDay();
-  return d >= 1 && d <= 5 && h >= 6 && h <= 15; // 09:00–18:59 TR
+  if (isBistHalfDay(now)) return h >= 6 && h <= 10; // 09:00–13:59 TR
+  return h >= 6 && h <= 15;
 }
 
 /**

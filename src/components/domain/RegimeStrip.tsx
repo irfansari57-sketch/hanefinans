@@ -115,7 +115,7 @@ export function RegimeStrip({ className }: { className?: string }) {
         <Pct v={cds?.changePct ?? undefined} invert />
       </Link>
       <span className="ml-auto hidden 2xl:inline">
-        <DataFreshness source={idx.source} asOf={asOfIso} delayMin={15} compact />
+        <DataFreshness source={idx.source} asOf={asOfIso} delayMin={15} compact market="bist" />
       </span>
       {/* Dar ekranda: yalnız saat, kaynak/gecikme tooltip'te */}
       <span className="ml-auto inline font-mono text-[11px] text-fg-3 2xl:hidden" title={`${idx.source ?? 'kaynak'} · ~15 dk gecikmeli`}>

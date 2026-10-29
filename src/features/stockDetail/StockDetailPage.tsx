@@ -506,6 +506,7 @@ export function StockDetailPage() {
                 source={stock.feedSource ?? (isUs ? 'yahoo' : undefined)}
                 asOf={stock.asOf}
                 delayMin={stock.delayMin ?? (isUs ? 15 : 15)}
+                market={isUs ? undefined : 'bist'}
               />
             </div>
           </div>

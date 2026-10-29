@@ -8,6 +8,7 @@
 
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isBistOpen, isBistHoliday, isWeekend, lastBistSessionDate } from '@/lib/marketCalendar';
 
 interface Props {
   /** Kaynağın kısa adı: 'Yahoo', 'FVT', 'İş Yatırım', 'TEFAS' */
@@ -19,6 +20,8 @@ interface Props {
   className?: string;
   /** Kompakt mod: sadece saat + gecikme */
   compact?: boolean;
+  /** 29 Eki 2026: 'bist' → seans kapalı/tatilde "28 Eki kapanışı · Tatil" gösterir, "az önce" ve gecikme yazmaz */
+  market?: 'bist';
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -57,8 +60,25 @@ function fmtAge(iso: string): { text: string; stale: boolean } {
   return { text: `${dd} gün önce`, stale: true };
 }
 
-export function DataFreshness({ source, asOf, delayMin, className, compact }: Props) {
+export function DataFreshness({ source, asOf, delayMin, className, compact, market }: Props) {
   const srcLabel = source ? (SOURCE_LABEL[source] ?? source) : undefined;
+  if (market === 'bist' && !isBistOpen()) {
+    const now = new Date();
+    const why = isBistHoliday(now) ? 'Tatil' : isWeekend(now) ? 'Hafta sonu' : 'Seans kapalı';
+    const last = lastBistSessionDate(now);
+    const [y, m, d] = last.split('-').map(Number);
+    const lbl = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    return (
+      <span title={`${srcLabel ? `Kaynak: ${srcLabel} · ` : ''}Borsa İstanbul kapalı (${why}). Gösterilen değer ${lbl} kapanışıdır.`}
+        className={cn('inline-flex items-center gap-1 rounded border border-border bg-bg-soft/60 px-1.5 py-0.5 text-[10px] tabular-nums text-slate-500', className)}>
+        <Clock size={10} />
+        {!compact && srcLabel && <><span>{srcLabel}</span><span className="text-slate-600">·</span></>}
+        <span>{lbl} kapanışı</span>
+        <span className="text-slate-600">·</span>
+        <span>{why}</span>
+      </span>
+    );
+  }
   const age = asOf ? fmtAge(asOf) : null;
   const title = [
     srcLabel ? `Kaynak: ${srcLabel}` : null,

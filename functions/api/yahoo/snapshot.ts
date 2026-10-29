@@ -11,6 +11,7 @@
  */
 
 import { isBistSessionUtc } from '../_fvt';
+import { isBistSessionNowUtc } from '../_isyatirim';
 import { fetchIsYatirimAll } from '../_isyatirim';
 
 interface Env {
@@ -255,11 +256,6 @@ async function fetchYahooIndexLive(symbol: string): Promise<{ price: number; upd
   } catch { return null; }
 }
 
-function isBistSessionNowUtc(now = new Date()): boolean {
-  const d = now.getUTCDay(); if (d === 0 || d === 6) return false;
-  const h = now.getUTCHours() + now.getUTCMinutes() / 60; // TR 09:55–18:20 ≈ UTC 06:55–15:20
-  return h >= 6.9 && h <= 15.35;
-}
 
 function isBistIndex(symbol: string | undefined): boolean {
   if (!symbol) return false;

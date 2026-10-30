@@ -1,15 +1,16 @@
-# investliQ — Yapılacaklar (güncelleme: 28 Eki 2026, seans sonu)
+# investliQ — Yapılacaklar (güncelleme: 30 Eki 2026)
 
 Öncelik: veri doğruluğu > ürün > büyüme. Her madde için "DOĞRULANDI" etiketi ancak canlı kontrol sonrası.
 
 ## A · Kullanıcı tarafı — bekleyen tetikleme/kontroller
+- [x] Hisse Haber & KAP: resmî KAP bildirimleri (788 şirket oid haritası, haftalık workflow) — 30 Eki DOĞRULANDI (ASELS 24, THYAO 9 bildirim).
 - [ ] **KAP workflow tam tarama**: Actions → "KAP Fon Portfoy Dagilim Fetch" → Run (tümü, auto). 515/≈2000 fon işlendi; artımlı + 4 işçi hazır. `[kap] BİTTİ:` satırını paylaş.
 - [ ] **Sabah 08:30–10:15 ekran kontrolü**: Panel "Bugün/Günün Enleri" boş gelmemeli (son iyi kopya + etiket). `api/panel/top-movers?force=1` → `diag.d1 == "ok"` (migration 024 uygulandı mı?).
 - [ ] TEFAS Fund Fetch log'undan `[bes] / [allocation] / [risk]` satırları (BES GÜN/1H/NAV boş sorunu).
 - [ ] `public/` altındaki eski HaneFinans videoları (`0528.mp4`, `HaneFinans_FinancialIntelligence.mp4`) yayından kaldır ("gerçek zamanlı" ifadesi, eski marka).
 
 ## B · Veri doğruluğu (P0)
-- [ ] Haber: aynı olayın 3 kaynaktan 3 kritik satır olmaması — başlık benzerliğiyle tekilleştirme ("3 kaynak").
+- [x] Haber: aynı olayın 3 kaynaktan 3 kritik satır olmaması — başlık benzerliğiyle tekilleştirme (30 Eki: /api/news Jaccard ≥0,6 ±36 sa + kritik anahtar sembol; hisse sayfası KAP↔Google tekilleştirme). Canlı kontrol bekliyor.
 - [ ] Ekonomik takvim: elle girilen tarihler için aylık kaynak doğrulama rutini (Fed/TCMB/TÜİK/BLS resmî takvimleri); geçmiş olaylar "açıklandı" etiketiyle (yarın görünme hatası tekrarlamasın).
 - [ ] Kripto: CoinGecko'yu GitHub Actions'tan çekip `data/crypto.json` (4 coin → 100 coin); top-movers kripto kaynağı.
 - [ ] KAP PDF ayrıştırma: mevduat/katılım hesabı satırları (kodsuz) — para piyasası fonlarında kapsama <%90.

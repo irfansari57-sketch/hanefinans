@@ -50,6 +50,37 @@ function kapDateToIso(s: string): string | null {
 
 function isoDate(d: Date): string { return d.toISOString().slice(0, 10); }
 
+/** Karşılaştırma için normalize: küçük harf, yalnız harf/rakam (TR karakterler dahil). */
+function normTitle(s: string): string {
+  return s.toLocaleLowerCase('tr').replace(/[^a-zçğıöşü0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Haber tekilleştirme (30 Eki 2026, TODO B): KAP bildirimi varken Google'daki kopyalarını ele.
+ *  - Haber portallarının KAP yeniden yayını: başlık "KAP *** ŞİRKET *** KOD *** Konu" → ±36 saat içinde aynı konulu KAP kaydı varsa at
+ *  - Başlığı bir KAP kaydının konu/özetini içeren haberler (≥ 12 karakterlik eşleşme, ±36 saat) → at
+ *  - Kalan haberlerde normalize başlık tekrarı → at
+ */
+function dedupeAgainstKap(kap: SymbolNewsItem[], news: SymbolNewsItem[]): SymbolNewsItem[] {
+  const WINDOW = 36 * 3_600_000;
+  const kapKeys = kap.map((k) => ({ t: new Date(k.publishedAt).getTime(), keys: [normTitle(k.title.split(' — ')[0]), normTitle(k.summary)].filter((x) => x.length >= 12) }));
+  const seen = new Set<string>();
+  const out: SymbolNewsItem[] = [];
+  for (const n of news) {
+    const nt = new Date(n.publishedAt).getTime();
+    const mirror = /^KAP\s*\*{2,}/i.test(n.title);
+    const nn = normTitle(mirror ? n.title.replace(/^KAP\s*\*{2,}.*?\*{2,}\s*/i, '').replace(/^.*?\*{2,}\s*/, '') : n.title);
+    const hit = kapKeys.some((k) => Math.abs(k.t - nt) <= WINDOW && k.keys.some((key) => nn.includes(key) || (nn.length >= 12 && key.includes(nn))));
+    if (hit) continue;
+    if (mirror && kap.length > 0 && kapKeys.some((k) => Math.abs(k.t - nt) <= WINDOW)) continue; // KAP yeniden yayını, eşleşme bulunamasa da aynı gün KAP kaydı varsa at
+    const key = nn.slice(0, 60);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(n);
+  }
+  return out;
+}
+
 async function fetchKapItems(symbol: string): Promise<{ items: SymbolNewsItem[]; status: string }> {
   let oid: string | undefined;
   try {
@@ -80,7 +111,10 @@ async function fetchKapItems(symbol: string): Promise<{ items: SymbolNewsItem[];
     if (!iso || !a.disclosureIndex) continue;
     const subject = (a.subject ?? '').trim();
     const summary = (a.summary ?? '').trim();
-    const title = subject && summary && summary.toLocaleLowerCase('tr') !== subject.toLocaleLowerCase('tr') ? `${subject} — ${summary}` : (subject || summary || 'KAP bildirimi');
+    // Özet konuyu tekrarlıyorsa (yazım farkı dahil: "Duyurusu"/"Duyrusu") yalnız konuyu göster
+    const ns = normTitle(subject); const nm = normTitle(summary);
+    const dup = !subject || !summary || ns === nm || ns.includes(nm) || nm.includes(ns);
+    const title = dup ? (subject || summary || 'KAP bildirimi') : `${subject} — ${summary}`;
     const crit = detectCritical(subject, summary);
     const cls = a.disclosureClass ?? '';
     const byMkk = /MERKEZİ KAYIT/i.test(a.kapTitle ?? '');
@@ -162,7 +196,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, params, waitUn
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '3'); // 30 Eki 2026: KAP birincil kaynak + Google özet temizliği
+  cacheUrl.searchParams.set('cv', '4'); // 30 Eki 2026: KAP birincil + Google tekilleştirme
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
   if (!force) { const hit = await cache.match(cacheKey); if (hit) return hit; }
 
@@ -170,14 +204,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, params, waitUn
     fetchKapItems(symbol).catch((e) => ({ items: [] as SymbolNewsItem[], status: `kap: ${e instanceof Error ? e.message : String(e)}` })),
     fetchGoogleItems(symbol, name).catch((e) => ({ items: [] as SymbolNewsItem[], status: `news: ${e instanceof Error ? e.message : String(e)}` })),
   ]);
-  const items = [...kap.items, ...news.items];
+  const newsItems = dedupeAgainstKap(kap.items, news.items);
+  const items = [...kap.items, ...newsItems];
   // Kritik üstte, sonra tarih
   items.sort((a, b) => Number(b.critical) - Number(a.critical) || b.publishedAt.localeCompare(a.publishedAt));
   const data = items.slice(0, max);
 
   const ttl = data.length === 0 ? 120 : 600;
   const resp = new Response(
-    JSON.stringify({ ok: true, symbol, count: data.length, kapCount: kap.items.length, asOf: new Date().toISOString(), sources: { kap: kap.status, news: news.status }, items: data }),
+    JSON.stringify({ ok: true, symbol, count: data.length, kapCount: kap.items.length, newsCount: newsItems.length, newsDropped: news.items.length - newsItems.length, asOf: new Date().toISOString(), sources: { kap: kap.status, news: news.status }, items: data }),
     { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=1800` } },
   );
   if (!force) waitUntil(cache.put(cacheKey, resp.clone()).catch(() => { /* noop */ }));

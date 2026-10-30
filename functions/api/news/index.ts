@@ -30,6 +30,11 @@ interface NewsItem {
 // Kritik bildirim tespiti ortak modüle taşındı (13 Eki 2026): functions/api/_critical.ts
 import { detectCritical } from '../_critical';
 
+/** Başlık karşılaştırma normalizasyonu: küçük harf (TR), yalnız harf/rakam. */
+function normTitle(s: string): string {
+  return s.toLocaleLowerCase('tr').replace(/[^a-zçğıöşü0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 interface RssSource {
   name: string;
   url: string;
@@ -435,7 +440,7 @@ export const onRequestGet: PagesFunction = async ({ request, waitUntil }) => {
   // vermiyordu; her panel isteği 13 RSS kaynağını yeniden çekiyordu.
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '5'); // 28 Eki: Faiz Kararı + Kredi Notu kritik kalıpları
+  cacheUrl.searchParams.set('cv', '6'); // 30 Eki: başlık benzerliği tekilleştirme + kritik anahtar sembol
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
   const hit = await cache.match(cacheKey);
   if (hit && hit.ok) return hit;
@@ -488,14 +493,35 @@ export const onRequestGet: PagesFunction = async ({ request, waitUntil }) => {
   // pinle, slice öncesi — böylece max=8 ile çağrılan panel'de de konkordato
   // haberi en üstte görünür, tarih kuyruğunun dışına düşmez.
   //
-  // DEDUPE: Aynı criticalReason için sadece 1 bildirim göster. Google News
-  // aynı olayı 5+ farklı kaynaktan getirebiliyor; kullanıcı tek rozet yeter.
-  // En yeni (publishedAt desc sırada ilk gelen) tutulur.
+  // DEDUPE (30 Eki 2026, TODO B — "3 kaynak 3 satır"):
+  //  1) Başlık benzerliği: normalize başlık aynıysa ya da ±36 saat içinde kelime kümesi Jaccard ≥ 0,6 ise aynı olay → en yenisi kalır.
+  //     Google News aynı olayı 5+ kaynaktan getiriyor; KAP/resmî kaynak varsa o tercih edilir (önce o tutulur).
+  //  2) Kritik: aynı (criticalReason + semboller) için tek rozet. Eski sürüm yalnız criticalReason'a bakıyordu →
+  //     iki farklı şirketin "İşlem Kısıtı" haberi tek satıra iniyordu (veri kaybı); semboller anahtara eklendi.
+  const official = (n: NewsItem) => /^KAP\b|Kamuyu Aydınlatma|Borsa İstanbul|SPK|TCMB|TÜİK/i.test(n.source);
+  combined.sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt) || Number(official(b)) - Number(official(a)));
+  const kept: Array<{ n: NewsItem; norm: string; toks: Set<string>; t: number }> = [];
+  for (const n of combined) {
+    const norm = normTitle(n.title);
+    const toks = new Set(norm.split(' ').filter((w) => w.length > 2));
+    const t = +new Date(n.publishedAt);
+    let dup = false;
+    for (const k of kept) {
+      if (k.norm === norm) { dup = true; break; }
+      if (Math.abs(k.t - t) > 36 * 3_600_000 || toks.size < 4 || k.toks.size < 4) continue;
+      let inter = 0; for (const w of toks) if (k.toks.has(w)) inter++;
+      if (inter / (toks.size + k.toks.size - inter) >= 0.6) { dup = true; break; }
+    }
+    if (dup) continue;
+    kept.push({ n, norm, toks, t });
+  }
+  combined = kept.map((k) => k.n);
+
   const seenReasons = new Set<string>();
   const criticalDedup: NewsItem[] = [];
   for (const n of combined) {
     if (!n.critical) continue;
-    const key = n.criticalReason ?? 'critical';
+    const key = `${n.criticalReason ?? 'critical'}|${[...n.symbols].sort().join(',')}`;
     if (seenReasons.has(key)) continue;
     seenReasons.add(key);
     criticalDedup.push(n);

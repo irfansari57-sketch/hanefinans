@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-KAP BIST şirketleri → hisse kodu ↔ mkkMemberOid haritası (29 Eki 2026).
-Kaynak: https://kap.org.tr/tr/bist-sirketler (SSR liste: kod + ad + /tr/sirket-bilgileri/ozet/{id}-slug)
-        her şirket sayfasının HTML'inde "mkkMemberOid":"<32 hex>" (KAP bildirim sorgusunda mkkMemberOidList için gerekir).
-Çıktı: data/kap-members.json  { updatedAt, count, members: { "ASELS": {oid, name, id} } }
-Haftalık yeterli (şirket listesi nadiren değişir). <400 şirket → dosya değiştirilmez, exit 1.
+KAP BIST şirketleri → hisse kodu ↔ mkkMemberOid haritası (29–30 Eki 2026).
+
+Kaynak: https://kap.org.tr/tr/bist-sirketler — tek sayfa. Next.js SSR yükü (self.__next_f.push) içinde her şirket için
+  {"mkkMemberOid":"<32 hex>","kapMemberTitle":"…","relatedMemberTitle":"…","stockCode":"ASELS","cityName":…,"kapMemberType":"IGS"}
+gömülüdür (30 Eki 2026 tarayıcıdan doğrulandı: 788 kod; ASELS oid'i şirket sayfasındakiyle aynı).
+Bu yüzden şirket sayfalarını tek tek çekmeye gerek yok (ilk sürüm ~700 isteği KAP hız sınırına takılıyordu).
+
+Çıktı: data/kap-members.json  { updatedAt, count, members: { "ASELS": {oid, name} } }
+Haftalık yeterli. <400 kod → dosya değiştirilmez, exit 1.
 """
 from __future__ import annotations
 
@@ -12,8 +16,6 @@ import json
 import os
 import re
 import sys
-import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 try:
@@ -29,69 +31,53 @@ BASE = "https://kap.org.tr"
 OUT = "data/kap-members.json"
 H = {"Accept": "text/html,application/xhtml+xml", "Accept-Language": "tr-TR,tr;q=0.9"}
 
+# Yük içinde tırnaklar kaçışlı: \"mkkMemberOid\":\"4028…\",\"kapMemberTitle\":\"…\",(\"relatedMemberTitle\":\"…\",)?\"stockCode\":\"ASELS\"
+ITEM_RE = re.compile(
+    r'\\"mkkMemberOid\\":\\"([0-9A-Fa-f]{32})\\",'
+    r'\\"kapMemberTitle\\":\\"((?:[^"\\]|\\\\.)*?)\\",'
+    r'(?:\\"relatedMemberTitle\\":\\"(?:[^"\\]|\\\\.)*?\\",)?'
+    r'\\"stockCode\\":\\"([^"\\]*)\\"'
+)
+
 
 def log(m: str) -> None:
     print(f"[kap-members] {m}", flush=True)
 
 
+def _unescape(s: str) -> str:
+    # çift kaçışlı JSON dizesi (\\\" → \" → ")
+    try:
+        return json.loads('"' + s.replace("\\\\", "\\") + '"')
+    except Exception:  # noqa: BLE001
+        return s.replace('\\\\"', '"')
+
+
+def parse_members(html: str) -> dict[str, dict]:
+    members: dict[str, dict] = {}
+    for oid, title, codes in ITEM_RE.findall(html):
+        name = re.sub(r"\s+", " ", _unescape(title)).strip()
+        for c in codes.split(","):
+            c = c.strip().upper()
+            if re.fullmatch(r"[A-Z0-9]{2,10}", c) and c not in members:
+                members[c] = {"oid": oid.lower(), "name": name}
+    return members
+
+
 def main() -> int:
     s = _session()
-    r = s.get(BASE + "/tr/bist-sirketler", headers=H, timeout=60)
+    r = s.get(BASE + "/tr/bist-sirketler", headers=H, timeout=90)
     if r.status_code != 200:
         log(f"liste HTTP {r.status_code}")
         return 1
     html = r.text
-    # <a href="/tr/sirket-bilgileri/ozet/866-aselsan-...">ASELS</a> ... <a href="...">ASELSAN ELEKTRONİK ...</a>
-    pairs = re.findall(r'href="(/tr/sirket-bilgileri/ozet/(\d+)-[^"]+)"[^>]*>\s*([^<]{1,120}?)\s*<', html)
-    comp: dict[str, dict] = {}
-    for href, cid, text in pairs:
-        text = re.sub(r"\s+", " ", text).strip()
-        e = comp.setdefault(href, {"id": int(cid), "codes": [], "name": ""})
-        if re.fullmatch(r"[A-Z0-9]{3,6}(,\s*[A-Z0-9]{3,6})*", text):
-            e["codes"].extend([c.strip() for c in text.split(",")])
-        elif len(text) > len(e["name"]):
-            e["name"] = text
-    comps = [e | {"href": h} for h, e in comp.items() if e["codes"]]
-    log(f"liste: {len(comps)} şirket")
-    if len(comps) < 400:
+    log(f"liste: {len(html)} bayt, 'mkkMemberOid' geçişi: {html.count('mkkMemberOid')}")
+    members = parse_members(html)
+    log(f"çözülen kod: {len(members)}")
+    if len(members) < 400:
         log("beklenenden az — dosya değiştirilmedi")
         return 1
-
-    prev: dict = {}
-    if os.path.exists(OUT):
-        try:
-            prev = json.load(open(OUT, encoding="utf-8")).get("members", {})
-        except Exception:  # noqa: BLE001
-            prev = {}
-
-    def oid_of(e: dict) -> tuple[dict, str | None]:
-        # önceki dosyada varsa tekrar çekme
-        for c in e["codes"]:
-            if c in prev and prev[c].get("id") == e["id"] and prev[c].get("oid"):
-                return e, prev[c]["oid"]
-        for attempt in range(3):
-            try:
-                time.sleep(0.6)
-                rr = _session().get(BASE + e["href"], headers=H, timeout=60)
-                if rr.status_code == 200:
-                    m = re.search(r"mkkMemberOid[^A-Fa-f0-9]{0,6}([A-Fa-f0-9]{32})", rr.text)
-                    return e, (m.group(1) if m else None)
-            except Exception:  # noqa: BLE001
-                pass
-            time.sleep(1 + attempt)
-        return e, None
-
-    members: dict[str, dict] = {}
-    with ThreadPoolExecutor(max_workers=2) as ex:  # KAP 6 paralelde engelledi (29 Eki); nazik hız
-        for e, oid in ex.map(oid_of, comps):
-            if not oid:
-                log(f"oid yok: {e['codes']} {e['href']}")
-                continue
-            for c in e["codes"]:
-                members[c] = {"oid": oid, "name": e["name"], "id": e["id"]}
-    log(f"oid çözülen kod: {len(members)}")
-    if len(members) < 400:
-        return 1
+    for probe in ("ASELS", "THYAO", "KCHOL"):
+        log(f"  {probe}: {members.get(probe)}")
     os.makedirs("data", exist_ok=True)
     json.dump({"updatedAt": datetime.now(timezone.utc).isoformat(), "count": len(members), "members": dict(sorted(members.items()))},
               open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))

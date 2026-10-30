@@ -137,8 +137,10 @@ async function fetchGoogleItems(symbol: string, name: string | null): Promise<{ 
     const key = title.toLowerCase().replace(/[^a-zçğıöşü0-9]+/g, ' ').trim().slice(0, 60);
     if (seen.has(key)) continue;
     seen.add(key);
-    const desc = extractXmlTag(block, 'description') ?? '';
-    const crit = detectCritical(title, desc);
+    // Google RSS description = "Başlık&nbsp;&nbsp;Kaynak" (HTML) — başlığı tekrar eden özet gösterme
+    const descRaw = (extractXmlTag(block, 'description') ?? '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    const desc = descRaw.toLowerCase().startsWith(title.toLowerCase().slice(0, 40)) ? '' : descRaw;
+    const crit = detectCritical(title, descRaw);
     items.push({
       id: `sym-${symbol}-${d.getTime()}-${key.slice(0, 20)}`, title, summary: desc.slice(0, 240), url: link,
       source: source ?? 'Google News', publishedAt: d.toISOString(), critical: crit.critical, criticalReason: crit.reason,
@@ -160,7 +162,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, params, waitUn
 
   const cache = (caches as unknown as { default: Cache }).default;
   const cacheUrl = new URL(request.url);
-  cacheUrl.searchParams.set('cv', '2'); // 29 Eki 2026: KAP birincil kaynak
+  cacheUrl.searchParams.set('cv', '3'); // 30 Eki 2026: KAP birincil kaynak + Google özet temizliği
   const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
   if (!force) { const hit = await cache.match(cacheKey); if (hit) return hit; }
 
